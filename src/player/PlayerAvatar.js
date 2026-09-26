@@ -141,7 +141,16 @@ export class PlayerAvatar {
 		this.legs[1].rotation.x = -gait;
 		this.arms[0].rotation.x = -gait * 0.7;
 		this.arms[1].rotation.x = gait * 0.7;
-		const close = !freeCam && camera.position.distanceTo(this.group.getWorldPosition(new Vector3())) < 1.1;
-		this.group.visible = !close;
+		// Hide the local explorer during first-person play. The camera can move
+		// relative to the head while bobbing or boarding, so distance alone is
+		// insufficient to prevent the head and cap from filling the view.
+		const localFirstPerson = !c && !freeCam && (
+			player.mode === 'walk' || player.mode === 'swim' ||
+			player.mode === 'deck' ||
+			(player.mode === 'boat' && player.camMode === 'first')
+		);
+		const headWorld = this.group.localToWorld(new Vector3(0, 1.58, 0));
+		const close = !freeCam && camera.position.distanceTo(headWorld) < 0.85;
+		this.group.visible = !localFirstPerson && !close;
 	}
 }
