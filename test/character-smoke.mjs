@@ -84,7 +84,13 @@ const frames = Number( process.env.FRAMES || 1 );
 const step = Number( process.env.STEP || 0.5 );
 for ( let f = 0; f < frames; f ++ ) {
 
-	if ( TRAVEL_METERS ) model.group.position.z = ( f / Math.max( 1, frames - 1 ) - 0.5 ) * TRAVEL_METERS;
+	if ( TRAVEL_METERS ) {
+
+		const distance = ( f / Math.max( 1, frames - 1 ) - 0.5 ) * TRAVEL_METERS;
+		model.group.position.x = Math.sin( YAW ) * distance;
+		model.group.position.z = Math.cos( YAW ) * distance;
+
+	}
 
 	for ( let k = 0; k < 3; k ++ ) {
 

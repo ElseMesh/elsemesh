@@ -24,7 +24,7 @@ was changed.
 
 | Measurement | KIRI OBJ source | Game GLB |
 | --- | ---: | ---: |
-| Geometry file | 43,595,589 bytes OBJ | 10,907,956 bytes GLB including texture, skin and clips |
+| Geometry file | 43,595,589 bytes OBJ | 10,908,516 bytes GLB including texture, skin and clips |
 | Vertices | 192,491 | 39,968 |
 | Triangles | 384,968 | 79,999 |
 | Meshes / materials | 1 / 1 | 1 / 1 |
@@ -47,7 +47,10 @@ one and validated deformation in neutral, walking, running, seated and joint
 stress poses. It is a practical game rig, not a hand-built facial or finger
 rig. The walk and run clips now sample the CC BY 4.0 Mannequiny motion donor
 credited in [CREDITS.md](../CREDITS.md). The sampled lower-leg bend reaches
-69.9 degrees on this rig. Blender geometry checks on sampled walk frames put
+48.1 degrees on this rig. The donor stride was shortened after side and front
+views showed the trailing leg stretched too far from the body. The ankle's
+lateral drift over the current cycle is about 1 cm in Blender. Blender geometry
+checks on sampled walk frames put
 the lowest shoe vertex 0.005 m above the ground plane. Shoulder range and
 leg separation remain limited because the source was scanned with arms down
 and legs close together. The updated GLB was rendered by the game's own

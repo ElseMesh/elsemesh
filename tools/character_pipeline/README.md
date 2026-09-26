@@ -35,6 +35,10 @@ npm test
 npm run build
 ```
 
+For a side-view moving walk preview, set `FRAMES=60`, `STEP=0.04166667`,
+`TRAVEL_METERS=0.58`, then run `test/character-smoke.mjs` with `walk 90`.
+Render a front view with `walk 0` to check that a shoe does not swing sideways.
+
 For a moving walk preview, set `FRAMES`, `STEP`, `TRAVEL_METERS`, and `CAM`
 before running `test/character-smoke.mjs` with the `walk` clip. The output
 pattern `walk.png` becomes `walk_0.png`, `walk_1.png`, and so on. Encode those

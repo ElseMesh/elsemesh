@@ -351,14 +351,17 @@ def retarget_locomotion(work, arm, donor_path):
                 calf_vec = source_calf.tail - source_calf.head
                 thigh_angle = math.atan2(thigh_vec.y, -thigh_vec.z)
                 calf_angle = math.atan2(calf_vec.y, -calf_vec.z)
-                knee_angle = max(0.0, min(1.22, 0.84 * (calf_angle - thigh_angle)))
-                thigh_angle *= 0.88
+                # Mannequiny's long stylised stride is too wide for this
+                # close-leg photogrammetry pose. Retain its contact timing,
+                # but shorten the swing and preserve a readable knee flex.
+                knee_angle = max(0.0, min(0.84, 0.60 * (calf_angle - thigh_angle)))
+                thigh_angle *= 0.50
                 knee_max = max(knee_max, knee_angle)
                 values = {
                     f"{side}_Thigh": thigh_angle,
                     f"{side}_Shin": knee_angle,
-                    f"{side}_Foot": -0.43 * (thigh_angle + knee_angle),
-                    f"{side}_UpperArm": -0.48 * thigh_angle,
+                    f"{side}_Foot": -0.85 * (thigh_angle + knee_angle),
+                    f"{side}_UpperArm": -0.62 * thigh_angle,
                     f"{side}_Forearm": 0.08 + 0.08 * abs(thigh_angle),
                 }
                 for bone_name, angle in values.items():
