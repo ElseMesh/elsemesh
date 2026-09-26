@@ -71,6 +71,8 @@ For local development, run `npm run build` then `npm run online` and open http:/
 
 The online room is an early two-player mode: both people can walk independently and see each other's movement in the existing island. Boat authority, shared inventory, combat, interactive objects and cross-island state are still local to each client. It is not the federated world portal implementation. Keep the invitation private; anyone holding it can join the vacant role.
 
+See [online room operations and limits](docs/networking/online-rooms.md) for the server setup, external connection check and deployment notes.
+
 The local journey video is captured from the running game with `tools/video/journey-capture.js`, `tools/video/journey-route.mjs` and `tools/video/journey-receiver.mjs`. Its continuous curved boat course clears the pier before turning toward the cave. The game boat controller supplies buoyancy, trim, roll and spray during the time-compressed shot; normal driving uses its full physics controller. The boat stops afloat before the shallow ramp and the explorer jumps into the water. The capture continues through the station, undersea crossing, sunset and night arrival. The rendered video is kept outside the repository.
 
 ## Blender and world editing

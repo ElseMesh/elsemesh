@@ -1,0 +1,16 @@
+[Unit]
+Description=Burning Horizons two-player room server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/burning-horizons-online
+Environment=NODE_ENV=production
+ExecStart=/usr/bin/node tools/networking/online-server.mjs
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+
+[Install]
+WantedBy=default.target
