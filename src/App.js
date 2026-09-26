@@ -702,6 +702,9 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 		// ---- world
 		this.oceanLOD.update( this.camera );
 		this.terrain.update( this.camera );
+		// The island heightfield has no excavated rail bore. Keep its surface for
+		// outside views, but do not let seabed triangles cross the dry glass tube.
+		this.terrain.mesh.visible = ! dryTransit;
 		this.rocks.update( this.camera );
 		this.debris.update( this.camera );
 		this.reef.update( dt, this.camera.position );

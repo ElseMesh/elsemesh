@@ -14,6 +14,8 @@ const brass = mat('Station_brass', 0xb88e4d, { metalness: 0.65, roughness: 0.28,
 const light = mat('Station_light', 0x72c9e8, { emissive: 0x43a9e4, emissiveIntensity: 2 });
 const deepSea = mat('Undersea_view', 0x0b3449, { emissive: 0x0a3c58, emissiveIntensity: 0.6 });
 const glass = mat('Pressure_glass', 0x8ce7e9, { transparent: true, opacity: 0.19, depthWrite: false, metalness: 0.15, roughness: 0.08 });
+const roofGlass = mat('Pressure_glass_roof', 0x247d9d, { transparent: true, opacity: 0.55, depthWrite: false,
+	metalness: 0.08, roughness: 0.12, emissive: 0x155f83, emissiveIntensity: 0.55 });
 const floorMat = mat('Island_dark_sand', 0x76694b);
 const leaf = mat('Island_green', 0x385f42);
 const trunk = mat('Island_wood', 0x544536);
@@ -115,10 +117,12 @@ export class MonorailSystem {
 		box(g, 'Deep_sea_south_view', (a + b) / 2, -14, -10, a - b + 80, 29, 0.5, deepSea);
 		box(g, 'Seabed_outside_tube', (a + b) / 2, -24, -30, a - b + 80, 0.5, 40, rock);
 		box(g, 'Rail_guideway', (a + b) / 2, -18.7, -30, a - b, 0.48, 2.0, brass);
+		box(g, 'Tinted_glass_tube_roof', (a + b) / 2, -8.52, -30, a - b, 0.12, 10.2, roofGlass);
 		for (let x = a - 20; x > b + 20; x -= 40) {
 			cylinder(g, 'Pressure_glass_span', x - 20, -13.7, -30, 5.1, 39.6, glass, 16);
 			cylinder(g, 'Steel_pressure_collar', x - 40, -13.7, -30, 5.12, 0.42, metal, 16);
 			box(g, 'Guideway_light', x - 18, -18.34, -30, 7, 0.08, 0.3, light);
+			box(g, 'Ceiling_light', x - 18, -8.43, -30, 5, 0.08, 0.3, light);
 		}
 		for (const [label, s] of [['A', RAIL.stationA], ['B', RAIL.stationB]]) {
 			box(g, `Station_${label}_floor`, s.x + 10, -16.35, -24, 34, 0.7, 18, rock);

@@ -232,6 +232,42 @@ for i in range(18):
     obj.scale = (1.1 + (i%3)*0.35, 1.0 + (i%4)*0.25, 0.8 + (i%5)*0.3)
     obj.data.materials.append(wet)
 
+# Small mineral formations break up the long, smooth passage shells. They sit
+# against the walls so the centreline remains clear for walking and filming.
+for route in [L["boatPath"], *[p["points"] for p in L["passages"] if p["name"] in {"Descent", "Basalt_Gallery", "Final_Corridor"}]]:
+    for segment, (a, b) in enumerate(zip(route, route[1:])):
+        x = (a[0] + b[0]) / 2
+        z = (a[1] + b[1]) / 2
+        floor = (a[2] + b[2]) / 2
+        roof = (a[3] + b[3]) / 2
+        width = (a[4] + b[4]) / 2
+        length = math.hypot(b[0] - a[0], b[1] - a[1]) or 1
+        nx, nz = -(b[1] - a[1]) / length, (b[0] - a[0]) / length
+        for side in (-1, 1):
+            px, pz = x + nx * width * 0.78 * side, z + nz * width * 0.78 * side
+            depth = min(1.8, max(0.8, (roof - floor) * 0.24))
+            bpy.ops.mesh.primitive_cone_add(
+                vertices=7, radius1=0.05, radius2=0.6,
+                depth=depth, location=game_to_blender(px, pz, roof - depth / 2))
+            obj = bpy.context.object
+            obj.name = f"UN_Basalt_Dripstone_{segment}_{'L' if side < 0 else 'R'}_{int(x)}"
+            for old in list(obj.users_collection):
+                old.objects.unlink(obj)
+            details.objects.link(obj)
+            obj.data.materials.append(wet)
+
+for i, (x, z, y) in enumerate([(-312, 75, 6.0), (-278, 63, 7.2), (-252, 48, 7.2),
+                               (-231, 36, 6.8), (-216, 18, 6.4), (-219, 1, 5.3)]):
+    bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=1, radius=0.42,
+                                           location=game_to_blender(x, z, y))
+    obj = bpy.context.object
+    obj.name = f"UN_Glow_Mineral_{i:02d}"
+    for old in list(obj.users_collection):
+        old.objects.unlink(obj)
+    details.objects.link(obj)
+    obj.scale = (0.8, 0.8, 1.35)
+    obj.data.materials.append(salt)
+
 bpy.context.scene["burning_horizons_world"] = os.path.join(ROOT, "artifacts", "world")
 bpy.context.scene["underneath_layout"] = os.path.join(HERE, "underneath-layout.json")
 bpy.context.scene.unit_settings.system = "METRIC"

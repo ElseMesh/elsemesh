@@ -22,6 +22,7 @@ function segmentAt(points, x, z) {
 }
 
 function caveColor(name) {
+	if (name.includes('Glow_Mineral')) return 0x7fcbd1;
 	if (name.includes('Salt') || name.includes('Hall')) return 0x77776c;
 	if (name.includes('Door_Brass') || name.includes('Band') || name.includes('Jamb') || name.includes('Lintel')) return 0x8f6430;
 	if (name.includes('Closed_Door')) return 0x292e32;
@@ -55,7 +56,7 @@ export class CaveSystem {
 			if (!materials.has(color)) {
 				const mat = standard({ name: 'Cave_' + color.toString(16), color, roughness: 0.93,
 					metalness: name.includes('Door') ? 0.55 : 0, side: 'double',
-					emissive: color, emissiveIntensity: 0.32 });
+					emissive: color, emissiveIntensity: name.includes('Glow_Mineral') ? 1.5 : 0.32 });
 				mat.localLightsCheap = true;
 				materials.set(color, mat);
 			}
