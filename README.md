@@ -2,8 +2,6 @@
 
 **Burning Horizons is an island mystery to explore and solve.** Arrive on a remote island, uncover a hidden cave, ride a concealed monorail beneath the sea, and follow an expedition's trail to a second island. Fishing is part of survival: keep a catch in the cooler and prepare it when hunger rises.
 
-[Play the current GitHub Pages build](https://lozknowles.github.io/Burning-Horizons/)
-
 ![The island at golden hour](docs/screenshot.jpg)
 
 ## The journey
@@ -54,7 +52,7 @@ npm test
 npm run build
 ```
 
-The local server uses http://127.0.0.1:5189/. Pushes to `main` deploy through `.github/workflows/deploy.yml`.
+The local server uses http://127.0.0.1:5189/. The deployment workflow is `.github/workflows/deploy.yml`. GitHub Pages must be enabled for this repository and configured to use GitHub Actions before the public game URL works.
 
 ## Blender and world editing
 
