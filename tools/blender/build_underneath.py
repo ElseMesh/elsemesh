@@ -203,6 +203,11 @@ def box(name, center, size, col, mat, bevel=0):
         obj.modifiers.new("Weighted_Normals", "WEIGHTED_NORMAL")
     return obj
 
+# Roof seams between the intersecting tubes and chamber arches otherwise
+# reveal daylight at certain viewing angles. Both caps stay below terrain.
+box("Junction_Roof_Shield", (-245, 11.5, 45), (30, 2.2, 30), rooms, basalt, 0.25)
+box("Hall_Roof_Shield", (-215, 11.3, 20), (38, 2.2, 38), rooms, salt, 0.25)
+
 lc = L["landing"]["center"]
 ls = L["landing"]["size"]
 box("Sheltered_Landing", (lc[0], lc[1]-ls[1]/2, lc[2]), ls, landing, ground, 0.35)
