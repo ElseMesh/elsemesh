@@ -34,6 +34,17 @@ export class NetworkDemo {
 			this.transport.onState((state) => this.observeOnline(state));
 			this.transport.onPeerLeft((playerId) => this.removeOnline(playerId));
 			app.player.canDriveBoat = role === 'loz';
+			const heli=app.thirdIsland;
+			heli.network=(action)=>this.transport.helicopterAction(action,action==='release'?{...heli.state}:undefined);
+			this.transport.onHelicopter((packet)=>{
+				if(packet.type==='helicopter-result') {
+					if(packet.action==='claim'){heli.pending=false;heli.granted=packet.accepted;if(packet.accepted)heli.enter();else heli.toast('Helicopter unavailable — another pilot may be using it.');}
+					if(packet.action==='key' && !packet.accepted){heli.hasKey=false;heli.key.visible=true;heli.toast('Stand beside Loz to collect the key.');}
+					return;
+				}
+				heli.remoteOwner=packet.owner && packet.owner!==role ? packet.owner : null;
+				if(!heli.active)Object.assign(heli.state,packet.state);
+			});
 			this.speech = new SpeechPresentation(app, this.playerId, (id) => this.remotes.get(id)?.avatar);
 			this.talk = new TalkUI(app.input, (text) => this.sendSpeech(text));
 			this.transport.onSpeech((event, acceptedAt) => this.speech.onSpeech(event, acceptedAt));
@@ -110,6 +121,7 @@ export class NetworkDemo {
 		if (this.elapsed >= 0.1) {
 			this.elapsed = 0;
 			const state = makeState({ playerId: this.playerId, nodeId: this.identity.nodeId, sequence: this.sequence++, player: this.app.player, boat: this.role === 'loz' ? this.app.boatCtl : null });
+			if(this.app.thirdIsland.active)state.helicopter={...this.app.thirdIsland.state};
 			this.transport.send(state);
 		}
 		for (const entry of this.remotes.values()) {
@@ -117,6 +129,7 @@ export class NetworkDemo {
 			const pose = entry.remote.interpolated(entry.previous, (now - entry.receivedAt) / 100);
 			entry.avatar.cinematic = { x: pose.position[0], y: pose.position[1], z: pose.position[2], yaw: pose.yaw + Math.PI, walk: pose.moving, mode: pose.mode, deckLocal: pose.deckLocal, deckYaw: pose.yaw - (this.app.boatCtl.getYaw() + Math.PI) };
 			entry.avatar.update(dt, this.app.player, this.app.camera, this.app.freeCam);
+			if(pose.mode==='helicopter')entry.avatar.group.visible=false;
 		}
 		this.speech.update();
 		const visiblePeers = [...this.remotes.values()].filter((entry) => now - entry.receivedAt < 1500).length;

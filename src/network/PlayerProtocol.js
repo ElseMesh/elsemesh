@@ -1,3 +1,4 @@
+import { validateHelicopter } from './HelicopterLease.js';
 export const WORLD_ID = 'bh:burning-horizons';
 export const SECTOR_ID = 'bh:ISLAND-01';
 export const ONLINE_ROLES = Object.freeze(['loz', 'ed', ...Array.from({ length: 8 }, (_, i) => `guest${i + 2}`)]);
@@ -29,7 +30,8 @@ export function validateState(state) {
 	if (!Object.values(PLAYER_IDS).includes(state.playerId) || !/^bh-node:[0-9a-f]{64}$/.test(state.nodeId)) throw new Error('Invalid player or node identity');
 	if (!Number.isSafeInteger(state.sequence) || state.sequence < 0 || !Number.isSafeInteger(state.observedRemoteSequence) || state.observedRemoteSequence < -1) throw new Error('Invalid sequence');
 	if (!Array.isArray(state.position) || state.position.length !== 3 || !state.position.every((v) => Number.isFinite(v) && Math.abs(v) < 10000)) throw new Error('Invalid position');
-	if (!Number.isFinite(state.yaw) || Math.abs(state.yaw) > 1000 || typeof state.moving !== 'boolean' || !['walk', 'swim', 'deck', 'boat'].includes(state.mode)) throw new Error('Invalid pose');
+	if (!Number.isFinite(state.yaw) || Math.abs(state.yaw) > 1000 || typeof state.moving !== 'boolean' || !['walk', 'swim', 'deck', 'boat', 'helicopter'].includes(state.mode)) throw new Error('Invalid pose');
+	if (state.helicopter !== undefined) validateHelicopter(state.helicopter);
 	if (state.deckLocal !== undefined && (state.mode !== 'deck' || !Array.isArray(state.deckLocal) || state.deckLocal.length !== 3 || !state.deckLocal.every((v) => Number.isFinite(v) && Math.abs(v) < 20))) throw new Error('Invalid deck pose');
 	if (state.boat !== undefined) {
 		const b = state.boat;

@@ -4,6 +4,7 @@ export class OnlineRoomTransport {
 	constructor(room, role, hostKey = null) {
 		if (!ROOM.test(room) || !['loz', 'ed', 'guest'].includes(role) || (role === 'loz' && !ROOM.test(hostKey || ''))) throw new Error('Invalid room or role');
 		this.handlers = new Set();
+		this.helicopterHandlers = new Set();
 		this.speechHandlers = new Set();
 		this.audioHandlers = new Set();
 		this.errorHandlers = new Set();
@@ -24,7 +25,10 @@ export class OnlineRoomTransport {
 			try {
 				if (typeof data !== 'string' || data.length > 3_000_000) return;
 				const packet = JSON.parse(data);
-				if (packet.type === 'welcome') {
+				if (packet.type === 'helicopter' || packet.type === 'helicopter-result') {
+					if(packet.type === 'helicopter') this.helicopter = packet;
+					for(const fn of this.helicopterHandlers) fn(packet);
+				} else if (packet.type === 'welcome') {
 					this.role = packet.role;
 					this.capacity = packet.capacity;
 					this.resolveReady(packet.role);
@@ -55,6 +59,8 @@ export class OnlineRoomTransport {
 		this.socket.onerror = () => { this.status = 'Connection failed'; };
 	}
 	onState(fn) { this.handlers.add(fn); return () => this.handlers.delete(fn); }
+	onHelicopter(fn) {this.helicopterHandlers.add(fn);if(this.helicopter)fn(this.helicopter);}
+	helicopterAction(action,state) {if(this.socket.readyState===WebSocket.OPEN)this.socket.send(JSON.stringify({type:'helicopter-action',action,state}));}
 	onSpeech(fn) { this.speechHandlers.add(fn); return () => this.speechHandlers.delete(fn); }
 	onSpeechAudio(fn) { this.audioHandlers.add(fn); return () => this.audioHandlers.delete(fn); }
 	onSpeechError(fn) { this.errorHandlers.add(fn); return () => this.errorHandlers.delete(fn); }

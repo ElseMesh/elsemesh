@@ -1,4 +1,6 @@
 import { WORLD } from '../world/WorldLayout.js';
+import { THIRD } from '../world/ThirdIslandLayout.js';
+import { secondIslandHeight } from '../world/MonorailRoute.js';
 import { STAND } from './FishStand.js';
 import { CHANDLERY } from './Chandlery.js';
 import { ONLINE_ROLES, PLAYER_IDS } from '../network/PlayerProtocol.js';
@@ -14,8 +16,8 @@ import { ONLINE_ROLES, PLAYER_IDS } from '../network/PlayerProtocol.js';
 //   const map = new Minimap( hudEl, game );  map.update( dt );  map.highlight( [ 'joe', 'marta' ] )
 
 const N = 640; // baked canvas size (px)
-const EXT = 1280; // metres covered by the bake
-const X0 = - EXT / 2, Z0 = - 180 - EXT / 2; // world at canvas (0, 0): the island sits north of the bay
+const EXT = 2600; // all three islands and the flight corridor
+const X0 = -1700, Z0 = -1200;
 const PPM = N / EXT; // canvas px per metre
 const ROWS_PER_FRAME = 48;
 
@@ -125,6 +127,8 @@ export class Minimap {
 		};
 
 		this.markers = [
+			{ id:'rental', ...mk('marta','L'), pos:()=>THIRD.hut },
+			{ id:'helicopter', ...mk('friend','H'), pos:()=>game.app.thirdIsland?.state },
 			...ONLINE_ROLES.map( ( role, index ) => ( { id: `player-${ role }`, ...mk( 'friend', `<span aria-hidden="true">${ index ? index + 1 : 'L' }</span>` ), pos: () => {
 				const network = game.app.networkDemo;
 				if ( ! network?.online || network.playerId === PLAYER_IDS[ role ] ) return null;
@@ -220,7 +224,7 @@ export class Minimap {
 		for ( let py = B.row; py < end; py ++ ) for ( let px = 0; px < N; px ++ ) {
 
 			const x = X0 + ( px + 0.5 ) / PPM, z = Z0 + ( py + 0.5 ) / PPM;
-			const hgt = T.heightAt( x, z );
+			const hgt = Math.max(T.heightAt( x, z ),secondIslandHeight(x,z));
 			B.h[ py * N + px ] = hgt;
 			const k = idx( x, z );
 			let c;
@@ -343,7 +347,7 @@ export class Minimap {
 		const x = cam.position.x, z = cam.position.z;
 
 		// zoom: close on foot, wider at sea
-		const want = p.mode === 'boat' || p.mode === 'deck' || p.mode === 'swim' ? 240 : 110;
+		const want = p.mode === 'helicopter' ? 650 : p.mode === 'boat' || p.mode === 'deck' || p.mode === 'swim' ? 240 : 110;
 		this.radiusM += ( want - this.radiusM ) * ( 1 - Math.exp( - dt * 1.5 ) );
 		const kpm = R / this.radiusM; // css px per metre
 

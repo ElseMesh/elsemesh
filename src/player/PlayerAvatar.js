@@ -151,7 +151,7 @@ export class PlayerAvatar {
 		// relative to the head while bobbing or boarding, so distance alone is
 		// insufficient to prevent the head and cap from filling the view.
 		const localFirstPerson = !c && !freeCam && (
-			player.mode === 'walk' || player.mode === 'swim' ||
+			player.mode === 'walk' || player.mode === 'swim' || player.mode === 'helicopter' ||
 			player.mode === 'deck' ||
 			(player.mode === 'boat' && player.camMode === 'first')
 		);

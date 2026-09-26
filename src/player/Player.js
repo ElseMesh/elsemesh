@@ -512,7 +512,7 @@ export class Player {
 		const dock = WORLD.boatDock.position;
 		const caveLanding = this.cave?.layout?.landing?.center;
 		const besideCaveLanding = caveLanding && Math.hypot( b.position.x - caveLanding[0], b.position.z - caveLanding[2] ) < 40;
-		if ( ( b.position.distanceTo( dock ) < 14 || besideCaveLanding ) && b.speed < 1.5 ) {
+		if ( ( b.position.distanceTo( dock ) < 14 || besideCaveLanding || Math.hypot(b.position.x-111,b.position.z-535)<14 ) && b.speed < 1.5 ) {
 
 			b.moored = true;
 			b.mooring.anchor.set( b.position.x, 0, b.position.z );

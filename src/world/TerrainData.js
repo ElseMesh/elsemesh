@@ -1,5 +1,6 @@
 import { Noise2D, smoothstep, clamp, lerp } from '../util/Noise.js';
 import { WORLD } from './WorldLayout.js';
+import { THIRD, thirdIslandHeight } from './ThirdIslandLayout.js';
 import { softRamp, erosionNoise, sampleGrid, upsample2, boxBlur } from './terrain/TerrainNoise.js';
 import { ridgeEnvelope, SEA_STACKS, PATHS, polylineDistance } from './terrain/IslandShape.js';
 
@@ -69,8 +70,26 @@ export class TerrainData {
 		this._out = { h: 0, rock: 0, d: 0, bz: 0, carve: 0 };
 		this.generate();
 		this.carveCaveApproach();
+		this.addThirdIsland();
 		this.buildMinMax();
 
+	}
+
+	addThirdIsland() {
+		const { res, origin, texel } = this;
+		for (let j = 0; j < res; j++) {
+			const z = origin + (j + 0.5) * texel;
+			if (Math.abs(z - THIRD.z) > 155) continue;
+			for (let i = 0; i < res; i++) {
+				const x = origin + (i + 0.5) * texel, k = j * res + i;
+				if (Math.abs(x - THIRD.x) > 170) continue;
+				const h = thirdIslandHeight(x, z);
+				if (h <= this.heights[k]) continue;
+				this.heights[k] = h; this.rock[k] = 0.06; this.sand[k] = h < 5 ? 235 : 35;
+				this.seagrass[k] = h < -1 && h > -12 ? 100 : 0;
+				this.path[k] = Math.abs(x - 115) < 2.6 && z < 640 && z > 555 ? 255 : 0;
+			}
+		}
 	}
 
 	// A narrow submerged channel through the west-headland shoal gives the

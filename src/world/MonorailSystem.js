@@ -188,9 +188,9 @@ export class MonorailSystem {
 		if (typeof document === 'undefined') return;
 		const el = document.createElement('div');
 		el.setAttribute('role', 'dialog');
-		el.setAttribute('aria-label', 'Two-island world map');
+		el.setAttribute('aria-label', 'Three-island world map');
 		el.style.cssText = 'position:fixed;inset:12% 18%;z-index:1000;display:none;background:rgba(7,22,30,.94);border:1px solid #5eb9c9;border-radius:16px;color:#e2f5f5;font:18px system-ui;padding:24px;box-shadow:0 12px 50px #000b;pointer-events:none';
-		el.innerHTML = '<div style="font-size:26px;letter-spacing:.12em">ARCHIPELAGO</div><div style="font-size:14px;color:#9dd9df">N to close · Sea route and hidden rail</div><svg viewBox="0 0 800 360" style="width:100%;height:75%" aria-label="First island, undersea rail, second island"><path d="M90 180 Q200 80 310 180 Q210 290 90 180Z" fill="#788763" stroke="#9ed1c8" stroke-width="3"/><path d="M520 180 Q630 70 730 180 Q640 290 520 180Z" fill="#788763" stroke="#9ed1c8" stroke-width="3"/><path d="M286 195 L545 195" stroke="#71deea" stroke-width="7" stroke-dasharray="14 9"/><text x="122" y="183" fill="white" font-size="24">HOME ISLAND</text><text x="547" y="183" fill="white" font-size="24">SECOND ISLAND</text><text x="306" y="165" fill="#9deaf2" font-size="20">UNDERSEA MONORAIL ⇄</text><text x="175" y="280" fill="#b8e1e4" font-size="17">CAVE / STATION A</text><text x="585" y="280" fill="#b8e1e4" font-size="17">STATION B</text></svg>';
+		el.innerHTML = `<h2>ARCHIPELAGO</h2><p>N to close · Sail south past Godzilla to Loz's Helicopter Rental</p><svg viewBox="0 0 800 460" style="width:100%;height:70%"><g fill="#788763" stroke="#9ed1c8" stroke-width="3"><ellipse cx="150" cy="110" rx="90" ry="55"/><ellipse cx="550" cy="110" rx="140" ry="65"/><ellipse cx="550" cy="360" rx="100" ry="55"/></g><path d="M240 110 H410" stroke="#71deea" stroke-width="5" stroke-dasharray="10 7"/><path d="M545 165 Q630 250 560 303" fill="none" stroke="#ffbd7a" stroke-width="4" stroke-dasharray="8 6"/><g fill="white" font-family="system-ui" font-size="18" text-anchor="middle"><text x="150" y="105">SECOND ISLAND</text><text x="150" y="130">Station B</text><text x="550" y="105">HOME ISLAND</text><text x="550" y="130">Boat · cave / Station A</text><text x="322" y="90">UNDERSEA RAIL</text><text x="440" y="235">GODZILLA</text><text x="665" y="260">BOAT ROUTE</text><text x="550" y="351">THIRD ISLAND</text><text x="550" y="378">Loz · keys · helipad</text></g></svg>`;
 		document.body.appendChild(el);
 		this.mapEl = el;
 	}
@@ -219,7 +219,7 @@ export class MonorailSystem {
 	}
 
 	update(dt, player, input, camera, toast) {
-		if (input.hit('KeyN') && this.mapUnlocked) {
+		if (input.hit('KeyN')) {
 			this.mapVisible = !this.mapVisible;
 			if (this.mapEl) this.mapEl.style.display = this.mapVisible ? 'block' : 'none';
 		}

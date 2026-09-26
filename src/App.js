@@ -34,6 +34,7 @@ import { Wildlife } from './world/wildlife/Wildlife.js';
 import { Whale } from './world/marine/Whale.js';
 import { KaijuEncounter } from './world/KaijuEncounter.js';
 import { MonorailSystem } from './world/MonorailSystem.js';
+import { ThirdIslandSystem } from './world/ThirdIslandSystem.js';
 
 import { OceanFFT } from './ocean/OceanFFT.js';
 import { WaterSurface } from './ocean/WaterSurface.js';
@@ -330,6 +331,7 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 		this.surface.wake = this.wake;
 		this.player = new Player( { camera, input: this.input, terrain: this.terrainData, colliders: this.colliders, query: this.query, boat: this.boatCtl, reef: this.reef, spray: this.spray, cave: this.caves, transit: this.monorail } );
 		this.avatar = new PlayerAvatar( scene, this.boatCtl );
+		this.thirdIsland = new ThirdIslandSystem( this );
 		this.monorail.restorePlayer( this.player );
 		this.pistol = new SurvivalPistol( scene );
 		// birds, beach crabs, sanderlings (after spray / query / boat, which they use)
@@ -637,7 +639,7 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 		} else if ( s.timeSpeed !== 0 ) s.timeOfDay = ( s.timeOfDay + dt * s.timeSpeed + 24 ) % 24;
 
 		// ---- player / boat (boat physics first so the cameras follow this frame's pose)
-		if ( this.input.hit( 'KeyF' ) ) this.setFreeCam( ! this.freeCam );
+		if ( this.input.hit( 'KeyF' ) && !this.thirdIsland.active ) this.setFreeCam( ! this.freeCam );
 		if ( this.input.hit( 'KeyT' ) ) {
 			if ( this.networkDemo?.online ) this.networkDemo.openTalk();
 			else this.toggleTime();
@@ -661,8 +663,9 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 		if ( this.kaiju ) this.kaiju.update( dt );
 		this.wake.update( dt );
 		if ( this.freeCam ) this.fly.update( dt );
-		else if ( this.monorail.state !== 'riding' ) this.player.update( dt );
-		if ( ! this.freeCam ) this.monorail.update( dt, this.player, this.input, this.camera, ( message ) => this.ui?.ui.toast( message ) );
+		else if ( this.monorail.state !== 'riding' && !this.thirdIsland.active ) this.player.update( dt );
+		if ( ! this.freeCam && !this.thirdIsland.active ) this.monorail.update( dt, this.player, this.input, this.camera, ( message ) => this.ui?.ui.toast( message ) );
+		this.thirdIsland.update( dt );
 		this.avatar.update( dt, this.player, this.camera, this.freeCam );
 		if ( this.networkDemo ) this.networkDemo.update( dt );
 		this.pistol.update( dt, this.camera, this.input, ! this.freeCam && this.monorail.state !== 'riding' && this.player.mode === 'walk', ( message ) => this.ui?.ui.toast( message ) );
