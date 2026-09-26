@@ -2,6 +2,12 @@
 
 **Burning Horizons is an island mystery to explore and solve.** Arrive on a remote island, uncover a hidden cave, ride a concealed monorail beneath the sea, and follow an expedition's trail to a second island. Fishing is part of survival: keep a catch in the cooler and prepare it when hunger rises.
 
+## Hosted multiplayer preview
+
+The [hosted online preview](https://hpubuntu.taila22e8a.ts.net/play-online.html) runs from the experimental [`feature/networked-character-speech` branch](https://github.com/lozknowles/Burning-Horizons/tree/feature/networked-character-speech), which is ahead of this default branch. Two people can share a private room, see each other on the radar, exchange typed speech with **T**, and ride one boat with the host at the helm. The host's accepted private OmniVoice profile can generate audio when the separately hosted worker is healthy; Ed currently has text only. Browser playback and the shared boat still need a physical two-device gameplay check.
+
+Rooms currently admit **two players**. See the [network node setup and three-player trial plan](https://github.com/lozknowles/Burning-Horizons/blob/feature/networked-character-speech/docs/networking/multi-player-nodes.md) for the present deployment and the changes needed before three or more can join one room. The full current preview status and controls are in the [preview branch README](https://github.com/lozknowles/Burning-Horizons/blob/feature/networked-character-speech/README.md).
+
 ![The island at golden hour](docs/screenshot.jpg)
 
 ## The journey
