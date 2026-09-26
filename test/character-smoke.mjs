@@ -1,6 +1,7 @@
 // Skinned character smoke test: loads a GLB (skin + clips), plays a clip and renders a few
 // frames of a studio view with the engine alone.
 //   node test/character-smoke.mjs [model.glb] [out.png] [clip] [yawDeg]
+// Set FRAMES and STEP for a sequence; TRAVEL_METERS moves the model across the view.
 import { readFileSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
@@ -22,6 +23,7 @@ const file = process.argv[ 2 ] || new URL( '../public/models/characters/joe.glb'
 const OUT = process.argv[ 3 ] || '/tmp/character-smoke.png';
 const CLIP = process.argv[ 4 ] || null;
 const YAW = Number( process.argv[ 5 ] || 0 ) * Math.PI / 180;
+const TRAVEL_METERS = Number( process.env.TRAVEL_METERS || 0 );
 
 // embedded images -> RGBA8 with macOS sips (no image decoding in Node)
 const tmp = mkdtempSync( join( process.env.BH_TMPDIR || tmpdir(), 'char-img-' ) );
@@ -81,6 +83,8 @@ const ldr = new RenderTarget( W, H, { colors: [ 'rgba8unorm' ], label: 'ldr' } )
 const frames = Number( process.env.FRAMES || 1 );
 const step = Number( process.env.STEP || 0.5 );
 for ( let f = 0; f < frames; f ++ ) {
+
+	if ( TRAVEL_METERS ) model.group.position.z = ( f / Math.max( 1, frames - 1 ) - 0.5 ) * TRAVEL_METERS;
 
 	for ( let k = 0; k < 3; k ++ ) {
 

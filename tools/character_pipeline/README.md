@@ -24,6 +24,12 @@ npm test
 npm run build
 ```
 
+For a moving walk preview, set `FRAMES`, `STEP`, `TRAVEL_METERS`, and `CAM`
+before running `test/character-smoke.mjs` with the `walk` clip. The output
+pattern `walk.png` becomes `walk_0.png`, `walk_1.png`, and so on. Encode those
+frames with FFmpeg using their frame rate. The preview is a renderer test of
+the character animation; it does not replace an in-game traversal check.
+
 Keep the downloaded ZIP and extracted files outside Git. `inspect_scan.py`
 must run before `build_character.py`; it writes the baseline JSON, six
 untouched views, and an imported `.blend`. The build script imports the source
