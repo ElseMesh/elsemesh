@@ -1,4 +1,4 @@
-import bpy, os, sys
+import bpy, os, sys, shutil
 
 def arg(name, default=None):
     if "--" not in sys.argv: return default
@@ -29,3 +29,8 @@ bpy.ops.export_scene.gltf(
     export_apply=True, export_yup=True,
 )
 print(f"Exported {len(selected)} objects to {out}")
+layout = os.path.join(os.path.dirname(__file__), "underneath-layout.json")
+if os.path.exists(layout):
+    manifest = os.path.join(os.path.dirname(out), "caves.json")
+    shutil.copyfile(layout, manifest)
+    print("Exported cave layout to", manifest)
