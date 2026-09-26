@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="referrer" content="no-referrer">
+  <title>Burning Horizons — Play together</title>
+  <style>
+    *{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;background:linear-gradient(155deg,#081927,#123449 65%,#0c2430);color:#eaf6f4;font:16px/1.5 system-ui,sans-serif;padding:20px}main{width:min(100%,560px);padding:32px;border:1px solid #6caeb3;border-radius:18px;background:#071b28e8;box-shadow:0 18px 70px #0008}h1{margin:0 0 8px;font-size:2rem;letter-spacing:.04em}p{color:#b8d6d8}button,a.button{display:inline-block;border:0;border-radius:8px;padding:12px 18px;background:#63d3cf;color:#07222b;font:700 1rem system-ui;text-decoration:none;cursor:pointer;margin:8px 8px 8px 0}button.secondary{background:#304e60;color:#efffff}label{display:block;margin:20px 0 6px}input{width:100%;padding:12px;border:1px solid #7bbbc3;border-radius:8px;background:#0d2c3d;color:white;font:1rem system-ui}#host-panel,#join-panel{display:none}.hint{font-size:.9rem;color:#a3c1c6}strong{color:#8af0cb}
+  </style>
+</head>
+<body><main>
+  <h1>Burning Horizons</h1>
+  <p>Explore the same island with one friend. Each of you controls a separate character in your own browser.</p>
+  <div id="home"><button id="host">Create private room</button><button class="secondary" id="show-join">Join a friend</button></div>
+  <div id="host-panel"><p><strong>Room created.</strong> Send this invitation to your friend, then start your game.</p><label for="invite">Friend invitation</label><input id="invite" readonly><button id="copy">Copy invitation</button><a class="button" id="start" href="#">Start playing</a><p class="hint">Anyone with the invitation can join as the second player. Rooms close when both players leave.</p></div>
+  <div id="join-panel"><label for="room">Invitation link or room code</label><input id="room" autocomplete="off" spellcheck="false"><button id="join">Join game</button><p id="error" role="alert"></p></div>
+  <p class="hint">This early two-player mode shares character movement. Solo play is still available from the main game.</p>
+</main>
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+  const roomPattern = /^[a-f0-9]{32}$/;
+  const hostGame = (room) => `./index.html?demo=online&role=loz&room=${room}`;
+  const guestGame = (room) => `./index.html?demo=online&role=ed&room=${room}`;
+  const invitation = (room) => new URL(`./play-online.html?join=${room}`, location.href).href;
+  $('host').onclick = () => {
+    const room = crypto.randomUUID().replaceAll('-', '');
+    $('home').hidden = true; $('host-panel').style.display = 'block';
+    $('invite').value = invitation(room); $('start').href = hostGame(room);
+  };
+  $('copy').onclick = async () => {
+    try { await navigator.clipboard.writeText($('invite').value); $('copy').textContent = 'Copied'; }
+    catch { $('invite').select(); $('copy').textContent = 'Select and copy the link'; }
+  };
+  $('show-join').onclick = () => { $('home').hidden = true; $('join-panel').style.display = 'block'; $('room').focus(); };
+  $('join').onclick = () => {
+    const input = $('room').value.trim();
+    let room = input;
+    try { if (input.includes('://')) room = new URL(input).searchParams.get('join'); } catch { /* Show the validation message below. */ }
+    if (!roomPattern.test(room || '')) { $('error').textContent = 'Enter a valid invitation link or 32-character room code.'; return; }
+    location.href = guestGame(room);
+  };
+  $('room').onkeydown = (event) => { if (event.key === 'Enter') $('join').click(); };
+  const invited = new URLSearchParams(location.search).get('join');
+  if (invited) { $('show-join').click(); $('room').value = invited; }
+</script></body></html>

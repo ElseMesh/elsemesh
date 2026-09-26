@@ -3,6 +3,7 @@ import { AgentInput } from './AgentInput.js';
 import { browserIdentity } from './BrowserIdentity.js';
 import { LocalDemoTransport } from './LocalDemoTransport.js';
 import { BridgeTransport } from './BridgeTransport.js';
+import { OnlineRoomTransport } from './OnlineRoomTransport.js';
 import { makeState, PLAYER_IDS, RemoteState, SECTOR_ID } from './PlayerProtocol.js';
 import { VideoEvidence } from './VideoEvidence.js';
 
@@ -12,15 +13,18 @@ export class NetworkDemo {
 	static async create(app) {
 		const role = app.qs.get('role');
 		if (!['loz', 'ed'].includes(role)) throw new Error('Network demo role must be loz or ed');
-		const bridge = app.qs.get('transport') === 'bridge' ? await BridgeTransport.connect(role) : null;
+		const online = app.qs.get('demo') === 'online';
+		const bridge = !online && app.qs.get('transport') === 'bridge' ? await BridgeTransport.connect(role) : null;
 		const identity = bridge ? { nodeId: bridge.nodeId } : await browserIdentity(role);
-		return new NetworkDemo(app, role, identity, bridge);
+		const transport = online ? new OnlineRoomTransport(app.qs.get('room') || '', role) : bridge;
+		return new NetworkDemo(app, role, identity, transport, online);
 	}
-	constructor(app, role, identity, bridge = null) {
+	constructor(app, role, identity, transport = null, online = false) {
 		this.app = app; this.role = role; this.identity = identity;
+		this.online = online;
 		this.playerId = PLAYER_IDS[role]; this.sequence = 0; this.elapsed = 0;
-		this.transport = bridge || new LocalDemoTransport(app.qs.get('session') || 'public-local', role);
-		this.physical = !!bridge;
+		this.transport = transport || new LocalDemoTransport(app.qs.get('session') || 'public-local', role);
+		this.physical = !!transport;
 		this.remote = new RemoteState({ ownPlayerId: this.playerId, ownNodeId: identity.nodeId });
 		this.remotePrevious = null; this.remoteReceivedAt = 0; this.remoteMoved = false; this.localMoved = false;
 		this.transport.onState((state) => {
@@ -44,9 +48,11 @@ export class NetworkDemo {
 			const player = app.player;
 			player.position.set(53.6, player.groundAt(53.6, -68.5, 50), -68.5);
 			player.yaw = 0;
-			this.agent = new AgentInput(player);
-			this.agent.follow_player('player:loz');
-			player.input = this.agent;
+			if (!online) {
+				this.agent = new AgentInput(player);
+				this.agent.follow_player('player:loz');
+				player.input = this.agent;
+			}
 		}
 		this.#mountOverlay();
 	}
@@ -58,6 +64,11 @@ export class NetworkDemo {
 	}
 	update(dt) {
 		const player = this.app.player;
+		if (this.online && !this.transport.connected && this.remote.state) {
+			this.remote = new RemoteState({ ownPlayerId: this.playerId, ownNodeId: this.identity.nodeId });
+			this.remotePrevious = null;
+			this.remoteMoved = false;
+		}
 		this.localMoved ||= player.velocity.lengthSq() > 0.12;
 		this.elapsed += dt;
 		if (this.elapsed >= 0.1) {
@@ -82,7 +93,12 @@ export class NetworkDemo {
 		if (verified && this.video && !this.video.started) this.video.start();
 		const authority = this.role === 'loz' ? this.identity.nodeId : received?.nodeId;
 		const distance = received ? Math.hypot(received.position[0] - player.position.x, received.position[2] - player.position.z) : null;
-		this.overlay.innerHTML = `<strong>${this.role.toUpperCase()} — ${this.role === 'loz' ? 'HUMAN' : 'AI'}</strong><br>Player ${this.playerId}<br>Node ${shortId(this.identity.nodeId)}<br>Sector ${SECTOR_ID}<br>Authority ${shortId(authority)}<br>${this.physical ? 'TWO PHYSICAL NODES' : 'LOCAL TWO-NODE DEMO'} · ${connected ? 'DIRECT' : 'WAITING'}<br>Protocol bh.player-state/1<br>RTT unavailable · loss unavailable<br>${verified ? '<strong style="color:#8dffad">NETWORK VERIFIED</strong>' : 'Awaiting bidirectional movement'}${this.agent ? `<br>AGENT ACTION: ${this.agent.command.tool}(${this.agent.command.playerId || ''})<br>Distance ${distance?.toFixed(1) ?? '—'} m` : ''}`;
+		this.overlay.innerHTML = this.online
+			? `<strong>${roleLabel(this.role)} — ONLINE</strong><br>${escapeStatus(this.transport.status)}<br>${connected ? `Friend ${distance?.toFixed(1) ?? '—'} m away` : 'Share the invite link to play together'}<br>${verified ? 'Both players moving' : 'World movement is shared'}`
+			: `<strong>${this.role.toUpperCase()} — ${this.role === 'loz' ? 'HUMAN' : 'AI'}</strong><br>Player ${this.playerId}<br>Node ${shortId(this.identity.nodeId)}<br>Sector ${SECTOR_ID}<br>Authority ${shortId(authority)}<br>${this.physical ? 'TWO PHYSICAL NODES' : 'LOCAL TWO-NODE DEMO'} · ${connected ? 'DIRECT' : 'WAITING'}<br>Protocol bh.player-state/1<br>RTT unavailable · loss unavailable<br>${verified ? '<strong style="color:#8dffad">NETWORK VERIFIED</strong>' : 'Awaiting bidirectional movement'}${this.agent ? `<br>AGENT ACTION: ${this.agent.command.tool}(${this.agent.command.playerId || ''})<br>Distance ${distance?.toFixed(1) ?? '—'} m` : ''}`;
 		window.parent?.postMessage({ type: 'bh-network-demo-status', role: this.role, verified, connected, localNodeId: this.identity.nodeId, remoteNodeId: received?.nodeId, localSequence: this.sequence - 1, remoteSequence: received?.sequence ?? -1 }, location.origin);
 	}
 }
+
+const roleLabel = (role) => role === 'loz' ? 'HOST' : 'GUEST';
+const escapeStatus = (value) => String(value).replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);

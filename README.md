@@ -6,8 +6,8 @@ The project is also exploring an **open federated virtual-world protocol**: inde
 
 | Federation status | Current scope |
 |---|---|
-| Implemented | Strict region/portal descriptors, owner-signed versions, expiring host delegation, signed portal invitations, bounded rule negotiation and handoff verification; 21 network tests pass. |
-| Experimental | Optional local Loz/Ed browser demo and physical MSI↔hpubuntu **protocol-only** portal round trip. |
+| Implemented | Strict region/portal descriptors, owner-signed versions, expiring host delegation, signed portal invitations, bounded rule negotiation and handoff verification; automated network tests pass. |
+| Experimental | Private two-person online rooms for shared character movement, optional local Loz/Ed browser demo and physical MSI↔hpubuntu **protocol-only** portal round trip. |
 | Planned | Cave-triggered live handoff, Ed World rendering, physical two-node avatar crossing, secure internet transport and replica failover in live gameplay. |
 
 ![The island at golden hour](docs/screenshot.jpg)
@@ -62,6 +62,14 @@ npm run test:network
 ```
 
 The local server uses http://127.0.0.1:5189/. The deployment workflow is `.github/workflows/deploy.yml`. GitHub Pages must be enabled for this repository and configured to use GitHub Actions before the public game URL works.
+
+## Play with a friend
+
+Open `/play-online.html` on the online game server. Choose **Create private room**, copy the invitation, and send it to your friend. Start your game; your friend opens the invitation and chooses **Join game**. Each browser controls one human player. Rooms allow one host and one guest, are separated by a random invitation code, and disappear when both leave.
+
+For local development, run `npm run build` then `npm run online` and open http://127.0.0.1:5200/play-online.html. The server hosts the built game and relays validated player-state messages over WebSocket. To invite someone over the internet, host this server behind HTTPS with WebSocket upgrade support; `127.0.0.1` invitation links work only on the same computer. The server binds to loopback by default; configure `BH_ONLINE_HOST` and `BH_ONLINE_PORT` if needed. GitHub Pages alone cannot host this WebSocket server.
+
+The online room is an early two-player mode: both people can walk independently and see each other's movement in the existing island. Boat authority, shared inventory, combat, interactive objects and cross-island state are still local to each client. It is not the federated world portal implementation. Keep the invitation private; anyone holding it can join the vacant role.
 
 The local journey video is captured from the running game with `tools/video/journey-capture.js`, `tools/video/journey-route.mjs` and `tools/video/journey-receiver.mjs`. Its continuous curved boat course clears the pier before turning toward the cave. The game boat controller supplies buoyancy, trim, roll and spray during the time-compressed shot; normal driving uses its full physics controller. The boat stops afloat before the shallow ramp and the explorer jumps into the water. The capture continues through the station, undersea crossing, sunset and night arrival. The rendered video is kept outside the repository.
 
