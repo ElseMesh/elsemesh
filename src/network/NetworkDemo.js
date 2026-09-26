@@ -34,7 +34,10 @@ export class NetworkDemo {
 			} catch { /* hostile or incompatible state is discarded */ }
 		});
 		this.remoteAvatar = new PlayerAvatar(app.engine.scene, app.boatCtl);
-		if (app.qs.has('record')) this.video = new VideoEvidence(this);
+		if (app.qs.has('record')) {
+			const port = Number(app.qs.get('recordReceiver') || 42907);
+			if (Number.isSafeInteger(port) && port >= 1024 && port <= 65535) this.video = new VideoEvidence(this, `ws://127.0.0.1:${port}`);
+		}
 		this.remoteAvatar.group.name = `Remote_${role === 'loz' ? 'Ed' : 'Loz'}`;
 		this.remoteAvatar.group.visible = false;
 		if (role === 'ed') {

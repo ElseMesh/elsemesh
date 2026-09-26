@@ -16,7 +16,7 @@
   </main>
   <script type="module">
     const session = crypto.randomUUID().replaceAll('-', '');
-    for (const role of ['loz', 'ed']) document.getElementById(role).src = `./index.html?demo=network&role=${role}&session=${session}&scale=0.6&noAudio`;
+    for (const role of ['loz', 'ed']) document.getElementById(role).src = `./index.html?demo=network&role=${role}&session=${session}&scale=0.6&noAudio${role === 'loz' && new URLSearchParams(location.search).has('record') ? '&record&recordReceiver=42908' : ''}`;
     const states = new Map();
     window.addEventListener('message', (event) => {
       if (event.origin !== location.origin || event.data?.type !== 'bh-network-demo-status') return;
