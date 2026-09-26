@@ -51,6 +51,8 @@ export class PlayerAvatar {
 		}
 		part(this.group, 'Jacket_zip', new BoxGeometry(0.018, 0.42, 0.017), dark, 0, 1.2, 0.266);
 		part(this.group, 'Nose', new SphereGeometry(0.032, 8, 6), skin, 0, 1.55, 0.15);
+		this.mouth = part(this.group, 'Speaking_mouth', new SphereGeometry(0.027, 8, 6), dark, 0, 1.49, 0.135);
+		this.speaking = false;
 		part(this.group, 'Belt', new BoxGeometry(0.49, 0.075, 0.29), dark, 0, 0.77, 0);
 		part(this.group, 'Head', new SphereGeometry(0.14, 12, 8), skin, 0, 1.58, 0);
 		part(this.group, 'Cap', new SphereGeometry(1, 14, 8), trousers, 0, 1.72, 0.025)
@@ -108,15 +110,18 @@ export class PlayerAvatar {
 	update(dt, player, camera, freeCam) {
 		const c = this.cinematic;
 		const aboard = c ? (c.mode === 'boat' || c.mode === 'helm') : (player.mode === 'boat' || player.mode === 'deck');
-		const atHelm = c ? (c.mode === 'helm' || !!c.seated) : player.mode === 'boat';
+		const atHelm = c ? (c.mode === 'boat' || c.mode === 'helm' || !!c.seated) : player.mode === 'boat';
 		this.seated.visible = atHelm;
 		for (const limb of [...this.arms, ...this.legs]) limb.visible = !atHelm;
 		this._place(aboard ? this.boat.model.group : this.scene);
 		let moving = false;
 		if (c) {
 			if (aboard) {
-				this.group.position.set(c.x, c.y ?? this.boat.model.lines.deckY, c.z);
-				this.group.rotation.y = c.yaw ?? 0;
+				const local = c.deckLocal || (atHelm
+					? [HOUSE.helmX, this.boat.model.lines.deckY, HOUSE.seatZ]
+					: [0, this.boat.model.lines.deckY, -1.75]);
+				this.group.position.set(...local);
+				this.group.rotation.y = atHelm ? 0 : c.deckYaw ?? 0;
 			} else {
 				this.group.position.set(c.x, c.y, c.z);
 				this.group.rotation.y = c.yaw ?? 0;
@@ -136,6 +141,7 @@ export class PlayerAvatar {
 			moving = player.mode === 'walk' && player.velocity.lengthSq() > 0.12;
 		}
 		this.clock += dt * (moving ? 8 : 2);
+		this.mouth.scale.y = this.speaking ? 1.8 + Math.sin(this.clock * 9) * 0.7 : 0.32;
 		const gait = moving ? Math.sin(this.clock) * 0.5 : 0;
 		this.legs[0].rotation.x = gait;
 		this.legs[1].rotation.x = -gait;

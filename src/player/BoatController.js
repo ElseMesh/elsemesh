@@ -218,6 +218,17 @@ export class BoatController {
 	}
 
 	update( dt ) {
+		if (this.networkReplica) {
+			const b = this.networkReplica;
+			this.position.set(...b.position);
+			this.quaternion.set(...b.quaternion);
+			this.velocity.set(...b.velocity);
+			this.speed = this.velocity.length();
+			this.driven = b.driven;
+			this.moored = false;
+			this.apply();
+			return;
+		}
 
 		this.readQueries();
 		if ( ! this.hasWater ) {

@@ -109,7 +109,11 @@ export class KaijuEncounter {
 
 		// Water falling from the head, shoulders and dorsal ridge becomes visible as
 		// more of the animal rises. The shared spray system integrates real gravity.
-		const wetness = Math.max(0.32, 1 - p.progress * 0.68);
+		// The runoff is a short emergence event. Once the head and shoulders have
+		// drained, stop emitting new droplets; existing particles finish falling.
+		const emergence = Math.max(0, Math.min(1, (p.exposed - 0.12) / 0.5));
+		const wetness = Math.max(0, 1 - Math.max(0, p.progress - 0.08) / 0.27) * emergence;
+		if (wetness > 0.02) {
 		for (const side of [-1, 1]) {
 			for (const [height, spread, behind] of [[0.97, 1.2, -0.6], [0.78, 2.8, 0.6], [0.56, 3.6, 1.7]]) {
 				_p.set(p.x + side * spread, p.feet + KAIJU_ROUTE.height * height, p.z + behind);
@@ -123,6 +127,7 @@ export class KaijuEncounter {
 		if (_p.y > 0.35) this.spray.emit(_p, _v.set(0, -2.7, 0.7),
 			Math.round(24 * wetness), 0.065, SPRAY.DROPLET,
 			{ jitter: 1.3, spread: 1.3, life: 2 });
+		}
 		const step = Math.floor(this.elapsed * 1.45);
 		if (step !== this._step && p.moving && p.feet < 0.5 && p.exposed > 0.2) {
 			this._step = step;

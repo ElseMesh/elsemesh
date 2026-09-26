@@ -79,6 +79,16 @@ export class Input {
 
 	}
 
+	suspend() {
+		this.enabled = false;
+		this._clearTransientInput();
+	}
+
+	resume() {
+		this._clearTransientInput();
+		this.enabled = true;
+	}
+
 	_createTouchSticks() {
 
 		const root = document.querySelector( '.tw-root' );
@@ -246,6 +256,7 @@ export class Input {
 	}
 
 	consumeLook( dt = 1 / 60 ) {
+		if ( ! this.enabled ) { this.look.x = this.look.y = 0; return { x: 0, y: 0 }; }
 
 		const { x, y } = this.lookStick;
 		const length = Math.hypot( x, y );

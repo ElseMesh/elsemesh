@@ -3,14 +3,22 @@ export const SECTOR_ID = 'bh:ISLAND-01';
 export const PLAYER_IDS = Object.freeze({ loz: 'player:loz', ed: 'player:ed' });
 export const PLAYER_PROTOCOL = 'bh.player-state/1';
 
-export function makeState({ playerId, nodeId, sequence, player, observedRemoteSequence = -1 }) {
-	return {
+export function makeState({ playerId, nodeId, sequence, player, boat = null, observedRemoteSequence = -1 }) {
+	const state = {
 		protocol: PLAYER_PROTOCOL, worldId: WORLD_ID, sectorId: SECTOR_ID,
 		playerId, nodeId, sequence, observedRemoteSequence,
 		position: [ player.position.x, player.position.y, player.position.z ],
 		yaw: player.yaw, moving: player.velocity.lengthSq() > 0.12,
 		mode: player.mode, timestamp: Date.now(),
 	};
+	if (player.mode === 'deck') state.deckLocal = [player.deckPos.x, player.deckPos.y, player.deckPos.z];
+	if (boat && playerId === PLAYER_IDS.loz) state.boat = {
+		position: [boat.position.x, boat.position.y, boat.position.z],
+		quaternion: [boat.quaternion.x, boat.quaternion.y, boat.quaternion.z, boat.quaternion.w],
+		velocity: [boat.velocity.x, boat.velocity.y, boat.velocity.z],
+		driven: boat.driven,
+	};
+	return state;
 }
 
 export function validateState(state) {
@@ -19,6 +27,11 @@ export function validateState(state) {
 	if (!Number.isSafeInteger(state.sequence) || state.sequence < 0 || !Number.isSafeInteger(state.observedRemoteSequence) || state.observedRemoteSequence < -1) throw new Error('Invalid sequence');
 	if (!Array.isArray(state.position) || state.position.length !== 3 || !state.position.every((v) => Number.isFinite(v) && Math.abs(v) < 10000)) throw new Error('Invalid position');
 	if (!Number.isFinite(state.yaw) || Math.abs(state.yaw) > 1000 || typeof state.moving !== 'boolean' || !['walk', 'swim', 'deck', 'boat'].includes(state.mode)) throw new Error('Invalid pose');
+	if (state.deckLocal !== undefined && (state.mode !== 'deck' || !Array.isArray(state.deckLocal) || state.deckLocal.length !== 3 || !state.deckLocal.every((v) => Number.isFinite(v) && Math.abs(v) < 20))) throw new Error('Invalid deck pose');
+	if (state.boat !== undefined) {
+		const b = state.boat;
+		if (state.playerId !== PLAYER_IDS.loz || !b || !Array.isArray(b.position) || b.position.length !== 3 || !b.position.every((v) => Number.isFinite(v) && Math.abs(v) < 10000) || !Array.isArray(b.quaternion) || b.quaternion.length !== 4 || !b.quaternion.every((v) => Number.isFinite(v) && Math.abs(v) <= 1.001) || Math.abs(b.quaternion.reduce((sum, v) => sum + v * v, 0) - 1) > 0.02 || !Array.isArray(b.velocity) || b.velocity.length !== 3 || !b.velocity.every((v) => Number.isFinite(v) && Math.abs(v) < 100) || typeof b.driven !== 'boolean') throw new Error('Invalid boat state');
+	}
 	if (!Number.isFinite(state.timestamp) || Math.abs(Date.now() - state.timestamp) > 60_000) throw new Error('Stale timestamp');
 	if (JSON.stringify(state).length > 4096) throw new Error('Oversized state');
 	return state;

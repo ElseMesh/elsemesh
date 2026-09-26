@@ -6,6 +6,9 @@ import { BridgeTransport } from './BridgeTransport.js';
 import { OnlineRoomTransport } from './OnlineRoomTransport.js';
 import { makeState, PLAYER_IDS, RemoteState, SECTOR_ID } from './PlayerProtocol.js';
 import { VideoEvidence } from './VideoEvidence.js';
+import { TalkUI } from './TalkUI.js';
+import { makeSpeechEvent } from './SpeechProtocol.js';
+import { SpeechPresentation } from './SpeechPresentation.js';
 
 const shortId = (id) => id ? `${id.slice(0, 16)}…${id.slice(-6)}` : 'waiting';
 
@@ -44,6 +47,14 @@ export class NetworkDemo {
 		}
 		this.remoteAvatar.group.name = `Remote_${role === 'loz' ? 'Ed' : 'Loz'}`;
 		this.remoteAvatar.group.visible = false;
+		if (online) {
+			app.player.canDriveBoat = role === 'loz';
+			this.speech = new SpeechPresentation(app, this.playerId, this.remoteAvatar);
+			this.talk = new TalkUI(app.input, (text) => this.sendSpeech(text));
+			this.transport.onSpeech((event, acceptedAt) => this.speech.onSpeech(event, acceptedAt));
+			this.transport.onSpeechAudio((packet) => this.speech.onAudio(packet));
+			this.transport.onSpeechError((packet) => this.speech.onError(packet));
+		}
 		if (role === 'ed') {
 			const player = app.player;
 			player.position.set(53.6, player.groundAt(53.6, -68.5, 50), -68.5);
@@ -55,6 +66,12 @@ export class NetworkDemo {
 			}
 		}
 		this.#mountOverlay();
+	}
+	openTalk() { return this.talk?.show() ?? false; }
+	sendSpeech(text) {
+		if (!this.online) return false;
+		try { return this.transport.sendSpeech(makeSpeechEvent({ role: this.role, nodeId: this.identity.nodeId, text })); }
+		catch { return false; }
 	}
 	#mountOverlay() {
 		const el = document.createElement('div');
@@ -70,10 +87,14 @@ export class NetworkDemo {
 			this.remoteMoved = false;
 		}
 		this.localMoved ||= player.velocity.lengthSq() > 0.12;
+		if (this.online && this.role === 'ed') {
+			const hostBoat = this.remote.state?.boat;
+			this.app.boatCtl.networkReplica = this.transport.connected && performance.now() - this.remoteReceivedAt < 1500 ? hostBoat || null : null;
+		}
 		this.elapsed += dt;
 		if (this.elapsed >= 0.1) {
 			this.elapsed = 0;
-			const state = makeState({ playerId: this.playerId, nodeId: this.identity.nodeId, sequence: this.sequence++, player, observedRemoteSequence: this.remote.state?.sequence ?? -1 });
+			const state = makeState({ playerId: this.playerId, nodeId: this.identity.nodeId, sequence: this.sequence++, player, boat: this.online && this.role === 'loz' ? this.app.boatCtl : null, observedRemoteSequence: this.remote.state?.sequence ?? -1 });
 			this.remote.markSent(state.sequence);
 			this.transport.send(state);
 		}
@@ -82,19 +103,21 @@ export class NetworkDemo {
 		if (connected) {
 			if (this.agent && this.agent.command.tool === 'stop') this.agent.follow_player('player:loz');
 			const pose = this.remote.interpolated(this.remotePrevious, (performance.now() - this.remoteReceivedAt) / 100);
-			this.remoteAvatar.cinematic = { x: pose.position[0], y: pose.position[1], z: pose.position[2], yaw: pose.yaw + Math.PI, walk: pose.moving };
+			this.remoteAvatar.cinematic = { x: pose.position[0], y: pose.position[1], z: pose.position[2], yaw: pose.yaw + Math.PI, walk: pose.moving, mode: pose.mode, deckLocal: pose.deckLocal, deckYaw: pose.yaw - (this.app.boatCtl.getYaw() + Math.PI) };
 			this.remoteAvatar.update(dt, player, this.app.camera, this.app.freeCam);
 			if (this.agent) this.agent.setTarget(received);
 		} else {
 			this.remoteAvatar.group.visible = false;
+			this.remoteAvatar.speaking = false;
 			if (this.agent) this.agent.stop();
 		}
 		const verified = connected && this.localMoved && this.remoteMoved && this.remote.verified();
 		if (verified && this.video && !this.video.started) this.video.start();
 		const authority = this.role === 'loz' ? this.identity.nodeId : received?.nodeId;
 		const distance = received ? Math.hypot(received.position[0] - player.position.x, received.position[2] - player.position.z) : null;
+		this.speech?.update();
 		this.overlay.innerHTML = this.online
-			? `<strong>${roleLabel(this.role)} — ONLINE</strong><br>${escapeStatus(this.transport.status)}<br>${connected ? `Friend ${distance?.toFixed(1) ?? '—'} m away` : 'Share the invite link to play together'}<br>${verified ? 'Both players moving' : 'World movement is shared'}`
+			? `<strong>${roleLabel(this.role)} — ONLINE</strong><br>${escapeStatus(this.transport.status)}<br>${connected ? `Friend ${distance?.toFixed(1) ?? '—'} m away` : 'Share the invite link to play together'}<br>${verified ? 'Both players moving' : 'World movement is shared'}<br>T talk · ${this.role === 'loz' ? 'boat helm' : 'boat passenger'}`
 			: `<strong>${this.role.toUpperCase()} — ${this.role === 'loz' ? 'HUMAN' : 'AI'}</strong><br>Player ${this.playerId}<br>Node ${shortId(this.identity.nodeId)}<br>Sector ${SECTOR_ID}<br>Authority ${shortId(authority)}<br>${this.physical ? 'TWO PHYSICAL NODES' : 'LOCAL TWO-NODE DEMO'} · ${connected ? 'DIRECT' : 'WAITING'}<br>Protocol bh.player-state/1<br>RTT unavailable · loss unavailable<br>${verified ? '<strong style="color:#8dffad">NETWORK VERIFIED</strong>' : 'Awaiting bidirectional movement'}${this.agent ? `<br>AGENT ACTION: ${this.agent.command.tool}(${this.agent.command.playerId || ''})<br>Distance ${distance?.toFixed(1) ?? '—'} m` : ''}`;
 		window.parent?.postMessage({ type: 'bh-network-demo-status', role: this.role, verified, connected, localNodeId: this.identity.nodeId, remoteNodeId: received?.nodeId, localSequence: this.sequence - 1, remoteSequence: received?.sequence ?? -1 }, location.origin);
 	}

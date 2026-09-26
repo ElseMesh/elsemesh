@@ -459,6 +459,7 @@ export class Player {
 
 	// sit down at the helm and drive (the old "enter boat")
 	takeHelm() {
+		if (this.canDriveBoat === false) return false;
 
 		this.mode = 'boat';
 		this.boat.driven = true;
@@ -468,6 +469,7 @@ export class Player {
 		this.orbitYaw = this.boat.getYaw() + Math.PI;
 		this.camInit = false;
 		if ( this.audio ) this.audio.engineStart();
+		return true;
 
 	}
 
@@ -493,7 +495,7 @@ export class Player {
 	enterBoat() {
 
 		this.boardBoat();
-		this.takeHelm();
+		if (this.canDriveBoat !== false) this.takeHelm();
 
 	}
 
@@ -708,7 +710,7 @@ export class Player {
 
 		}
 
-		if ( nearHelm ) {
+		if ( nearHelm && this.canDriveBoat !== false ) {
 
 			this.prompt = { key: 'E', text: 'Take the helm' };
 			if ( inp.hit( 'KeyE' ) ) {

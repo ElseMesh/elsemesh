@@ -37,6 +37,7 @@ const CSS = /* css */`
 .gm-mk.is-joe > i { background: var(--tw-sun); }
 .gm-mk.is-marta > i { background: var(--tw-aqua); }
 .gm-mk.is-boat > i { background: #f2efe6; }
+.gm-mk.is-friend > i { background: #f27cdd; color: #27132b; box-shadow: 0 0 0 2px #fff, 0 0 12px #f27cdd; }
 .gm-mk > b { position: absolute; left: 0; top: 0; width: 0; height: 0; border-left: calc(5 * var(--tw-u)) solid transparent; border-right: calc(5 * var(--tw-u)) solid transparent;
 	border-bottom: calc(7 * var(--tw-u)) solid rgba(255,255,255,0.9); margin: calc(-19 * var(--tw-u)) 0 0 calc(-5 * var(--tw-u)); transform-origin: calc(5 * var(--tw-u)) calc(19 * var(--tw-u)); display: none; }
 .gm-mk.is-edge > b { display: block; }
@@ -123,6 +124,12 @@ export class Minimap {
 		};
 
 		this.markers = [
+			{ id: 'friend', ...mk( 'friend', `<span aria-hidden="true">${ game.app.qs.get( 'role' ) === 'ed' ? 'L' : 'E' }</span>` ), pos: () => {
+				const network = game.app.networkDemo;
+				const state = network?.remote.state;
+				return network?.online && network.transport.connected && state && performance.now() - network.remoteReceivedAt < 1500
+					? { x: state.position[ 0 ], z: state.position[ 2 ] } : null;
+			} },
 			{ id: 'joe', ...mk( 'joe', ICON.fish ), pos: () => ( { x: STAND.x, z: STAND.z } ) },
 			{ id: 'marta', ...mk( 'marta', ICON.anchor ), pos: () => ( { x: CHANDLERY.x, z: CHANDLERY.z } ) },
 			{ id: 'boat', ...mk( 'boat', ICON.boat ), pos: () => {

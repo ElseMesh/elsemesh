@@ -638,7 +638,10 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 
 		// ---- player / boat (boat physics first so the cameras follow this frame's pose)
 		if ( this.input.hit( 'KeyF' ) ) this.setFreeCam( ! this.freeCam );
-		if ( this.input.hit( 'KeyT' ) ) this.toggleTime();
+		if ( this.input.hit( 'KeyT' ) ) {
+			if ( this.networkDemo?.online ) this.networkDemo.openTalk();
+			else this.toggleTime();
+		}
 		if ( this.input.hit( 'KeyL' ) ) {
 
 			const on = this.localLights.toggleFlashlight();
