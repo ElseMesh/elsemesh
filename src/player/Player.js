@@ -1,6 +1,7 @@
 import * as THREE from '../engine/index.js';
 import { WORLD } from '../world/WorldLayout.js';
 import { HOUSE } from '../world/boat/Wheelhouse.js';
+import { SPRAY } from '../fx/Spray.js';
 
 const HOUSE_HELM = { x: HOUSE.helmX, z: HOUSE.seatZ };
 
@@ -38,7 +39,7 @@ const HELM_REACH = 0.75; // m from the helm seat to take the wheel
 //   boat : at the helm, driving; V toggles helm (1st person) / chase (3rd person) camera, E stands up
 export class Player {
 
-	constructor( { camera, input, terrain, colliders, query, boat, reef = null, audio = null, cave = null, transit = null } ) {
+	constructor( { camera, input, terrain, colliders, query, boat, reef = null, audio = null, spray = null, cave = null, transit = null } ) {
 
 		this.camera = camera;
 		this.input = input;
@@ -50,6 +51,7 @@ export class Player {
 		this.cave = cave;
 		this.transit = transit;
 		this.audio = audio;
+		this.spray = spray;
 
 		this.mode = 'walk';
 		this.camMode = 'third';
@@ -507,7 +509,7 @@ export class Player {
 
 		const dock = WORLD.boatDock.position;
 		const caveLanding = this.cave?.layout?.landing?.center;
-		const besideCaveLanding = caveLanding && Math.hypot( b.position.x - caveLanding[0], b.position.z - caveLanding[2] ) < 18;
+		const besideCaveLanding = caveLanding && Math.hypot( b.position.x - caveLanding[0], b.position.z - caveLanding[2] ) < 40;
 		if ( ( b.position.distanceTo( dock ) < 14 || besideCaveLanding ) && b.speed < 1.5 ) {
 
 			b.moored = true;
@@ -530,6 +532,8 @@ export class Player {
 			this.position.set( w.x, b.position.y - 0.2, w.z );
 			this.mode = 'swim';
 			if ( this.audio ) this.audio.splash( 0.8, this.position );
+			if ( this.spray ) this.spray.emit( this.position, _v.set( 0, 3.4, 0 ),
+				120, 0.12, SPRAY.SPRAY, { jitter: 0.8, spread: 1.4, life: 0.9 } );
 
 		}
 
@@ -719,7 +723,22 @@ export class Player {
 			// at the rail: step ashore where there is ground on that side, else jump into the sea
 			const ep = this._ashore && this._ashore.ep;
 			const atRail = b.model.exitPoints.some( ( e ) => Math.hypot( p.x - e.x, p.z - e.z ) < 1.3 );
-			if ( ep && Math.hypot( p.x - ep.x, p.z - ep.z ) < 1.3 ) {
+			const ramp = this.cave?.layout?.wadingRamp;
+			const shelf = this.cave?.layout?.wadingShelf;
+			const atCaveShallows = ramp && shelf && b.position.x >= shelf.xMin &&
+				b.position.x <= shelf.xMax + 2 && b.position.z >= ramp.waterEdgeZ &&
+				b.position.z <= ramp.waterEdgeZ + 5;
+			if ( atRail && atCaveShallows && p.x > 0 ) {
+
+				this.prompt = { key: 'E', text: 'Jump into the shallows' };
+				if ( inp.hit( 'KeyE' ) ) {
+
+					this.exitBoat( null, Math.sign( p.x ) || 1 );
+					return;
+
+				}
+
+			} else if ( ep && Math.hypot( p.x - ep.x, p.z - ep.z ) < 1.3 ) {
 
 				this.prompt = { key: 'E', text: 'Step ashore' };
 				if ( inp.hit( 'KeyE' ) ) {

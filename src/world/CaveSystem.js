@@ -30,8 +30,11 @@ function caveColor(name) {
 	if (name.includes('Waiting_Train_Windshield') || name.includes('Waiting_Train_Side_Window')) return 0x102c3b;
 	if (name.includes('Waiting_Train_Door') || name.includes('Station_Preview_Safety_Stripe')) return 0xd89a35;
 	if (name.includes('Waiting_Train_Belt') || name.includes('Waiting_Train_Nose_Band')) return 0x447789;
-	if (name.includes('Waiting_Train_Body')) return 0xa8b6b4;
+	if (name.includes('Waiting_Train_Body')) return 0x547581;
+	if (name.includes('Waiting_Train_Nose_Front')) return 0x49636c;
 	if (name.includes('Waiting_Train')) return 0x344b54;
+	if (name.includes('Station_Wall_Panel') || name.includes('Station_Wall_Rib')) return 0x1f3339;
+	if (name.includes('Station_Wall_Trim')) return 0x789596;
 	if (name.includes('Station_Track_Rail')) return 0x789392;
 	if (name.includes('Station_Track_Tie')) return 0x293337;
 	if (name.includes('Station_Preview_Platform_Edge')) return 0xc1afa0;
@@ -71,7 +74,8 @@ export class CaveSystem {
 					metalness: name.includes('Door') ? 0.55 : 0, side: 'double',
 					emissive: color, emissiveIntensity: name.includes('Glow_Mineral') ? 1.5 :
 						name.includes('Headlight') || name.includes('Station_Ceiling_Light') ||
-						name.includes('Station_Wall_Light') ? 1.2 : 0.32 });
+						name.includes('Station_Wall_Light') ? 1.2 :
+						name.includes('Waiting_Train') || name.includes('Station_Wall_Panel') ? 0.08 : 0.32 });
 				mat.localLightsCheap = true;
 				materials.set(color, mat);
 			}
@@ -115,6 +119,15 @@ export class CaveSystem {
 		if (Math.abs(x - landing.center[0]) <= landing.size[0] / 2 &&
 			Math.abs(z - landing.center[2]) <= landing.size[2] / 2) {
 			return { floor: landing.center[1] };
+		}
+		const ramp = l.wadingRamp;
+		const shelf = l.wadingShelf;
+		if (shelf && x >= shelf.xMin && x <= shelf.xMax &&
+			z >= shelf.zMin && z <= shelf.zMax) return { floor: shelf.floor };
+		if (ramp && x >= ramp.xMin && x <= ramp.xMax &&
+			z >= ramp.landingEdgeZ && z <= ramp.waterEdgeZ) {
+			const u = (ramp.waterEdgeZ - z) / (ramp.waterEdgeZ - ramp.landingEdgeZ);
+			return { floor: ramp.waterFloor + (ramp.landingFloor - ramp.waterFloor) * u };
 		}
 		for (const room of [l.junction, l.chamber]) {
 			if (sq(x - room.center[0]) + sq(z - room.center[1]) < sq(room.radius - 0.5)) {

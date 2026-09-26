@@ -7,7 +7,7 @@
 ## The journey
 
 1. Walk the home island, explore the shore and take the boat around the western headland.
-2. Follow the water channel into **UNDERNEATH**. The seabed shoals inside; stop beside the raised landing, leave the boat afloat, and step ashore. The explorer is visible aboard and on foot.
+2. Follow the water channel into **UNDERNEATH**. Stop the boat in the deeper water before the landing, leave the helm, jump overboard and wade up the shallow stone ramp. The explorer is visible seated at the wheel, aboard and on foot.
 3. Use the flashing electronic reader. Its door rises into the cave ceiling and reveals the lit station, platform and waiting train. Press **N** to see the two-island map after entry.
 4. Board the two-way monorail. Its glass pressure tube crosses below the sea, with fish visible outside.
 5. Explore the second island, read the expedition log in Station B, and locate the silent signal mast. The same train returns to the home island.
@@ -18,7 +18,7 @@ The mystery story is an evolving playable prototype. The existing signal objecti
 
 - Hunger falls during play. Press **B** to prepare and eat a fish from the cooler; low hunger slows walking.
 - Fishing, fish trading, boat fuel and upgrades remain available as survival systems.
-- The Steam79 Godzilla asset emerges offshore and walks toward the landing with a Blender-made walk cycle, falling water, foot splashes and a surface wake.
+- The Steam79 Godzilla asset emerges offshore and walks toward the landing with a Blender-made walk cycle, falling water, heavy foot splashes, a trailing wake and foam crests pushed ahead of it.
 - By default, the sky follows the computer's **local time**, with sunset, moon and stars. The Sky settings allow a manual time and accelerated preview.
 - The original island includes a pier, village, reef, wildlife, whale, tropical vegetation and a simulated ocean.
 
@@ -53,6 +53,8 @@ npm run build
 ```
 
 The local server uses http://127.0.0.1:5189/. The deployment workflow is `.github/workflows/deploy.yml`. GitHub Pages must be enabled for this repository and configured to use GitHub Actions before the public game URL works.
+
+The local journey video is captured from the running game with `tools/video/journey-capture.js`, `tools/video/journey-route.mjs` and `tools/video/journey-receiver.mjs`. Its continuous curved boat course clears the pier before turning toward the cave. The game boat controller supplies buoyancy, trim, roll and spray during the time-compressed shot; normal driving uses its full physics controller. The boat stops afloat before the shallow ramp and the explorer jumps into the water. The capture continues through the station, undersea crossing, sunset and night arrival. The rendered video is kept outside the repository.
 
 ## Blender and world editing
 

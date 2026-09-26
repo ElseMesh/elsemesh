@@ -328,7 +328,7 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 		// interactive wake around the boat (Kelvin pattern, bow/stern waves, prop wash foam)
 		this.wake = new WakeSim( renderer, { terrainGPU: this.terrainGPU, boat: this.boatCtl, colliders: this.colliders } );
 		this.surface.wake = this.wake;
-		this.player = new Player( { camera, input: this.input, terrain: this.terrainData, colliders: this.colliders, query: this.query, boat: this.boatCtl, reef: this.reef, cave: this.caves, transit: this.monorail } );
+		this.player = new Player( { camera, input: this.input, terrain: this.terrainData, colliders: this.colliders, query: this.query, boat: this.boatCtl, reef: this.reef, spray: this.spray, cave: this.caves, transit: this.monorail } );
 		this.avatar = new PlayerAvatar( scene, this.boatCtl );
 		this.monorail.restorePlayer( this.player );
 		this.pistol = new SurvivalPistol( scene );

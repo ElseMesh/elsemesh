@@ -218,6 +218,23 @@ box("Hall_Roof_Shield", (-215, 11.3, 20), (38, 2.2, 38), rooms, salt, 0.25)
 lc = L["landing"]["center"]
 ls = L["landing"]["size"]
 box("Sheltered_Landing", (lc[0], lc[1]-ls[1]/2, lc[2]), ls, landing, ground, 0.35)
+# A submerged stone ramp gives the player a shallow splash landing while the
+# boat stays in the deeper channel. Its top matches CaveSystem's walkable slope.
+r = L["wadingRamp"]
+corners = [(r["xMin"], r["landingEdgeZ"], r["landingFloor"]),
+           (r["xMax"], r["landingEdgeZ"], r["landingFloor"]),
+           (r["xMax"], r["waterEdgeZ"], r["waterFloor"]),
+           (r["xMin"], r["waterEdgeZ"], r["waterFloor"])]
+ramp_verts = [game_to_blender(x, z, y) for x, z, y in corners]
+ramp_verts += [game_to_blender(x, z, -2.6) for x, z, _ in corners]
+mesh_obj("Wading_Ramp", ramp_verts,
+         [(0, 1, 2, 3), (4, 7, 6, 5), (0, 4, 5, 1),
+          (1, 5, 6, 2), (2, 6, 7, 3), (3, 7, 4, 0)], landing, wet)
+sh = L["wadingShelf"]
+box("Wading_Shelf", ((sh["xMin"]+sh["xMax"])/2, (sh["floor"]-2.6)/2,
+                     (sh["zMin"]+sh["zMax"])/2),
+    (sh["xMax"]-sh["xMin"], sh["floor"]+2.6,
+     sh["zMax"]-sh["zMin"]), landing, wet, 0.12)
 # A low rock canopy bridges the side opening in the boat cavern to the foot
 # passage. The sea-facing edge stays open so the boat can pull alongside.
 box("Landing_Roof", (lc[0], 10, 71), (30, 1, 18), landing, basalt, 0.55)
@@ -259,6 +276,16 @@ for z in (-16, -24, -32, -40):
         (5.3, 0.18, 0.7), details, salt, 0.03)
     box(f"Station_Wall_Light_{abs(z)}", (sp[0]+7.0, 4.3, z),
         (0.15, 1.7, 0.28), details, salt, 0.02)
+    for x in (sp[0]-7.4, sp[0]+7.4):
+        box(f"Station_Wall_Rib_{int(x)}_{abs(z)}", (x, 4.0, z),
+            (0.28, 6.0, 0.34), details, door_mat, 0.05)
+box("Station_Wall_Panel_Left", (sp[0]-7.5, 3.0, sp[2]),
+    (0.18, 3.6, 25), details, door_mat, 0.1)
+box("Station_Wall_Panel_Right", (sp[0]+7.5, 3.0, sp[2]),
+    (0.18, 3.6, 25), details, door_mat, 0.1)
+for x in (sp[0]-7.7, sp[0]+7.7):
+    box(f"Station_Wall_Trim_{int(x)}", (x, 4.75, sp[2]),
+        (0.18, 0.16, 25), details, trim_mat, 0.03)
 for z in (-22, -36):
     box(f"Station_Bench_Seat_{abs(z)}", (sp[0]+6.2, 1.92, z),
         (1.2, 0.15, 2.3), details, trim_mat, 0.08)
@@ -275,6 +302,8 @@ carx = sp[0]-0.6
 carz = sp[2]-3
 box("Waiting_Train_Body", (carx, 2.75, carz),
     (4.4, 2.35, 14), details, salt, 0.32)
+box("Waiting_Train_Nose_Front", (carx, 2.77, -24.92),
+    (3.96, 1.85, 0.17), details, door_mat, 0.26)
 box("Waiting_Train_Belt", (carx, 3.08, carz),
     (4.5, 0.35, 14.1), details, trim_mat, 0.12)
 box("Waiting_Train_Roof", (carx, 5.82, carz),
