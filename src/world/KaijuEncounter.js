@@ -1,6 +1,7 @@
-import { Vector3 } from '../engine/index.js';
+import { Mesh, TorusGeometry, Vector3 } from '../engine/index.js';
 import { loadGLB } from '../engine/loaders/GLTF.js';
 import { SkinnedModel } from '../engine/render/Skinning.js';
+import { standard } from '../materials/Materials.js';
 import { SPRAY } from '../fx/Spray.js';
 import { KAIJU_ROUTE, kaijuPoseAt } from './KaijuRoute.js';
 
@@ -20,6 +21,18 @@ export class KaijuEncounter {
 		this.model = null;
 		this.pose = kaijuPoseAt(0, terrain);
 		this._step = -1;
+		this.wake = [];
+		for (let i = 0; i < 5; i++) {
+			const material = standard({ name: `Kaiju_foam_wake_${i}`, color: 0xd0e9e9,
+				roughness: 1, emissive: 0x759da3, emissiveIntensity: 0.55,
+				transparent: true, opacity: 0.42 - i * 0.045, depthWrite: false, side: 'double' });
+			const ring = new Mesh(new TorusGeometry(1, 0.075, 5, 48), material);
+			ring.name = `Kaiju_surface_wake_${i}`;
+			ring.rotation.x = Math.PI / 2;
+			ring.visible = false;
+			this.scene.add(ring);
+			this.wake.push(ring);
+		}
 	}
 
 	async load() {
@@ -46,22 +59,46 @@ export class KaijuEncounter {
 		this.model.group.position.set(p.x, p.feet, p.z);
 		this.model.group.rotation.z = Math.sin(this.elapsed * 2.6) * 0.015 * (p.moving ? 1 : 0);
 		this.model.update(p.moving ? dt : 0);
+		for (let i = 0; i < this.wake.length; i++) {
+			const ring = this.wake[i];
+			ring.visible = p.exposed > 0.06 && p.feet < 0.25 && p.moving;
+			if (!ring.visible) continue;
+			const pulse = (this.elapsed * 0.42 + i / this.wake.length) % 1;
+			ring.position.set(p.x + Math.sin(this.elapsed * 0.8 + i) * 0.5, 0.65,
+				p.z + 2 + i * 2.7);
+			ring.scale.set(5 + pulse * 8, 4 + pulse * 6, 1);
+			ring.material.opacity = (0.56 - i * 0.055) * (1 - pulse * 0.6);
+		}
 		if (p.exposed <= 0) return;
+		if (p.feet < 0.25 && p.moving) {
+			for (const side of [-1, 1]) {
+				_p.set(p.x + side * 4.2, 0.25, p.z + 2.4);
+				this.spray.emit(_p, _v.set(side * 1.5, 1.2, 1.6), 28, 0.11,
+					SPRAY.SPRAY, { jitter: 0.7, spread: 1.2, life: 0.72 });
+			}
+		}
 
 		// Water falling from the head, shoulders and dorsal ridge becomes visible as
 		// more of the animal rises. The shared spray system integrates real gravity.
-		const drip = Math.min(1, p.exposed * 2);
+		const wetness = Math.max(0.32, 1 - p.progress * 0.68);
 		for (const side of [-1, 1]) {
-			_p.set(p.x + side * 2.8, p.feet + KAIJU_ROUTE.height * 0.76, p.z + 0.5);
-			_q.set(p.x + side * 2.2, p.feet + KAIJU_ROUTE.height * 0.95, p.z - 1.5);
-			if (_p.y > 0.3) this.spray.emit(_p, _v.set(0, -1.4, 0), Math.round(7 + drip * 8), 0.035, SPRAY.DROPLET,
-				{ to: _q, jitter: 0.75, spread: 0.7, life: 1.5 });
+			for (const [height, spread, behind] of [[0.97, 1.2, -0.6], [0.78, 2.8, 0.6], [0.56, 3.6, 1.7]]) {
+				_p.set(p.x + side * spread, p.feet + KAIJU_ROUTE.height * height, p.z + behind);
+				if (_p.y <= 0.35) continue;
+				_q.set(_p.x + side * 1.8, _p.y - 0.6, _p.z + 2.5);
+				this.spray.emit(_p, _v.set(side * 0.8, -2.4, 0.6), Math.round(18 * wetness + 8),
+					0.075, SPRAY.LIGAMENT, { to: _q, jitter: 1.2, spread: 1.8, life: 1.8 });
+			}
 		}
+		_p.set(p.x, p.feet + KAIJU_ROUTE.height * 0.99, p.z - 0.3);
+		if (_p.y > 0.35) this.spray.emit(_p, _v.set(0, -2.7, 0.7),
+			Math.round(24 * wetness), 0.065, SPRAY.DROPLET,
+			{ jitter: 1.3, spread: 1.3, life: 2 });
 		const step = Math.floor(this.elapsed * 1.45);
 		if (step !== this._step && p.moving && p.feet < 0.5 && p.exposed > 0.2) {
 			this._step = step;
 			_p.set(p.x + (step % 2 ? 2.2 : -2.2), 0.1, p.z - 2);
-			this.spray.emit(_p, _v.set(0, 3, -0.5), 40, 0.09, SPRAY.SPRAY,
+			this.spray.emit(_p, _v.set(0, 4, -0.5), 90, 0.12, SPRAY.SPRAY,
 				{ jitter: 1.2, spread: 2, life: 0.8 });
 		}
 	}

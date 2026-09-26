@@ -248,7 +248,8 @@ export class MonorailSystem {
 		const p = player.position;
 		const near = (x, y, z, radius = 5) => Math.hypot(p.x - x, p.y - y, p.z - z) < radius;
 		let action = null, label = '';
-		if (near(-220, 1.2, -8, 7)) { action = 'cave-to-A'; label = 'Open hidden station lift'; }
+		if (near(-220, 1.2, -8, 7) && this.cave.doorState === 'locked') { action = 'cave-door'; label = 'Use electronic station entry'; }
+		else if (near(-216, 1.2, -29, 7) && this.cave.doorState === 'open') { action = 'cave-to-A'; label = 'Board the waiting monorail'; }
 		else if (near(-235, -16, -24, 7)) { action = 'A-to-cave'; label = 'Return to cave'; }
 		else if (near(RAIL.stationA.x + 2, -16, -24, 8)) { action = 'board-A'; label = 'Board monorail to second island'; }
 		else if (near(-1118, -16, -24, 8)) { action = 'B-to-island'; label = 'Take lift to second island'; }
@@ -260,15 +261,20 @@ export class MonorailSystem {
 		player.prompt = { key: 'E', text: label };
 		if (!input.hit('KeyE')) return;
 		switch (action) {
+			case 'cave-door':
+				this.cave.activateFinalDoor();
+				this.mapUnlocked = true;
+				this.save();
+				toast('Access accepted · station door lifting');
+				break;
 			case 'cave-to-A':
-				this.cave.openFinalDoor();
 				this.mapUnlocked = true;
 				this.checkpoint = 'A';
 				this.save();
 				this.teleport(player, -235, -16, -24, Math.PI / 2);
 				toast('Station A discovered · N opens world map');
 				break;
-			case 'A-to-cave': this.checkpoint = 'home'; this.save(); this.teleport(player, -220, 1.2, -5, 0); break;
+			case 'A-to-cave': this.checkpoint = 'home'; this.save(); this.teleport(player, -216, 1.2, -27, 0); break;
 			case 'B-to-island': this.checkpoint = 'island'; this.save(); this.teleport(player, -1162, secondIslandHeight(-1162, -30), -30, Math.PI / 2); break;
 			case 'island-to-B': this.checkpoint = 'B'; this.save(); this.teleport(player, -1118, -16, -24, Math.PI / 2); break;
 			case 'read-log':

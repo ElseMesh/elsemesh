@@ -59,6 +59,7 @@ import { PostFX } from './post/PostFX.js';
 import { AirHaze } from './post/AirHaze.js';
 import { FlyCamera } from './player/FlyCamera.js';
 import { Player } from './player/Player.js';
+import { PlayerAvatar } from './player/PlayerAvatar.js';
 import { SurvivalPistol } from './player/SurvivalPistol.js';
 import { Game } from './game/Game.js';
 import { SurvivalNeeds } from './game/SurvivalNeeds.js';
@@ -328,6 +329,7 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 		this.wake = new WakeSim( renderer, { terrainGPU: this.terrainGPU, boat: this.boatCtl, colliders: this.colliders } );
 		this.surface.wake = this.wake;
 		this.player = new Player( { camera, input: this.input, terrain: this.terrainData, colliders: this.colliders, query: this.query, boat: this.boatCtl, reef: this.reef, cave: this.caves, transit: this.monorail } );
+		this.avatar = new PlayerAvatar( scene, this.boatCtl );
 		this.monorail.restorePlayer( this.player );
 		this.pistol = new SurvivalPistol( scene );
 		// birds, beach crabs, sanderlings (after spray / query / boat, which they use)
@@ -651,12 +653,14 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 
 		}
 		this.boatCtl.update( dt );
+		this.caves.update( dt );
 		this.boatSpray.update( dt );
 		if ( this.kaiju ) this.kaiju.update( dt );
 		this.wake.update( dt );
 		if ( this.freeCam ) this.fly.update( dt );
 		else if ( this.monorail.state !== 'riding' ) this.player.update( dt );
 		if ( ! this.freeCam ) this.monorail.update( dt, this.player, this.input, this.camera, ( message ) => this.ui?.ui.toast( message ) );
+		this.avatar.update( dt, this.player, this.camera, this.freeCam );
 		this.pistol.update( dt, this.camera, this.input, ! this.freeCam && this.monorail.state !== 'riding' && this.player.mode === 'walk', ( message ) => this.ui?.ui.toast( message ) );
 		this.game.update( dt );
 		this.needs.update( dt, this.input, ( message ) => this.ui?.ui.toast( message ) );
@@ -704,7 +708,12 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 		this.terrain.update( this.camera );
 		// The island heightfield has no excavated rail bore. Keep its surface for
 		// outside views, but do not let seabed triangles cross the dry glass tube.
-		this.terrain.mesh.visible = ! dryTransit;
+		const insideCave = this.camera.position.x > -333 && !! this.caves.zoneAt( this.camera.position.x, this.camera.position.z ) &&
+			this.camera.position.y < this.terrainData.heightAt( this.camera.position.x, this.camera.position.z ) - 1.5;
+		this.terrain.mesh.visible = ! dryTransit && ! insideCave;
+		this.rocks.group.visible = ! insideCave;
+		if ( this.vegetation ) this.vegetation.group.visible = ! insideCave;
+		if ( this.debris?.group ) this.debris.group.visible = ! insideCave;
 		this.rocks.update( this.camera );
 		this.debris.update( this.camera );
 		this.reef.update( dt, this.camera.position );

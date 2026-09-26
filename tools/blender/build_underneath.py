@@ -99,7 +99,7 @@ def tube(name, points, col, mat, ceiling_seed=0, cap_end=False):
         for j in range(n):
             # The landing joins the south side of the inner boat cavern.
             mid_x = (sampled[i][0] + sampled[i+1][0]) / 2
-            if name == "Boat_Cavern" and -296 < mid_x < -283 and j <= 3:
+            if name == "Boat_Cavern" and -310 < mid_x < -283 and j <= 3:
                 continue
             if name == "Landing_Connector" and mid_x < -290 and 7 <= j <= 9:
                 continue
@@ -158,7 +158,7 @@ def angle_to(center, point):
 
 tube("Boat_Cavern", L["boatPath"], sea, wet, 0, cap_end=True)
 tube("Landing_Connector", [
-    [-297, 71, 1.2, 10.5, 5.5], [-290, 68, 1.2, 9, 5],
+    [-304, 71, 1.2, 10.5, 5.5], [-290, 68, 1.2, 9, 5],
     [-282, 64, 3.2, 11, 4.8],
 ], landing, basalt, 7)
 j = L["junction"]
@@ -170,7 +170,14 @@ for i, spec in enumerate(L["passages"]):
     col = sea if spec["name"] == "Descent" else passages
     mat = salt if spec["name"] == "Salt_Fissure" else basalt
     tube(spec["name"], trimmed(points, start, end), col, mat, i+1,
-         cap_end=spec["name"] in {"Salt_Fissure", "Tide_Alcove", "Final_Corridor"})
+         cap_end=spec["name"] in {"Salt_Fissure", "Tide_Alcove"})
+
+# The door opens into a lit boarding alcove. The waiting car can be seen from
+# the cave before the player takes the short lift down to the pressure tube.
+tube("Station_Approach", [[-220, -10, 1.2, 9.2, 5.0],
+                          [-220, -28, 1.2, 9.2, 6.0],
+                          [-220, -47, 1.2, 9.2, 5.5]],
+     passages, basalt, 9, cap_end=True)
 
 def opening_angles(spec):
     center = spec["center"]
@@ -213,8 +220,8 @@ ls = L["landing"]["size"]
 box("Sheltered_Landing", (lc[0], lc[1]-ls[1]/2, lc[2]), ls, landing, ground, 0.35)
 # A low rock canopy bridges the side opening in the boat cavern to the foot
 # passage. The sea-facing edge stays open so the boat can pull alongside.
-box("Landing_Roof", (lc[0], 10, 71), (22, 1, 18), landing, basalt, 0.55)
-box("Landing_South_Wall", (lc[0], 5.4, 61.5), (22, 8.4, 1), landing, basalt, 0.45)
+box("Landing_Roof", (lc[0], 10, 71), (30, 1, 18), landing, basalt, 0.55)
+box("Landing_South_Wall", (lc[0], 5.4, 61.5), (30, 8.4, 1), landing, basalt, 0.45)
 dc = L["door"]["center"]
 door_height = L["door"]["height"]
 door_width = L["door"]["width"]
@@ -224,6 +231,70 @@ for offset in (-door_width/2-0.3, door_width/2+0.3):
 box("Door_Lintel", (dc[0], dc[2]+door_height+0.25, dc[1]), (door_width+1.2, 0.5, 1.2), doorcol, trim_mat, 0.06)
 for i in range(5):
     box("Door_Band", (dc[0], dc[2]+0.9+i*1.35, dc[1]-0.39), (door_width-0.35, 0.13, 0.12), doorcol, trim_mat, 0.02)
+
+# Reader and pulsing status lamps sit beside the door on the approaching side.
+box("Keypad_Base", (dc[0]+4.0, 2.35, dc[1]+1.2), (0.85, 1.65, 0.32), doorcol, door_mat, 0.08)
+box("Keypad_Screen", (dc[0]+4.0, 2.7, dc[1]+1.41), (0.56, 0.48, 0.08), doorcol, salt, 0.02)
+for i in range(3):
+    box(f"Keypad_Light_{i}", (dc[0]+3.7+i*0.3, 1.9, dc[1]+1.43),
+        (0.16, 0.16, 0.08), doorcol, trim_mat, 0.02)
+
+sp = L["stationPreview"]["center"]
+box("Station_Preview_Platform", (sp[0]+4.6, 1.0, sp[2]),
+    (3.4, 0.45, 29), passages, ground, 0.14)
+box("Station_Preview_Guideway", (sp[0]-0.6, 0.96, sp[2]),
+    (2.7, 0.35, 29), passages, trim_mat, 0.06)
+box("Station_Preview_Platform_Edge", (sp[0]+2.85, 1.28, sp[2]),
+    (0.32, 0.12, 28), details, salt, 0.04)
+box("Station_Preview_Safety_Stripe", (sp[0]+3.25, 1.3, sp[2]),
+    (0.12, 0.05, 27), details, trim_mat, 0.02)
+for z in range(-44, -15, 3):
+    box(f"Station_Track_Tie_{abs(z)}", (sp[0]-0.6, 1.22, z),
+        (3.1, 0.14, 0.38), details, ground, 0.02)
+for x in (sp[0]-1.5, sp[0]+0.3):
+    box(f"Station_Track_Rail_{int(x*10)}", (x, 1.38, sp[2]),
+        (0.13, 0.2, 28), details, trim_mat, 0.02)
+for z in (-16, -24, -32, -40):
+    box(f"Station_Ceiling_Light_{abs(z)}", (sp[0]+1.1, 8.65, z),
+        (5.3, 0.18, 0.7), details, salt, 0.03)
+    box(f"Station_Wall_Light_{abs(z)}", (sp[0]+7.0, 4.3, z),
+        (0.15, 1.7, 0.28), details, salt, 0.02)
+for z in (-22, -36):
+    box(f"Station_Bench_Seat_{abs(z)}", (sp[0]+6.2, 1.92, z),
+        (1.2, 0.15, 2.3), details, trim_mat, 0.08)
+    for dz in (-0.8, 0.8):
+        box(f"Station_Bench_Leg_{abs(z)}_{int(dz*10)}", (sp[0]+6.2, 1.57, z+dz),
+            (0.15, 0.65, 0.15), details, door_mat, 0.02)
+box("Station_Destination_Sign", (sp[0]+4.4, 5.9, -19.5),
+    (2.7, 0.8, 0.22), details, door_mat, 0.05)
+box("Station_Destination_Glow", (sp[0]+4.4, 5.9, -19.36),
+    (2.3, 0.17, 0.07), details, salt, 0.01)
+# Monorail car: solid lower body, dark continuous glazing, yellow doors,
+# illuminated nose and a contrasting roof. It faces the approaching cave door.
+carx = sp[0]-0.6
+carz = sp[2]-3
+box("Waiting_Train_Body", (carx, 2.75, carz),
+    (4.4, 2.35, 14), details, salt, 0.32)
+box("Waiting_Train_Belt", (carx, 3.08, carz),
+    (4.5, 0.35, 14.1), details, trim_mat, 0.12)
+box("Waiting_Train_Roof", (carx, 5.82, carz),
+    (4.5, 0.46, 14.3), details, door_mat, 0.28)
+for x in (carx-2.22, carx+2.22):
+    for z in (-37, -32, -27):
+        box(f"Waiting_Train_Side_Window_{int(x)}_{abs(z)}", (x, 4.58, z),
+            (0.07, 1.95, 3.9), details, door_mat, 0.035)
+    box(f"Waiting_Train_Door_{int(x)}", (x+0.05, 2.95, -30.6),
+        (0.1, 2.85, 1.45), details, trim_mat, 0.04)
+for z in (-39.06, -24.94):
+    box(f"Waiting_Train_Windshield_{abs(z)}", (carx, 4.55, z),
+        (3.65, 1.85, 0.09), details, door_mat, 0.1)
+    box(f"Waiting_Train_Nose_Band_{abs(z)}", (carx, 3.32, z),
+        (4.1, 0.27, 0.12), details, trim_mat, 0.05)
+    for x in (carx-1.45, carx+1.45):
+        box(f"Waiting_Train_Headlight_{int(x)}_{abs(z)}", (x, 2.65, z),
+            (0.58, 0.23, 0.14), details, salt, 0.08)
+    box(f"Waiting_Train_Route_Display_{abs(z)}", (carx, 5.16, z),
+        (1.45, 0.22, 0.13), details, salt, 0.04)
 
 for i in range(18):
     x = -341 + (i % 6)*2.3
