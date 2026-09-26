@@ -4,3 +4,4 @@ dist
 *.log
 artifacts/world/
 artifacts/blender/
+artifacts/video/

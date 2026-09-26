@@ -1,175 +1,69 @@
-# Burning Horizons
+# Burning Horizons — Island Mystery
 
-An island fishing game for the browser. Cast from the pier, the beach or your own boat, fight the fish,
-sell your catch to Joe at the fish stand, and spend it on better gear at Marta's chandlery. Around it is a
-real-time tropical island and ocean: swim the reef, drive the boat out to deep water, and watch a humpback
-breach. It runs directly on WebGPU and WGSL with its own small rendering engine, no framework.
+**Burning Horizons is an island mystery to explore and solve.** Arrive on a remote island, uncover a hidden cave, ride a concealed monorail beneath the sea, and follow an expedition's trail to a second island. Fishing is part of survival: keep a catch in the cooler and prepare it when hunger rises.
 
-**Play it:** https://lozknowles.github.io/Burning-Horizons/
+[Play the current GitHub Pages build](https://lozknowles.github.io/Burning-Horizons/)
 
-![Fishing off the pier at golden hour](docs/screenshot.jpg)
+![The island at golden hour](docs/screenshot.jpg)
 
-![The beach in the late afternoon](docs/screenshot-beach.jpg)
+## The journey
 
-## Requirements
+1. Walk the home island, explore the shore and take the boat around the western headland.
+2. Enter **UNDERNEATH**, land in its sheltered boat cavern, and find the final door.
+3. Open the hidden lift to Station A. Press **N** to see the two-island map.
+4. Board the two-way monorail. Its glass pressure tube crosses below the sea, with fish visible outside.
+5. Explore the second island, read the expedition log in Station B, and locate the silent signal mast. The same train returns to the home island.
 
-- A browser with WebGPU: a recent Chrome, Edge or Safari.
-- A capable GPU. It targets 60 fps at 2560×1267 on an Apple M5 Pro, and dynamic resolution scales
-  the render down on slower machines.
-- The first load compiles several hundred shaders, which can take a minute or more. Later visits are
-  faster because the browser caches them.
+The mystery story is an evolving playable prototype. The existing signal objective has a first reveal; a longer investigation and ending are still to be built. The firearm is a finite-ammo survival sidearm with muzzle flash and reload; combat and damage are not yet implemented. The second island terrain and rail architecture are procedural in-game assets. UNDERNEATH was authored in Blender.
 
-## Features
+## Survival and the world
 
-**Fishing**
-- A spinning rod and reel that cast, reel and bend under load, with the bail, rotor and crank animated.
-- Bites that depend on the water (shallows, pier, reef, bay, deep water), depth and time of day, across
-  18 Caribbean species.
-- A line-tension fight: keep the tension in the green band, ease off when the fish runs.
-- A full-screen catch card with the fish's length and weight, a fish log with records, and a cooler.
-- Joe's fish stand buys your catch; Marta's chandlery sells line, reels, rods, a bigger hold, fuel, a rebuilt
-  engine, a fish finder and deck floodlights for night fishing.
-- Walk the deck and the wheelhouse while the boat drifts; the boat burns fuel.
-- A first-play guide, contextual tips and a minimap. Progress is saved in the browser.
-
-**Ocean**
-- Four-cascade FFT ocean (Tessendorf spectra) with foam, whitecaps, wind streaks and swell.
-- Depth-aware breaking waves with peeling shoulders, whitewater, spray and foam lace.
-- A shallow-water simulation for swash running up and down the sand.
-- Boat wake and bow spray, and a whale wake.
-- Caustics on the seabed and in the water, with light shafts.
-- A split underwater/above-water view at the waterline, with water droplets on the lens after surfacing.
-- Refraction of the seabed through the surface, including behind the pier and boats.
-
-**Sky**
-- Physically based atmosphere (Hillaire 2020) with a sun, moon and stars.
-- Volumetric cumulus and wispy cirrus with cloud shadows on the land.
-- Aerial perspective and sea haze.
-- God rays, and a lens flare with occlusion.
-
-**World**
-- An island with a beach, hills, headlands and rocks.
-- A fishing village, a pier, and the vendors' stalls built from Poly Haven scans.
-- Realistic vendor characters (Microsoft Rocketbox) with skinned animation.
-- A coral reef with fish.
-- Palms, bananas, monstera, elephant ear, heliconia, bird of paradise, broadleaf trees, shrubs and dune
-  grass, with impostors and dithered LOD fades.
-- Beach debris.
-- Birds, crabs and marine snow.
-- A humpback whale with an escort of fish, blows, fluke dives and breaches.
-
-**Lighting and post**
-- Cascaded shadows with contact-hardening penumbrae, and screen-space contact shadows.
-- Ground bounce light.
-- GTAO ambient occlusion.
-- Temporal upscaling and sharpening.
-- Bloom, auto exposure and motion blur.
-- Night lighting from lanterns, windows and the boat, plus a flashlight that also works underwater.
-
-**Audio**
-- Positional audio from real CC0 field recordings: surf timed to each breaking wave, wind, birds, the boat
-  engine, footsteps by surface, underwater ambience, whale song, and the rod and reel (casts, the bail,
-  reeling, the drag, line snaps, splashes).
+- Hunger falls during play. Press **B** to prepare and eat a fish from the cooler; low hunger slows walking.
+- Fishing, fish trading, boat fuel and upgrades remain available as survival systems.
+- The Steam79 Godzilla asset emerges offshore and walks toward the landing with a Blender-made walk cycle and water spray.
+- By default, the sky follows the computer's **local time**, with sunset, moon and stars. The Sky settings allow a manual time and accelerated preview.
+- The original island includes a pier, village, reef, wildlife, whale, tropical vegetation and a simulated ocean.
 
 ## Controls
 
 | Key | Action |
 |---|---|
-| W A S D | Move |
-| Mouse | Look (click to capture the mouse, Esc to release) |
-| Shift | Sprint / boat boost |
-| Space | Jump / swim up |
-| C | Crouch / dive |
-| E | Interact: board the boat, take or leave the helm, step ashore, trade with the fish buyer or the chandlery |
-| V | Boat camera at the helm (1st / 3rd person) |
-| R | Take out / put away the fishing rod |
-| Left mouse | Hold to wind up, release to cast · strike when a fish takes the bait · hold to reel |
-| Right mouse | Reel an empty line in |
-| I or Tab | Cooler / fish hold and the fish log |
-| F | Free camera |
+| W A S D / mouse | Move / look |
+| Shift / Space | Sprint / jump or swim up |
+| E | Interact with boat, cave door, monorail, logs and signal mast |
+| N | Two-island map after finding Station A |
+| G / left mouse / X | Equip sidearm / fire / reload |
+| B | Prepare and eat a fish from the cooler |
+| R / left mouse | Equip fishing rod / cast and reel while it is equipped |
+| I or Tab | Cooler, fish log and inventory |
+| V | Boat camera |
 | L | Flashlight |
-| T | Pause time |
+| H | Settings |
+| T | Pause or resume manual time |
 | M | Mute |
-| H | Settings panel |
-| P | Photo mode |
-| F1 or ? | All controls |
+| F1 or ? | Full controls |
 
-### Fishing
+## Run and build
 
-Walk the deck of the boat while it drifts, or fish from the pier and the beach. Cast, wait for the bobber
-to dip and strike when it's pulled under, then play the fish: keep the line tension in the green band,
-ease off when it runs. Different water holds different fish (the shallows, the pier, the reef, the bay and
-deep water offshore), and some bite best at dawn, dusk or night. Sell your catch to Joe at the fish stand
-on the beach by the pier, and spend it at Marta's chandlery by the boathouse: stronger line, a faster reel,
-a longer rod, a bigger fish hold, a larger fuel tank, a rebuilt engine, a fish finder and deck floodlights for
-night fishing. The boat burns diesel at the helm; fill up at the chandlery. Progress is saved in the browser.
-
-The settings panel (H) exposes the sea state, time of day, sun azimuth, clouds, haze, post-processing and
-more.
-
-## URL options
-
-Add these to the URL, for example `?fly&noAudio`:
-
-| Option | Effect |
-|---|---|
-| `fly` | Start in the free camera |
-| `noAudio` | Disable sound |
-| `noClouds` | Skip the volumetric clouds |
-| `noHaze` | Skip the haze and sun shafts |
-| `noCaustics` | Skip caustics |
-| `noVeg` | Skip vegetation |
-| `noSim` | Skip the swash (shallow-water) simulation |
-
-## Running locally
+Requires a WebGPU-capable browser and GPU. The first launch may take a minute while shaders compile.
 
 ```sh
-npm install
-npm run dev      # http://127.0.0.1:5189
-npm run build    # static build in dist/
+npm ci
+npm run dev
+npm test
+npm run build
 ```
 
-Every push to `main` deploys to GitHub Pages through `.github/workflows/deploy.yml`.
+The local server uses http://127.0.0.1:5189/. Pushes to `main` deploy through `.github/workflows/deploy.yml`.
 
-## World editing and Blender
+## Blender and world editing
 
-The outdoor island remains procedurally generated by the game, but Burning Horizons now has an open world-editing bridge for Blender and other terrain tools.
+`npm run world:export` exports the home island's heightfield and masks into `artifacts/world/` for Blender. [The Blender workflow](docs/BLENDER-MODDING.md) describes the cave model and import/export process. The cave GLB and layout are under `public/models/world/`. The prepared Godzilla asset is `public/models/godzilla/steam79-walk.glb`; `tools/blender/prepare_godzilla.py` documents its reduction and animation.
 
-```sh
-npm run world:export
-```
+## Project status
 
-That command exports the current 2048 x 2048, 1 m/texel island to `artifacts/world/` as a 16-bit PNG heightmap, exact Float32 heights, terrain masks, metadata and GeoJSON paths/features. Generated exchange files are ignored by Git and can always be regenerated from the source terrain.
-
-The game uses X east / Y up / Z south. Blender uses X east / Y north / Z up, so the supplied importer converts `(x, y, z)` to Blender `(x, -z, y)`. **One Blender unit equals one metre.**
-
-Caves and other overhang/interior features are authored as true 3D geometry rather than trying to encode them in the heightmap. The supplied Blender workflow creates a `BH_Caves` collection and exports it as GLB for the game.
-
-**UNDERNEATH** is authored in Blender under `BH_Caves` and loaded from `public/models/world/caves.glb` plus `caves.json`. Its west-headland entrance is near game coordinates `(-340, 0, 80)`. The route contains a boat cavern, sheltered landing, five named passages, a junction, a larger hall and a closed door. See the [Blender workflow](docs/BLENDER-MODDING.md) for reproduction and current qualification status.
-
-- Full workflow: [docs/BLENDER-MODDING.md](docs/BLENDER-MODDING.md)
-- Cave design brief: [docs/CAVE-SYSTEM-BRIEF.md](docs/CAVE-SYSTEM-BRIEF.md)
-- Codex implementation baton: [docs/CODEX-CAVE-HANDOVER.md](docs/CODEX-CAVE-HANDOVER.md)
-
-## Project layout
-
-| Folder | Contents |
-|---|---|
-| `src/game/` | The fishing game: rod, bites, the fight, catch card, cooler and log, vendors and stalls, guide, minimap, HUD |
-| `src/engine/` | The rendering engine: math, scene graph and geometry, GPU resources, WGSL shader composition, materials, lighting and shadows |
-| `src/ocean/` | FFT ocean, water surface and material, shore waves, breakers, swash, wake, caustics, underwater lighting |
-| `src/sky/` | Atmosphere, clouds, sky and environment |
-| `src/world/` | Terrain, village, pier, reef, fish, vegetation, rocks, debris, wildlife, whale, boat |
-| `src/post/` | Post chain: AO, underwater composite, haze, TAAU, motion blur, bloom, lens flare, droplets |
-| `src/materials/` | Shared lighting: shadow filtering, bounce light, contact shadows, local lights, LOD fades |
-| `src/player/` | Walking, swimming, the boat and the free camera |
-| `src/audio/` | The sample-based soundscape |
-| `src/ui/` | Settings panel, loading screen and HUD |
-| `tools/` | Asset tooling, including the Blender terrain/cave exchange workflow in `tools/blender/` |
-| `test/` | Headless engine smoke test and game-logic tests (`npm test`), and HUD / loader dev pages |
+The cave, monorail, second island, survival sidearm, hunger, local-time sky and Godzilla encounter are implemented in the current prototype. The longer mystery, combat consequences, broader second-island content, and full normal-controls route qualification remain work in progress. The schematic [world expansion map](docs/world-expansion-map.svg) and [design notes](docs/WORLD-EXPANSION-CONCEPT.md) describe the intended direction.
 
 ## Credits and license
 
-The code is released under the MIT license; see [LICENSE](LICENSE). Third-party assets (CC0 audio from
-Freesound, CC0 scans from Poly Haven, MIT characters from Microsoft Rocketbox, OFL / Apache fonts) and
-technique references are listed in [CREDITS.md](CREDITS.md).
+Source code is MIT licensed under [LICENSE](LICENSE). Third-party assets keep their own licenses. See [CREDITS.md](CREDITS.md), including the required Steam79 attribution for the Godzilla model.

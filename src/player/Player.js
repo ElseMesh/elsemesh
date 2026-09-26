@@ -38,7 +38,7 @@ const HELM_REACH = 0.75; // m from the helm seat to take the wheel
 //   boat : at the helm, driving; V toggles helm (1st person) / chase (3rd person) camera, E stands up
 export class Player {
 
-	constructor( { camera, input, terrain, colliders, query, boat, reef = null, audio = null, cave = null } ) {
+	constructor( { camera, input, terrain, colliders, query, boat, reef = null, audio = null, cave = null, transit = null } ) {
 
 		this.camera = camera;
 		this.input = input;
@@ -48,6 +48,7 @@ export class Player {
 		this.boat = boat;
 		this.reef = reef;
 		this.cave = cave;
+		this.transit = transit;
 		this.audio = audio;
 
 		this.mode = 'walk';
@@ -116,11 +117,12 @@ export class Player {
 
 	groundAt( x, z, maxY ) {
 
+		const transitFloor = this.transit ? this.transit.floorAt( x, z, maxY ) : null;
 		const caveFloor = this.cave ? this.cave.groundHeightAt( x, z, maxY ) : null;
-		let g = caveFloor === null ? this.terrain.heightAt( x, z ) : caveFloor;
+		let g = transitFloor !== null ? transitFloor : caveFloor === null ? this.terrain.heightAt( x, z ) : caveFloor;
 		const c = this.colliders.groundHeightAt( x, z, maxY );
 		if ( c > g ) g = c;
-		if ( caveFloor === null && this.reef && this.reef.floorHeightAt ) g = Math.max( g, this.reef.floorHeightAt( x, z ) );
+		if ( transitFloor === null && caveFloor === null && this.reef && this.reef.floorHeightAt ) g = Math.max( g, this.reef.floorHeightAt( x, z ) );
 		return g;
 
 	}
@@ -133,6 +135,7 @@ export class Player {
 		this.query.setPoint( this.slot, this.position.x, this.position.z );
 		this.waterH = this.waterHeight();
 		this.waterMean = this.waterMean === null ? this.waterH : this.waterMean + ( this.waterH - this.waterMean ) * ( 1 - Math.exp( - dt / 4 ) );
+		if ( this.transit && this.transit.isDryAt( this.position.x, this.position.z, this.position.y ) ) this.waterH = this.waterMean = -100;
 		this.prompt = null;
 
 		if ( this.mode === 'boat' ) {
@@ -206,7 +209,7 @@ export class Player {
 		this.wade = wade;
 		const sprintAmount = Math.max( axes.sprint, inp.down( 'ShiftLeft' ) || inp.down( 'ShiftRight' ) ? 1 : 0 );
 		const sprinting = sprintAmount > 0;
-		const speed = THREE.MathUtils.lerp( 3.0, 6.2, sprintAmount ) * THREE.MathUtils.lerp( 1, 0.42, wade );
+		const speed = THREE.MathUtils.lerp( 3.0, 6.2, sprintAmount ) * THREE.MathUtils.lerp( 1, 0.42, wade ) * ( this.needs?.hunger < 15 ? 0.65 : 1 );
 		const accel = this.grounded ? 14 : 2.5;
 		const k = 1 - Math.exp( - accel * dt );
 		this.velocity.x += ( wish.x * speed - this.velocity.x ) * k;

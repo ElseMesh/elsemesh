@@ -48,6 +48,7 @@ export class CaveSystem {
 		}
 		cave.group = new Group();
 		cave.group.name = 'UNDERNEATH';
+		cave.doorMeshes = [];
 		const materials = new Map();
 		for (const { name, geometry } of parsed.meshes) {
 			const color = caveColor(name);
@@ -65,6 +66,7 @@ export class CaveSystem {
 			mesh.castShadow = true;
 			mesh.staticVelocity = true;
 			cave.group.add(mesh);
+			if (name === 'UN_Closed_Door') cave.doorMeshes.push(mesh);
 		}
 		scene.add(cave.group);
 		cave.addCollision();
@@ -135,7 +137,7 @@ export class CaveSystem {
 			landing.size[0] / 2, landing.size[1] / 2, landing.size[2] / 2
 		), 0, { walkable: true, solid: false, tag: 'cave-landing' });
 		const d = l.door;
-		c.addBox(new Vector3(d.center[0], d.center[2] + d.height / 2, d.center[1]),
+		this.finalDoorCollider = c.addBox(new Vector3(d.center[0], d.center[2] + d.height / 2, d.center[1]),
 			new Vector3(d.width / 2, d.height / 2, 0.55), 0,
 			{ tag: 'cave-final-door' });
 		for (let i = 0; i < l.boatPath.length - 1; i++) {
@@ -151,5 +153,10 @@ export class CaveSystem {
 		}
 		c.addBox(new Vector3(-282, 4.3, 80), new Vector3(0.7, 7.2, 11), 0,
 			{ tag: 'cave-boat-end' });
+	}
+
+	openFinalDoor() {
+		for (const mesh of this.doorMeshes || []) mesh.visible = false;
+		if (this.finalDoorCollider) this.finalDoorCollider.solid = false;
 	}
 }

@@ -32,6 +32,8 @@ import { Rocks } from './world/Rocks.js';
 import { Debris } from './world/Debris.js';
 import { Wildlife } from './world/wildlife/Wildlife.js';
 import { Whale } from './world/marine/Whale.js';
+import { KaijuEncounter } from './world/KaijuEncounter.js';
+import { MonorailSystem } from './world/MonorailSystem.js';
 
 import { OceanFFT } from './ocean/OceanFFT.js';
 import { WaterSurface } from './ocean/WaterSurface.js';
@@ -57,7 +59,9 @@ import { PostFX } from './post/PostFX.js';
 import { AirHaze } from './post/AirHaze.js';
 import { FlyCamera } from './player/FlyCamera.js';
 import { Player } from './player/Player.js';
+import { SurvivalPistol } from './player/SurvivalPistol.js';
 import { Game } from './game/Game.js';
+import { SurvivalNeeds } from './game/SurvivalNeeds.js';
 import { STAND } from './game/FishStand.js';
 import { CHANDLERY } from './game/Chandlery.js';
 import { BoatController } from './player/BoatController.js';
@@ -74,7 +78,9 @@ export class App {
 	constructor() {
 
 		this.settings = {
-			timeOfDay: 16.2,
+			timeOfDay: new Date().getHours() + new Date().getMinutes() / 60,
+			clockMode: 'local',
+			localTime: true,
 			sunAzimuth: 0, // degrees: turns the sun's daily path about the vertical
 			timeSpeed: 0, // hours per real second
 			exposure: 0.55,
@@ -236,6 +242,7 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 		addVillageLights( this.localLights, this.village );
 		addBoatLights( this.localLights, this.boat );
 		this.caves = await CaveSystem.load( { scene, terrain: this.terrainData, colliders: this.colliders, localLights: this.localLights } );
+		this.monorail = new MonorailSystem( { scene, cave: this.caves, localLights: this.localLights } );
 		// rough, large or heavily overdrawn surfaces (ground, rocks, debris, foliage) take the local
 		// lights as Lambert only; the village, pier and boat get the full BRDF (glints on wet wood, metal)
 		for ( const root of [ this.terrain.mesh, this.rocks.group, this.debris && this.debris.group, this.vegetation && this.vegetation.group ] ) if ( root ) root.traverse( ( o ) => {
@@ -281,6 +288,17 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 		// spray.emit() / emitAlongPoints() for boat bow spray and splashes)
 		this.spray = new Spray( renderer, { query: this.query, terrain: this.terrainGPU, sceneCopy: this.sceneRenderer.opaqueCopy, clouds: this.clouds } );
 		scene.add( this.spray.mesh );
+		this.kaiju = new KaijuEncounter( { scene, terrain: this.terrainData, spray: this.spray } );
+		try {
+
+			await this.kaiju.load();
+
+		} catch ( e ) {
+
+			console.warn( 'Godzilla encounter failed to load', e );
+			this.kaiju = null;
+
+		}
 		if ( this.reef.setSpray ) this.reef.setSpray( this.spray ); // splashes of leaping fish
 		this.breakers = new Breakers( renderer, {
 			surface: this.surface, shore: this.shore, terrainData: this.terrainData, sky: this.sky,
@@ -309,7 +327,9 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 		// interactive wake around the boat (Kelvin pattern, bow/stern waves, prop wash foam)
 		this.wake = new WakeSim( renderer, { terrainGPU: this.terrainGPU, boat: this.boatCtl, colliders: this.colliders } );
 		this.surface.wake = this.wake;
-		this.player = new Player( { camera, input: this.input, terrain: this.terrainData, colliders: this.colliders, query: this.query, boat: this.boatCtl, reef: this.reef, cave: this.caves } );
+		this.player = new Player( { camera, input: this.input, terrain: this.terrainData, colliders: this.colliders, query: this.query, boat: this.boatCtl, reef: this.reef, cave: this.caves, transit: this.monorail } );
+		this.monorail.restorePlayer( this.player );
+		this.pistol = new SurvivalPistol( scene );
 		// birds, beach crabs, sanderlings (after spray / query / boat, which they use)
 		this.wildlife = new Wildlife( {
 			scene, renderer, terrain: this.terrainData, terrainGPU: this.terrainGPU, shore: this.shore,
@@ -343,6 +363,8 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 		this.player.audio = this.audio;
 		// the fishing game (rod, bites, catch, cooler, fish stand)
 		this.game = new Game( this );
+		this.needs = new SurvivalNeeds( this.game );
+		this.player.needs = this.needs;
 		// the lanterns at Joe's fish stand and Marta's chandlery (lit from dusk like the village lamps);
 		// positions are in each stall's frame (x right, z toward the customer), turned by its yaw
 		for ( const [ s, lx, ly, lz ] of [ [ STAND, - 0.9, 1.85, 0.1 ], [ CHANDLERY, - 0.75, 1.58, - 1.45 ] ] ) {
@@ -482,6 +504,8 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 	toggleTime() {
 
 		const s = this.settings;
+		s.clockMode = 'manual';
+		s.localTime = false;
 		if ( s.timeSpeed !== 0 ) {
 
 			this._timeSpeed = s.timeSpeed;
@@ -605,7 +629,10 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 		this.updateFPS( dt );
 		G.dt.value = dt;
 		G.time.value += dt;
-		if ( s.timeSpeed !== 0 ) s.timeOfDay = ( s.timeOfDay + dt * s.timeSpeed + 24 ) % 24;
+		if ( s.clockMode === 'local' ) {
+			const now = new Date();
+			s.timeOfDay = now.getHours() + now.getMinutes() / 60 + now.getSeconds() / 3600;
+		} else if ( s.timeSpeed !== 0 ) s.timeOfDay = ( s.timeOfDay + dt * s.timeSpeed + 24 ) % 24;
 
 		// ---- player / boat (boat physics first so the cameras follow this frame's pose)
 		if ( this.input.hit( 'KeyF' ) ) this.setFreeCam( ! this.freeCam );
@@ -625,10 +652,14 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 		}
 		this.boatCtl.update( dt );
 		this.boatSpray.update( dt );
+		if ( this.kaiju ) this.kaiju.update( dt );
 		this.wake.update( dt );
 		if ( this.freeCam ) this.fly.update( dt );
-		else this.player.update( dt );
+		else if ( this.monorail.state !== 'riding' ) this.player.update( dt );
+		if ( ! this.freeCam ) this.monorail.update( dt, this.player, this.input, this.camera, ( message ) => this.ui?.ui.toast( message ) );
+		this.pistol.update( dt, this.camera, this.input, ! this.freeCam && this.monorail.state !== 'riding' && this.player.mode === 'walk', ( message ) => this.ui?.ui.toast( message ) );
 		this.game.update( dt );
+		this.needs.update( dt, this.input, ( message ) => this.ui?.ui.toast( message ) );
 		this.updateSun();
 
 		this.atmosphere.update( dt, this.camera.position.y );
@@ -648,6 +679,13 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 			G.cameraWaterHeight.value = h;
 			this.cameraWaterHeight = h;
 
+		}
+		const dryTransit = this.monorail.isDryAt( this.camera.position.x, this.camera.position.z, this.camera.position.y );
+		this.underwater.enabled.value = dryTransit ? 0 : 1;
+		if ( dryTransit ) {
+			G.cameraUnderwater.value = 0;
+			G.cameraWaterHeight.value = -100;
+			this.cameraWaterHeight = -100;
 		}
 
 		if ( this.caustics ) this.caustics.update();

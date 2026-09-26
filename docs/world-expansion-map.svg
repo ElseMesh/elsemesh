@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 650" role="img" aria-label="Concept world map showing Burning Horizons island, a hidden cave station, an undersea monorail, and a second island">
+  <defs>
+    <linearGradient id="sea" x2="0" y2="1"><stop stop-color="#102e48"/><stop offset="1" stop-color="#07536b"/></linearGradient>
+    <linearGradient id="land" x2="0" y2="1"><stop stop-color="#c2ae77"/><stop offset=".5" stop-color="#677b54"/><stop offset="1" stop-color="#233d37"/></linearGradient>
+    <filter id="glow"><feGaussianBlur stdDeviation="7"/></filter>
+  </defs>
+  <rect width="1200" height="650" fill="url(#sea)"/>
+  <g fill="none" stroke="#59b8c9" opacity=".2" stroke-width="2">
+    <path d="M0 120 Q160 95 280 121 T580 117 T900 105 T1200 130"/>
+    <path d="M0 190 Q200 164 370 198 T760 185 T1200 205"/>
+    <path d="M0 485 Q190 458 370 490 T760 486 T1200 506"/>
+  </g>
+  <text x="56" y="59" fill="#e9e2cd" font-family="Arial,sans-serif" font-size="34" font-weight="700" letter-spacing="2">BEYOND THE ISLAND</text>
+  <text x="58" y="89" fill="#a8cad0" font-family="Arial,sans-serif" font-size="17">Two-island world map concept · route and distance illustrative</text>
+  <path d="M80 248 Q88 185 171 160 L260 172 Q351 150 397 227 L405 305 Q371 336 346 395 L230 413 Q130 392 86 327 Z" fill="url(#land)" stroke="#d1c294" stroke-width="5"/>
+  <path d="M854 190 Q943 148 1050 186 L1111 258 L1094 376 L1018 438 L889 418 L824 329 Z" fill="url(#land)" stroke="#d1c294" stroke-width="5"/>
+  <path d="M360 308 C511 442 676 445 853 320" fill="none" stroke="#8cf7f6" stroke-width="26" opacity=".25" filter="url(#glow)"/>
+  <path d="M360 308 C511 442 676 445 853 320" fill="none" stroke="#81e9e6" stroke-width="8" stroke-linecap="round" stroke-dasharray="19 15"/>
+  <circle cx="360" cy="308" r="14" fill="#f1d79b" stroke="#102e48" stroke-width="5"/>
+  <circle cx="853" cy="320" r="14" fill="#f1d79b" stroke="#102e48" stroke-width="5"/>
+  <g fill="#f3ead5" font-family="Arial,sans-serif">
+    <text x="141" y="235" font-size="24" font-weight="700">FIRST ISLAND</text>
+    <text x="141" y="263" font-size="15">Burning Horizons · pier and boat</text>
+    <text x="882" y="244" font-size="24" font-weight="700">SECOND ISLAND</text>
+    <text x="882" y="272" font-size="15">New region · concept</text>
+    <text x="292" y="344" font-size="16">Cave door</text>
+    <text x="292" y="364" font-size="16">Station A</text>
+    <text x="864" y="347" font-size="16">Station B</text>
+    <text x="479" y="373" font-size="18" font-weight="700">GLASS UNDERSEA TUNNEL</text>
+    <text x="519" y="399" font-size="15">reversible monorail</text>
+  </g>
+  <g fill="#abcbd1" font-family="Arial,sans-serif" font-size="16">
+    <text x="59" y="559">Surface: boat exploration</text>
+    <text x="59" y="589">Below sea: station ↔ station shuttle, visible marine life</text>
+    <text x="59" y="621">Concept only · no station, train, tunnel, or second island implemented yet</text>
+  </g>
+</svg>

@@ -134,7 +134,7 @@ export class Game {
 	get canFish() {
 
 		const app = this.app, p = app.player;
-		return ! app.freeCam && ( p.mode === 'walk' || p.mode === 'deck' ) && ! ( app.ui && app.ui.ui && app.ui.ui._photo );
+		return ! app.freeCam && ! app.pistol?.equipped && app.monorail?.state !== 'riding' && ( p.mode === 'walk' || p.mode === 'deck' ) && ! ( app.ui && app.ui.ui && app.ui.ui._photo );
 
 	}
 

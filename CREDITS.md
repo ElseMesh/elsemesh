@@ -72,6 +72,12 @@ them from J. Jimenez et al.'s SMAA reference implementation (MIT).
 
 [Vite](https://vite.dev) (MIT) is an npm dependency and is not vendored here.
 
+## Godzilla character: `public/models/godzilla/`
+
+"Godzilla 2014" (https://skfb.ly/pC9tn) by Steam79 is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/).
+
+The included `public/models/godzilla/steam79-walk.glb` is a Blender-prepared, reduced-polygon derivative with a walk rig and animation. The original download is not included.
+
 ## Techniques and references
 
 These are published techniques. No code from the papers is included.

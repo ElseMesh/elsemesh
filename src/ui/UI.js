@@ -2148,7 +2148,11 @@ export class UI {
 					</section>
 					<section>
 						<h3>Interact</h3>
-						${ row( k( 'E' ), 'Interact<small>Board, helm, step ashore, trade</small>' ) }
+						${ row( k( 'E' ), 'Interact<small>Cave, monorail, clues, boat, trade</small>' ) }
+						${ row( k( 'N' ), 'Two-island map<small>Unlock at Station A</small>' ) }
+						${ row( k( 'G' ), 'Equip or holster sidearm' ) }
+						${ row( k( 'X' ), 'Reload sidearm' ) }
+						${ row( k( 'B' ), 'Eat fish from cooler' ) }
 						${ row( k( 'V' ), 'Boat camera<small>1st / 3rd person</small>' ) }
 						${ row( k( 'R' ), 'Fishing rod<small>Take out / put away</small>' ) }
 						${ row( k( 'LMB' ), 'Cast, strike, reel<small>Hold to wind up / reel</small>' ) }
@@ -2168,7 +2172,7 @@ export class UI {
 					</section>
 				</div>
 				<div class="tw-help-guide">
-					<span><b>How to play:</b> catch fish, sell them to Joe at the fish stand by the pier, and buy upgrades from Marta at the chandlery by the boathouse. Both are on the map (lower right).</span>
+					<span><b>How to play:</b> explore the western cave, find the hidden rail, and investigate the expedition on the second island. Fish to keep yourself fed.</span>
 					<button type="button" class="gm-btn is-ghost tw-help-replay">Replay the guide</button>
 				</div>
 			</div>`;

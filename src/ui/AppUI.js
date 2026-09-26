@@ -162,16 +162,22 @@ export class AppUI {
 		// ---------------------------------------------------------------- Sky
 		const sky = ui.addTab( 'sky', 'Sky', 'sky' );
 		const sun = sky.addFolder( 'Sun', { icon: 'clock' } );
-		sun.addTimeOfDay( { object: app.settings, key: 'timeOfDay' } );
+		sun.addToggle( { label: 'Use local time', object: app.settings, key: 'localTime', onChange: ( v ) => {
+			app.settings.clockMode = v ? 'local' : 'manual';
+			if ( v ) app.settings.timeSpeed = 0;
+		} } );
+		sun.addTimeOfDay( { object: app.settings, key: 'timeOfDay', onChange: () => { app.settings.clockMode = 'manual'; app.settings.localTime = false; ui.refresh(); } } );
 		sun.addSlider( { label: 'Sun azimuth', object: app.settings, key: 'sunAzimuth', min: - 180, max: 180, step: 1, format: ( v ) => `${ Math.round( v ) }°`, tooltip: 'Turns the sun\'s path around the island (0 = the real path: rises in the east, sets in the west).' } );
 		let speed = null;
 		sun.addToggle( { label: 'Advance time', object: s, key: 'advance', onChange: ( v ) => {
 
+			app.settings.clockMode = 'manual';
+			app.settings.localTime = false;
 			app.settings.timeSpeed = v ? s.timeSpeed : 0;
 			speed.setVisible( v );
 
 		} } );
-		speed = sun.addSlider( { label: 'Time speed', object: s, key: 'timeSpeed', min: 0.002, max: 1, log: true, unit: 'h/s', onChange: ( v ) => { if ( s.advance ) app.settings.timeSpeed = v; } } ).setVisible( s.advance );
+		speed = sun.addSlider( { label: 'Time speed', object: s, key: 'timeSpeed', min: 0.002, max: 1, log: true, unit: 'h/s', onChange: ( v ) => { if ( s.advance ) { app.settings.clockMode = 'manual'; app.settings.timeSpeed = v; } } } ).setVisible( s.advance );
 		const atmo = sky.addFolder( 'Atmosphere', { icon: 'cloud' } );
 		if ( app.clouds ) atmo.addSlider( { label: 'Cloud cover', object: s, key: 'clouds', min: 0, max: 1, step: 0.01, format: ( v ) => `${ Math.round( v * 100 ) }%`, onChange: ( v ) => { app.clouds.coverage.value = v; } } );
 		if ( app.clouds && app.clouds.cirrus ) atmo.addSlider( { label: 'Cirrus', object: s, key: 'cirrus', min: 0, max: 1, step: 0.01, format: ( v ) => `${ Math.round( v * 100 ) }%`, onChange: ( v ) => { app.clouds.cirrus.value = v; } } );
