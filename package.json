@@ -6,6 +6,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "test": "node test/game-logic.mjs && node test/cave-system.mjs && node test/monorail-route.mjs && node test/engine-smoke.mjs",
+    "test:network": "node --test test/network-foundation.mjs test/network-player.mjs test/federation.mjs",
     "world:export": "node tools/blender/export-terrain.mjs artifacts/world"
   },
   "devDependencies": {
@@ -14,5 +15,8 @@
   },
   "license": "MIT",
   "private": true,
-  "type": "module"
+  "type": "module",
+  "dependencies": {
+    "ws": "^8.22.0"
+  }
 }

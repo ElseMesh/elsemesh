@@ -150,6 +150,7 @@ export class Game {
 			// the minimap (lower right) and the first-play guide (intro, one-time tips; replay from F1)
 			this.minimap = new Minimap( ui.hud || ui.root, this );
 			this.guide = new Guide( ui, this, this.minimap );
+			if ( app.qs.get( 'demo' ) === 'network' ) { this.guide.seen.intro = true; this.guide._wait = -1; }
 			ui.onReplayGuide = () => this.guide.replay();
 
 		}

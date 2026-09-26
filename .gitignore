@@ -5,3 +5,8 @@ dist
 artifacts/world/
 artifacts/blender/
 artifacts/video/
+artifacts/network/
+*.pcap
+*.pcapng
+*.pem
+*.key

@@ -661,6 +661,7 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 		else if ( this.monorail.state !== 'riding' ) this.player.update( dt );
 		if ( ! this.freeCam ) this.monorail.update( dt, this.player, this.input, this.camera, ( message ) => this.ui?.ui.toast( message ) );
 		this.avatar.update( dt, this.player, this.camera, this.freeCam );
+		if ( this.networkDemo ) this.networkDemo.update( dt );
 		this.pistol.update( dt, this.camera, this.input, ! this.freeCam && this.monorail.state !== 'riding' && this.player.mode === 'walk', ( message ) => this.ui?.ui.toast( message ) );
 		this.game.update( dt );
 		this.needs.update( dt, this.input, ( message ) => this.ui?.ui.toast( message ) );

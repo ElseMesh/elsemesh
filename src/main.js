@@ -21,6 +21,9 @@ app.init( ( p, text, until ) => ui.setLoading( p, text, until ) ).then( async ()
 	app.ui = new AppUI( app, ui );
 	ui.setLoading( 1, 'Ready' );
 	await ui.hideLoader();
+	if ( app.qs.get( 'demo' ) === 'network' ) {
+		app.networkDemo = await ( await import( './network/NetworkDemo.js' ) ).NetworkDemo.create( app );
+	}
 	// frame-time benchmark and reference shots (see core/Bench.js): it drives the frames itself
 	if ( app.qs.has( 'bench' ) ) {
 
@@ -32,7 +35,7 @@ app.init( ( p, text, until ) => ui.setLoading( p, text, until ) ).then( async ()
 		if ( app.qs.has( 'shots' ) ) window.__job = window.__bench.shots( app.qs.get( 'shots' ).split( ',' ), { tag: app.qs.get( 'tag' ) || 'shot', dt: Number( app.qs.get( 'dt' ) ) || 0, seq: Number( app.qs.get( 'seq' ) ) || 1, every: Number( app.qs.get( 'every' ) ) || 1 } );
 
 	} else app.start();
-	ui.showStartOverlay( () => {
+	if ( app.qs.get( 'demo' ) !== 'network' ) ui.showStartOverlay( () => {
 
 		app.input.requestLock();
 		if ( app.audio ) app.audio.resume();
