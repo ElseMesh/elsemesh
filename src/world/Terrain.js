@@ -168,6 +168,10 @@ fn terDetail( uv: vec2f ) -> vec4f {
 
 const TERRAIN_SURFACE = /* wgsl */`
 	let p = in.P;
+	// The only exterior terrain cutout: an elliptical sea-level opening on the
+	// western headland. The procedural heightfield remains authoritative elsewhere.
+	let caveMouth = vec2f( ( p.x + 344.0 ) / 2.0, ( p.z - 80.0 ) / 7.0 );
+	if ( dot( caveMouth, caveMouth ) < 1.0 && p.y < 5.5 ) { discard; }
 	let xz = p.xz;
 	let h = p.y;
 	var outRough = 0.9;

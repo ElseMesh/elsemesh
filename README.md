@@ -145,7 +145,7 @@ The game uses X east / Y up / Z south. Blender uses X east / Y north / Z up, so 
 
 Caves and other overhang/interior features are authored as true 3D geometry rather than trying to encode them in the heightmap. The supplied Blender workflow creates a `BH_Caves` collection and exports it as GLB for the game.
 
-The first planned environment is **UNDERNEATH**: take the existing boat to a visible sea-level cave, enter a boat-navigable outer cavern, land inside, then explore passages and chambers beneath the existing island until reaching a closed door.
+**UNDERNEATH** is authored in Blender under `BH_Caves` and loaded from `public/models/world/caves.glb` plus `caves.json`. Its west-headland entrance is near game coordinates `(-340, 0, 80)`. The route contains a boat cavern, sheltered landing, five named passages, a junction, a larger hall and a closed door. See the [Blender workflow](docs/BLENDER-MODDING.md) for reproduction and current qualification status.
 
 - Full workflow: [docs/BLENDER-MODDING.md](docs/BLENDER-MODDING.md)
 - Cave design brief: [docs/CAVE-SYSTEM-BRIEF.md](docs/CAVE-SYSTEM-BRIEF.md)

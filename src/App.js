@@ -24,6 +24,7 @@ import { Terrain } from './world/Terrain.js';
 import { computeShoreField } from './world/ShoreField.js';
 import { WORLD } from './world/WorldLayout.js';
 import { Colliders } from './world/Colliders.js';
+import { CaveSystem } from './world/CaveSystem.js';
 import { Village } from './world/Village.js';
 import { Reef } from './world/Reef.js';
 import { BoatModel } from './world/BoatModel.js';
@@ -234,6 +235,7 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 		this.localLights = new LocalLights();
 		addVillageLights( this.localLights, this.village );
 		addBoatLights( this.localLights, this.boat );
+		this.caves = await CaveSystem.load( { scene, terrain: this.terrainData, colliders: this.colliders, localLights: this.localLights } );
 		// rough, large or heavily overdrawn surfaces (ground, rocks, debris, foliage) take the local
 		// lights as Lambert only; the village, pier and boat get the full BRDF (glints on wet wood, metal)
 		for ( const root of [ this.terrain.mesh, this.rocks.group, this.debris && this.debris.group, this.vegetation && this.vegetation.group ] ) if ( root ) root.traverse( ( o ) => {
@@ -288,7 +290,7 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 		// dust, pollen, salt aerosol, seed fluff and gnats drifting around the camera
 		this.airMotes = new AirMotes( { terrain: this.terrainGPU, clouds: this.clouds, csm: this.csm, reversedDepth: true } );
 		scene.add( this.airMotes.mesh );
-		this.boatCtl = new BoatController( { model: this.boat, query: this.query, terrain: this.terrainData, colliders: this.colliders } );
+		this.boatCtl = new BoatController( { model: this.boat, query: this.query, terrain: this.terrainData, colliders: this.colliders, cave: this.caves } );
 		this.boatSpray = new BoatSpray( { boat: this.boatCtl, spray: this.spray } );
 		// humpback cruising the deep water around the island (model fetched from public/models/whale)
 		this.whale = new Whale( { scene, terrain: this.terrainData, query: this.query, spray: this.spray } );
@@ -307,7 +309,7 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 		// interactive wake around the boat (Kelvin pattern, bow/stern waves, prop wash foam)
 		this.wake = new WakeSim( renderer, { terrainGPU: this.terrainGPU, boat: this.boatCtl, colliders: this.colliders } );
 		this.surface.wake = this.wake;
-		this.player = new Player( { camera, input: this.input, terrain: this.terrainData, colliders: this.colliders, query: this.query, boat: this.boatCtl, reef: this.reef } );
+		this.player = new Player( { camera, input: this.input, terrain: this.terrainData, colliders: this.colliders, query: this.query, boat: this.boatCtl, reef: this.reef, cave: this.caves } );
 		// birds, beach crabs, sanderlings (after spray / query / boat, which they use)
 		this.wildlife = new Wildlife( {
 			scene, renderer, terrain: this.terrainData, terrainGPU: this.terrainGPU, shore: this.shore,

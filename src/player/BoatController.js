@@ -49,12 +49,13 @@ const _dq = new THREE.Quaternion();
 // mooring lines as before.
 export class BoatController {
 
-	constructor( { model, query, terrain, colliders } ) {
+	constructor( { model, query, terrain, colliders, cave = null } ) {
 
 		this.model = model;
 		this.query = query;
 		this.terrain = terrain;
 		this.colliders = colliders;
+		this.cave = cave;
 
 		const hydro = model.hydro || {};
 		this.mass = hydro.suggestedMass || 3200;
@@ -485,7 +486,7 @@ export class BoatController {
 		for ( const lp of pts ) {
 
 			this.toWorld( lp, pw );
-			const ground = this.terrain.heightAt( pw.x, pw.z );
+			const ground = this.cave ? this.cave.boatGroundAt( pw.x, pw.z ) : this.terrain.heightAt( pw.x, pw.z );
 			const pen = ground - pw.y;
 			if ( pen > 0 ) {
 

@@ -38,7 +38,7 @@ const HELM_REACH = 0.75; // m from the helm seat to take the wheel
 //   boat : at the helm, driving; V toggles helm (1st person) / chase (3rd person) camera, E stands up
 export class Player {
 
-	constructor( { camera, input, terrain, colliders, query, boat, reef = null, audio = null } ) {
+	constructor( { camera, input, terrain, colliders, query, boat, reef = null, audio = null, cave = null } ) {
 
 		this.camera = camera;
 		this.input = input;
@@ -47,6 +47,7 @@ export class Player {
 		this.query = query;
 		this.boat = boat;
 		this.reef = reef;
+		this.cave = cave;
 		this.audio = audio;
 
 		this.mode = 'walk';
@@ -115,10 +116,11 @@ export class Player {
 
 	groundAt( x, z, maxY ) {
 
-		let g = this.terrain.heightAt( x, z );
+		const caveFloor = this.cave ? this.cave.groundHeightAt( x, z, maxY ) : null;
+		let g = caveFloor === null ? this.terrain.heightAt( x, z ) : caveFloor;
 		const c = this.colliders.groundHeightAt( x, z, maxY );
 		if ( c > g ) g = c;
-		if ( this.reef && this.reef.floorHeightAt ) g = Math.max( g, this.reef.floorHeightAt( x, z ) );
+		if ( caveFloor === null && this.reef && this.reef.floorHeightAt ) g = Math.max( g, this.reef.floorHeightAt( x, z ) );
 		return g;
 
 	}
@@ -224,6 +226,7 @@ export class Player {
 		const p = this.position;
 		const old = p.clone();
 		p.addScaledVector( this.velocity, dt );
+		if ( this.cave ) this.cave.constrainPlayer( old, p );
 		this.colliders.resolveCapsule( p, RADIUS, HEIGHT, 0.4 );
 		if ( this.landOnBoat( old, p ) ) return;
 		const g = this.groundAt( p.x, p.z, p.y + 0.45 );
@@ -353,7 +356,9 @@ export class Player {
 
 		}
 
+		const old = p.clone();
 		p.addScaledVector( this.velocity, dt );
+		if ( this.cave ) this.cave.constrainPlayer( old, p );
 		p.y = Math.min( p.y, surfaceY + 0.05 );
 		this.colliders.resolveCapsule( p, RADIUS, 1.0, 0 );
 		const g = this.groundAt( p.x, p.z, p.y + 0.3 );

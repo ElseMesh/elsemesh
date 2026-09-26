@@ -83,3 +83,17 @@ A good learning pattern is:
 - export GLB only after visual inspection.
 
 See [CAVE-SYSTEM-BRIEF.md](CAVE-SYSTEM-BRIEF.md) for the first planned underground environment.
+
+## UNDERNEATH authoring record (26 September 2026)
+
+Blender 4.5.10 LTS was installed as the official portable Windows archive on D:. The world export produced all 11 expected files at 2048 x 2048 and 1 m per texel, with heights from -90 m to approximately 305.77 m. The importer used `--step 4` and saved `artifacts/blender/Burning-Horizons.blend` on D:.
+
+The imported island and coast were inspected in Blender before modelling. The west outer headland at game `(-340, 0, 80)` offers a sea-level approach, rock volume above the tunnel, and a mouth away from the starting pier's immediate sightline. The authored route runs inward from the boat cavern to a landing at `(-288, 1.2, 70)`, rises into the dry passage network, then descends through the junction, Basalt Gallery, Salt Fissure, Tide Alcove, a larger hall, and a final corridor ending at the closed door near `(-220, 1.2, -10)`. All walking floors remain above mean sea level.
+
+`tools/blender/underneath-layout.json` is the metre-scale layout. `tools/blender/build_underneath.py` builds named `UN_` objects in six child collections of `BH_Caves`. Its ring meshes keep flat floors and editable cross-sections; room wall openings align with passage branches. A connector shell and rock canopy bridge the boat cavern to the landing. The landing and iron-and-brass door are separate objects with retained bevel modifiers. No third-party cave assets were added.
+
+To regenerate after importing the world, open the saved `.blend` in Blender, switch to the Python Console, and run `p = bpy.path.abspath('//../../tools/blender/build_underneath.py'); exec(compile(open(p).read(), p, 'exec'), {'__file__': p})`. Save the scene, then use `export_caves.py` as above. The exporter writes both `public/models/world/caves.glb` and `caves.json`; the GLB contains 39 named meshes.
+
+The game keeps the procedural terrain generator. A narrow submerged channel from approximately `(-400, 80)` to the mouth lowers only the approach shoal to a 3.2 m depth; the channel is present in the exported heightmap and Blender preview. A small elliptical fragment cutout at `(-344, 80)` reveals the sea entrance. `CaveSystem` loads the GLB and layout, assigns reusable materials and local lights, and provides conservative passage-footprint, landing, door and boat-wall collision. The cave floor takes precedence over the surface reef height while the player is underground. Seven fixed cool lights aid orientation; the existing flashlight remains available.
+
+`npm test` includes a focused GLB/layout/collision check, and `npm run build` verifies bundling. Browser startup and route qualification are recorded in the handover. The generated `.blend`, world export, and Blender screen recordings remain local under ignored `artifacts/` on D:; they are not committed.

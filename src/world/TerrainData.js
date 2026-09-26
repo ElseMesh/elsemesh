@@ -68,7 +68,35 @@ export class TerrainData {
 		this._F = { wx: 0, wz: 0, f170: 0, und: 0, deep: 0, E: 0, gx: 0, gz: 0 };
 		this._out = { h: 0, rock: 0, d: 0, bz: 0, carve: 0 };
 		this.generate();
+		this.carveCaveApproach();
 		this.buildMinMax();
+
+	}
+
+	// A narrow submerged channel through the west-headland shoal gives the
+	// existing boat enough draft to reach UNDERNEATH's sea-level mouth. The
+	// original island generation stays authoritative everywhere else.
+	carveCaveApproach() {
+
+		const { origin, res, texel, heights } = this;
+		for (let j = Math.floor((70 - origin) / texel); j <= Math.ceil((90 - origin) / texel); j++) {
+
+			const z = origin + (j + 0.5) * texel;
+			const az = Math.abs(z - 80);
+			const across = 1 - smoothstep(5, 9, az);
+			if (across <= 0) continue;
+			for (let i = Math.floor((-401 - origin) / texel); i <= Math.ceil((-341 - origin) / texel); i++) {
+
+				const x = origin + (i + 0.5) * texel;
+				const along = smoothstep(-400, -390, x) * (1 - smoothstep(-344, -342, x));
+				const t = along * across;
+				if (t <= 0) continue;
+				const k = j * res + i;
+				heights[k] = lerp(heights[k], Math.min(heights[k], -3.2), t);
+
+			}
+
+		}
 
 	}
 
