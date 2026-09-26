@@ -1,6 +1,6 @@
 import { icon, brandMark } from './icons.js';
 
-// Tidewater UI: settings panel (tabs → folders → controls), HUD, help,
+// Burning Horizons UI: settings panel (tabs → folders → controls), HUD, help,
 // photo mode, start overlay and loader. Plain DOM, no dependencies.
 // All styling lives in ui.css (class prefix `tw-`).
 
@@ -1938,7 +1938,7 @@ export class UI {
 		this.sparkEl = stats.querySelector( '.tw-spark' );
 
 		const brand = h( 'div', 'tw-brand' );
-		brand.innerHTML = `${ brandMark() }<span class="tw-brand-name">TIDEWATER</span>`;
+		brand.innerHTML = `${ brandMark() }<span class="tw-brand-name">BURNING HORIZONS</span>`;
 		this.modeEl = h( 'div', 'tw-mode is-empty', { role: 'status' } );
 		this.modeIco = h( 'span', 'tw-mode-ico' );
 		this.modeText = h( 'span', 'tw-mode-text' );
@@ -2189,7 +2189,7 @@ export class UI {
 		el.innerHTML = `
 			<div class="tw-start-inner">
 				${ brandMark( 'tw-start-mark' ) }
-				<div class="tw-start-title">TIDEWATER</div>
+				<div class="tw-start-title">BURNING HORIZONS</div>
 				<button type="button" class="tw-start-cta"><span class="tw-start-pulse" aria-hidden="true"></span>${ icon( 'mouse' ) }<span>Tap or click to explore</span></button>
 				<div class="tw-start-touch-hint">Left stick moves · right stick looks · tap action prompts</div>
 				<div class="tw-start-keys">
@@ -2578,7 +2578,7 @@ export class UI {
 		let saved = null;
 		try {
 
-			saved = localStorage.getItem( 'tidewater.ui.tab' );
+			saved = localStorage.getItem( 'burning-horizons.ui.tab' );
 
 		} catch { /* storage unavailable */ }
 
@@ -2634,7 +2634,7 @@ export class UI {
 
 			try {
 
-				localStorage.setItem( 'tidewater.ui.tab', tab.id );
+				localStorage.setItem( 'burning-horizons.ui.tab', tab.id );
 
 			} catch { /* storage unavailable */ }
 

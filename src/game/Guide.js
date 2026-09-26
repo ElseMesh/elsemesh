@@ -7,10 +7,10 @@ import { CHANDLERY } from './Chandlery.js';
 //    markers pulse on the minimap). Enter / Space / click: next, Esc: skip. Replay from the help (F1).
 //  - one-time tips the first time something happens (rod out, first nibble, fish on, first catch,
 //    full cooler, next to the boat, at Joe's, at Marta's), in a card above the minimap.
-// Seen state in localStorage ('tidewater.guide'), wrapped in try/catch.
+// Seen state in localStorage ('burning-horizons.guide'), wrapped in try/catch.
 //   const guide = new Guide( ui, game, minimap );  guide.update( dt );  guide.replay()
 
-const KEY = 'tidewater.guide';
+const KEY = 'burning-horizons.guide';
 
 const CSS = /* css */`
 .gm-guide { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; opacity: 0; visibility: hidden;
@@ -67,7 +67,7 @@ const row = ( keys, text ) => `<div class="gm-guide-row"><span class="k">${ keys
 
 const CARDS = [
 	{
-		eyebrow: 'Welcome to Tidewater',
+		eyebrow: 'Welcome to Burning Horizons',
 		title: 'Fish the island, sell your catch',
 		body: `<p>Catch fish from the <b>beach</b>, the <b>pier</b> or your <b>boat</b>. Different fish bite in the shallows, around the pier, over the reef and out in deep water, and they change with the time of day.</p>
 			<p>Sell your catch to <b>Joe</b> at the fish stand by the pier, then spend the money on upgrades from <b>Marta</b> at the chandlery by the boathouse: stronger line, a faster reel, a bigger hold, a fish finder and lights for fishing at night.</p>`,

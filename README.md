@@ -1,11 +1,11 @@
-# Tidewater
+# Burning Horizons
 
 An island fishing game for the browser. Cast from the pier, the beach or your own boat, fight the fish,
 sell your catch to Joe at the fish stand, and spend it on better gear at Marta's chandlery. Around it is a
 real-time tropical island and ocean: swim the reef, drive the boat out to deep water, and watch a humpback
 breach. It runs directly on WebGPU and WGSL with its own small rendering engine, no framework.
 
-**Play it:** https://rebroad.github.io/tidewater/
+**Play it:** https://lozknowles.github.io/Burning-Horizons/
 
 ![Fishing off the pier at golden hour](docs/screenshot.jpg)
 
