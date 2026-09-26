@@ -4,6 +4,12 @@
 
 The project is also exploring an **open federated virtual-world protocol**: independently owned regions connected by explicit portals, with cryptographic node identity, bounded region rules and controlled authority handoff. The [federated protocol design](docs/federated-world-protocol.md) and [networking architecture](docs/networking/architecture.md) explain what is implemented and what still needs a live game and physical-node proof. The existing island game works without federation.
 
+| Federation status | Current scope |
+|---|---|
+| Implemented | Strict region/portal descriptors, owner-signed versions, expiring host delegation, signed portal invitations, bounded rule negotiation and handoff verification; 21 network tests pass. |
+| Experimental | Optional local Loz/Ed browser demo and physical MSI↔hpubuntu **protocol-only** portal round trip. |
+| Planned | Cave-triggered live handoff, Ed World rendering, physical two-node avatar crossing, secure internet transport and replica failover in live gameplay. |
+
 ![The island at golden hour](docs/screenshot.jpg)
 
 ## The journey
