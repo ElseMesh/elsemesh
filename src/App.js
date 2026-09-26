@@ -241,7 +241,7 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 		// flashlight (L): nearest few packed into one small uniform array each frame
 		this.localLights = new LocalLights();
 		addVillageLights( this.localLights, this.village );
-		addBoatLights( this.localLights, this.boat );
+		this.boatLights = addBoatLights( this.localLights, this.boat );
 		this.caves = await CaveSystem.load( { scene, terrain: this.terrainData, colliders: this.colliders, localLights: this.localLights } );
 		this.monorail = new MonorailSystem( { scene, cave: this.caves, localLights: this.localLights } );
 		// rough, large or heavily overdrawn surfaces (ground, rocks, debris, foliage) take the local
@@ -727,6 +727,11 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 		this.boat.update( dt );
 		this.wildlife.update( dt, this.camera, this.freeCam ? null : this.player );
 		this.localLights.update( this.camera, dt );
+		const beam = this.boatLights[ 0 ];
+		const beamOther = this.boatLights[ 1 ];
+		const beamStrength = Math.max( 0, Math.min( 1, ( G.night.value - 0.15 ) / 0.6 ) );
+		this.waterMaterial.uniforms.boatBeamPos.value.set( ( beam.position.x + beamOther.position.x ) * 0.5, ( beam.position.y + beamOther.position.y ) * 0.5, ( beam.position.z + beamOther.position.z ) * 0.5, beamStrength );
+		this.waterMaterial.uniforms.boatBeamDir.value.set( beam.dir.x, beam.dir.y, beam.dir.z, beam.range );
 
 		// ---- render
 		G.exposure.value = s.exposure;

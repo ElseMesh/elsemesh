@@ -3,7 +3,7 @@ import { readFile, stat } from 'node:fs/promises';
 import { resolve, relative, extname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { WebSocketServer, WebSocket } from 'ws';
-import { PLAYER_IDS, validateState } from '../../src/network/PlayerProtocol.js';
+import { ONLINE_ROLES, PLAYER_IDS, MAX_ROOM_PLAYERS, validateState } from '../../src/network/PlayerProtocol.js';
 import { validateSpeechEvent } from '../../src/network/SpeechProtocol.js';
 import { loadPrivateSpeechProvider } from './SpeechProvider.mjs';
 
@@ -34,21 +34,24 @@ export async function createOnlineServer({ root = resolve('dist'), host = '127.0
 			const url = new URL(request.url, 'http://localhost');
 			const origin = new URL(request.headers.origin);
 			if (url.pathname !== '/ws' || origin.host !== request.headers.host || !['http:', 'https:'].includes(origin.protocol)) throw new Error('Bad origin');
-			const room = url.searchParams.get('room'), role = url.searchParams.get('role');
-			if (!ROOM.test(room || '') || !['loz', 'ed'].includes(role)) throw new Error('Bad room');
+			const room = url.searchParams.get('room'), requestedRole = url.searchParams.get('role'), hostKey = url.searchParams.get('hostKey');
+			if (!ROOM.test(room || '') || !['loz', 'ed', 'guest'].includes(requestedRole) || (requestedRole === 'loz' && !ROOM.test(hostKey || ''))) throw new Error('Bad room');
 			wss.handleUpgrade(request, socket, head, (client) => {
 				let peers = rooms.get(room);
 				if (!peers) { if (rooms.size >= 500) { client.close(1013, 'Server full'); return; } peers = new Map(); peers.speechIds = new Set(); peers.lastSpeech = new Map(); peers.speechQueue = Promise.resolve(); rooms.set(room, peers); }
-				if (peers.has(role)) { client.close(1008, 'Role already taken'); return; }
+				if (requestedRole === 'loz' && peers.hostKey && peers.hostKey !== hostKey) { client.close(1008, 'Host key rejected'); return; }
+				const role = requestedRole === 'guest' ? ONLINE_ROLES.slice(1).find((slot) => !peers.has(slot)) : requestedRole;
+				if (!role || peers.has(role) || peers.size >= MAX_ROOM_PLAYERS) { client.close(1008, 'Room full or role taken'); return; }
+				if (role === 'loz') peers.hostKey = hostKey;
 				peers.set(role, client);
 				let nodeId = null, windowStart = Date.now(), sent = 0;
-				const otherRole = role === 'loz' ? 'ed' : 'loz';
 				const broadcast = (packet) => {
 					const data = JSON.stringify(packet);
 					for (const peer of peers.values()) if (peer.readyState === WebSocket.OPEN) peer.send(data);
 				};
+				client.send(JSON.stringify({ type: 'welcome', role, playerId: PLAYER_IDS[role], capacity: MAX_ROOM_PLAYERS }));
 				const notify = () => {
-					broadcast({ type: 'peer-status', connected: peers.has('loz') && peers.has('ed') });
+					broadcast({ type: 'peer-status', connected: peers.size > 1, count: peers.size, capacity: MAX_ROOM_PLAYERS, roles: [...peers.keys()] });
 				};
 				notify();
 				client.on('message', (bytes) => {
@@ -59,13 +62,13 @@ export async function createOnlineServer({ root = resolve('dist'), host = '127.0
 						const packet = JSON.parse(bytes.toString());
 						if (packet.type === 'state') {
 							const state = validateState(packet.state);
-							if (state.playerId !== PLAYER_IDS[role] || (role === 'ed' && state.mode === 'boat') || (nodeId && nodeId !== state.nodeId)) return;
+							if (state.playerId !== PLAYER_IDS[role] || (role !== 'loz' && state.mode === 'boat') || (nodeId && nodeId !== state.nodeId)) return;
 							nodeId ||= state.nodeId;
-							const peer = peers.get(otherRole);
-							if (peer?.readyState === WebSocket.OPEN) peer.send(JSON.stringify({ type: 'state', state }));
+							const data = JSON.stringify({ type: 'state', state });
+							for (const peer of peers.values()) if (peer !== client && peer.readyState === WebSocket.OPEN) peer.send(data);
 						} else if (packet.type === 'speech') {
 							const event = validateSpeechEvent(packet.event);
-							if (!nodeId || event.nodeId !== nodeId || event.speakerPlayerId !== PLAYER_IDS[role] || !peers.has(otherRole)) return;
+							if (!nodeId || event.nodeId !== nodeId || event.speakerPlayerId !== PLAYER_IDS[role] || peers.size < 2) return;
 							if (peers.speechIds.has(event.messageId) || now - (peers.lastSpeech.get(role) || 0) < 1500) return;
 							peers.speechIds.add(event.messageId);
 							if (peers.speechIds.size > 128) peers.speechIds.delete(peers.speechIds.values().next().value);
@@ -89,7 +92,8 @@ export async function createOnlineServer({ root = resolve('dist'), host = '127.0
 				client.on('close', () => {
 					if (peers.get(role) !== client) return;
 					peers.delete(role);
-					if (peers.size) notify(); else rooms.delete(room);
+					if (peers.size) { broadcast({ type: 'peer-left', role, playerId: PLAYER_IDS[role] }); notify(); }
+					else rooms.delete(room);
 				});
 			});
 		} catch { socket.write('HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n'); socket.destroy(); }

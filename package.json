@@ -7,7 +7,7 @@
     "preview": "vite preview",
     "online": "node tools/networking/online-server.mjs",
     "test": "node test/game-logic.mjs && node test/cave-system.mjs && node test/monorail-route.mjs && node test/engine-smoke.mjs",
-    "test:network": "node --test test/network-foundation.mjs test/network-player.mjs test/federation.mjs test/online-room.mjs test/network-speech.mjs",
+    "test:network": "node --test test/network-foundation.mjs test/network-player.mjs test/federation.mjs test/online-room.mjs test/ten-player-room.mjs test/network-speech.mjs",
     "world:export": "node tools/blender/export-terrain.mjs artifacts/world"
   },
   "devDependencies": {

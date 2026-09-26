@@ -13,7 +13,7 @@ const waitFor = (ws, predicate) => new Promise((resolve, reject) => {
 	ws.on('message', receive);
 });
 const connect = (base, room, role) => new Promise((resolve, reject) => {
-	const ws = new WebSocket(`${base.replace('http', 'ws')}/ws?room=${room}&role=${role}`, { origin: base });
+	const ws = new WebSocket(`${base.replace('http', 'ws')}/ws?room=${room}&role=${role}${role === 'loz' ? `&hostKey=${'d'.repeat(32)}` : ''}`, { origin: base });
 	ws.once('open', () => resolve(ws)); ws.once('error', reject);
 });
 

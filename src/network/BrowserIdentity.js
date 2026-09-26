@@ -14,8 +14,10 @@ function fromStore(db, method, key, value) {
 		request.onerror = () => reject(request.error);
 	});
 }
+import { ONLINE_ROLES } from './PlayerProtocol.js';
+
 export async function browserIdentity(role) {
-	if (!['loz', 'ed'].includes(role)) throw new Error('Invalid role');
+	if (!ONLINE_ROLES.includes(role)) throw new Error('Invalid role');
 	const db = await openDatabase();
 	try {
 		let pair = await fromStore(db, 'get', role);

@@ -1,13 +1,14 @@
 import { Vector3 } from '../engine/index.js';
 import { SpeechInbox } from './SpeechProtocol.js';
+import { roleLabel } from './PlayerProtocol.js';
 
-const nameOf = (id) => id === 'player:loz' ? 'Loz' : 'Ed';
+const nameOf = (id) => roleLabel(id.slice(7));
 
 export class SpeechPresentation {
-	constructor(app, playerId, remoteAvatar) {
+	constructor(app, playerId, getAvatar) {
 		this.app = app;
 		this.playerId = playerId;
-		this.remoteAvatar = remoteAvatar;
+		this.getAvatar = getAvatar;
 		this.inbox = new SpeechInbox();
 		this.messages = new Map();
 		this.metrics = [];
@@ -67,10 +68,10 @@ export class SpeechPresentation {
 			const item = { source, panner, speaker: packet.speakerPlayerId };
 			this.active.set(packet.messageId, item);
 			this.placeAudio(item);
-			source.onended = () => { this.active.delete(packet.messageId); this.remoteAvatar.speaking = [...this.active.values()].some((entry) => entry.speaker !== this.playerId); };
+			source.onended = () => { this.active.delete(packet.messageId); const avatar = this.getAvatar(item.speaker); if (avatar) avatar.speaking = [...this.active.values()].some((entry) => entry.speaker === item.speaker); };
 			message.status = 'speaking';
 			message.until = performance.now() + Math.max(5000, decoded.duration * 1000 + 800);
-			if (packet.speakerPlayerId !== this.playerId) this.remoteAvatar.speaking = true;
+			if (packet.speakerPlayerId !== this.playerId) { const avatar = this.getAvatar(packet.speakerPlayerId); if (avatar) avatar.speaking = true; }
 			const playedAt = performance.now();
 			source.start();
 			this.metrics.push({ messageId: packet.messageId, speakerPlayerId: packet.speakerPlayerId, synthesisMs: packet.synthesisMs, durationSeconds: decoded.duration, receivedToPlaybackMs: Math.round(playedAt - message.receivedAt), serverToPlaybackMs: Date.now() - message.acceptedAt });
@@ -86,7 +87,7 @@ export class SpeechPresentation {
 		listener.positionX.value = camera.position.x; listener.positionY.value = camera.position.y; listener.positionZ.value = camera.position.z;
 		listener.forwardX.value = direction.x; listener.forwardY.value = direction.y; listener.forwardZ.value = direction.z;
 		listener.upX.value = up.x; listener.upY.value = up.y; listener.upZ.value = up.z;
-		const pos = item.speaker === this.playerId ? this.app.player.position : this.remoteAvatar.group.getWorldPosition(new Vector3());
+		const pos = item.speaker === this.playerId ? this.app.player.position : this.getAvatar(item.speaker)?.group.getWorldPosition(new Vector3()) || this.app.player.position;
 		item.panner.positionX.value = pos.x; item.panner.positionY.value = pos.y + 1.5; item.panner.positionZ.value = pos.z;
 	}
 	update() {
@@ -97,8 +98,9 @@ export class SpeechPresentation {
 		else {
 			const caption = `${nameOf(latest.event.speakerPlayerId)}: ${latest.event.text}${latest.status === 'text only' ? ' (text only)' : ''}`;
 			this.subtitle.textContent = caption; this.subtitle.style.display = 'block';
-			if (latest.event.speakerPlayerId !== this.playerId && this.remoteAvatar.group.visible) {
-				const point = this.remoteAvatar.group.getWorldPosition(new Vector3()).add(new Vector3(0, 2, 0)).project(this.app.camera);
+			const avatar = this.getAvatar(latest.event.speakerPlayerId);
+			if (latest.event.speakerPlayerId !== this.playerId && avatar?.group.visible) {
+				const point = avatar.group.getWorldPosition(new Vector3()).add(new Vector3(0, 2, 0)).project(this.app.camera);
 				if (point.z > -1 && point.z < 1) {
 					this.bubble.textContent = latest.event.text;
 					this.bubble.style.left = `${(point.x + 1) * innerWidth / 2}px`;

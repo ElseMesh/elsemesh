@@ -4,7 +4,7 @@ import { browserIdentity } from './BrowserIdentity.js';
 import { LocalDemoTransport } from './LocalDemoTransport.js';
 import { BridgeTransport } from './BridgeTransport.js';
 import { OnlineRoomTransport } from './OnlineRoomTransport.js';
-import { makeState, PLAYER_IDS, RemoteState, SECTOR_ID } from './PlayerProtocol.js';
+import { makeState, PLAYER_IDS, RemoteState, SECTOR_ID, ONLINE_ROLES, roleLabel } from './PlayerProtocol.js';
 import { VideoEvidence } from './VideoEvidence.js';
 import { TalkUI } from './TalkUI.js';
 import { makeSpeechEvent } from './SpeechProtocol.js';
@@ -14,13 +14,14 @@ const shortId = (id) => id ? `${id.slice(0, 16)}…${id.slice(-6)}` : 'waiting';
 
 export class NetworkDemo {
 	static async create(app) {
-		const role = app.qs.get('role');
-		if (!['loz', 'ed'].includes(role)) throw new Error('Network demo role must be loz or ed');
 		const online = app.qs.get('demo') === 'online';
+		const requestedRole = app.qs.get('role');
+		if (!(online ? ['loz', 'ed', 'guest'] : ['loz', 'ed']).includes(requestedRole)) throw new Error('Invalid network role');
+		const transport = online ? new OnlineRoomTransport(app.qs.get('room') || '', requestedRole, app.qs.get('hostKey')) : null;
+		const role = online ? await transport.ready : requestedRole;
 		const bridge = !online && app.qs.get('transport') === 'bridge' ? await BridgeTransport.connect(role) : null;
 		const identity = bridge ? { nodeId: bridge.nodeId } : await browserIdentity(role);
-		const transport = online ? new OnlineRoomTransport(app.qs.get('room') || '', role) : bridge;
-		return new NetworkDemo(app, role, identity, transport, online);
+		return new NetworkDemo(app, role, identity, transport || bridge, online);
 	}
 	constructor(app, role, identity, transport = null, online = false) {
 		this.app = app; this.role = role; this.identity = identity;
@@ -28,6 +29,25 @@ export class NetworkDemo {
 		this.playerId = PLAYER_IDS[role]; this.sequence = 0; this.elapsed = 0;
 		this.transport = transport || new LocalDemoTransport(app.qs.get('session') || 'public-local', role);
 		this.physical = !!transport;
+		if (online) {
+			this.remotes = new Map();
+			this.transport.onState((state) => this.observeOnline(state));
+			this.transport.onPeerLeft((playerId) => this.removeOnline(playerId));
+			app.player.canDriveBoat = role === 'loz';
+			this.speech = new SpeechPresentation(app, this.playerId, (id) => this.remotes.get(id)?.avatar);
+			this.talk = new TalkUI(app.input, (text) => this.sendSpeech(text));
+			this.transport.onSpeech((event, acceptedAt) => this.speech.onSpeech(event, acceptedAt));
+			this.transport.onSpeechAudio((packet) => this.speech.onAudio(packet));
+			this.transport.onSpeechError((packet) => this.speech.onError(packet));
+			if (role !== 'loz') {
+				const slot = ONLINE_ROLES.indexOf(role) - 1;
+				const x = 53.6 + (slot % 3) * 2.5, z = -68.5 + Math.floor(slot / 3) * 2.5;
+				app.player.position.set(x, app.player.groundAt(x, z, 50), z);
+				app.player.yaw = 0;
+			}
+			this.#mountOverlay();
+			return;
+		}
 		this.remote = new RemoteState({ ownPlayerId: this.playerId, ownNodeId: identity.nodeId });
 		this.remotePrevious = null; this.remoteReceivedAt = 0; this.remoteMoved = false; this.localMoved = false;
 		this.transport.onState((state) => {
@@ -47,25 +67,60 @@ export class NetworkDemo {
 		}
 		this.remoteAvatar.group.name = `Remote_${role === 'loz' ? 'Ed' : 'Loz'}`;
 		this.remoteAvatar.group.visible = false;
-		if (online) {
-			app.player.canDriveBoat = role === 'loz';
-			this.speech = new SpeechPresentation(app, this.playerId, this.remoteAvatar);
-			this.talk = new TalkUI(app.input, (text) => this.sendSpeech(text));
-			this.transport.onSpeech((event, acceptedAt) => this.speech.onSpeech(event, acceptedAt));
-			this.transport.onSpeechAudio((packet) => this.speech.onAudio(packet));
-			this.transport.onSpeechError((packet) => this.speech.onError(packet));
-		}
 		if (role === 'ed') {
 			const player = app.player;
 			player.position.set(53.6, player.groundAt(53.6, -68.5, 50), -68.5);
 			player.yaw = 0;
-			if (!online) {
-				this.agent = new AgentInput(player);
-				this.agent.follow_player('player:loz');
-				player.input = this.agent;
-			}
+			this.agent = new AgentInput(player);
+			this.agent.follow_player('player:loz');
+			player.input = this.agent;
 		}
 		this.#mountOverlay();
+	}
+	observeOnline(state) {
+		try {
+			if (!Object.values(PLAYER_IDS).includes(state?.playerId) || state.playerId === this.playerId) return;
+			let entry = this.remotes.get(state.playerId);
+			if (!entry) {
+				const avatar = new PlayerAvatar(this.app.engine.scene, this.app.boatCtl);
+				avatar.group.name = `Remote_${roleLabel(state.playerId.slice(7))}`;
+				avatar.group.visible = false;
+				entry = { remote: new RemoteState({ ownPlayerId: this.playerId, ownNodeId: this.identity.nodeId }), avatar, previous: null, receivedAt: 0 };
+				this.remotes.set(state.playerId, entry);
+			}
+			const previous = entry.remote.state;
+			if (entry.remote.observe(state)) { entry.previous = previous; entry.receivedAt = performance.now(); }
+		} catch { /* Discard incompatible or hostile state. */ }
+	}
+	removeOnline(playerId) {
+		const entry = this.remotes.get(playerId);
+		if (!entry) return;
+		entry.avatar.group.parent?.remove(entry.avatar.group);
+		entry.avatar.group.traverse((part) => part.geometry?.dispose?.());
+		this.remotes.delete(playerId);
+	}
+	updateOnline(dt) {
+		const now = performance.now();
+		const host = this.remotes.get(PLAYER_IDS.loz);
+		if (this.role !== 'loz') {
+			if (host && now - host.receivedAt < 1500 && host.remote.state?.boat) this.lastHostBoat = host.remote.state.boat;
+			this.app.boatCtl.networkReplica = this.lastHostBoat ? { ...this.lastHostBoat, driven: !!host && now - host.receivedAt < 1500 && this.lastHostBoat.driven } : null;
+		}
+		this.elapsed += dt;
+		if (this.elapsed >= 0.1) {
+			this.elapsed = 0;
+			const state = makeState({ playerId: this.playerId, nodeId: this.identity.nodeId, sequence: this.sequence++, player: this.app.player, boat: this.role === 'loz' ? this.app.boatCtl : null });
+			this.transport.send(state);
+		}
+		for (const entry of this.remotes.values()) {
+			if (now - entry.receivedAt >= 1500 || !entry.remote.state) { entry.avatar.group.visible = false; entry.avatar.speaking = false; continue; }
+			const pose = entry.remote.interpolated(entry.previous, (now - entry.receivedAt) / 100);
+			entry.avatar.cinematic = { x: pose.position[0], y: pose.position[1], z: pose.position[2], yaw: pose.yaw + Math.PI, walk: pose.moving, mode: pose.mode, deckLocal: pose.deckLocal, deckYaw: pose.yaw - (this.app.boatCtl.getYaw() + Math.PI) };
+			entry.avatar.update(dt, this.app.player, this.app.camera, this.app.freeCam);
+		}
+		this.speech.update();
+		const visiblePeers = [...this.remotes.values()].filter((entry) => now - entry.receivedAt < 1500).length;
+		this.overlay.innerHTML = `<strong>${roleLabel(this.role)} — ONLINE</strong><br>${escapeStatus(this.transport.status)}<br>${visiblePeers} other player${visiblePeers === 1 ? '' : 's'} in view<br>T talk · ${this.role === 'loz' ? 'boat helm' : 'boat passenger'}`;
 	}
 	openTalk() { return this.talk?.show() ?? false; }
 	sendSpeech(text) {
@@ -80,21 +135,13 @@ export class NetworkDemo {
 		document.body.append(el); this.overlay = el;
 	}
 	update(dt) {
+		if (this.online) return this.updateOnline(dt);
 		const player = this.app.player;
-		if (this.online && !this.transport.connected && this.remote.state) {
-			this.remote = new RemoteState({ ownPlayerId: this.playerId, ownNodeId: this.identity.nodeId });
-			this.remotePrevious = null;
-			this.remoteMoved = false;
-		}
 		this.localMoved ||= player.velocity.lengthSq() > 0.12;
-		if (this.online && this.role === 'ed') {
-			const hostBoat = this.remote.state?.boat;
-			this.app.boatCtl.networkReplica = this.transport.connected && performance.now() - this.remoteReceivedAt < 1500 ? hostBoat || null : null;
-		}
 		this.elapsed += dt;
 		if (this.elapsed >= 0.1) {
 			this.elapsed = 0;
-			const state = makeState({ playerId: this.playerId, nodeId: this.identity.nodeId, sequence: this.sequence++, player, boat: this.online && this.role === 'loz' ? this.app.boatCtl : null, observedRemoteSequence: this.remote.state?.sequence ?? -1 });
+			const state = makeState({ playerId: this.playerId, nodeId: this.identity.nodeId, sequence: this.sequence++, player, observedRemoteSequence: this.remote.state?.sequence ?? -1 });
 			this.remote.markSent(state.sequence);
 			this.transport.send(state);
 		}
@@ -115,13 +162,8 @@ export class NetworkDemo {
 		if (verified && this.video && !this.video.started) this.video.start();
 		const authority = this.role === 'loz' ? this.identity.nodeId : received?.nodeId;
 		const distance = received ? Math.hypot(received.position[0] - player.position.x, received.position[2] - player.position.z) : null;
-		this.speech?.update();
-		this.overlay.innerHTML = this.online
-			? `<strong>${roleLabel(this.role)} — ONLINE</strong><br>${escapeStatus(this.transport.status)}<br>${connected ? `Friend ${distance?.toFixed(1) ?? '—'} m away` : 'Share the invite link to play together'}<br>${verified ? 'Both players moving' : 'World movement is shared'}<br>T talk · ${this.role === 'loz' ? 'boat helm' : 'boat passenger'}`
-			: `<strong>${this.role.toUpperCase()} — ${this.role === 'loz' ? 'HUMAN' : 'AI'}</strong><br>Player ${this.playerId}<br>Node ${shortId(this.identity.nodeId)}<br>Sector ${SECTOR_ID}<br>Authority ${shortId(authority)}<br>${this.physical ? 'TWO PHYSICAL NODES' : 'LOCAL TWO-NODE DEMO'} · ${connected ? 'DIRECT' : 'WAITING'}<br>Protocol bh.player-state/1<br>RTT unavailable · loss unavailable<br>${verified ? '<strong style="color:#8dffad">NETWORK VERIFIED</strong>' : 'Awaiting bidirectional movement'}${this.agent ? `<br>AGENT ACTION: ${this.agent.command.tool}(${this.agent.command.playerId || ''})<br>Distance ${distance?.toFixed(1) ?? '—'} m` : ''}`;
+		this.overlay.innerHTML = `<strong>${this.role.toUpperCase()} — ${this.role === 'loz' ? 'HUMAN' : 'AI'}</strong><br>Player ${this.playerId}<br>Node ${shortId(this.identity.nodeId)}<br>Sector ${SECTOR_ID}<br>Authority ${shortId(authority)}<br>${this.physical ? 'TWO PHYSICAL NODES' : 'LOCAL TWO-NODE DEMO'} · ${connected ? 'DIRECT' : 'WAITING'}<br>Protocol bh.player-state/1<br>RTT unavailable · loss unavailable<br>${verified ? '<strong style="color:#8dffad">NETWORK VERIFIED</strong>' : 'Awaiting bidirectional movement'}${this.agent ? `<br>AGENT ACTION: ${this.agent.command.tool}(${this.agent.command.playerId || ''})<br>Distance ${distance?.toFixed(1) ?? '—'} m` : ''}`;
 		window.parent?.postMessage({ type: 'bh-network-demo-status', role: this.role, verified, connected, localNodeId: this.identity.nodeId, remoteNodeId: received?.nodeId, localSequence: this.sequence - 1, remoteSequence: received?.sequence ?? -1 }, location.origin);
 	}
 }
-
-const roleLabel = (role) => role === 'loz' ? 'HOST' : 'GUEST';
 const escapeStatus = (value) => String(value).replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);

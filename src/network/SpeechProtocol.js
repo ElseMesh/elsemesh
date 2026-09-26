@@ -1,8 +1,8 @@
-import { PLAYER_IDS } from './PlayerProtocol.js';
+import { ONLINE_ROLES, PLAYER_IDS } from './PlayerProtocol.js';
 
 export const SPEECH_PROTOCOL = 'bh.character-speech/1';
 export const MAX_SPEECH_LENGTH = 180;
-export const VOICE_PROFILES = Object.freeze({ loz: 'loz-omnivoice', ed: 'ed-text' });
+export const VOICE_PROFILES = Object.freeze(Object.fromEntries(ONLINE_ROLES.map((role) => [role, role === 'loz' ? 'loz-omnivoice' : 'guest-text'])));
 
 export function cleanSpeechText(value) {
 	if (typeof value !== 'string') return '';

@@ -11,22 +11,23 @@
 </head>
 <body><main>
   <h1>Burning Horizons</h1>
-  <p>Explore the same island with one friend. See each other on the radar, talk with T, and ride the same boat while the host drives.</p>
+  <p>Explore the same island with up to nine friends. See each other on the radar, talk with T, and ride the same boat while the host drives.</p>
   <div id="home"><button id="host">Create private room</button><button class="secondary" id="show-join">Join a friend</button></div>
-  <div id="host-panel"><p><strong>Room created.</strong> Send this invitation to your friend, then start your game.</p><label for="invite">Friend invitation</label><input id="invite" readonly><button id="copy">Copy invitation</button><a class="button" id="start" href="#">Start playing</a><p class="hint">Anyone with the invitation can join as the second player. Rooms close when both players leave.</p></div>
+  <div id="host-panel"><p><strong>Room created.</strong> Send this invitation to up to nine friends, then start your game.</p><label for="invite">Friend invitation</label><input id="invite" readonly><button id="copy">Copy invitation</button><a class="button" id="start" href="#">Start playing</a><p class="hint">Anyone with the invitation can take an available guest slot. Rooms close when everyone leaves.</p></div>
   <div id="join-panel"><label for="room">Invitation link or room code</label><input id="room" autocomplete="off" spellcheck="false"><button id="join">Join game</button><p id="error" role="alert"></p></div>
-  <p class="hint">Press T to type and Enter to send. Click “Enable friend voice” in-game to hear supported speech. Voice falls back to text when unavailable. Rooms currently hold two players; solo play is available from the main game.</p>
+  <p class="hint">Press T to type and Enter to send. Click “Enable friend voice” in-game to hear supported speech. Voice falls back to text when unavailable. Rooms hold up to ten players; solo play is available from the main game.</p>
 </main>
 <script type="module">
   const $ = (id) => document.getElementById(id);
   const roomPattern = /^[a-f0-9]{32}$/;
-  const hostGame = (room) => `./index.html?demo=online&role=loz&room=${room}`;
-  const guestGame = (room) => `./index.html?demo=online&role=ed&room=${room}`;
+  const hostGame = (room, hostKey) => `./index.html?demo=online&role=loz&room=${room}&hostKey=${hostKey}`;
+  const guestGame = (room) => `./index.html?demo=online&role=guest&room=${room}`;
   const invitation = (room) => new URL(`./play-online.html?join=${room}`, location.href).href;
   $('host').onclick = () => {
     const room = crypto.randomUUID().replaceAll('-', '');
+    const hostKey = crypto.randomUUID().replaceAll('-', '');
     $('home').hidden = true; $('host-panel').style.display = 'block';
-    $('invite').value = invitation(room); $('start').href = hostGame(room);
+    $('invite').value = invitation(room); $('start').href = hostGame(room, hostKey);
   };
   $('copy').onclick = async () => {
     try { await navigator.clipboard.writeText($('invite').value); $('copy').textContent = 'Copied'; }

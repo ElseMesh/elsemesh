@@ -243,6 +243,8 @@ export function addBoatLights( lights, boat ) {
 	const obj = boat.group;
 	const sternY = L.sheerY( 0 ) + 0.1;
 	const defs = [
+		{ p: [ - 0.62, 2.57, 1.13 ], color: [ 1.0, 0.92, 0.74 ], intensity: 260, range: 80, kind: 'boatHeadlight', direction: [ 0, - 0.16, 1 ], cosInner: 0.975, cosOuter: 0.87 },
+		{ p: [ 0.62, 2.57, 1.13 ], color: [ 1.0, 0.92, 0.74 ], intensity: 260, range: 80, kind: 'boatHeadlight', direction: [ 0, - 0.16, 1 ], cosInner: 0.975, cosOuter: 0.87 },
 		{ p: [ 0, 2.24, 0.42 ], color: [ 1.0, 0.84, 0.62 ], intensity: 0.9, range: 5.5, kind: 'boatDome' },
 		{ p: [ - 0.45, 1.5, 1.12 ], color: [ 0.45, 0.75, 1.0 ], intensity: 0.12, range: 2.2, kind: 'boatInstruments' },
 		{ p: [ 0.47, 3.45, - 0.47 ], color: [ 1.0, 0.06, 0.03 ], intensity: 1.4, range: 8, kind: 'boatNav', side: [ 1, 0, 0 ] },
@@ -254,10 +256,10 @@ export function addBoatLights( lights, boat ) {
 	for ( const d of defs ) {
 
 		const local = new THREE.Vector3( ...d.p );
-		const localDir = d.side ? new THREE.Vector3( ...d.side ) : null;
+		const localDir = d.direction || d.side ? new THREE.Vector3( ...( d.direction || d.side ) ).normalize() : null;
 		const src = {
 			position: new THREE.Vector3(), color: new THREE.Color( ...d.color ), intensity: d.intensity, range: d.range, kind: d.kind,
-			dir: localDir ? new THREE.Vector3() : null, cosInner: localDir ? 0.25 : undefined, cosOuter: localDir ? - 0.2 : undefined,
+			dir: localDir ? new THREE.Vector3() : null, cosInner: d.cosInner ?? ( localDir ? 0.25 : undefined ), cosOuter: d.cosOuter ?? ( localDir ? - 0.2 : undefined ),
 			update() {
 
 				obj.updateWorldMatrix( true, false );

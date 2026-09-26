@@ -1,6 +1,9 @@
 export const WORLD_ID = 'bh:burning-horizons';
 export const SECTOR_ID = 'bh:ISLAND-01';
-export const PLAYER_IDS = Object.freeze({ loz: 'player:loz', ed: 'player:ed' });
+export const ONLINE_ROLES = Object.freeze(['loz', 'ed', ...Array.from({ length: 8 }, (_, i) => `guest${i + 2}`)]);
+export const PLAYER_IDS = Object.freeze(Object.fromEntries(ONLINE_ROLES.map((role) => [role, `player:${role}`])));
+export const MAX_ROOM_PLAYERS = ONLINE_ROLES.length;
+export const roleLabel = (role) => role === 'loz' ? 'Loz' : role === 'ed' ? 'Player 2' : `Player ${Number(role.slice(5)) + 1}`;
 export const PLAYER_PROTOCOL = 'bh.player-state/1';
 
 export function makeState({ playerId, nodeId, sequence, player, boat = null, observedRemoteSequence = -1 }) {

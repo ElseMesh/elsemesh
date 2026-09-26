@@ -1001,19 +1001,22 @@ function buildRoofGear( kit, L, parts ) {
 	kit.add( 'fittings', ped, { color: 0xf3f2ee, rough: 0.4 } );
 	parts.radarPivot = V( 0, yr + 0.3, pz );
 
-	// spotlight and horn on the front of the roof
-	const sx = 0.42, szz = 1.05, syy = roofTopY( 0.42 );
-	kit.add( 'fittings', rod( V( sx, syy, szz ), V( sx, syy + 0.1, szz ), 0.03, 10 ), BLACK_PLASTIC );
-	const head = cylinder( 0.065, 0.06, 0.15, 16 );
-	head.applyMatrix4( mat4( sx, syy + 0.17, szz, Math.PI / 2, 0, 0 ) );
-	kit.add( 'fittings', head, STAINLESS );
-	const sl = new CircleGeometry( 0.058, 16 );
-	sl.translate( sx, syy + 0.17, szz + 0.0755 );
-	kit.add( 'glow', sl, { color: 0xfff1d6, rough: 0.2, pattern: 4 } );
+	// paired forward searchlights, clear of the horn and mast
+	const sx = 0.62, szz = 1.05, syy = roofTopY( sx );
+	for ( const side of [ - 1, 1 ] ) {
+		const x = side * sx;
+		kit.add( 'fittings', rod( V( x, syy, szz ), V( x, syy + 0.1, szz ), 0.03, 10 ), BLACK_PLASTIC );
+		const head = cylinder( 0.065, 0.06, 0.15, 16 );
+		head.applyMatrix4( mat4( x, syy + 0.17, szz, Math.PI / 2, 0, 0 ) );
+		kit.add( 'fittings', head, STAINLESS );
+		const sl = new CircleGeometry( 0.058, 16 );
+		sl.translate( x, syy + 0.17, szz + 0.0755 );
+		kit.add( 'glow', sl, { color: 0xfff1d6, rough: 0.2, pattern: 4 } );
+	}
 	const horn = lathe( [ [ 0.0, 0 ], [ 0.018, 0.0 ], [ 0.016, 0.1 ], [ 0.024, 0.17 ], [ 0.05, 0.22 ], [ 0.046, 0.222 ], [ 0.0, 0.2 ] ], 16 );
-	horn.applyMatrix4( mat4( - sx, roofTopY( 0.42 ) + 0.07, szz - 0.12, Math.PI / 2, 0, 0 ) );
+	horn.applyMatrix4( mat4( 0, roofTopY( 0 ) + 0.07, szz - 0.12, Math.PI / 2, 0, 0 ) );
 	kit.add( 'fittings', horn, STAINLESS );
-	kit.add( 'fittings', rod( V( - sx, roofTopY( 0.42 ), szz ), V( - sx, roofTopY( 0.42 ) + 0.07, szz ), 0.012, 6 ), STAINLESS );
+	kit.add( 'fittings', rod( V( 0, roofTopY( 0 ), szz ), V( 0, roofTopY( 0 ) + 0.07, szz ), 0.012, 6 ), STAINLESS );
 
 	// the owner's buoy colours displayed on the roof
 	const bx = 0.62, bz = - 0.72;

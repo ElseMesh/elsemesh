@@ -5,6 +5,7 @@ import { makeState } from '../../src/network/PlayerProtocol.js';
 const origin = process.argv[2];
 if (!origin || !/^https?:\/\//.test(origin)) throw new Error('Usage: node tools/networking/probe-online.mjs https://game-host');
 const room = randomUUID().replaceAll('-', '');
+const hostKey = randomUUID().replaceAll('-', '');
 const base = new URL(origin);
 base.protocol = base.protocol === 'https:' ? 'wss:' : 'ws:';
 base.pathname = '/ws';
@@ -21,6 +22,7 @@ const awaitPacket = (socket, match) => new Promise((resolve, reject) => {
 const connect = (role) => new Promise((resolve, reject) => {
 	const url = new URL(base);
 	url.searchParams.set('room', room); url.searchParams.set('role', role);
+	if (role === 'loz') url.searchParams.set('hostKey', hostKey);
 	const socket = new WebSocket(url, { origin }); sockets.push(socket);
 	socket.once('open', () => resolve(socket)); socket.once('error', reject);
 });

@@ -1,6 +1,7 @@
 import { WORLD } from '../world/WorldLayout.js';
 import { STAND } from './FishStand.js';
 import { CHANDLERY } from './Chandlery.js';
+import { ONLINE_ROLES, PLAYER_IDS } from '../network/PlayerProtocol.js';
 
 // Minimap, lower right: the island baked once from the terrain data into a 2D canvas (depth-tinted
 // sea, reef and seagrass, sand, grass and forest by height, rock, paths, village pads, the pier,
@@ -124,12 +125,13 @@ export class Minimap {
 		};
 
 		this.markers = [
-			{ id: 'friend', ...mk( 'friend', `<span aria-hidden="true">${ game.app.qs.get( 'role' ) === 'ed' ? 'L' : 'E' }</span>` ), pos: () => {
+			...ONLINE_ROLES.map( ( role, index ) => ( { id: `player-${ role }`, ...mk( 'friend', `<span aria-hidden="true">${ index ? index + 1 : 'L' }</span>` ), pos: () => {
 				const network = game.app.networkDemo;
-				const state = network?.remote.state;
-				return network?.online && network.transport.connected && state && performance.now() - network.remoteReceivedAt < 1500
-					? { x: state.position[ 0 ], z: state.position[ 2 ] } : null;
-			} },
+				if ( ! network?.online || network.playerId === PLAYER_IDS[ role ] ) return null;
+				const entry = network.remotes.get( PLAYER_IDS[ role ] );
+				const state = entry?.remote.state;
+				return state && performance.now() - entry.receivedAt < 1500 ? { x: state.position[ 0 ], z: state.position[ 2 ] } : null;
+			} } ) ),
 			{ id: 'joe', ...mk( 'joe', ICON.fish ), pos: () => ( { x: STAND.x, z: STAND.z } ) },
 			{ id: 'marta', ...mk( 'marta', ICON.anchor ), pos: () => ( { x: CHANDLERY.x, z: CHANDLERY.z } ) },
 			{ id: 'boat', ...mk( 'boat', ICON.boat ), pos: () => {

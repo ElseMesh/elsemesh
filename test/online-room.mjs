@@ -26,7 +26,7 @@ test('two human clients exchange room state; a third room stays isolated', async
 	const room = 'a'.repeat(32), other = 'b'.repeat(32);
 	const sockets = [];
 	try {
-		const host = await open(`${origin.replace('http', 'ws')}/ws?room=${room}&role=loz`, origin); sockets.push(host);
+		const host = await open(`${origin.replace('http', 'ws')}/ws?room=${room}&role=loz&hostKey=${'d'.repeat(32)}`, origin); sockets.push(host);
 		const hostStatus = receive(host, (p) => p.type === 'peer-status' && p.connected);
 		const guest = await open(`${origin.replace('http', 'ws')}/ws?room=${room}&role=ed`, origin); sockets.push(guest);
 		await hostStatus;

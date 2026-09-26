@@ -1,4 +1,5 @@
 import { Material, ShaderModule, G } from '../engine/webgpu.js';
+import { Vector4 } from '../engine/index.js';
 import { commonModule } from '../engine/render/wgsl/common.js';
 import { whaleWaterModule } from './WhaleWater.js';
 import { REFRACTION_GUARD } from './RefractionPass.js';
@@ -69,6 +70,8 @@ export class WaterMaterial extends Material {
 				vShoreFoam: 'f32', vSurfMask: 'vec2f',
 			},
 			uniforms: {
+				boatBeamPos: [ 'vec4f', new Vector4() ], // xyz and dusk strength
+				boatBeamDir: [ 'vec4f', new Vector4( 0, - 0.16, 1, 0 ) ], // direction and range
 				backscatter: [ 'f32', 0.035 ],
 				sss: [ 'f32', 1.0 ],
 				refraction: [ 'f32', 0.06 ],
@@ -590,6 +593,15 @@ ${ SF ? '		let foamLit = surfFoamLight( surf.foamInfo, N, L, V, sunLight, pos );
 	// debug views: 1 = back faces red, 2 = normals, 3 = foam, 7 = the seabed seen through, 12 = its source
 	let dbg = mat.debugMode;
 	var res = min( outCol, vec3f( 16000.0 ) );
+	// Searchlight spill on the sea makes the approach visible without illuminating the whole bay.
+	if ( in.front && mat.boatBeamPos.w > 0.001 ) {
+		let beam = pos - mat.boatBeamPos.xyz;
+		let d2 = dot( beam, beam );
+		let cd = dot( beam * inverseSqrt( max( d2, 1e-4 ) ), normalize( mat.boatBeamDir.xyz ) );
+		let cone = smoothstep( 0.84, 0.97, cd );
+		let range = 1.0 - smoothstep( 40.0, mat.boatBeamDir.w, sqrt( d2 ) );
+		res += vec3f( 1.0, 0.91, 0.7 ) * ( mat.boatBeamPos.w * cone * range * 90.0 / ( d2 + 18.0 ) ) * ( 0.45 + 0.55 * foam );
+	}
 	if ( dbg == 1 ) {
 		res = select( vec3f( 50.0, 0.0, 0.0 ), res, in.front );
 	} else if ( dbg == 2 ) {
