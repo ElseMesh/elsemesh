@@ -1,6 +1,6 @@
 # Two-player online rooms
 
-The online room is a separate, opt-in game mode. It does not change solo play or the local Loz/Ed AI demonstration. Two browsers on different computers connect to one HTTPS origin; its WebSocket server relays validated `bh.player-state/1` messages between one host and one guest. Browser identities remain distinct. The random 128-bit room code is the invitation secret.
+The online room is a separate, opt-in game mode. It does not change solo play or the local Loz/Ed AI demonstration. Two browsers on different computers connect to one HTTPS origin; its WebSocket server relays validated `bh.player-state/1` and `bh.character-speech/1` messages between one host and one guest. Browser identities remain distinct. The random 128-bit room code is the invitation secret. The current room limit is two; [the multi-player node guide](multi-player-nodes.md) details the work needed for three or more.
 
 ## Play
 
@@ -21,4 +21,4 @@ On hpubuntu, the isolated checkout is `/home/loz/burning-horizons-online`, the u
 
 ## Current gameplay boundary
 
-Both people control a human player and see each other's position and walking motion in the same island world. Their clients still run independent boat physics, inventory, fish, combat effects, interactables, time settings and monorail state. Those systems are not yet cooperative or server-authoritative. This is a playable two-person presence mode, not a completed shared-world game or federated handoff. Room possession grants access to the vacant role; share the invitation only with the intended friend.
+Both people control a human player and see each other's position, walking motion and radar marker in the same island world. Press **T** to type; accepted text appears in both clients. The private server can synthesize Loz's accepted OmniVoice profile when its separate worker is healthy. Browser audio needs an **Enable friend voice** click. Ed currently has text only. The host owns boat physics and is the only driver; the guest can board and move on deck. Inventory, fish, combat effects, interactables, time settings and monorail state remain independent per client. Those systems are not yet cooperative or server-authoritative. This is a playable two-person presence mode, not a completed shared-world game or federated handoff. Room possession grants access to the vacant role; share the invitation only with the intended friend.

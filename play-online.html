@@ -11,11 +11,11 @@
 </head>
 <body><main>
   <h1>Burning Horizons</h1>
-  <p>Explore the same island with one friend. Each of you controls a separate character in your own browser.</p>
+  <p>Explore the same island with one friend. See each other on the radar, talk with T, and ride the same boat while the host drives.</p>
   <div id="home"><button id="host">Create private room</button><button class="secondary" id="show-join">Join a friend</button></div>
   <div id="host-panel"><p><strong>Room created.</strong> Send this invitation to your friend, then start your game.</p><label for="invite">Friend invitation</label><input id="invite" readonly><button id="copy">Copy invitation</button><a class="button" id="start" href="#">Start playing</a><p class="hint">Anyone with the invitation can join as the second player. Rooms close when both players leave.</p></div>
   <div id="join-panel"><label for="room">Invitation link or room code</label><input id="room" autocomplete="off" spellcheck="false"><button id="join">Join game</button><p id="error" role="alert"></p></div>
-  <p class="hint">This early two-player mode shares character movement. Solo play is still available from the main game.</p>
+  <p class="hint">Press T to type and Enter to send. Click “Enable friend voice” in-game to hear supported speech. Voice falls back to text when unavailable. Rooms currently hold two players; solo play is available from the main game.</p>
 </main>
 <script type="module">
   const $ = (id) => document.getElementById(id);
