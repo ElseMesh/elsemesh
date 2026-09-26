@@ -330,6 +330,11 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 		this.surface.wake = this.wake;
 		this.player = new Player( { camera, input: this.input, terrain: this.terrainData, colliders: this.colliders, query: this.query, boat: this.boatCtl, reef: this.reef, spray: this.spray, cave: this.caves, transit: this.monorail } );
 		this.avatar = new PlayerAvatar( scene, this.boatCtl );
+		try {
+			await this.avatar.loadScanned(((import.meta.env && import.meta.env.BASE_URL) || '/') + 'models/characters/scanned-explorer.glb');
+		} catch (error) {
+			console.warn('Scanned explorer failed to load; retaining the existing avatar', error);
+		}
 		this.monorail.restorePlayer( this.player );
 		this.pistol = new SurvivalPistol( scene );
 		// birds, beach crabs, sanderlings (after spray / query / boat, which they use)

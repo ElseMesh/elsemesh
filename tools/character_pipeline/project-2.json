@@ -1,0 +1,9 @@
+{
+  "target_height_m": 1.78,
+  "rotate_z_degrees": -90,
+  "target_triangles": 80000,
+  "texture_size": 2048,
+  "remove_components": [
+    {"rank": 2, "expected_faces": 706}
+  ]
+}

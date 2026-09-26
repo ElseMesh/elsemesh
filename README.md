@@ -1,5 +1,10 @@
 # Burning Horizons — Island Mystery
 
+The first scanned playable character is integrated through the reusable
+[KIRI character pipeline](tools/character_pipeline/README.md); see the
+[asset report](docs/SCANNED-CHARACTER.md) for source preservation, measured
+optimisation, rigging limits and verification.
+
 **Burning Horizons is an island mystery to explore and solve.** Arrive on a remote island, uncover a hidden cave, ride a concealed monorail beneath the sea, and follow an expedition's trail to a second island. Fishing is part of survival: keep a catch in the cooler and prepare it when hunger rises.
 
 ![The island at golden hour](docs/screenshot.jpg)

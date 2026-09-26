@@ -1,6 +1,8 @@
 import { BoxGeometry, CylinderGeometry, Group, Mesh, SphereGeometry, Vector3 } from '../engine/index.js';
 import { standard } from '../materials/Materials.js';
 import { HOUSE } from '../world/boat/Wheelhouse.js';
+import { loadGLB } from '../engine/loaders/GLTF.js';
+import { SkinnedModel } from '../engine/render/Skinning.js';
 
 const cloth = standard({ name: 'Explorer_orange_jacket', color: 0xc86624, roughness: 0.9, emissive: 0x542307, emissiveIntensity: 0.16 });
 const vest = standard({ name: 'Explorer_life_vest', color: 0xe8962b, roughness: 0.78, emissive: 0x51300a, emissiveIntensity: 0.2 });
@@ -93,9 +95,26 @@ export class PlayerAvatar {
 				hand.x, hand.y, hand.z);
 		}
 		this.cinematic = null;
+		this.scanned = null;
+		this.proceduralParts = [...this.group.children];
 		this.clock = 0;
 		this._parent = null;
 		this._place(scene);
+	}
+
+	async loadScanned(url) {
+		const gltf = await loadGLB(url);
+		if (!gltf.skins.length) throw new Error('Scanned explorer GLB has no skin');
+		const model = await SkinnedModel.create(gltf);
+		for (const clip of ['idle', 'walk', 'run', 'helm']) {
+			if (!model.clipNames().includes(clip)) throw new Error(`Scanned explorer is missing ${clip}`);
+		}
+		model.group.name = 'KIRI_scanned_explorer';
+		this.group.add(model.group);
+		model.play('idle', { fade: 0.01 });
+		model.update(0);
+		this.scanned = model;
+		return this;
 	}
 
 	_place(parent) {
@@ -143,5 +162,12 @@ export class PlayerAvatar {
 		this.arms[1].rotation.x = gait * 0.7;
 		const close = !freeCam && camera.position.distanceTo(this.group.getWorldPosition(new Vector3())) < 1.1;
 		this.group.visible = !close;
+		if (this.scanned) {
+			for (const child of this.proceduralParts) child.visible = false;
+			const speed = aboard ? player.deckVel?.length?.() ?? 0 : player.velocity?.length?.() ?? 0;
+			const clip = atHelm ? 'helm' : moving ? (speed > 4.3 ? 'run' : 'walk') : 'idle';
+			if (this.scanned.current !== clip) this.scanned.play(clip, { fade: 0.18, speed: clip === 'run' ? 1.1 : 1 });
+			this.scanned.update(dt);
+		}
 	}
 }
