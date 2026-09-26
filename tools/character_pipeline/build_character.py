@@ -23,7 +23,10 @@ def arguments():
     if len(values) != 3:
         raise SystemExit("Expected SOURCE CONFIG OUTPUT_DIR")
     source = Path(values[0]).resolve(strict=True)
-    config = json.loads(Path(values[1]).resolve(strict=True).read_text(encoding="utf-8"))
+    config_path = Path(values[1]).resolve(strict=True)
+    config = json.loads(config_path.read_text(encoding="utf-8"))
+    if config.get("animation_donor"):
+        config["animation_donor_path"] = str((config_path.parent / config["animation_donor"]).resolve(strict=True))
     out = Path(values[2]).resolve()
     out.mkdir(parents=True, exist_ok=True)
     return source, config, out
@@ -317,6 +320,84 @@ def animate(arm):
     return {name: end / fps for name, (end, _) in clips.items()}
 
 
+def retarget_locomotion(work, arm, donor_path):
+    """Bake Mannequiny's hip-knee-ankle motion onto the scan's own rig."""
+    with bpy.data.libraries.load(str(donor_path), link=False) as (available, loaded):
+        if "root" not in available.objects or not {"walk", "run"}.issubset(available.actions):
+            raise ValueError("Mannequiny donor is missing its root armature or walk/run actions")
+        loaded.objects = ["root"]
+        loaded.actions = ["walk", "run"]
+    donor = loaded.objects[0]
+    bpy.context.scene.collection.objects.link(donor)
+    donor.hide_render = True
+    donor.animation_data_create()
+    actions = {name: action for name, action in zip(("walk", "run"), loaded.actions)}
+    result = {}
+    for name in ("walk", "run"):
+        source_action = actions[name]
+        target_action = bpy.data.actions[name]
+        for curve in list(target_action.fcurves):
+            target_action.fcurves.remove(curve)
+        donor.animation_data.action = source_action
+        arm.animation_data.action = target_action
+        last = round(source_action.frame_range[1])
+        knee_max = 0.0
+        for frame in range(1, last + 1):
+            bpy.context.scene.frame_set(1 if frame == last else frame)
+            for side, suffix in (("L", "l"), ("R", "r")):
+                source_thigh = donor.pose.bones[f"thigh.{suffix}"]
+                source_calf = donor.pose.bones[f"calf.{suffix}"]
+                thigh_vec = source_thigh.tail - source_thigh.head
+                calf_vec = source_calf.tail - source_calf.head
+                thigh_angle = math.atan2(thigh_vec.y, -thigh_vec.z)
+                calf_angle = math.atan2(calf_vec.y, -calf_vec.z)
+                knee_angle = max(0.0, min(1.22, 0.84 * (calf_angle - thigh_angle)))
+                thigh_angle *= 0.88
+                knee_max = max(knee_max, knee_angle)
+                values = {
+                    f"{side}_Thigh": thigh_angle,
+                    f"{side}_Shin": knee_angle,
+                    f"{side}_Foot": -0.43 * (thigh_angle + knee_angle),
+                    f"{side}_UpperArm": -0.48 * thigh_angle,
+                    f"{side}_Forearm": 0.08 + 0.08 * abs(thigh_angle),
+                }
+                for bone_name, angle in values.items():
+                    pose = arm.pose.bones[bone_name]
+                    pose.rotation_euler.x = angle
+                    pose.keyframe_insert(data_path="rotation_euler", frame=frame, group=bone_name)
+            # The player controller supplies horizontal movement and heading.
+            # Place the actual skinned shoe geometry at water/terrain level;
+            # armature foot tails do not coincide with the soles in a scan.
+            hips = arm.pose.bones["Hips"]
+            # This vertical bone's local Y axis is world Z; local Z moves
+            # the character fore/aft and cannot correct foot clearance.
+            hips.location.y = 0
+            hips.location.z = 0
+            bpy.context.view_layer.update()
+            depsgraph = bpy.context.evaluated_depsgraph_get()
+            evaluated = work.evaluated_get(depsgraph)
+            posed_mesh = evaluated.to_mesh()
+            sole = min((evaluated.matrix_world @ vertex.co).z for vertex in posed_mesh.vertices)
+            evaluated.to_mesh_clear()
+            hips.location.y = max(-0.45, min(0.18, 0.005 - sole))
+            hips.keyframe_insert(data_path="location", frame=frame, group="Hips")
+        for track in list(arm.animation_data.nla_tracks):
+            if track.name == name:
+                arm.animation_data.nla_tracks.remove(track)
+        track = arm.animation_data.nla_tracks.new()
+        track.name = name
+        track.strips.new(name, 1, target_action)
+        track.mute = True
+        result[name] = {"source": str(donor_path), "source_frames": [1, last],
+                        "duration_seconds": (last - 1) / bpy.context.scene.render.fps,
+                        "max_knee_bend_degrees": round(math.degrees(knee_max), 1)}
+    arm.animation_data.action = None
+    bpy.data.objects.remove(donor, do_unlink=True)
+    for action in actions.values():
+        bpy.data.actions.remove(action, do_unlink=True)
+    return result
+
+
 def export(work, arm, out):
     bpy.ops.object.select_all(action="DESELECT")
     work.select_set(True)
@@ -343,6 +424,9 @@ def main():
     arm = make_armature(config)
     bound = bind(work, arm)
     clips = animate(arm)
+    donor_report = retarget_locomotion(work, arm, Path(config["animation_donor_path"])) if config.get("animation_donor_path") else None
+    if donor_report:
+        clips.update({name: entry["duration_seconds"] for name, entry in donor_report.items()})
     source.hide_set(True)
     source.hide_render = True
     game_triangles = sum(len(poly.vertices) - 2 for poly in work.data.polygons)
@@ -359,7 +443,8 @@ def main():
               "game_materials": len({slot.material.name for slot in work.material_slots if slot.material}),
               "game_uv_layers": [layer.name for layer in work.data.uv_layers],
               "game_non_manifold_edges": non_manifold,
-              "armature": bound, "clips_seconds": clips, "glb": str(glb), "glb_bytes": glb.stat().st_size}
+              "armature": bound, "clips_seconds": clips, "animation_donor": donor_report,
+              "glb": str(glb), "glb_bytes": glb.stat().st_size}
     (out / "build-report.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
     print(json.dumps(report))
 

@@ -5,15 +5,26 @@ skinned game asset. Use Blender 4.5 or newer. On this workstation, Blender and
 all working files are on `D:`. The Windows character smoke test also uses
 FFmpeg to decode the embedded texture.
 
+The walk and run clips come from a reduced motion-only copy of GDQuest's
+[Mannequiny v0.4.0](https://github.com/gdquest-demos/godot-3d-mannequin/releases/tag/v0.4.0)
+Blender file under CC BY 4.0. See `third_party/ATTRIBUTION.md`. The script
+`prepare_motion_donor.py` reproduces this copy from the original download.
+The retargeter maps hip, knee, ankle and arm motion onto the scanned mesh's
+own rig; a texture transfer to the mannequin would not preserve the person's
+shape or UV layout.
+
 ## Commands (PowerShell)
 
 ```powershell
 $blender = 'D:\Codex\blender-portable\blender-4.5.10-windows-x64\blender.exe'
 $source = 'D:\Codex\Burning-Horizons-character-source\project-2-20260926\extracted\3DModel.obj'
 $work = 'D:\Codex\Burning-Horizons-character-source\project-2-20260926'
+$donor = 'D:\Codex\Burning-Horizons-character-source\donors\mannequiny-v0.4.0\mannequiny-0.4.0.blend'
 $env:BH_TMPDIR = "$work\work"
 New-Item -ItemType Directory -Force -Path $env:BH_TMPDIR | Out-Null
 
+& $blender -b $donor -t 4 --python tools/character_pipeline/inspect_animation_donor.py -- 'D:\Codex\Burning-Horizons-character-source\donors\mannequiny-v0.4.0\report.json'
+& $blender -b $donor -t 4 --python tools/character_pipeline/prepare_motion_donor.py -- tools/character_pipeline/third_party/mannequiny-motion.blend
 & $blender -b -t 4 --python tools/character_pipeline/inspect_scan.py -- $source "$work/evidence"
 & $blender -b -t 4 --python tools/character_pipeline/build_character.py -- $source tools/character_pipeline/project-2.json "$work/build"
 & $blender -b -t 4 --python tools/character_pipeline/validate_character.py -- "$work/build/scanned-explorer-work.blend" "$work/validation"

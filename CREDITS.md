@@ -78,6 +78,16 @@ them from J. Jimenez et al.'s SMAA reference implementation (MIT).
 
 The included `public/models/godzilla/steam79-walk.glb` is a Blender-prepared, reduced-polygon derivative with a walk rig and animation. The original download is not included.
 
+## Scanned explorer animation
+
+The walk and run motion in `public/models/characters/scanned-explorer.glb` is
+derived from [Mannequiny](https://github.com/gdquest-demos/godot-3d-mannequin)
+by GDQuest, Luciano Muñoz, and contributors, licensed under
+[Creative Commons Attribution 4.0](https://creativecommons.org/licenses/by/4.0/).
+The source Blender mannequin's mesh and textures are not included in the game
+asset. Its joint motion was sampled, retargeted, and adjusted for the KIRI scan
+and the game's ground level. The source scan's texture remains its own.
+
 ## Techniques and references
 
 These are published techniques. No code from the papers is included.
