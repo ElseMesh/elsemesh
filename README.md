@@ -7,7 +7,7 @@ The project is also exploring an **open federated virtual-world protocol**: inde
 | Federation status | Current scope |
 |---|---|
 | Implemented | Strict region/portal descriptors, owner-signed versions, expiring host delegation, signed portal invitations, bounded rule negotiation and handoff verification; automated network tests pass. |
-| Experimental | Private two-person online rooms for shared character movement, optional local Loz/Ed browser demo and physical MSI↔hpubuntu **protocol-only** portal round trip. |
+| Experimental | Private two-person online rooms with character movement, radar markers, text conversation, optional spatial speech, a host-driven shared boat, an optional local Loz/Ed browser demo, and a physical MSI↔hpubuntu **protocol-only** portal round trip. |
 | Planned | Cave-triggered live handoff, Ed World rendering, physical two-node avatar crossing, secure internet transport and replica failover in live gameplay. |
 
 ![The island at golden hour](docs/screenshot.jpg)
@@ -26,7 +26,7 @@ The mystery story is an evolving playable prototype. The existing signal objecti
 
 - Hunger falls during play. Press **B** to prepare and eat a fish from the cooler; low hunger slows walking.
 - Fishing, fish trading, boat fuel and upgrades remain available as survival systems.
-- The Steam79 Godzilla asset emerges offshore and walks toward the landing with a Blender-made walk cycle, falling water, heavy foot splashes, a trailing wake and foam crests pushed ahead of it.
+- The Steam79 Godzilla asset emerges offshore and walks toward the landing with a Blender-made walk cycle, a short burst of falling water that ends after emergence, heavy foot splashes, a trailing wake and foam crests pushed ahead of it.
 - By default, the sky follows the computer's **local time**, with sunset, moon and stars. The Sky settings allow a manual time and accelerated preview.
 - The original island includes a pier, village, reef, wildlife, whale, tropical vegetation and a simulated ocean.
 
@@ -45,7 +45,7 @@ The mystery story is an evolving playable prototype. The existing signal objecti
 | V | Boat camera |
 | L | Flashlight |
 | H | Settings |
-| T | Pause or resume manual time |
+| T | Talk in an online room (Enter sends, Esc cancels); otherwise pause or resume manual time |
 | M | Mute |
 | F1 or ? | Full controls |
 
@@ -65,13 +65,19 @@ The local server uses http://127.0.0.1:5189/. The deployment workflow is `.githu
 
 ## Play with a friend
 
-Open `/play-online.html` on the online game server. Choose **Create private room**, copy the invitation, and send it to your friend. Start your game; your friend opens the invitation and chooses **Join game**. Each browser controls one human player. Rooms allow one host and one guest, are separated by a random invitation code, and disappear when both leave.
+Open [the hosted online game](https://hpubuntu.taila22e8a.ts.net/play-online.html). Choose **Create private room**, copy the invitation, and send it to your friend. Start your game; your friend opens the invitation and chooses **Join game**. Each browser controls one human player. Rooms allow one host and one guest, are separated by a random invitation code, and disappear when both leave. The host appears as `L` on the guest radar and the guest as `E` on the host radar.
+
+Press **T** to type a line. While the talk box is open, movement and camera controls pause. Press **Enter** to send or **Esc** to cancel. Both clients see accepted text in a caption, with a bubble over the remote character when visible. Click **Enable friend voice** once to permit browser playback. The server can synthesize the accepted private Loz OmniVoice profile when its separately hosted worker is configured and healthy; Ed currently uses text only. If synthesis fails, the text conversation still works. Voice playback and latency require a two-device listening check before they can be called physically qualified.
+
+Both players can board the same boat. The host alone drives and sends the boat's position and orientation to the guest; the guest can ride and move around on deck. This host authority is fixed for the current two-person mode, with no helm handoff.
 
 For local development, run `npm run build` then `npm run online` and open http://127.0.0.1:5200/play-online.html. The server hosts the built game and relays validated player-state messages over WebSocket. To invite someone over the internet, host this server behind HTTPS with WebSocket upgrade support; `127.0.0.1` invitation links work only on the same computer. The server binds to loopback by default; configure `BH_ONLINE_HOST` and `BH_ONLINE_PORT` if needed. GitHub Pages alone cannot host this WebSocket server.
 
-The online room is an early two-player mode: both people can walk independently and see each other's movement in the existing island. Boat authority, shared inventory, combat, interactive objects and cross-island state are still local to each client. It is not the federated world portal implementation. Keep the invitation private; anyone holding it can join the vacant role.
+The online room is an early two-player mode. Shared inventory, combat, interactive objects and cross-island state are still local to each client. It is not the federated world portal implementation. Keep the invitation private; anyone holding it can join the vacant role. The [online speech and shared boat notes](docs/ONLINE_SPEECH_AND_BOAT.md) describe the protocol, private voice configuration and current limits.
 
 See [online room operations and limits](docs/networking/online-rooms.md) for the server setup, external connection check and deployment notes.
+For node roles, the current two-person limit and the concrete work needed for
+a three-person trial, see [multi-player node setup](docs/networking/multi-player-nodes.md).
 
 The local journey video is captured from the running game with `tools/video/journey-capture.js`, `tools/video/journey-route.mjs` and `tools/video/journey-receiver.mjs`. Its continuous curved boat course clears the pier before turning toward the cave. The game boat controller supplies buoyancy, trim, roll and spray during the time-compressed shot; normal driving uses its full physics controller. The boat stops afloat before the shallow ramp and the explorer jumps into the water. The capture continues through the station, undersea crossing, sunset and night arrival. The rendered video is kept outside the repository.
 
