@@ -15,3 +15,15 @@ node test/kaiju-roaming.mjs
 ```
 
 The test constructs one real `TerrainData` and checks seeds 1, 2, 3, 17, and 99 through 6000 seconds for finite output, terrain and seabed safety, pier clearance, world bounds, bounded speed, full bearing coverage, real deep-water and visible samples, continuity, determinism, and seeded variation.
+
+## Final encounter effects
+
+Head glances and tail sway are premultiplied as parent-Y rotations, preserving the sampled walk pose while turning around the near-world-up torso axis. Water spray is emitted on a capped 30 Hz cadence so particle totals remain consistent at 30, 60, and 120 fps and paused tabs do not create a catch-up burst. Emergence runoff arms only after at least one second with exposure at or below 0.02, begins above 0.08 exposure, and fades within seven seconds; dry spawning and shallow wading do not arm it. The portal desks retain their warm near-black `charredWood` colour with a material-scoped burnt grain and satin roughness; the floor wood shader is unchanged.
+
+Run the focused effects checks with:
+
+```sh
+node test/kaiju-effects.mjs
+```
+
+Run the build with the repository build command. Clock limitation: shared-room encounters follow the shared wall clock, while offline encounters advance only by accepted finite positive frame deltas; long spray-cadence catch-up is capped defensively. Source tests cover deterministic state and particle totals, while live visual verification is performed separately.
