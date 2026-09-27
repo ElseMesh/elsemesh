@@ -20,7 +20,7 @@ export class BoatSalvage {
 		this._a = new Vector3(); this._b = new Vector3(); this._dir = new Vector3();
 		this._buildMeshes();
 		app.boat?.group?.add(this.group); app.scene?.add(this.world);
-		this._visibility = () => { if (document.hidden) this.deactivate(); };
+		this._visibility = () => { if (document.hidden && this.window?.open) this.window.minimize(); };
 		this._blur = () => this._cancelControls();
 		this._key = e => {
 			const tag=e.target?.tagName;
@@ -36,6 +36,7 @@ export class BoatSalvage {
 		this.group.add(new Mesh(mergePrepared([
 			prepare(box(.8,.72,.55),{color:0x173b47,rough:.35,metal:.65,matrix:mat4(1.15,1.22,-1.7)}),
 			prepare(box(.62,.38,.12),{color:0x07191e,rough:.25,metal:.2,matrix:mat4(1.15,1.45,-1.39,-.18)}),
+			prepare(box(1.15,.14,.18),{color:0x20282a,rough:.35,metal:.85,matrix:mat4(1.65,1.1,-1.85)}),
 			prepare(cylinder(.34,.34,.58,16),{color:0x75858a,rough:.3,metal:.9,matrix:mat4(2.15,1.35,-1.85,0,0,Math.PI/2)}),
 			prepare(box(.16,1.25,.16),{color:0x68777b,rough:.35,metal:.9,matrix:mat4(2.22,1.58,-1.9,0,0,-.42)}),
 			prepare(box(1.15,.14,.14),{color:0x68777b,rough:.35,metal:.9,matrix:mat4(2.57,2.17,-1.96,0,0,-.12)})
@@ -71,7 +72,7 @@ export class BoatSalvage {
 	_ensureUI() {
 		if (this.registered || !this.app.ui?.windows) return; this.registered=true;
 		const root=document.createElement('section'); root.className='salvage-panel';
-		root.innerHTML=`<style>.salvage-panel{width:min(390px,calc(100vw - 20px));font:13px system-ui;color:#d9fbff}.salvage-panel canvas{width:100%;aspect-ratio:16/9;background:#031519}.salvage-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}.salvage-panel button{min-height:44px}.salvage-sonar{position:relative;height:170px;overflow:auto;background:#06272d;padding:6px}.salvage-plot{display:block;margin:auto;border:1px solid #28727b;border-radius:50%}.salvage-contacts button{display:block;width:100%}.salvage-status{min-height:38px}</style><canvas aria-label="Live underwater grabber camera"></canvas><div class="salvage-status"></div><div class="salvage-sonar"></div><div class="salvage-grid"></div>`;
+		root.innerHTML=`<style>.salvage-panel{width:100%;font:13px system-ui;color:#d9fbff}.salvage-panel canvas{width:100%;aspect-ratio:16/9;background:#031519}.salvage-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}.salvage-panel button{min-height:44px;padding:8px 10px;border:1px solid #38efff;border-radius:6px;background:#082b3f;color:#d9fbff}.salvage-panel button:focus-visible{outline:2px solid #fff36b;outline-offset:2px}.salvage-panel button:disabled{opacity:.45;cursor:not-allowed}.salvage-sonar{display:grid;grid-template-columns:120px minmax(0,1fr);gap:8px;height:170px;overflow:hidden;background:#06272d;padding:6px}.salvage-plot{display:block;width:120px;height:120px;border:1px solid #28727b;border-radius:50%}.salvage-contacts{min-width:0;overflow-y:auto}.salvage-contacts button{display:block;width:100%}@media(max-width:340px){.salvage-sonar{grid-template-columns:1fr;height:auto}.salvage-plot{width:100px;height:100px;margin:auto}.salvage-contacts{max-height:120px}}.salvage-status{min-height:38px}</style><canvas aria-label="Live underwater grabber camera"></canvas><div class="salvage-status"></div><div class="salvage-sonar"></div><div class="salvage-grid"></div>`;
 		this.statusEl=root.querySelector('.salvage-status'); this.sonarEl=root.querySelector('.salvage-sonar'); const grid=root.querySelector('.salvage-grid');
 		for (const [label,axis,value] of [['Lower','depth',1],['Raise','depth',-1],['Port','x',-1],['Starboard','x',1],['Forward','z',1],['Aft','z',-1]]) {
 			const b=document.createElement('button'); b.textContent=label; b.setAttribute('aria-label',`${label} winch (hold)`);
@@ -81,7 +82,8 @@ export class BoatSalvage {
 		for (const [label,command] of [['Claim','claim'],['Grab','grab'],['Release','release'],['Retrieve','retrieve']]) { const b=document.createElement('button'); b.textContent=label; b.onclick=()=>this.act(command); grid.append(b); }
 		this.sonarEl.addEventListener('click',e=>{ const b=e.target.closest('[data-id]'); if (b) { this.selected=b.dataset.id; this.lastSonar=-Infinity; } });
 		this.camera=new GrabberCamera(this.app,root.querySelector('canvas'));
-		this.window=this.app.ui.windows.register({id:'boat-salvage',element:root,title:'Sonar & Grabber',onOpen:()=>this.activate(),onClose:()=>this.deactivate()}); this.root=root;
+		this.window=this.app.ui.windows.register({id:'boat-salvage',element:root,title:'Sonar & Grabber',onOpen:()=>this.activate(),onClose:reason=>{ this.minimized=reason==='minimize'; this.deactivate(); }});
+		this.window.shell.style.width='min(440px, calc(100vw - 16px))'; this.root=root;
 		this.launcher=document.createElement('button'); this.launcher.textContent='Sonar'; this.launcher.className='boat-salvage-launcher'; this.launcher.setAttribute('aria-label','Open boat sonar and grabber'); this.launcher.onclick=()=>this.window?.show?.();
 		Object.assign(this.launcher.style,{position:'fixed',right:'12px',bottom:'76px',minWidth:'72px',minHeight:'44px',zIndex:'20'}); document.body.append(this.launcher);
 	}
@@ -96,7 +98,7 @@ export class BoatSalvage {
 	}
 	_releasePointer(id) { const held=this.pointerButtons.get(id); if (!held) return; this.pointerButtons.delete(id); try { if (held.button.hasPointerCapture(id)) held.button.releasePointerCapture(id); } catch {} this.axes[held.axis]=0; this.sendControl(true); }
 	_cancelControls() { for (const [id] of [...this.pointerButtons]) this._releasePointer(id); this.axes={...ZERO}; if (this._isOperator() && !this._snapshot()?.returning) this.sendControl(true); }
-	activate() { this.open=true; this.minimized=false; this.camera?.setVisible(true); this.resumeInput=this.app.input?.enabled!==false; if (this.resumeInput) this.app.input?.suspend?.(); this.act('claim'); }
+	activate() { if (this.open) return; this.open=true; this.minimized=false; this.camera?.setVisible(true); this.resumeInput=this.app.input?.enabled!==false; if (this.resumeInput) this.app.input?.suspend?.(); if (this._onBoat()) this.act('claim'); }
 	deactivate() {
 		if (!this.open) return; const owned=this._isOperator(); this._cancelControls(); this.open=false; this.camera?.setVisible(false); if (owned) this.act('stop');
 		if (this.resumeInput) this.app.input?.resume?.(); this.resumeInput=false;

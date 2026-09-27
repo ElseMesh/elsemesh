@@ -4,7 +4,7 @@ Maintained by Agent Control.
 
 ## Controls
 
-While aboard the boat or standing on its deck, press **O** or use the visible **Sonar** button to open the combined sonar and grabber panel. Sonar remains available while sailing and derives its 80 m contacts directly from current physical-item data and the boat's current position. Selecting a contact only highlights navigation guidance; it does not move the winch or an item.
+While aboard the boat or standing on its deck, press **O** or use the visible **Sonar** button to open the combined sonar and grabber panel. Sonar remains available while sailing and derives contacts within the **80 m range** and **50 m maximum depth** directly from current physical-item data and the boat's current position. Selecting a contact only highlights navigation guidance; collection remains manual and it does not move the winch or an item.
 
 Stop the boat before claiming winch control. The panel reports another operator as busy and requires a new claim after the panel is closed, minimized, blurred, or hidden. Hold **Lower**, **Raise**, **Port**, **Starboard**, **Forward**, or **Aft** to move the grabber. Releasing a held control immediately zeros the corresponding axes. **Grab** closes on a nearby eligible item, **Release** releases the held item without surrendering the operator, **Retrieve** starts the automatic hoist, and **Stop**/closing the panel releases winch control.
 

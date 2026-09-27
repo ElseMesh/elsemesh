@@ -29,6 +29,7 @@ export class GrabberCamera {
 			this.frameBlock.fields.sunColor.value = new Color(0.12, 0.34, 0.4);
 		};
 		this._target = new Vector3();
+		this._up = new Vector3();
 		this._init();
 	}
 
@@ -63,6 +64,12 @@ export class GrabberCamera {
 		try {
 			this.camera.position.set(hook[0], hook[1] - 0.23, hook[2]);
 			this._target.set(hook[0], hook[1] - 4, hook[2] + 0.08);
+			this._up.set(0, 0, 1);
+			const boatQuaternion = this.app.boatCtl?.quaternion;
+			if (boatQuaternion) this._up.applyQuaternion(boatQuaternion);
+			this._up.y = 0;
+			if (this._up.lengthSq() < 1e-6) this._up.set(0, 0, 1);
+			this.camera.up.copy(this._up.normalize());
 			this.camera.lookAt(this._target);
 			this.camera.updateProjectionMatrix();
 			setFrameCamera(this.camera, WIDTH, HEIGHT, { block: this.frameBlock });
