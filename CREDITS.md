@@ -11,6 +11,10 @@ The performance review consulted [Rebroad's Tidewater fork](https://github.com/r
 Existing upstream authorship and MIT notices remain in place.
 The cave's CC0 Poly Haven stone maps are credited in
 [`public/textures/cave/CREDITS.md`](public/textures/cave/CREDITS.md).
+Palm Tree Bark (Dimitrios Savva / Rico Cilliers) and Tree Bark 03 (Rob Tuytel) are
+Poly Haven CC0 assets; details are in [vegetation credits](public/textures/vegetation/CREDITS.md).
+The procedural fruit, folded leaf crowns and articulated canopy monkeys are original
+**Agent Control** work, released under this repository's MIT licence.
 
 ## Audio: `public/audio/`
 

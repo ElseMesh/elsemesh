@@ -105,6 +105,10 @@ export class Vegetation {
 		const site = new VegSite( terrain, villageObstacles( village ) );
 		this.site = site;
 		const recs = scatterVegetation( site );
+		// Agent Control: accessible fruiting Musa beside the third-island path, clear of its walking lane.
+		for (const [i, [x,z]] of [[102,588],[108,590],[127,603],[126,608]].entries()) {
+			recs.bananas.push({x,z,y:terrain.heightAt(x,z),H:2.4,l:0,la:0,s:1,seed:.12+i*.21,yaw:i*1.7});
+		}
 		this.records = recs;
 		const t1 = performance.now();
 		const grassMask = buildGrassMask( site );

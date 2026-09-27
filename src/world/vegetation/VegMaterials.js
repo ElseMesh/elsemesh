@@ -1,5 +1,6 @@
 import { Material } from '../../engine/render/Material.js';
 import { ShaderModule } from '../../engine/gpu/Shader.js';
+import { barkTextures, barkSurface } from './ScannedBark.js';
 import { vegModule, vegParams, LOD_BAND, C, f } from './VegNodes.js';
 
 // Vegetation materials (engine Materials: WGSL vertex / surface snippets on the scene lighting).
@@ -442,6 +443,7 @@ export function createPlantLeafMaterial() {
 
 	const mat = new Material( {
 		name: 'veg-plant-leaf',
+		textures: barkTextures(true),
 		side: 'double',
 		modules: [ vegModule, plantModule ],
 		attributes: PLANT_ATTRIBUTES,
@@ -462,10 +464,11 @@ export function createPlantLeafMaterial() {
 	let part = aMat.x;
 	let age = aMat.y;
 	let isStem = part < 0.5;
-	let isNut = part > 4.5 && part < 5.5;
+	let isNut = part > 3.5 && part < 5.5;
 	let isLeaf = ! isStem && ! isNut;
 	let isBroad = part > 5.5;
-	var albedo = vegPlantAlbedo( in );
+	var albedo = vec3f(1.0);
+	if (!isStem || age >= 0.5) { albedo = vegPlantAlbedo(in); }
 	// the underside of fronds and leaves is duller and a little bluer than the waxy upper side
 	let upper = in.front;
 	albedo = select( albedo * vec3f( 0.74, 0.8, 0.84 ), albedo, upper || ! isLeaf );
@@ -477,7 +480,7 @@ export function createPlantLeafMaterial() {
 	var d = 0.0;
 	var dA = 0.0;
 	let fadeB = 1.0 - smoothstep( 10.0, 32.0, length( frame.cameraPos - in.P ) );
-	if ( isStem && fadeB > 0.0 ) {
+	if ( isStem && age > 0.5 && fadeB > 0.0 ) {
 		let seed = in.vs.vIDat.w;
 		let H = in.vs.vIDat.z;
 		let y = in.vs.vTrunkY;
@@ -501,7 +504,14 @@ export function createPlantLeafMaterial() {
 	s.metalness = 0.0;
 	s.specularIntensity = select( select( 0.4, 0.3, isStem ), 0.42, isBroad );
 	s.translucency = vec3f( 0.0 );
-	if ( isLeaf ) { s.translucency = vegTranslucency( albedo, in.N, select( 0.3, 0.2, isBroad ), in.P ); }`,
+	if ( isLeaf ) { s.translucency = vegTranslucency( albedo, in.N, select( 0.3, 0.2, isBroad ), in.P ); }
+	if (isStem && age < 0.5) { ${barkSurface('vec2f(in.uv.x, in.vs.vTrunkY / 2.6)')} }
+	if (part > 3.5 && part < 4.5) {
+		s.albedo = mix(${C(0x739336)}, ${C(0xe3bf3b)}, age) * (0.93 + 0.07 * sin(in.uv.y * 31.4159));
+		if (age < 0.0) { s.albedo = ${C(0x702447)}; }
+		else { s.albedo *= mix(0.3,1.0,smoothstep(0.005,0.045,(in.uv.x+1.0)*2.0)*(1.0-smoothstep(0.94,0.995,(in.uv.x+1.0)*2.0))); }
+		s.roughness = 0.58;
+	}`,
 		shadow: 'return vegPlantMask( in );',
 	} );
 	return mat;
@@ -659,6 +669,7 @@ export function createCanopyMaterial( leafAtlas ) {
 	const maskModule = new ShaderModule( { name: 'vegCanopyMask', deps: [ canopyModule, leafAtlas.module ], code: CANOPY_MASK } );
 	const mat = new Material( {
 		name: 'veg-canopy',
+		textures: barkTextures(false),
 		side: 'double',
 		modules: [ vegModule, canopyModule, leafAtlas.module, maskModule ],
 		attributes: PLANT_ATTRIBUTES,
@@ -718,7 +729,8 @@ export function createCanopyMaterial( leafAtlas ) {
 	let geoN = normalize( in.vs.normal );
 	s.normal = select( normalize( geoN + in.V * 0.7 ), in.N, isBark );
 	s.translucency = vec3f( 0.0 );
-	if ( ! isBark ) { s.translucency = vegTranslucency( albedo, geoN, 0.5, in.P ) * ( ao * 0.6 + 0.4 ); }`,
+	if ( ! isBark ) { s.translucency = vegTranslucency( albedo, geoN, 0.5, in.P ) * ( ao * 0.6 + 0.4 ); }
+	if (isBark) { ${barkSurface('in.uv')} }`,
 		shadow: 'return vegCanopyMask( in, vegCanopyLeaf( in ) );',
 	} );
 	return mat;

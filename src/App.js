@@ -72,6 +72,7 @@ import { BoatController } from './player/BoatController.js';
 import { BoatSpray } from './player/BoatSpray.js';
 import { WakeSim } from './ocean/WakeSim.js';
 import { Vegetation } from './world/Vegetation.js';
+import { loadScannedBark } from './world/vegetation/ScannedBark.js';
 import { SoundScape } from './audio/SoundScape.js';
 import { updateCameraVelocity, useStaticVelocity } from './post/CameraVelocity.js';
 
@@ -154,6 +155,7 @@ export class App {
 		if ( ! qs.has( 'noVeg' ) ) {
 
 			await progress( 0.14, 'Planting the island…' );
+			await loadScannedBark();
 			this.vegetation = new Vegetation( { scene, terrain: this.terrainData, village: this.village } );
 			useStaticVelocity( this.vegetation.group );
 

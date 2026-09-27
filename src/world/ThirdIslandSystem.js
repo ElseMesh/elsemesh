@@ -5,10 +5,13 @@ import { PlayerAvatar } from '../player/PlayerAvatar.js';
 import { flightStep, canLeaveHelicopter } from '../player/HelicopterPhysics.js';
 import { THIRD } from './ThirdIslandLayout.js';
 import { secondIslandHeight } from './MonorailRoute.js';
+import { createTreeBarkMaterial } from './vegetation/ScannedBark.js';
+import { TreeWildlife } from './TreeWildlife.js';
+import { fruitTreeCrownGeometry, fruitTreeLeafMaterial } from './vegetation/FruitTreeCrown.js';
 
 const material = (name, color, extra = {}) => { const m = standard({ name, color, roughness: .65, ...extra }); m.underwaterLighting = 'none'; m.localLightsCheap = true; return m; };
 const wood = material('Rental cedar', 0x75604a), dark = material('Helicopter charcoal', 0x17252c, { metalness: .5 });
-const white = material('Pad markings', 0xf5eee0), green = material('Wind bent foliage', 0x3b6948), bark = material('Wind bent trunks', 0x554432);
+const white = material('Pad markings', 0xf5eee0);
 const neon = material('Neon coral helicopter', 0xff347f, { metalness: .35, roughness: .23, emissive: 0xff1262, emissiveIntensity: .65 });
 const cyan = material('Navigation cyan', 0x4effe1, { emissive: 0x32ffd3, emissiveIntensity: 2.4 });
 const gold = material('Rental brass key', 0xffc34b, { metalness: .65, emissive: 0xb87311, emissiveIntensity: .4 });
@@ -30,7 +33,10 @@ export class ThirdIslandSystem {
  constructor(app) {
   this.app=app; this.time=0;this.active=false;this.hasKey=false;this.pending=false;this.peek=0;this.lookPitch=0;
   this.group=new Group();this.group.name='Third island — Loz rental';app.scene.add(this.group);
+  this.bark=createTreeBarkMaterial();
+  this.leafGeometry=fruitTreeCrownGeometry();this.leafMaterial=fruitTreeLeafMaterial();
   this.trees=[];this.buildIsland();this.buildHelicopter();
+  this.wildlife=new TreeWildlife(this.group,this.trees,this.bark);
   this.state={x:THIRD.pad.x,y:THIRD.pad.y+.25,z:THIRD.pad.z,yaw:0,vx:0,vy:0,vz:0,rpm:0,pitch:0,roll:0,grounded:true};
   this.resetPose();
   this.dialogue=document.createElement('div');this.dialogue.setAttribute('role','status');
@@ -71,15 +77,20 @@ export class ThirdIslandSystem {
   box(p,white,115,8.035,638,3.6,.035,.48);
   this.padLamps = [0,1].map(i => material('Helipad beacon '+i,0x62ffe1,{emissive:0x32ffd3,emissiveIntensity:5}));
   for(let i=0;i<20;i++){const a=i*Math.PI/10;add(p,new SphereGeometry(.20,10,8),this.padLamps[i%2],115+9.2*Math.cos(a),8.2,638+9.2*Math.sin(a));}
-  for(let i=0;i<48;i++){
-   const a=i*2.39996,r=44+(i%7)*6,x=115+Math.cos(a)*r,z=650+Math.sin(a)*r*.82;
+  for(let i=0;i<51;i++){
+   const a=i*2.39996,r=44+(i%7)*6;
+   const groves=[[106,592],[124,606],[105,618]], near=groves[i-48];
+   const x=near?near[0]:115+Math.cos(a)*r,z=near?near[1]:650+Math.sin(a)*r*.82;
    if(Math.abs(x-115)<9 && z<640 || Math.hypot(x-105,z-575)<13)continue;
    const y=T.heightAt(x,z);if(y<2)continue;
    const g=new Group();g.position.set(x,y,z);p.add(g);
    const height=6+(i%5)*.7, joints=[], crowns=[];let parent=g;
    // Nested trunk sections keep the root fixed while curvature increases toward the crown.
-   for(let j=0;j<10;j++){const joint=new Group();joint.position.y=j?height/10:0;parent.add(joint);joints.push(joint);add(joint,new CylinderGeometry(.34-(j+1)*.022,.34-j*.022,height/10+.035,10),bark,0,height/20,0);parent=joint;}
-   for(let k=0;k<5;k++){const crown=add(parent,new SphereGeometry(1,12,8),green,Math.cos(k*1.26)*1.1,height/10-.8+k*.19,Math.sin(k*1.26));crown.scale.set(2.6,1,1.4);crown.rotation.y=k*1.26;crowns.push(crown);}
+   for(let j=0;j<10;j++){const joint=new Group();joint.position.y=j?height/10:0;parent.add(joint);joints.push(joint);
+    const geometry=new CylinderGeometry(.34-(j+1)*.022,.34-j*.022,height/10+.035,10);
+    const uv=geometry.attributes.uv;for(let v=0;v<uv.count;v++)uv.array[v*2+1]=(j+uv.array[v*2+1])*height/15;
+    add(joint,geometry,this.bark,0,height/20,0);parent=joint;}
+   for(let k=0;k<5;k++){const crown=add(parent,this.leafGeometry,this.leafMaterial,Math.cos(k*1.26)*1.1,height/10-.8+k*.19,Math.sin(k*1.26));crown.scale.set(2.6,1.2,1.8);crown.rotation.y=k*1.26;crowns.push(crown);}
    this.trees.push({root:g,joints,crowns});
    C.addCylinder(x,z,.5,y,y+height,{tag:'rental-tree'});
   }
@@ -164,6 +175,7 @@ export class ThirdIslandSystem {
  update(dt) {
   this.time+=dt;const {player:p,input:inp,camera}=this.app,s=this.state;
   for(let i=0;i<this.trees.length;i++){const tree=this.trees[i];for(let j=0;j<tree.joints.length;j++){const flex=j/9;tree.joints[j].rotation.z=flex*(-.045+Math.sin(this.time*1.7+i*.4-j*.18)*.023+Math.sin(this.time*.7)*.016);tree.joints[j].rotation.x=flex*Math.sin(this.time*1.3+i*.7-j*.12)*.013;}for(let k=0;k<tree.crowns.length;k++)tree.crowns[k].rotation.z=Math.sin(this.time*3+i+k)*.055;}
+  this.wildlife.update(dt,camera.position);
   for(let i=0;i<2;i++){const phase=(this.time+i*.65)%1.3;this.padLamps[i].emissiveIntensity=phase<.12||(phase>.22&&phase<.34)?8:.3;}
   this.sock.rotation.y=.25+Math.sin(this.time*1.7)*.13;this.sock.rotation.z=Math.sin(this.time*4)*.05;
   this.loz.update(dt,p,camera,true);this.key.rotation.y+=dt;

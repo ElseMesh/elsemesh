@@ -415,6 +415,25 @@ export function buildBanana( seed = 9, b = new GeoBuilder() ) {
 		const sTop = Math.min( 0.55, 0.2 + st.h * 0.15 );
 		const sd = rand();
 		addTube( b, pts, { radius: ( f ) => st.r * ( 1 - 0.35 * f ) * ( 1 + 0.25 * Math.exp( - f * 7 ) ), radial: st.sucker ? 4 : 6, part: PART.BANANA, age: 0, seed: sd, phase: rand(), s0: 0, s1: sTop } );
+		// Agent Control: a mature Musa carries a hanging bunch, not fruit on its leaf tips.
+		if (st.off === 0) {
+			const neck = top.clone().add(new THREE.Vector3(.58, -.25, .06));
+			addTube(b, [top, top.clone().add(new THREE.Vector3(.46,.08,.03)), neck, neck.clone().add(new THREE.Vector3(0,-.7,0))],
+				{radius: () => .025, radial: 5, part: PART.BANANA, s0: sTop, s1: sTop});
+			for (let row=0; row<4; row++) for (let finger=0; finger<7; finger++) {
+				const a=finger*Math.PI*2/7 + row*.24, curve=[];
+				for (let k=0;k<=5;k++) {
+					const f=k/5, r=.055 + f*.30;
+					curve.push(neck.clone().add(new THREE.Vector3(Math.cos(a)*r, -.08-row*.17-Math.sin(f*Math.PI)*.12+f*.09, Math.sin(a)*r)));
+				}
+				addTube(b,curve,{radius:f=>.003+.038*Math.pow(Math.sin(Math.PI*f),.45), radial:5,
+					part:4, age:.6+rand()*.3, s0:sTop, s1:sTop, phase:sd});
+			}
+			// Agent Control: tapered maroon terminal blossom below the hands of fruit.
+			const blossom=[];
+			for(let k=0;k<=5;k++)blossom.push(neck.clone().add(new THREE.Vector3(0,-.72-k*.035,0)));
+			addTube(b,blossom,{radius:f=>.005+.055*Math.sin(Math.PI*f),radial:6,part:4,age:-1,s0:sTop,s1:sTop});
+		}
 		const n = st.leaves + st.dead;
 		for ( let i = 0; i < n; i ++ ) {
 

@@ -1,0 +1,98 @@
+{
+  "status": "complete",
+  "author": "Agent Control",
+  "results": [
+    {
+      "profile": "balanced",
+      "output": [
+        1280,
+        720
+      ],
+      "internalScale": 0.75,
+      "result": {
+        "wildlife": {
+          "wall": 33.924,
+          "gpu": 26.083,
+          "gpuMedian": 26.083,
+          "cpu": 17.219,
+          "passes": [
+            [
+              "opaque",
+              7.167
+            ],
+            [
+              "refraction",
+              2.219
+            ],
+            [
+              "TAAU",
+              1.754
+            ],
+            [
+              "shadow cascade 0",
+              1.749
+            ],
+            [
+              "Ocean FFT",
+              1.674
+            ],
+            [
+              "water + transparent",
+              1.673
+            ]
+          ]
+        },
+        "total": {
+          "wall": 33.924,
+          "gpu": 26.083
+        }
+      }
+    },
+    {
+      "profile": "mobile",
+      "output": [
+        1280,
+        720
+      ],
+      "internalScale": 0.65,
+      "result": {
+        "wildlife": {
+          "wall": 26.988,
+          "gpu": 20.375,
+          "gpuMedian": 20.251,
+          "cpu": 10.189,
+          "passes": [
+            [
+              "opaque",
+              5.876
+            ],
+            [
+              "refraction",
+              1.873
+            ],
+            [
+              "TAAU",
+              1.795
+            ],
+            [
+              "Ocean FFT",
+              1.665
+            ],
+            [
+              "water + transparent",
+              1.495
+            ],
+            [
+              "Clouds Panorama",
+              0.869
+            ]
+          ]
+        },
+        "total": {
+          "wall": 26.988,
+          "gpu": 20.375
+        }
+      }
+    }
+  ]
+}
