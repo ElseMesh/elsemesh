@@ -5,7 +5,7 @@ const torus=(name,size,position,material,rotation=[Math.PI/2,0,0])=>({name,shape
 
 export function buildRecipe(){
  const materials={
-  brick:{color:0x7d4034,roughness:.92,metalness:0},brickDark:{color:0x532d28,roughness:.96,metalness:0},mortar:{color:0xb49a82,roughness:1,metalness:0},concrete:{color:0x6f7779,roughness:.95,metalness:.05},steel:{color:0x26343a,roughness:.35,metalness:.8},glass:{color:0x84d7d4,roughness:.12,metalness:.1,emissive:0x164f54},wood:{color:0x825735,roughness:.7,metalness:0},leather:{color:0x29323a,roughness:.7,metalness:0},cream:{color:0xe8d6b5,roughness:.8,metalness:0},rug:{color:0x8f4b3e,roughness:1,metalness:0},white:{color:0xf2eee2,roughness:.45,metalness:.05},black:{color:0x101619,roughness:.35,metalness:.5},cyan:{color:0x47ffe0,roughness:.25,metalness:.25,emissive:0x1affcf},amber:{color:0xffb34b,roughness:.35,metalness:.2,emissive:0x7a3c08},green:{color:0x4f865f,roughness:.9,metalness:0},graffiti:{color:0xd95c78,roughness:.6,metalness:0,emissive:0x35101c},blue:{color:0x3b70ad,roughness:.65,metalness:0}};
+  brick:{color:0x7d4034,roughness:.92,metalness:0},brickDark:{color:0x532d28,roughness:.96,metalness:0},mortar:{color:0xb49a82,roughness:1,metalness:0},concrete:{color:0x6f7779,roughness:.95,metalness:.05},steel:{color:0x26343a,roughness:.35,metalness:.8},glass:{color:0xb9c4c0,roughness:.2,metalness:.05,opacity:.28,transparent:true,depthWrite:false},wood:{color:0x825735,roughness:.7,metalness:0},leather:{color:0x29323a,roughness:.7,metalness:0},cream:{color:0xe8d6b5,roughness:.8,metalness:0},rug:{color:0x8f4b3e,roughness:1,metalness:0},white:{color:0xf2eee2,roughness:.45,metalness:.05},black:{color:0x101619,roughness:.35,metalness:.5},amber:{color:0xffb34b,roughness:.35,metalness:.2,emissive:0x7a3c08},green:{color:0x4f865f,roughness:.9,metalness:0},graffiti:{color:0xd95c78,roughness:.6,metalness:0,emissive:0x35101c},blue:{color:0x3b70ad,roughness:.65,metalness:0}};
  const objects=[]; const add=o=>objects.push(o);
  add(box('concrete ground',[32,.3,30],[0,-.15,3],'concrete',{collider:true,walkable:true}));
  add(box('west structural wall',[.35,12,30],[-16,6,3],'mortar',{collider:true}));
@@ -29,7 +29,7 @@ export function buildRecipe(){
  }
  for(const z of [-11.79,17.79])for(let course=0;course<7;course++)for(let bay=0;bay<18;bay++){const x=-15.1+bay*1.78+(course%2?.85:0);if(x<15.3)add(box('lower face brick',[1.58,.45,.12],[x,.35+course*.54,z],(course+bay)%8===0?'brickDark':'brick'));}
  // Portal arrival remains clear and visually legible.
- add(box('arrival mat',[4,.04,3],[0,.04,0],'rug')); add(box('return portal plinth',[2.6,.25,1.4],[-4,.25,0],'steel',{collider:true}));add(torus('return portal ring',[2.8,.18,2.8],[-4,2.05,0],'cyan'));
+ add(box('arrival mat',[4,.04,3],[0,.04,0],'rug')); add(box('return portal plinth',[2.6,.25,1.4],[-4,.25,0],'steel',{collider:true}));add(torus('return portal ring',[2.8,.18,2.8],[-4,2.05,0],'amber'));
  for(const x of [-4.8,-4,-3.2])add(box('portal glyph',[.42,.08,.06],[x,3.75,-.08],'white'));
  // Lounge: raised feet, deep cushions, arms and back identify the sectional.
  add(box('lounge rug',[8,.05,6],[-9,.05,4],'rug'));

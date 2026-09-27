@@ -22,7 +22,7 @@ export class PortalInterior {
     app.scene.add(this.group);
     this.materials = {};
     for (const [name, spec] of Object.entries(this.recipe.materials)) {
-      this.materials[name] = standard({ name: `Portal ${name}`, color: spec.color, roughness: spec.roughness, metalness: spec.metalness, emissive: spec.emissive || 0, emissiveIntensity: spec.emissive ? 1.4 : 0 });
+      this.materials[name] = standard({ name: `Portal ${name}`, color: spec.color, roughness: spec.roughness, metalness: spec.metalness, emissive: spec.emissive || 0, emissiveIntensity: spec.emissive ? 0.35 : 0, transparent: !!spec.transparent, opacity: spec.opacity ?? 1, depthWrite: spec.depthWrite ?? true, underwaterLighting: 'none', localLightsCheap: true });
     }
     this.interiorColliders = [];
     this.buildGeometry();
