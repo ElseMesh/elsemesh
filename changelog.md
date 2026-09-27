@@ -6,6 +6,7 @@ Reporting period: **26–27 September 2026**. This summary follows repository hi
 ## 27 September 2026
 
 - **Agent Control:** added bounded CC0 scanned palm/broadleaf bark maps, folded mango foliage, curved bananas in tiered bunches, mango clusters and four branch-patrolling monkeys attached to wind-bent trees. Preserved coconut palms, gameplay and hunger settings; added continuity/culling tests and an in-engine wildlife inspection video.
+- **Agent Control:** added per-instance previous transforms to animated wildlife for correct temporal motion vectors, and re-recorded the wildlife preview after checking the initial clip for trails.
 - **Agent Control:** reviewed Rebroad's Linux rendering changes and added cross-platform Auto/High/Balanced/Mobile profiles, bounded output resolution, adaptive internal resolution and GPU adapter fallback.
 - **Agent Control:** enabled cave view/shadow culling, replaced flat cave materials with shared CC0 scanned-stone PBR maps, built curved glass tunnel/train shells above the maglev foundation, and batched/animated the marine life.
 - **Agent Control:** added static-asset cache revalidation, text compression and streaming on the online host. Recorded fixed-view PC GPU measurements and explicitly separated mobile-profile emulation from physical phone qualification.

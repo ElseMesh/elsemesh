@@ -11,40 +11,40 @@
       "internalScale": 0.75,
       "result": {
         "wildlife": {
-          "wall": 33.924,
-          "gpu": 26.083,
-          "gpuMedian": 26.083,
-          "cpu": 17.219,
+          "wall": 35.503,
+          "gpu": 26.518,
+          "gpuMedian": 26.411,
+          "cpu": 16.903,
           "passes": [
             [
               "opaque",
-              7.167
+              7.532
             ],
             [
               "refraction",
-              2.219
+              2.269
             ],
             [
               "TAAU",
-              1.754
-            ],
-            [
-              "shadow cascade 0",
-              1.749
+              1.888
             ],
             [
               "Ocean FFT",
-              1.674
+              1.696
             ],
             [
               "water + transparent",
               1.673
+            ],
+            [
+              "shadow cascade 0",
+              1.633
             ]
           ]
         },
         "total": {
-          "wall": 33.924,
-          "gpu": 26.083
+          "wall": 35.503,
+          "gpu": 26.518
         }
       }
     },
@@ -57,40 +57,40 @@
       "internalScale": 0.65,
       "result": {
         "wildlife": {
-          "wall": 26.988,
-          "gpu": 20.375,
-          "gpuMedian": 20.251,
-          "cpu": 10.189,
+          "wall": 27.044,
+          "gpu": 20.239,
+          "gpuMedian": 19.988,
+          "cpu": 11.756,
           "passes": [
             [
               "opaque",
-              5.876
+              5.764
             ],
             [
               "refraction",
-              1.873
+              1.96
             ],
             [
               "TAAU",
-              1.795
+              1.752
             ],
             [
               "Ocean FFT",
-              1.665
+              1.653
             ],
             [
               "water + transparent",
-              1.495
+              1.489
             ],
             [
               "Clouds Panorama",
-              0.869
+              0.904
             ]
           ]
         },
         "total": {
-          "wall": 26.988,
-          "gpu": 20.375
+          "wall": 27.044,
+          "gpu": 20.239
         }
       }
     }

@@ -14,6 +14,7 @@ Sail to the third island and follow the path from **Loz's Helicopter Rental** to
 - Each mature banana pseudostem carries **28 curved, tapered bananas in four hands**, an arched stalk and a maroon terminal blossom. Fruit follows the plant's existing wind deformation and distance fade.
 - Eight mango trees carry clusters of fruit. Their branches attach to the articulated trunks, so foliage, fruit and monkeys follow the same wind transforms.
 - Monkeys are original stylised full-body procedural models with face, ears, hands, feet, bent limbs and articulated tails. They use four instanced material batches; all mangoes use one further batch. These are ambient local wildlife, not network-authoritative interactive NPCs.
+- Each animated instance retains its previous transform for correct motion vectors, reducing temporal trails behind moving limbs and tails.
 - Fruit is decorative in this release; picking/eating fruit has not been added. Hunger remains off by default.
 
 ## Budgets and tests
@@ -22,9 +23,9 @@ Wildlife batches stop drawing beyond 110 m (monkeys) / 90 m (mangoes). Their sup
 
 `npm test` includes patrol position/heading continuity, finite instance matrices, buffer capacity, wind-parent attachment, distant culling and banana geometry checks. Browser review checks actual shader compilation and visible fruit, bark, leaf silhouettes and monkey animation. PC mobile-profile tests are not physical phone qualification.
 
-On MSI Intel Arc / Edge, a fixed 1280×720 wildlife close-up (30 warm-up, 90 measured frames) averaged **26.08 ms GPU / 33.92 ms wall** on Balanced and **20.38 ms GPU / 26.99 ms wall** on the Mobile profile. These are same-PC profile measurements, not a before/after speedup claim or a physical mobile result. Raw data: [wildlife benchmark](performance/wildlife-2026-09-27.json). Browser review reported no WebGPU errors.
+On MSI Intel Arc / Edge, a fixed 1280×720 wildlife close-up (30 warm-up, 90 measured frames) averaged **26.52 ms GPU / 35.50 ms wall** on Balanced and **20.24 ms GPU / 27.04 ms wall** on the Mobile profile. These are same-PC profile measurements, not a before/after speedup claim or a physical mobile result. Raw data: [wildlife benchmark](performance/wildlife-2026-09-27.json). Browser review reported no WebGPU errors.
 
-The silent 50-second review is saved outside Git at `D:/Downloads/Burning-Horizons-Trees-Monkeys-Bananas.mp4`; stills and source WebM are in `D:/Downloads/Burning-Horizons-Wildlife/`.
+The silent 49-second, 1280×720, 30 fps review is saved outside Git at `D:/Downloads/Burning-Horizons-Trees-Monkeys-Bananas.mp4`; stills and source WebM are in `D:/Downloads/Burning-Horizons-Wildlife/`.
 
 ## Evidence capture
 

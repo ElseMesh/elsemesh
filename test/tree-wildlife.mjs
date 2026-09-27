@@ -30,7 +30,12 @@ test('fruit and monkeys follow swaying branch frames, with finite matrices and b
 	for(const batch of [...wildlife.batches,wildlife.mangoBatch]) {
 		assert.ok(batch.count>0 && batch.count<=batch.instanceMatrix.count);
 		assert.ok(batch.instanceMatrix.array.slice(0,batch.count*16).every(Number.isFinite));
+		assert.ok(batch.previous.array.slice(0,batch.count*16).every(Number.isFinite));
 	}
+	const previous=Array.from(wildlife.batches[0].instanceMatrix.array);
+	wildlife.update(.1,camera);
+	assert.deepEqual(Array.from(wildlife.batches[0].previous.array),previous);
+	assert.notDeepEqual(Array.from(wildlife.batches[0].instanceMatrix.array),previous);
 	wildlife.update(1,new Vector3(0,0,-500));
 	for(const batch of [...wildlife.batches,wildlife.mangoBatch])assert.equal(batch.visible,false);
 });

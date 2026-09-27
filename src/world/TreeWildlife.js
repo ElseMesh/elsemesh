@@ -1,5 +1,5 @@
 // Agent Control: original articulated canopy wildlife, four shared draw batches, no external model licence.
-import { Group, Mesh, InstancedMesh, SphereGeometry, CylinderGeometry, Vector3, Quaternion, Matrix4 } from '../engine/index.js';
+import { Group, Mesh, InstancedMesh, InstancedInterleavedBuffer, InterleavedBufferAttribute, SphereGeometry, CylinderGeometry, Vector3, Quaternion, Matrix4 } from '../engine/index.js';
 import { standard } from '../materials/Materials.js';
 import { fruitTreeCrownGeometry, fruitTreeLeafMaterial } from './vegetation/FruitTreeCrown.js';
 
@@ -31,6 +31,17 @@ export class TreeWildlife {
 		});
 		this.mangoBatch=new InstancedMesh(geo,surface('Ripe mango skin',0xc99227),512);
 		this.mangoBatch.frustumCulled=false; this.mangoBatch.castShadow=true; this.group.add(this.mangoBatch);
+		// Agent Control: retain each limb's previous transform so temporal upscaling tracks real motion.
+		for(const batch of [...this.batches,this.mangoBatch]) {
+			batch.geometry=batch.geometry.clone();
+			batch.previous=new InstancedInterleavedBuffer(new Float32Array(batch.instanceMatrix.array),16);
+			batch.material.attributes={};
+			for(let k=0;k<4;k++) {
+				batch.geometry.setAttribute('previous'+k,new InterleavedBufferAttribute(batch.previous,4,k*4));
+				batch.material.attributes['previous'+k]='vec4f';
+			}
+			batch.material.vertex='v.prevModel = draw.prevModel * mat4x4f(v.previous0,v.previous1,v.previous2,v.previous3);';
+		}
 		this.matrix=new Matrix4(); this.pos=new Vector3(); this.scale=new Vector3(); this.rot=new Quaternion(); this.delta=new Vector3();
 		this.local=new Matrix4(); this.world=new Matrix4(); this.body=new Matrix4();
 		const leafGeometry=fruitTreeCrownGeometry(), leafMaterial=fruitTreeLeafMaterial();
@@ -74,7 +85,9 @@ export class TreeWildlife {
 	}
 	update(dt,camera) {
 		this.time+=dt; this.identity ||= new Quaternion();
-		for(const batch of [...this.batches,this.mangoBatch])batch.count=0;
+		for(const batch of [...this.batches,this.mangoBatch]) {
+			batch.previousCount=batch.count;batch.previous.array.set(batch.instanceMatrix.array);batch.count=0;
+		}
 		for(const h of this.habitats) {h.anchor.getWorldPosition(h.position);h.distance=h.position.distanceToSquared(camera);h.anchor.visible=h.distance<120*120;}
 		for(const fruit of this.fruit) {
 			if(fruit.habitat.distance>90*90)continue;
@@ -120,7 +133,11 @@ export class TreeWildlife {
 			}
 		}
 		for(const batch of [...this.batches,this.mangoBatch]) {
-			batch.visible=batch.count>0; if(batch.visible)batch.instanceMatrix.needsUpdate=true;
+			batch.visible=batch.count>0;
+			if(batch.visible) {
+				if(batch.previousCount!==batch.count)batch.previous.array.set(batch.instanceMatrix.array);
+				batch.instanceMatrix.needsUpdate=true;batch.previous.needsUpdate=true;
+			}
 		}
 	}
 }
