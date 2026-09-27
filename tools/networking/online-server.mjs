@@ -104,7 +104,11 @@ export async function createOnlineServer({ root = resolve('dist'), host = '127.0
 							nodeId ||= state.nodeId;
 							if (state.mode === 'helicopter' && peers.helicopter.owner !== role) return;
 							lastPlayer = state;
-							peers.economy.position(role,state);
+							peers.economy.position(role, state, now);
+							if (role === 'loz' && state.boat) peers.economy.boat(state.boat, now);
+							const economyRevision = peers.economy.revision;
+							peers.economy.tick(now);
+							if (peers.economy.revision !== economyRevision) broadcast(peers.economy.packet());
 							if (state.helicopter && peers.helicopter.update(role,state.helicopter)) broadcast(peers.helicopter.packet());
 							const data = JSON.stringify({ type: 'state', state });
 							for (const peer of peers.values()) if (peer !== client && peer.readyState === WebSocket.OPEN) peer.send(data);

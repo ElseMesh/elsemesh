@@ -11,4 +11,9 @@ export const ITEM_SPAWNS = [
 	['beach-rod', 'rod', 56, -79], ['beach-knife', 'knife', 45, -70],
 	['beach-watch', 'watch', 59, -61], ['beach-phone', 'phone', 64, -49],
 	['cove-rod', 'rod', 70, -89], ['path-knife', 'knife', 54, -62],
+	['salvage-watch', 'watch', 76, 95, -6.466034832],
+	['salvage-phone', 'phone', 92, 145, -7.058724346],
+	['salvage-knife', 'knife', 55, 330, -14.385887327],
+	['salvage-deep-watch', 'watch', 850, -935, -34.975121918],
+	['salvage-deep-phone', 'phone', 850, -952, -47.810392799],
 ];

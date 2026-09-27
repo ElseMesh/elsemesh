@@ -72,7 +72,15 @@ export class PhysicalItems {
 	update(){
 		const app=this.app,p=app.player;
 		if(!this.pickupButton && this.game.hud){this.pickupButton=document.createElement('button');this.pickupButton.className='tw-interactive';this.pickupButton.style.cssText='position:fixed;bottom:18%;left:50%;transform:translateX(-50%);padding:12px 20px;border:1px solid #9ce5db;border-radius:24px;background:#10272ded;color:white;z-index:30;cursor:pointer';document.body.append(this.pickupButton);this.pickupButton.onclick=()=>{if(this.nearest)this.act('pickup',{itemId:this.nearest.id});};}
-		if(!this.transport)this.ledger.position(this.id,{position:[p.position.x,p.position.y,p.position.z],mode:p.mode});
+		if(!this.transport){
+			const now=Date.now(),boat=this.game.boatCtl;
+			this.ledger.position(this.id,{position:[p.position.x,p.position.y,p.position.z],mode:p.mode},now);
+			if(boat?.position&&boat?.quaternion){
+				const velocity=boat.velocity||boat.body?.velocity;
+				this.ledger.boat({position:[boat.position.x,boat.position.y,boat.position.z],quaternion:[boat.quaternion.x,boat.quaternion.y,boat.quaternion.z,boat.quaternion.w],velocity:[velocity?.x||0,velocity?.y||0,velocity?.z||0]},now);
+			}
+			this.ledger.tick(now); this.data=this.ledger.packet();
+		}
 		if(!this.data)return;
 		let closest=null, distance=3;
 		for(const item of this.data.items){

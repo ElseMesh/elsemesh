@@ -1,21 +1,26 @@
 import { ITEM_TYPES, ITEM_SPAWNS, GENERAL_SHOP, SUPPLY_CRATE } from './ItemCatalog.js';
 import { FISH, fishValue, fishLengthCm } from './FishTable.js';
 import { defaultUpgrades, nextLevel, FUEL_PRICE, UPGRADES, gearStats } from './Gear.js';
+import { SalvageAuthority } from './SalvageAuthority.js';
 
 // Agent Control: the same deterministic authority runs in solo saves and on the room server.
 // All transfers are synchronous transactions. Clients send intents, never balances or ownership.
 export class ItemEconomy {
 	constructor() {
-		this.items = ITEM_SPAWNS.map(([id, type, x, z]) => ({ id, type, x, z, owner: null }));
+		this.items = ITEM_SPAWNS.map(([id, type, x, z, y]) => ({ id, type, x, z, ...(Number.isFinite(y) ? { y } : {}), owner: null }));
 		this.accounts = {}; this.positions = {}; this.offers = []; this.serial = 0; this.revision = 0; this.crateOpened = false;
+		this.salvage = new SalvageAuthority(this);
 	}
 	join(id) { this.accounts[id] ||= { credits: 0, equipped: null, fish: [], nextFish: 1, upgrades: defaultUpgrades(), lastCatch: 0 }; }
-	position(id, pose) {
-		if (Array.isArray(pose?.position) && pose.position.length === 3 && pose.position.every(Number.isFinite)) this.positions[id] = { x: pose.position[0], y: pose.position[1], z: pose.position[2], mode: pose.mode, at: Date.now() };
+	position(id, pose, now = Date.now()) {
+		if (Array.isArray(pose?.position) && pose.position.length === 3 && pose.position.every(Number.isFinite)) this.positions[id] = { x: pose.position[0], y: pose.position[1], z: pose.position[2], mode: pose.mode, at: now };
 	}
+	boat(state, now = Date.now()) { return this.salvage.setBoat(state, now); }
+	tick(now = Date.now()) { if (this.salvage.tick(now)) this.revision++; }
 	near(id, point, radius = 3) {
 		const p = this.positions[id];
-		return p && Date.now() - p.at < 5000 && p.mode === 'walk' && Math.hypot(p.x - point.x, p.z - point.z) <= radius;
+		const vertical = Number.isFinite(point.y) ? p && Math.abs(p.y - point.y) : 0;
+		return p && Date.now() - p.at < 5000 && p.mode === 'walk' && vertical <= radius && Math.hypot(p.x - point.x, p.z - point.z) <= radius;
 	}
 	owned(id) { return this.items.filter(i => i.owner === id); }
 	act(id, a, now = Date.now()) {
@@ -26,7 +31,11 @@ export class ItemEconomy {
 		const owned = item?.owner === id;
 		const fail = message => ({ ok: false, message });
 		let message = 'Done';
-		if (a.action === 'catch') {
+		if (a.action === 'salvage') {
+			const result = this.salvage.action(id, a, now);
+			if (result.ok) this.revision++;
+			return result;
+		} else if (a.action === 'catch') {
 			if (!this.owned(id).some(i => i.type === 'rod') || !Object.hasOwn(FISH,a.species) || !Number.isFinite(a.kg) || a.kg <= 0 || a.kg > 100 || now - account.lastCatch < 8000) return fail('Catch could not be registered.');
 			if(account.fish.length>=200 || account.fish.reduce((n,f)=>n+f.kg,0)+a.kg>gearStats(account.upgrades).holdKg)return fail('Fish hold is full.');
 			account.lastCatch = now;
@@ -52,7 +61,7 @@ export class ItemEconomy {
 			if (!Number.isSafeInteger(a.litres) || a.litres < 1 || a.litres > 1000 || account.credits < Math.ceil(a.litres * FUEL_PRICE)) return fail('Not enough credits for fuel.');
 			account.credits -= Math.ceil(a.litres * FUEL_PRICE); message = 'Fuel purchased';
 		} else if (a.action === 'pickup') {
-			if (!item || item.owner !== null || !this.near(id, item)) return fail('Move closer to the item.');
+			if (!item || item.owner !== null || item.held || !this.near(id, item)) return fail('Move closer to the item.');
 			if (this.owned(id).length >= 12) return fail('Your bag is full (12 items).');
 			item.owner = id; message = `Picked up ${ITEM_TYPES[item.type].name}`;
 		} else if (a.action === 'drop') {
@@ -117,17 +126,23 @@ export class ItemEconomy {
 		return { ok: true, message };
 	}
 	disconnect(id) {
+		this.salvage.disconnect(id);
 		const p = this.positions[id] || GENERAL_SHOP;
-		for (const i of this.owned(id)) { i.owner = null; i.x = p.x; i.z = p.z; }
+		for (const i of this.owned(id)) { i.owner = null; i.x = p.x; i.z = p.z; i.y = p.y; }
 		this.offers = this.offers.filter(o => o.from !== id && o.to !== id);
 		delete this.accounts[id]; delete this.positions[id]; this.revision++;
 	}
-	packet() { return { type: 'economy', v: 1, revision: this.revision, items: this.items, accounts: this.accounts, offers: this.offers, serial: this.serial, crateOpened: this.crateOpened }; }
+	packet() { return { type: 'economy', v: 1, revision: this.revision, items: this.items, accounts: this.accounts, offers: this.offers, serial: this.serial, crateOpened: this.crateOpened, salvage: this.salvage.snapshot() }; }
 	load(data) {
 		if (data?.v !== 1 || !Array.isArray(data.items) || !data.accounts || data.items.length > 2000) return false;
 		const ids = new Set();
 		if (!data.items.every(i => i && typeof i.id === 'string' && !ids.has(i.id) && ids.add(i.id) && Object.hasOwn(ITEM_TYPES,i.type) && Number.isFinite(i.x) && Number.isFinite(i.z) && (i.owner === null || typeof i.owner === 'string'))) return false;
 		if (!Object.values(data.accounts).every(a => a && Number.isSafeInteger(a.credits) && a.credits >= 0)) return false;
-		this.items = data.items; this.accounts = data.accounts; this.serial = Number.isSafeInteger(data.serial) ? data.serial : 0; this.crateOpened = !!data.crateOpened; return true;
+		this.items = data.items.map(item => ({ ...item, ...(item.held ? {} : { held: undefined }) }));
+		for (const [id, type, x, z, y] of ITEM_SPAWNS) {
+			if (!this.items.some(item => item.id === id)) this.items.push({ id, type, x, z, ...(Number.isFinite(y) ? { y } : {}), owner: null });
+		}
+		for (const item of this.items) delete item.held;
+		this.accounts = data.accounts; this.serial = Number.isSafeInteger(data.serial) ? data.serial : 0; this.crateOpened = !!data.crateOpened; return true;
 	}
 }
