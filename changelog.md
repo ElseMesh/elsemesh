@@ -5,6 +5,8 @@ Reporting period: **26–27 September 2026**. This summary follows repository hi
 
 ## 27 September 2026
 
+- **Agent Control:** replaced straight wildlife branch crossbars with tapered curved limbs growing from staggered trunk joints, added ascending forks and redirected monkey motion along the actual branch curves.
+- **Agent Control:** added occasional bounded jumps to branches on nearby trees, including curved airborne motion, tucked feet, live wind-following landing points and return patrols; tested transition continuity.
 - **Agent Control:** added bounded CC0 scanned palm/broadleaf bark maps, folded mango foliage, curved bananas in tiered bunches, mango clusters and four branch-patrolling monkeys attached to wind-bent trees. Preserved coconut palms, gameplay and hunger settings; added continuity/culling tests and an in-engine wildlife inspection video.
 - **Agent Control:** added per-instance previous transforms to animated wildlife for correct temporal motion vectors, and re-recorded the wildlife preview after checking the initial clip for trails.
 - **Agent Control:** reviewed Rebroad's Linux rendering changes and added cross-platform Auto/High/Balanced/Mobile profiles, bounded output resolution, adaptive internal resolution and GPU adapter fallback.

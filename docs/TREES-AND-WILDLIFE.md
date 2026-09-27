@@ -13,6 +13,8 @@ Sail to the third island and follow the path from **Loz's Helicopter Rental** to
 - Third-island tree crowns use folded lance-shaped leaves with midribs instead of solid green spheres. Existing progressive trunk bending and crown movement remain.
 - Each mature banana pseudostem carries **28 curved, tapered bananas in four hands**, an arched stalk and a maroon terminal blossom. Fruit follows the plant's existing wind deformation and distance fade.
 - Eight mango trees carry clusters of fruit. Their branches attach to the articulated trunks, so foliage, fruit and monkeys follow the same wind transforms.
+- Limbs grow from buried, flared roots within the trunk at staggered heights and azimuths. Curved tapered meshes fork into smaller twigs; the monkey path samples the same curve and follows its slope, replacing the original straight crossbars.
+- Monkeys with a reachable neighbouring tree occasionally jump across: routes are limited to 1.1–5 m with at most 1.7 m height difference and trunk clearance. Take-off and landing follow the moving branches, with a parabolic arc and tucked feet. They patrol the destination tree before returning; isolated trees retain branch patrols.
 - Monkeys are original stylised full-body procedural models with face, ears, hands, feet, bent limbs and articulated tails. They use four instanced material batches; all mangoes use one further batch. These are ambient local wildlife, not network-authoritative interactive NPCs.
 - Each animated instance retains its previous transform for correct motion vectors, reducing temporal trails behind moving limbs and tails.
 - Fruit is decorative in this release; picking/eating fruit has not been added. Hunger remains off by default.
@@ -26,6 +28,7 @@ Wildlife batches stop drawing beyond 110 m (monkeys) / 90 m (mangoes). Their sup
 On MSI Intel Arc / Edge, a fixed 1280×720 wildlife close-up (30 warm-up, 90 measured frames) averaged **26.52 ms GPU / 35.50 ms wall** on Balanced and **20.24 ms GPU / 27.04 ms wall** on the Mobile profile. These are same-PC profile measurements, not a before/after speedup claim or a physical mobile result. Raw data: [wildlife benchmark](performance/wildlife-2026-09-27.json). Browser review reported no WebGPU errors.
 
 The silent 49-second, 1280×720, 30 fps review is saved outside Git at `D:/Downloads/Burning-Horizons-Trees-Monkeys-Bananas.mp4`; stills and source WebM are in `D:/Downloads/Burning-Horizons-Wildlife/`.
+Those benchmark figures and the original review predate the curved-branch/jumping correction. Its replacement inspection video is `D:/Downloads/Burning-Horizons-Natural-Branches.mp4`.
 
 ## Evidence capture
 

@@ -2,6 +2,7 @@
 import { Group, Mesh, InstancedMesh, InstancedInterleavedBuffer, InterleavedBufferAttribute, SphereGeometry, CylinderGeometry, Vector3, Quaternion, Matrix4 } from '../engine/index.js';
 import { standard } from '../materials/Materials.js';
 import { fruitTreeCrownGeometry, fruitTreeLeafMaterial } from './vegetation/FruitTreeCrown.js';
+import {branchPoint,branchRadius,curvedBranchGeometry} from './vegetation/TreeBranch.js';
 
 const up = new Vector3(0,1,0);
 const surface = (name,color) => {
@@ -17,6 +18,21 @@ export function monkeyPatrol(time) {
 	const turn=Math.max(0,Math.min(1,(t-9)/2));
 	return {x, yaw:(outbound?Math.PI/2:-Math.PI/2) + Math.PI*turn*turn*(3-2*turn), moving,
 		stride: moving ? Math.sin(Math.PI*f)**.5 : 0, phase: time*7.5};
+}
+
+// Agent Control: continuous parabolic leaps between live, wind-transformed branch endpoints.
+export function monkeyJump(from,to,f,out=new Vector3()) {
+	const height=.65+from.distanceTo(to)*.16;
+	out.copy(from).lerp(to,f);out.y+=4*height*f*(1-f);return out;
+}
+
+function branchFrame(h,u,yaw,out) {
+	const position=branchPoint(u,h.variant).multiplyScalar(h.scale);position.y+=branchRadius(u)*h.scale-.018;
+	const forward=branchPoint(u+.002,h.variant).sub(branchPoint(u-.002,h.variant)).normalize();
+	const right=new Vector3().crossVectors(up,forward).normalize(),normal=new Vector3().crossVectors(forward,right).normalize();
+	const local=new Matrix4().makeBasis(right,normal,forward);
+	const rotation=new Quaternion().setFromRotationMatrix(local).multiply(new Quaternion().setFromAxisAngle(up,yaw-Math.PI/2));
+	local.compose(position,rotation,new Vector3(1,1,1));h.anchor.updateWorldMatrix(true,false);return out.multiplyMatrices(h.anchor.matrixWorld,local);
 }
 
 export class TreeWildlife {
@@ -49,27 +65,44 @@ export class TreeWildlife {
 		// Agent Control: closest trees to the rental-to-pad path get wildlife; all fruit follows real wind joints.
 		const chosen=[...trees].sort((a,b)=>Math.hypot(a.root.position.x-115,a.root.position.z-606)-Math.hypot(b.root.position.x-115,b.root.position.z-606));
 		for(let i=0;i<Math.min(8,chosen.length);i++) {
-			const tree=chosen[i], anchor=new Group(); anchor.position.set(0,0,0); tree.joints[6].add(anchor);
-			const habitat={anchor,position:new Vector3(),distance:0};this.habitats.push(habitat);
+			const tree=chosen[i], anchor=new Group(); anchor.rotation.y=i*1.73; tree.joints[4+i%3].add(anchor);
+			const habitat={anchor,tree,variant:i%3,scale:1,position:new Vector3(),distance:0};this.habitats.push(habitat);
 			const branch=(a,b,r)=>{
 				const d=new Vector3().subVectors(b,a), mesh=new Mesh(new CylinderGeometry(r*.7,r,d.length(),8),bark);
 				mesh.position.copy(a).add(b).multiplyScalar(.5); mesh.quaternion.setFromUnitVectors(up,d.normalize());
 				mesh.castShadow=true; anchor.add(mesh);
 			};
-			branch(new Vector3(0,0,0),new Vector3(0,.15,.85),.18);
-			branch(new Vector3(0,.15,.85),new Vector3(-2.3,-.05,.85),.13);
-			branch(new Vector3(0,.15,.85),new Vector3(2.3,.35,.85),.13);
+			const main=new Mesh(curvedBranchGeometry((t,out)=>branchPoint(t,i%3,out),branchRadius),bark);main.castShadow=true;anchor.add(main);
+			// Agent Control: other limbs emerge independently at higher trunk joints and different azimuths.
+			for(let fork=0;fork<2;fork++) {
+				const limb=new Group();limb.rotation.y=i*1.73+2.15+fork*2.1;tree.joints[6+fork].add(limb);
+				const mesh=new Mesh(curvedBranchGeometry((t,out)=>branchPoint(t,fork,out).multiplyScalar(.72+fork*.12),t=>branchRadius(t)*.72),bark);mesh.castShadow=true;limb.add(mesh);
+				const crown=new Mesh(leafGeometry,leafMaterial);crown.position.copy(branchPoint(.88,fork).multiplyScalar(.72+fork*.12));crown.scale.set(.9,.8,.9);crown.castShadow=true;limb.add(crown);
+				this.habitats.push({anchor:limb,tree,variant:fork,scale:.72+fork*.12,position:new Vector3(),distance:0});
+			}
 			for(let k=0;k<12;k++) {
-				const x=(k<6?-1:1)*(1.2+(k%3)*.29), y=.15+x*.087;
-				const start=new Vector3(x,y,.85), end=new Vector3(x+.15,y-.22,.85+(k%2?-.28:.28));
+				const start=branchPoint(.59+(k%4)*.09,i%3),end=start.clone().add(new Vector3(.08,-.19-(k%3)*.05,(k%2?-.3:.3)));
 				branch(start,end,.012);
 				this.fruit.push({anchor,habitat,point:end.clone().add(new Vector3(0,-.11,0)),seed:k+i*12});
 			}
 			for(const side of [-1,1]) {
-				branch(new Vector3(side*.9,.15,.85),new Vector3(side*1.85,.7,.25),.055);
-				const leaves=new Mesh(leafGeometry,leafMaterial);leaves.position.set(side*2,.5,.65);leaves.scale.set(.7,.8,.8);leaves.castShadow=true;anchor.add(leaves);
+				const start=branchPoint(.66,i%3),end=branchPoint(.95,i%3).add(new Vector3(-.1,.4,side*.55));
+				const twig=new Mesh(curvedBranchGeometry((t,out)=>out.copy(start).lerp(end,t).add(new Vector3(0,Math.sin(t*Math.PI)*.18,0)),t=>.055*(1-t)+.008,8),bark);twig.castShadow=true;anchor.add(twig);
+				const leaves=new Mesh(leafGeometry,leafMaterial);leaves.position.copy(end);leaves.scale.set(.7,.8,.8);leaves.castShadow=true;anchor.add(leaves);
 			}
-			if(i<4)this.monkeys.push({anchor,tree,index:i,position:new Vector3()});
+			if(i<4)this.monkeys.push({anchor,tree,home:habitat,index:i,position:new Vector3()});
+		}
+		// Agent Control: only admit reachable different-tree landings with clearance from both trunks.
+		for(const monkey of this.monkeys) {
+			const from=new Vector3().setFromMatrixPosition(branchFrame(monkey.home,.83,-Math.PI/2,new Matrix4()));let best=5;
+			for(const candidate of this.habitats) {
+				if(candidate.tree===monkey.tree)continue;
+				const to=new Vector3().setFromMatrixPosition(branchFrame(candidate,.83,-Math.PI/2,new Matrix4())),d=from.distanceTo(to);
+				if(d<1.1||d>=best||Math.abs(to.y-from.y)>1.7)continue;
+				let clear=true;
+				for(let k=1;k<10;k++){const p=from.clone().lerp(to,k/10);for(const tree of trees)if(Math.hypot(p.x-tree.root.position.x,p.z-tree.root.position.z)<.65)clear=false;}
+				if(clear){best=d;monkey.destination=candidate;}
+			}
 		}
 		this.update(0,{x:115,y:10,z:606});
 	}
@@ -97,9 +130,20 @@ export class TreeWildlife {
 		for(const monkey of this.monkeys) {
 			monkey.anchor.getWorldPosition(monkey.position);
 			if(monkey.position.distanceToSquared(camera)>110*110)continue;
-			const p=monkeyPatrol(this.time+monkey.index*5.7), t=p.phase;
-			this.pos.set(p.x,.26+p.x*.087,.85); this.rot.setFromAxisAngle(up,p.yaw); this.scale.setScalar(1);
-			this.local.compose(this.pos,this.rot,this.scale); this.body.multiplyMatrices(monkey.anchor.matrixWorld,this.local);
+			const cycle=(this.time+monkey.index*19)%96,away=monkey.destination&&cycle>=25.25&&cycle<49.25;
+			const jumping=!!monkey.destination&&((cycle>=24&&cycle<25.25)||(cycle>=49.25&&cycle<50.5));
+			const localTime=monkey.destination?(away?cycle-25.25:cycle>=50.5?Math.min(24,cycle-50.5):Math.min(cycle,24)):this.time+monkey.index*5.7;
+			const p=monkeyPatrol(localTime+12), t=p.phase,habitat=away?monkey.destination:monkey.home;
+			const u=.48+(p.x+1.75)/3.5*.35;
+			branchFrame(habitat,u,p.yaw,this.body);let tuck=0;
+			if(jumping) {
+				const returning=cycle>=49.25,f=(cycle-(returning?49.25:24))/1.25;
+				const start=returning?monkey.destination:monkey.home,end=returning?monkey.home:monkey.destination;
+				const first=branchFrame(start,.83,-Math.PI/2,new Matrix4()),last=branchFrame(end,.83,-Math.PI/2,new Matrix4());
+				const a=new Vector3(),b=new Vector3(),qa=new Quaternion(),qb=new Quaternion(),scale=new Vector3();first.decompose(a,qa,scale);last.decompose(b,qb,scale);
+				monkeyJump(a,b,f,this.pos);qa.slerp(qb,f);this.body.compose(this.pos,qa,scale);tuck=Math.sin(Math.PI*f)*.17;p.stride=0;
+			}
+			monkey.jumping=jumping;monkey.currentPosition=new Vector3().setFromMatrixPosition(this.body);
 			const [fur,skin,dark,chest]=this.batches, frame=this.body, bob=Math.sin(t*2)*.025*p.stride;
 			this.put(fur,frame,0,.66+bob,0,.22,.22,.42);
 			this.put(chest,frame,0,.61+bob,.22,.16,.18,.21);
@@ -114,7 +158,7 @@ export class TreeWildlife {
 				this.put(chest,frame,side*.069-.005,.957+bob,.622,.007,.008,.005);
 				for(const front of [true,false]) {
 					const phase=t+(side>0?Math.PI:0)+(front?0:Math.PI), swing=Math.sin(phase)*.14*p.stride;
-					const lift=Math.max(0,Math.cos(phase))*.105*p.stride;
+					const lift=Math.max(0,Math.cos(phase))*.105*p.stride+tuck;
 					const z=front?.31:-.29;
 					this.a.set(side*.17,(front?.71:.6)+bob,z);
 					this.b.set(side*.205,.30+lift*.5,z+(front?-.09:.12)+swing*.5);

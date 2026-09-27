@@ -3,8 +3,21 @@ import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {Group,Vector3} from '../src/engine/index.js';
 import {standard} from '../src/materials/Materials.js';
-import {TreeWildlife,monkeyPatrol} from '../src/world/TreeWildlife.js';
+import {TreeWildlife,monkeyPatrol,monkeyJump} from '../src/world/TreeWildlife.js';
 import {buildBanana} from '../src/world/vegetation/PlantGeometry.js';
+import {branchPoint,branchRadius,curvedBranchGeometry} from '../src/world/vegetation/TreeBranch.js';
+
+test('branches grow from a buried trunk origin, rise, curve and taper',()=>{
+	for(let variant=0;variant<3;variant++) {
+		assert.equal(branchPoint(0,variant).length(),0);
+		assert.ok(branchPoint(1,variant).y>1.5);
+		assert.ok(branchPoint(.5,variant).distanceTo(branchPoint(1,variant).multiplyScalar(.5))>.4);
+		assert.ok(branchRadius(0)>branchRadius(.5)&&branchRadius(.5)>branchRadius(1));
+		const g=curvedBranchGeometry((t,out)=>branchPoint(t,variant,out),branchRadius);
+		assert.ok(g.attributes.position.array.every(Number.isFinite));
+		assert.ok(g.attributes.normal.array.every(Number.isFinite));
+	}
+});
 
 test('monkeys never teleport at patrol or turn boundaries',()=>{
 	for(let t=-.02;t<48;t+=.01){
@@ -15,6 +28,12 @@ test('monkeys never teleport at patrol or turn boundaries',()=>{
 		assert.ok(Math.abs(turn)<.025);
 	}
 });
+test('jump arc begins and ends on branches and clears the gap',()=>{
+	const a=new Vector3(0,4,0),b=new Vector3(4,5,1);
+	assert.deepEqual(monkeyJump(a,b,0).toArray(),a.toArray());
+	assert.deepEqual(monkeyJump(a,b,1).toArray(),b.toArray());
+	assert.ok(monkeyJump(a,b,.5).y>Math.max(a.y,b.y)+.5);
+});
 test('fruit and monkeys follow swaying branch frames, with finite matrices and bounded batches',()=>{
 	const root=new Group(),trees=[];
 	for(let i=0;i<8;i++) {
@@ -23,6 +42,8 @@ test('fruit and monkeys follow swaying branch frames, with finite matrices and b
 	}
 	const wildlife=new TreeWildlife(root,trees,standard({color:0x555555}));
 	assert.equal(wildlife.monkeys.length,4);assert.equal(wildlife.fruit.length,96);
+	assert.ok(wildlife.monkeys.some(m=>m.destination));
+	for(const m of wildlife.monkeys)if(m.destination)assert.notEqual(m.destination.tree,m.tree);
 	const camera=new Vector3(115,8,608);wildlife.update(0,camera);
 	const before=Array.from(wildlife.mangoBatch.instanceMatrix.array.slice(0,16));
 	wildlife.fruit[0].anchor.parent.rotation.z=.3;wildlife.update(0,camera);
@@ -36,6 +57,11 @@ test('fruit and monkeys follow swaying branch frames, with finite matrices and b
 	wildlife.update(.1,camera);
 	assert.deepEqual(Array.from(wildlife.batches[0].previous.array),previous);
 	assert.notDeepEqual(Array.from(wildlife.batches[0].instanceMatrix.array),previous);
+	for(const boundary of [24,25.25,49.25,50.5,96]) {
+		wildlife.time=boundary-.00001;wildlife.update(0,camera);const positions=wildlife.monkeys.map(m=>m.currentPosition.clone());
+		wildlife.time=boundary+.00001;wildlife.update(0,camera);
+		wildlife.monkeys.forEach((m,i)=>assert.ok(m.currentPosition.distanceTo(positions[i])<.001));
+	}
 	wildlife.update(1,new Vector3(0,0,-500));
 	for(const batch of [...wildlife.batches,wildlife.mangoBatch])assert.equal(batch.visible,false);
 });

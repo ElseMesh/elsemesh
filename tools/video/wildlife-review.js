@@ -1,22 +1,24 @@
 // Agent Control: in-engine inspection video; camera cuts are staged, tree/wildlife animation is live.
 import {Vector3} from '../../src/engine/index.js';
+import {branchPoint} from '../../src/world/vegetation/TreeBranch.js';
 export function wildlifeView(app,shot) {
 	const m=app.thirdIsland.wildlife.monkeys[0], anchor=m.anchor.getWorldPosition(new Vector3());
-	let target=anchor.clone().add(new Vector3(0,.7,.85)), eye;
-	if(shot==='wide')eye=anchor.clone().add(new Vector3(-8,-2,11));
+	let target=m.anchor.localToWorld(branchPoint(.55).add(new Vector3(0,.6,0))), eye;
+	if(shot==='wide')eye=anchor.clone().add(new Vector3(-5,-1,9));
 	else if(shot==='bark'){target=anchor.clone().add(new Vector3(0,-2,0));eye=target.clone().add(new Vector3(1.6,.1,1.5));}
 	else if(shot==='bananas') {
 		const b=app.vegetation.records.bananas.find(b=>b.x===127&&b.z===603);
 		const c=Math.cos(b.yaw),s=Math.sin(b.yaw);
 		target=new Vector3(b.x+.58*c+.06*s,b.y+1.72,b.z-.58*s+.06*c);
 		eye=target.clone().add(new Vector3(1.6*c+.3*s,.02,-1.6*s+.3*c));
-	} else eye=anchor.clone().add(new Vector3(0,1,4.5));
+	} else eye=target.clone().add(new Vector3(-.6,.5,5));
 	const d=target.clone().sub(eye);app.fly.setPose(eye,Math.atan2(-d.x,-d.z),Math.atan2(d.y,Math.hypot(d.x,d.z)));app.fly.velocity.set(0,0,0);
 }
 export async function recordWildlife(app=window.__app) {
 	app.engine.stop();app.monorail.state='station';app.thirdIsland.active=false;app.player.mode='walk';
 	app.settings.clockMode='manual';app.settings.timeOfDay=13;app.settings.timeSpeed=0;app.setQuality('balanced');app.setFreeCam(true);
 	window.__bench.setSize(1280,720);
+	app.thirdIsland.wildlife.time=0;
 	const out=document.createElement('canvas');out.width=1280;out.height=720;const ctx=out.getContext('2d');
 	const stream=out.captureStream(30),chunks=[],recorder=new MediaRecorder(stream,{mimeType:'video/webm;codecs=vp9',videoBitsPerSecond:6500000});
 	const status=window.__wildlifeReview={status:'recording',seconds:0,shot:'wide'};
