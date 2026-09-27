@@ -75,6 +75,9 @@ export class App {
 		this.qs = new URLSearchParams( location.search );
 		const platform = navigator.userAgentData?.platform || navigator.platform || '';
 		this.desktopAdaptiveScale = /linux/i.test( platform ) && ! /android/i.test( navigator.userAgent );
+		// Keep the Linux canvas slightly below the display resolution so full-screen post passes
+		// (temporal upscale, haze, bloom and grading) do not remain full cost when the scene scale drops.
+		this.desktopCanvasScale = this.desktopAdaptiveScale ? 0.8 : 1;
 		// ?scale is a deliberate override, useful for profiling and manual quality selection.
 		this.autoScale = this.desktopAdaptiveScale && ! this.qs.has( 'scale' );
 		this._scaleBelowTarget = 0;
@@ -746,9 +749,12 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 	setRenderScale( v ) {
 
 		const scale = MathUtils.clamp( Math.round( v * 20 ) / 20, 0.35, 1 );
-		if ( scale === this.settings.renderScale ) return;
+		const canvasScale = Math.max( this.desktopCanvasScale, scale );
+		const postScale = scale / canvasScale;
+		if ( scale === this.settings.renderScale && this.engine.renderScale === canvasScale && this.post.scale === postScale ) return;
 		this.settings.renderScale = scale;
-		this.post.setScale( scale );
+		if ( this.engine.renderScale !== canvasScale ) this.engine.setRenderScale( canvasScale );
+		if ( this.post.scale !== postScale ) this.post.setScale( postScale );
 		if ( this.clouds ) this.clouds.resolutionScale = scale;
 
 	}

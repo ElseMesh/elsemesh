@@ -264,7 +264,7 @@ export class AppUI {
 		const app = this.app;
 		const ui = this.ui;
 		ui.setStats( { fps: app.fps, frameMs: dt * 1000 } );
-		this.s.renderScale = app.post.scale;
+		this.s.renderScale = app.settings.renderScale;
 
 		const p = app.player;
 		if ( app.freeCam ) {
