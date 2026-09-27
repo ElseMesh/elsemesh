@@ -211,7 +211,7 @@ export class Player {
 		this.wade = wade;
 		const sprintAmount = Math.max( axes.sprint, inp.down( 'ShiftLeft' ) || inp.down( 'ShiftRight' ) ? 1 : 0 );
 		const sprinting = sprintAmount > 0;
-		const speed = THREE.MathUtils.lerp( 3.0, 6.2, sprintAmount ) * THREE.MathUtils.lerp( 1, 0.42, wade ) * ( this.needs?.hunger < 15 ? 0.65 : 1 );
+		const speed = THREE.MathUtils.lerp( 3.0, 6.2, sprintAmount ) * THREE.MathUtils.lerp( 1, 0.42, wade ) * ( this.needs?.enabled && this.needs.hunger < 15 ? 0.65 : 1 );
 		const accel = this.grounded ? 14 : 2.5;
 		const k = 1 - Math.exp( - accel * dt );
 		this.velocity.x += ( wish.x * speed - this.velocity.x ) * k;

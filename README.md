@@ -1,6 +1,10 @@
 # Burning Horizons — Island Mystery
 
-**Burning Horizons is an island mystery to explore and solve.** Arrive on a remote island, uncover a hidden cave, ride a concealed monorail beneath the sea, and follow an expedition's trail to a second island. Sail past Godzilla to a windy third island, meet Loz at his helicopter rental hut, collect the keys and fly back over the archipelago. Fishing is part of survival: keep a catch in the cooler and prepare it when hunger rises.
+Maintained by **Agent Control**. See [the two-day changelog](changelog.md).
+
+**[Play in your browser](https://lozknowles.github.io/Burning-Horizons/)** · **[Play multiplayer](https://hpubuntu.taila22e8a.ts.net/play-online.html)**
+
+**Burning Horizons is an island mystery to explore and solve.** Arrive on a remote island, uncover a hidden cave, ride a concealed monorail beneath the sea, and follow an expedition's trail to a second island. Sail past Godzilla to a windy third island, meet Loz at his helicopter rental hut, collect the keys and fly back over the archipelago. Fishing and trading are optional activities. Hunger is disabled by default so exploration never requires eating.
 
 The project is also exploring an **open federated virtual-world protocol**: independently owned regions connected by explicit portals, with cryptographic node identity, bounded region rules and controlled authority handoff. The [federated protocol design](docs/federated-world-protocol.md) and [networking architecture](docs/networking/architecture.md) explain what is implemented and what still needs a live game and physical-node proof. The existing island game works without federation.
 
@@ -26,10 +30,11 @@ The mystery story is an evolving playable prototype. The existing signal objecti
 
 ## Survival and the world
 
-- Choose your avatar in the online lobby, or press **K** in-game. Male and female Microsoft Rocketbox characters have idle, walk, run and seated clips. Choose shirt, trouser, skin and hair colours; choices are saved in this browser and shared with all room peers. The initial hairstyles are short hair (man) and ponytail (woman). Skin tone is independent of gender; these are appearance options, not racial categories. Your scanned likeness is reserved for rental NPC Loz. See [avatar chooser](docs/AVATAR-CHOOSER.md), [stock character](docs/STOCK-PLAYER.md) and [scan provenance](docs/SCANNED-CHARACTER.md).
+- Choose your avatar in the online lobby, or press **K** in-game. Male and female Microsoft Rocketbox characters have idle, walk, run and seated clips. Set a local character name and choose shirt, trouser, skin and hair colours; choices are saved in this browser and shared with all room peers. The initial hairstyles are short hair (man) and ponytail (woman). Skin tone is independent of gender; these are appearance options, not racial categories. Your scanned likeness is reserved for rental NPC Loz. See [avatar chooser](docs/AVATAR-CHOOSER.md), [stock character](docs/STOCK-PLAYER.md) and [scan provenance](docs/SCANNED-CHARACTER.md).
 - Third-island trunks bend progressively in gusts with anchored roots; crowns sway independently. Helipad edge beacons flash alternating double pulses. Breaking-wave lips and fresh whitewater now reach the third-island shoreline.
 
-- Hunger falls during play. Press **B** to prepare and eat a fish from the cooler; low hunger slows walking.
+- Hunger is **off by default on every launch**. In **H → Gameplay → Survival**, enable **Enable hunger** to restore the retained food system. With the switch off, hunger stays unchanged, the hunger HUD is hidden, B does not consume fish, and low hunger cannot slow walking. Existing saved hunger is preserved. The prototype has no starvation death mechanic.
+- When optional hunger is enabled, press **B** to prepare a fish from the cooler; low hunger slows walking.
 - Fishing, fish trading, boat fuel and upgrades remain available as survival systems.
 - The Steam79 Godzilla asset emerges offshore and walks toward the landing with a Blender-made walk cycle, a short burst of falling water that ends after emergence, heavy foot splashes, a trailing wake and foam crests pushed ahead of it.
 - By default, the sky follows the computer's **local time**, with sunset, moon and stars. The Sky settings allow a manual time and accelerated preview.
@@ -49,7 +54,7 @@ The mystery story is an evolving playable prototype. The existing signal objecti
 | Left / right cursor (helicopter) | Look through side windows |
 | E (helicopter) | Board with key; leave when stopped on dry ground |
 | G / left mouse / X | Equip sidearm / fire / reload |
-| B | Prepare and eat a fish from the cooler |
+| B | Prepare and eat a fish when optional hunger is enabled |
 | R / left mouse | Equip fishing rod / cast and reel while it is equipped |
 | I or Tab | Cooler, fish log and inventory |
 | V | Boat camera |
@@ -71,7 +76,7 @@ npm run build
 npm run test:network
 ```
 
-The local server uses http://127.0.0.1:5189/. The deployment workflow is `.github/workflows/deploy.yml`. GitHub Pages must be enabled for this repository and configured to use GitHub Actions before the public game URL works.
+The local server uses http://127.0.0.1:5189/. The deployment workflow is `.github/workflows/deploy.yml`. GitHub Pages serves the static WebGPU game; the hpubuntu service supplies the separate multiplayer WebSocket relay. Use the multiplayer link above for rooms and invitations.
 
 ## Play online with up to nine friends
 
@@ -103,3 +108,7 @@ The cave, monorail, second island, survival sidearm, hunger, local-time sky and 
 ## Credits and license
 
 Source code is MIT licensed under [LICENSE](LICENSE). Third-party assets keep their own licenses. See [CREDITS.md](CREDITS.md), including the required Steam79 attribution for the Godzilla model.
+
+## Agent Control walkthrough capture
+
+`tools/video/susie-capture.js` and `susie-receiver.mjs` record Susie (female, blonde) using scripted inputs to the actual game controllers. The capture is edited in chapters, with initial/restored recording fixtures and exterior inspection cameras; it is not an uninterrupted manual play test. Source footage and the final MP4 are kept on D: outside Git. Body-runoff telemetry distinguishes falling water from waterline splashes.

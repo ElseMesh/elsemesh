@@ -94,6 +94,8 @@ export class AppUI {
 		};
 
 		// ---------------------------------------------------------------- Ocean
+		const gameplay = ui.addTab( 'gameplay', 'Gameplay', 'gauge' );
+		gameplay.addFolder( 'Survival' ).addToggle( { label: 'Enable hunger', object: app.needs, key: 'enabled', tooltip: 'Off by default: no hunger drain, food requirement or hunger movement penalty.', onChange: () => app.needs.refresh() } );
 		const ocean = ui.addTab( 'ocean', 'Ocean', 'ocean' );
 		const sea = ocean.addFolder( 'Sea state', { icon: 'wind' } );
 		sea.addPresets( {

@@ -3,6 +3,8 @@ const SAVE_KEY = 'burning-horizons.survival.v1';
 export class SurvivalNeeds {
 	constructor(game) {
 		this.game = game;
+		// Agent Control: retained survival system is opt-in while exploration is the default.
+		this.enabled = false;
 		this.hunger = 100;
 		try {
 			const saved = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null');
@@ -19,6 +21,7 @@ export class SurvivalNeeds {
 	}
 
 	refresh() {
+		this.el.hidden = !this.enabled;
 		this.el.textContent = `Hunger ${Math.ceil(this.hunger)}% · B eat fish`;
 	}
 
@@ -27,6 +30,7 @@ export class SurvivalNeeds {
 	}
 
 	update(dt, input, toast) {
+		if (!this.enabled) { this.refresh(); return; }
 		this.hunger = Math.max(0, this.hunger - dt / 36);
 		this.saveTimer += dt;
 		if (this.saveTimer > 10) { this.saveTimer = 0; this.save(); }

@@ -10,6 +10,8 @@ let styled = false;
 export class AvatarChooser {
 	constructor({ app = null, parent = document.body } = {}) {
 		this.app = app; this.value = loadAppearance();
+		try { this.name = localStorage.getItem('bh.avatar.name') || 'Explorer'; } catch { this.name = 'Explorer'; }
+		if(app) app.player.displayName = this.name;
 		if (app) { app.player.avatarAppearance = { ...this.value }; app.avatar.setAppearance(this.value)?.catch(() => {}); }
 		if (!styled) {
 			styled = true;
@@ -24,6 +26,10 @@ export class AvatarChooser {
 		this.dialog.setAttribute('aria-label','Choose your avatar');
 		this.dialog.innerHTML = `<h2>Your island explorer</h2><img alt="Character style reference"><p>Choose a character and make it yours. Your friends see the same appearance.</p><label for="bh-avatar-style">Character & hairstyle</label><select id="bh-avatar-style"></select><p>Style reference shown above. Colours apply to your character in the game. Skin tone is independent of gender.</p><div class="bh-avatar-fields"></div><p class="bh-avatar-status" role="status"></p><div class="bh-avatar-actions"><button class="save">Save avatar</button><button class="cancel">Cancel</button></div>`;
 		document.body.append(this.dialog);
+		const nameLabel=document.createElement('label'); nameLabel.textContent='Character name'; nameLabel.htmlFor='bh-avatar-name';
+		this.nameInput=document.createElement('input'); this.nameInput.id=nameLabel.htmlFor; this.nameInput.maxLength=24; this.nameInput.autocomplete='off';
+		this.nameInput.style.cssText='box-sizing:border-box;width:100%;padding:10px;border:1px solid #62959a;border-radius:8px;background:#153845;color:white;font:inherit';
+		this.dialog.querySelector('.bh-avatar-fields').prepend(nameLabel,this.nameInput);
 		const select = this.dialog.querySelector('select');
 		for (const [id,style] of Object.entries(AVATAR_STYLES)) select.add(new Option(style.label,id));
 		select.onchange = () => { this.draft.style = select.value; this.refresh(); this.preview(); };
@@ -45,6 +51,9 @@ export class AvatarChooser {
 			try {
 				if (app) await app.avatar.setAppearance(this.draft);
 				this.value={...this.draft}; const saved=saveAppearance(this.value);
+				this.name=this.nameInput.value.trim().replace(/[\x00-\x1f<>]/g,'').slice(0,24) || 'Explorer';
+				try { localStorage.setItem('bh.avatar.name',this.name); } catch { /* Session-only name. */ }
+				if(app) app.player.displayName=this.name;
 				if(app) app.player.avatarAppearance={...this.value};
 				if (!saved) { this.status('Applied for this session. Browser storage is unavailable.'); return; }
 				this.close(true);
@@ -67,6 +76,7 @@ export class AvatarChooser {
 	show() {
 		if(this.dialog.open || (this.app && (!this.app.input.enabled || !this.app.fly || !this.app.thirdIsland))) return;
 		this.draft={...this.value}; this.refresh(); this.status('');
+		this.nameInput.value=this.name;
 		if(this.app) {
 			const a=this.app; this.previous={freeCam:a.freeCam,position:a.camera.position.clone(),yaw:a.fly.yaw,pitch:a.fly.pitch};
 			a.input.suspend(); document.exitPointerLock?.();

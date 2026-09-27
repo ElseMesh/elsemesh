@@ -1,0 +1,24 @@
+// Agent Control: qualify the retained opt-in survival system.
+import assert from 'node:assert/strict';
+import { SurvivalNeeds } from '../src/game/SurvivalNeeds.js';
+globalThis.localStorage = {getItem:()=>'{"hunger":5}',setItem:()=>{}};
+globalThis.document = {createElement:()=>({setAttribute(){},style:{}}),body:{appendChild(){}}};
+let consumed=0;
+const needs=new SurvivalNeeds({state:{inventory:[{id:1,kg:1,species:'fish'}],release(){consumed++;}}});
+needs.update(3600,{hit:()=>true},()=>{});
+assert.equal(needs.enabled,false);
+assert.equal(needs.hunger,5);
+assert.equal(consumed,0);
+assert.equal(needs.el.hidden,true);
+needs.enabled=true;
+needs.update(36,{hit:()=>false},()=>{});
+assert.equal(needs.hunger,4);
+assert.equal(needs.el.hidden,false);
+needs.update(0,{hit:()=>true},()=>{});
+assert.equal(consumed,1);
+assert.equal(needs.hunger,35);
+needs.enabled=false;
+needs.update(3600,{hit:()=>false},()=>{});
+assert.equal(needs.hunger,35);
+assert.equal(needs.el.hidden,true);
+console.log('Agent Control: survival off/on/off qualification passed');
