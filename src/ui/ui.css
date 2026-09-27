@@ -154,12 +154,12 @@ body {
 }
 
 .loader-title {
-	margin: 0 -0.3em 0 -0.04em; /* optical: the trailing tracking and the T's side bearing */
-	/* always fits its column: 9 letters at 0.3em tracking are ~9.2em wide, trailing tracking included */
-	font-size: min(136px, 10.4cqi);
+	margin: 0;
+	/* Size for the full sixteen-character name, including tracking and the space. */
+	font-size: min(112px, 7cqi);
 	white-space: nowrap;
 	font-weight: 600;
-	letter-spacing: 0.3em;
+	letter-spacing: 0.18em;
 	line-height: 0.95;
 	color: transparent;
 	background: linear-gradient(180deg, #ffffff 20%, #fff0dc 70%, #ffd7a8 100%);
@@ -372,9 +372,10 @@ body {
 	}
 
 	.loader-title {
-		letter-spacing: 0.22em;
-		margin-right: -0.22em;
-		font-size: min(136px, 11.2cqi);
+		letter-spacing: 0.12em;
+		font-size: min(64px, 12cqi);
+		white-space: normal;
+		line-height: 1.08;
 	}
 
 }
