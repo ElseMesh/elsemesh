@@ -211,6 +211,38 @@ export class GameHUD {
 		this.inv.inert = this.stand.inert = true;
 		ui.root.append( this.inv, this.stand );
 		this.invOpen = false;
+		let syncingInventory = false;
+		this.inventoryWindow = ui.windows?.register( {
+			id: 'inventory', element: this.inv, title: 'Inventory',
+			onOpen: () => {
+				if ( syncingInventory || this.invOpen ) return;
+				syncingInventory = true;
+				this.toggleInventory( true );
+				syncingInventory = false;
+			},
+			onClose: () => {
+				if ( syncingInventory || ! this.invOpen ) return;
+				syncingInventory = true;
+				this.toggleInventory( false );
+				syncingInventory = false;
+			},
+		} );
+		let syncingStand = false;
+		this.standWindow = ui.windows?.register( {
+			id: 'shop', element: this.stand, title: 'Shop',
+			onOpen: () => {
+				if ( syncingStand || this.standOpen || ! this.vendor ) return;
+				syncingStand = true;
+				this.openStand( this.vendor );
+				syncingStand = false;
+			},
+			onClose: () => {
+				if ( syncingStand || ! this.standOpen ) return;
+				syncingStand = true;
+				this.closeStand();
+				syncingStand = false;
+			},
+		} );
 		this.standOpen = false;
 		this._last = {};
 		game.state.onChange( () => this.refresh() );

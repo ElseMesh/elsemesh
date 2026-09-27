@@ -2,6 +2,7 @@ import * as THREE from '../engine/index.js';
 import { UI } from './UI.js';
 import { G } from '../core/Globals.js';
 import { GroundBounce } from '../materials/GroundBounce.js';
+import { WindowManager } from './WindowManager.js';
 
 // Binds the Burning Horizons UI (panel + HUD) to the running app.
 const SEA = {
@@ -17,6 +18,64 @@ export class AppUI {
 
 		this.app = app;
 		this.ui = ui;
+		this.windows = ui.windows = new WindowManager( { root: ui.root, releasePointerLock: () => document.exitPointerLock?.() } );
+
+		let syncingSettings = false;
+		const settingsToggle = ui.togglePanel.bind( ui );
+		const settingsWindow = this.windows.register( {
+			id: 'settings', element: ui.panel, title: 'Settings',
+			onOpen: () => {
+				if ( syncingSettings || ui._panelOpen ) return;
+				syncingSettings = true;
+				settingsToggle( true );
+				ui.rail.inert = false;
+				syncingSettings = false;
+			},
+			onClose: () => {
+				if ( syncingSettings || ! ui._panelOpen ) return;
+				syncingSettings = true;
+				settingsToggle( false );
+				syncingSettings = false;
+			},
+		} );
+		ui.togglePanel = force => {
+			const open = force ?? ! ui._panelOpen;
+			if ( syncingSettings ) return settingsToggle( open );
+			syncingSettings = true;
+			settingsToggle( open );
+			if ( open ) settingsWindow.show(); else if ( settingsWindow.open ) settingsWindow.close();
+			syncingSettings = false;
+		};
+
+		let syncingHelp = false;
+		const helpToggle = ui.toggleHelp.bind( ui );
+		const helpCard = ui.helpEl.querySelector( '.tw-help-card' ) || ui.helpEl;
+		ui.helpEl.setAttribute( 'aria-modal', 'false' );
+		const helpWindow = this.windows.register( {
+			id: 'help', element: helpCard, title: 'Controls & Help',
+			onOpen: () => {
+				if ( syncingHelp || ui._help ) return;
+				syncingHelp = true;
+				helpToggle( true );
+				syncingHelp = false;
+			},
+			onClose: () => {
+				if ( syncingHelp || ! ui._help ) return;
+				syncingHelp = true;
+				helpToggle( false );
+				syncingHelp = false;
+			},
+		} );
+		ui.toggleHelp = force => {
+			const open = force ?? ! ui._help;
+			if ( syncingHelp ) return helpToggle( open );
+			syncingHelp = true;
+			helpToggle( open );
+			if ( open ) helpWindow.show(); else if ( helpWindow.open ) helpWindow.close();
+			syncingHelp = false;
+		};
+		ui.helpEl.querySelector( '.tw-help-close' )?.addEventListener( 'click', () => helpWindow.close() );
+
 		this.ui.promptEl.addEventListener( 'pointerdown', ( e ) => {
 
 			if ( ! this.ui.promptEl.classList.contains( 'is-touch-action' ) ) return;
