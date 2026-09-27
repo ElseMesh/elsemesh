@@ -7,6 +7,7 @@ import { THIRD } from './ThirdIslandLayout.js';
 import { secondIslandHeight } from './MonorailRoute.js';
 import { createTreeBarkMaterial } from './vegetation/ScannedBark.js';
 import { TreeWildlife } from './TreeWildlife.js';
+import { PortalInterior } from './PortalInterior.js';
 import { fruitTreeCrownGeometry, fruitTreeLeafMaterial } from './vegetation/FruitTreeCrown.js';
 
 const material = (name, color, extra = {}) => { const m = standard({ name, color, roughness: .65, ...extra }); m.underwaterLighting = 'none'; m.localLightsCheap = true; return m; };
@@ -37,6 +38,7 @@ export class ThirdIslandSystem {
   this.leafGeometry=fruitTreeCrownGeometry();this.leafMaterial=fruitTreeLeafMaterial();
   this.trees=[];this.buildIsland();this.buildHelicopter();
   this.wildlife=new TreeWildlife(this.group,this.trees,this.bark);
+  this.portalInterior=new PortalInterior(app);
   this.state={x:THIRD.pad.x,y:THIRD.pad.y+.25,z:THIRD.pad.z,yaw:0,vx:0,vy:0,vz:0,rpm:0,pitch:0,roll:0,grounded:true};
   this.resetPose();
   this.dialogue=document.createElement('div');this.dialogue.setAttribute('role','status');
@@ -180,6 +182,7 @@ export class ThirdIslandSystem {
   this.sock.rotation.y=.25+Math.sin(this.time*1.7)*.13;this.sock.rotation.z=Math.sin(this.time*4)*.05;
   this.loz.update(dt,p,camera,true);this.key.rotation.y+=dt;
   this.updateLozDialogue();
+  this.portalInterior.update(dt);
   if(this.active){
    const look=inp.consumeLook(dt);s.yaw-=look.x*.0022;s.yaw=Math.atan2(Math.sin(s.yaw),Math.cos(s.yaw));this.lookPitch=Math.max(-.6,Math.min(.5,this.lookPitch-look.y*.0022));
    const axes=inp.moveAxes();
