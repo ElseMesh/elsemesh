@@ -77,7 +77,7 @@ export class App {
 		this.desktopAdaptiveScale = /linux/i.test( platform ) && ! /android/i.test( navigator.userAgent );
 		// Keep the Linux canvas slightly below the display resolution so full-screen post passes
 		// (temporal upscale, haze, bloom and grading) do not remain full cost when the scene scale drops.
-		this.desktopCanvasScale = this.desktopAdaptiveScale ? 0.8 : 1;
+		this.desktopCanvasScale = this.desktopAdaptiveScale ? 0.7 : 1;
 		// Leave some GPU time for the desktop compositor once the game can sustain the accepted rate.
 		this.desktopFrameRateLimit = this.desktopAdaptiveScale ? 24 : 0;
 		// ?scale is a deliberate override, useful for profiling and manual quality selection.

@@ -3,7 +3,7 @@ import { Engine } from '../src/engine/Engine.js';
 
 globalThis.location = { search: '' };
 const linux = new App();
-if ( ! linux.desktopAdaptiveScale || linux.settings.renderScale !== 0.75 || linux.desktopCanvasScale !== 0.8 || linux.desktopFrameRateLimit !== 24 ) throw new Error( 'Linux desktop should start with adaptive scaling and a 24 fps GPU budget' );
+if ( ! linux.desktopAdaptiveScale || linux.settings.renderScale !== 0.75 || linux.desktopCanvasScale !== 0.7 || linux.desktopFrameRateLimit !== 24 ) throw new Error( 'Linux desktop should start with adaptive scaling and a 24 fps GPU budget' );
 
 Object.defineProperty( globalThis, 'navigator', { configurable: true, value: { platform: 'Linux arm64', userAgent: 'Mozilla/5.0 Android 16' } } );
 const android = new App();
@@ -35,10 +35,10 @@ const scales = { engine: 1, post: 1 };
 linux.engine = { get renderScale() { return scales.engine; }, setRenderScale( v ) { scales.engine = v; } };
 linux.post = { get scale() { return scales.post; }, setScale( v ) { scales.post = v; } };
 linux.clouds = { resolutionScale: 1 };
-linux.setRenderScale( 0.75 ); // initialization must apply the Linux output scale despite the default setting
-if ( scales.engine !== 0.8 || Math.abs( scales.post - 0.9375 ) > 1e-6 || Math.abs( linux.clouds.resolutionScale - 0.9375 ) > 1e-6 ) throw new Error( 'Linux should preserve internal and cloud resolution while reducing post output size' );
+linux.setRenderScale( 0.75 ); // initialization uses scene scale until adaptive scaling lowers it
+if ( scales.engine !== 0.75 || scales.post !== 1 || linux.clouds.resolutionScale !== 1 ) throw new Error( 'Linux should begin at the selected scene scale' );
 linux.setRenderScale( 0.5 );
-if ( scales.engine !== 0.8 || Math.abs( scales.post - 0.625 ) > 1e-6 || Math.abs( linux.clouds.resolutionScale - 0.625 ) > 1e-6 ) throw new Error( 'Linux render scale should keep the canvas at 80% and preserve effective internal and cloud scale' );
+if ( scales.engine !== 0.7 || Math.abs( scales.post - 0.5 / 0.7 ) > 1e-6 || Math.abs( linux.clouds.resolutionScale - 0.5 / 0.7 ) > 1e-6 ) throw new Error( 'Linux render scale should reduce post output while preserving effective internal and cloud scale' );
 
 globalThis.location.search = '?scale=0.5';
 const manual = new App();
