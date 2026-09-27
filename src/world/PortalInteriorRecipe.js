@@ -146,7 +146,7 @@ export function buildRecipe(){
   add(box('office chair seat',[.7,.13,.7],[x,4.1,7.45],'charcoal'));add(box('office chair back',[.7,.85,.12],[x,4.55,7.76],'charcoal'));
  }
  for(const y of [4.05,5.05,6.05])add(box('CRT display shelf',[9.2,.11,.55],[-7.5,y,12.7],'wood'));
- for(const x of [-11,-9.2,-7.4,-5.6,-3.8])for(const y of [4.55,5.55,6.55]){add(box('shelf CRT shell',[1.25,.78,.5],[x,y,12.45],'cream'));add(box('shelf CRT dark screen',[.82,.48,.035],[x,y,12.17],'black'));}
+ for(const x of [-11,-9.2,-7.4,-5.6,-3.8])for(const y of [4.55,5.55,6.55]){add(box('shelf CRT shell',[.72,.52,.42],[x,y,12.45],'cream'));add(box('shelf CRT dark screen',[.5,.32,.025],[x,y,12.225],'black'));}
  // Sparse, faded industrial paint; no neon loops.
  for(const [z,r] of [[-4,.42],[2,-.34],[14,.28]]){add(box('faded graffiti stroke',[.035,.16,2.2],[15.79,3,z],'graffiti',{rotation:[r,0,0]}));add(box('faded graffiti mark',[.035,.12,1.3],[15.78,3.55,z+.3],'rust',{rotation:[-r,0,0]}));}
  // Pendants, task fixtures, hanging vines, and richer shelf-scale objects.
@@ -164,5 +164,5 @@ export function buildRecipe(){
   {name:'workbench pool',position:[10,3,15],color:0xffb66d,intensity:4,range:6},
   {name:'arrival practical',position:[-2,3.5,0],color:0xe9c394,intensity:3,range:5}
  ];
- return {materials,objects,zones:{arrival:[0,1,0],lounge:[-9,1,4],kitchen:[5,1,5],dining:[7,1,-5],retro:[-7.5,4,10],mezzanine:[-7,4,10]},lights};
+ return {materials,objects,screens,zones:{arrival:[0,1,0],lounge:[-9,1,4],kitchen:[5,1,5],dining:[7,1,-5],retro:[-7.5,4,10],mezzanine:[-7,4,10]},lights};
 }

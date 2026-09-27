@@ -2,6 +2,7 @@ import { Group, Mesh, BoxGeometry, CylinderGeometry, SphereGeometry, TorusGeomet
 import { standard } from '../materials/Materials.js';
 import { Texture } from '../engine/gpu/Texture.js';
 import { buildRecipe } from './PortalInteriorRecipe.js';
+import { makeRetroNameplateMaterial, makeRetroScreenMaterial } from './PortalRetroScreens.js';
 
 const shapeGeometry = (shape, size) => {
   if (shape === 'cylinder') return new CylinderGeometry(size[0] * .5, size[0] * .5, size[1], 16);
@@ -49,6 +50,11 @@ export class PortalInterior {
         surface: portalSurface(name, this.recipe.lights || [], this.origin)
       });
     }
+    this.screenMaterials = new Map((this.recipe.screens || []).map(spec => [spec.object, makeRetroScreenMaterial(spec)]));
+    this.nameplateMaterials = new Map((this.recipe.screens || []).map(spec => {
+      const label = spec.id === 'c64' ? 'COMMODORE 64' : spec.id === 'bbc' ? 'BBC MODEL B' : 'SUN SPARCSTATION';
+      return [`${label} nameplate`, makeRetroNameplateMaterial(label)];
+    }));
     this.localLightSources = (this.recipe.lights || []).map((light, index) => this.app.localLights.add({
       position: new Vector3(this.origin.x + light.position[0], this.origin.y + light.position[1], this.origin.z + light.position[2]),
       color: new Color(light.color), intensity: light.intensity, range: light.range, kind: 0,
@@ -79,8 +85,17 @@ export class PortalInterior {
       if (object.shape === 'sphere') scale.set(...object.size);
       matrix.compose(position, quaternion, scale);
       geometry.applyMatrix4(matrix);
-      if (!batches.has(object.material)) batches.set(object.material, []);
-      batches.get(object.material).push(geometry);
+      const screenMaterial = this.screenMaterials.get(object.name);
+      const nameplateMaterial = this.nameplateMaterials.get(object.name);
+      const displayMaterial = screenMaterial || nameplateMaterial;
+      if (displayMaterial) {
+        const display = new Mesh(geometry, displayMaterial);
+        display.name = `Portal ${object.name} generated ${screenMaterial ? 'display' : 'label'}`;
+        this.group.add(display);
+      } else {
+        if (!batches.has(object.material)) batches.set(object.material, []);
+        batches.get(object.material).push(geometry);
+      }
       if (object.collider) {
         const p = object.position;
         const s = object.size;

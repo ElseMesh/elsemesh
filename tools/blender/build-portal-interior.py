@@ -158,6 +158,71 @@ created = [make(obj) for obj in recipe['objects']]
 created = [o for o in created if o]
 print(f'Portal recipe bounds validated: {len(created)} objects')
 
+def flat_emission(name, packed):
+    rgb = tuple(((packed >> shift) & 255) / 255 for shift in (16, 8, 0))
+    mat = bpy.data.materials.new(name)
+    mat.diffuse_color = (*rgb, 1)
+    mat.use_nodes = True
+    bs = mat.node_tree.nodes.get('Principled BSDF')
+    bs.inputs['Base Color'].default_value = (*rgb, 1)
+    bs.inputs['Emission Color'].default_value = (*rgb, 1)
+    bs.inputs['Emission Strength'].default_value = .55
+    bs.inputs['Roughness'].default_value = .4
+    return mat
+
+def display_text(body, location, size, material, name):
+    # Face viewers approaching from Blender +Y; local text-right maps to world -X.
+    bpy.ops.object.text_add(location=location, rotation=(math.pi / 2, 0, math.pi))
+    text = bpy.context.object
+    text.name = name
+    text.data.body = body
+    text.data.align_x = 'LEFT'
+    text.data.align_y = 'TOP_BASELINE'
+    text.data.size = size
+    text.data.space_line = 1.12
+    text.data.extrude = .002
+    text.data.materials.append(material)
+    return text
+
+# Original decorative recreations: wording and colours come solely from the
+# shared recipe. Text/geometry is embedded in the BLEND and GLB; no PIL, ROM,
+# screenshot, external font file, or operating-system asset is required.
+screen_x = {'c64': -11.5, 'bbc': -8.5, 'sun': -5.5}
+for spec in recipe.get('screens', []):
+    sid = spec['id']
+    x = screen_x[sid]
+    ink = flat_emission(sid.upper() + ' display ink', spec['foreground'])
+    if spec.get('windows'):
+        panel = flat_emission('Sun OpenWindows panels', 0xd5dfdc)
+        for name, px, pz, sx, sz in [('File Manager', -.13, 4.82, .30, .23), ('Terminal', .08, 4.72, .31, .22)]:
+            bpy.ops.mesh.primitive_cube_add(size=1, location=(x + px, -8.775, pz))
+            win = bpy.context.object
+            win.name = 'Sun OpenWindows ' + name
+            win.scale = (sx, .003, sz)
+            win.data.materials.append(panel)
+        display_text('SunOS 4.1.3\nOpenWindows', (x - .22, -8.768, 4.94), .035, ink, 'SunOS display heading')
+        display_text('File Manager', (x - .25, -8.762, 4.86), .022, ink, 'Sun File Manager label')
+        display_text('Terminal\n$ openwin', (x, -8.756, 4.77), .022, ink, 'Sun Terminal label')
+    else:
+        body = '\n'.join(spec['lines'])
+        display_text(body, (x - .19, -8.768, 4.92), .034, ink, sid.upper() + ' generated BASIC display')
+        cursor = spec.get('cursor')
+        if cursor and cursor.get('blink'):
+            bpy.ops.mesh.primitive_cube_add(size=1, location=(x - .185 + cursor['column'] * .021, -8.764, 4.775 - cursor['row'] * .048))
+            block = bpy.context.object
+            block.name = sid.upper() + ' blinking block cursor'
+            block.scale = (.017, .003, .026)
+            block.data.materials.append(ink)
+            # Source BLEND animates exactly .5 s on/.5 s off at 24 fps. GLB
+            # retains the still-on frame because glTF has no hide-render track.
+            for frame, hidden in ((1, False), (12, False), (13, True), (24, True), (25, False)):
+                block.hide_render = hidden
+                block.keyframe_insert(data_path='hide_render', frame=frame)
+
+label_ink = flat_emission('Workstation nameplate lettering', 0x211d18)
+for label, x in (('COMMODORE 64', -11.5), ('BBC MODEL B', -8.5), ('SUN SPARCSTATION', -5.5)):
+    display_text(label, (x - .29, -7.674, 4.285), .027, label_ink, label + ' readable nameplate')
+
 def point_at(obj, target):
     obj.rotation_euler = (Vector(target) - obj.location).to_track_quat('-Z', 'Y').to_euler()
 
