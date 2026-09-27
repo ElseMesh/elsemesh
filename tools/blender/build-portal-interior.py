@@ -46,21 +46,49 @@ def procedural_material(name, spec):
     links.new(noise.outputs['Fac'], ramp.inputs['Fac'])
 
     if name in ('brick', 'brickDark'):
+        # World-position metre projection. Select Blender Y on X-facing walls and
+        # Blender X on Y-facing walls; Blender Z is height. This avoids stripes
+        # on perpendicular walls while keeping the recipe's .25 x .08 m bond.
+        geometry = nodes.new('ShaderNodeNewGeometry')
+        pos = nodes.new('ShaderNodeSeparateXYZ')
+        normal = nodes.new('ShaderNodeSeparateXYZ')
+        abs_normal = nodes.new('ShaderNodeVectorMath')
+        abs_normal.operation = 'ABSOLUTE'
+        choose_y = nodes.new('ShaderNodeMath')
+        choose_y.operation = 'GREATER_THAN'
+        horizontal = nodes.new('ShaderNodeMix')
+        horizontal.data_type = 'FLOAT'
+        projected = nodes.new('ShaderNodeCombineXYZ')
+        links.new(geometry.outputs['Position'], pos.inputs['Vector'])
+        links.new(geometry.outputs['Normal'], abs_normal.inputs[0])
+        links.new(abs_normal.outputs['Vector'], normal.inputs['Vector'])
+        links.new(normal.outputs['X'], choose_y.inputs[0])
+        links.new(normal.outputs['Y'], choose_y.inputs[1])
+        links.new(choose_y.outputs[0], horizontal.inputs['Factor'])
+        links.new(pos.outputs['X'], horizontal.inputs['A'])
+        links.new(pos.outputs['Y'], horizontal.inputs['B'])
+        links.new(horizontal.outputs['Result'], projected.inputs['X'])
+        links.new(pos.outputs['Z'], projected.inputs['Y'])
         brick = nodes.new('ShaderNodeTexBrick')
         brick.offset = .5
         brick.offset_frequency = 2
         brick.squash = 1.0
-        brick.inputs['Color1'].default_value = (*[c * .76 for c in rgb], 1)
-        brick.inputs['Color2'].default_value = (*[min(1, c * 1.12) for c in rgb], 1)
-        brick.inputs['Mortar'].default_value = (.055, .045, .038, 1)
-        brick.inputs['Scale'].default_value = 4.0
-        brick.inputs['Mortar Size'].default_value = .035
-        brick.inputs['Mortar Smooth'].default_value = .01
-        brick.inputs['Brick Width'].default_value = 1.0
-        brick.inputs['Row Height'].default_value = .32
-        links.new(mapping.outputs['Vector'], brick.inputs['Vector'])
+        brick.inputs['Color1'].default_value = (*[c * .78 for c in rgb], 1)
+        brick.inputs['Color2'].default_value = (*[min(1, c * 1.10) for c in rgb], 1)
+        brick.inputs['Mortar'].default_value = (.11, .095, .08, 1)
+        brick.inputs['Scale'].default_value = 1.0
+        brick.inputs['Mortar Size'].default_value = spec.get('mortar', .006)
+        brick.inputs['Mortar Smooth'].default_value = .002
+        brick.inputs['Brick Width'].default_value = spec.get('brickSize', [.25, .08])[0]
+        brick.inputs['Row Height'].default_value = spec.get('brickSize', [.25, .08])[1]
+        links.new(projected.outputs['Vector'], brick.inputs['Vector'])
         links.new(brick.outputs['Color'], bs.inputs['Base Color'])
-        links.new(brick.outputs['Fac'], bs.inputs['Roughness'])
+        bump = nodes.new('ShaderNodeBump')
+        bump.inputs['Strength'].default_value = .16
+        bump.inputs['Distance'].default_value = .012
+        links.new(brick.outputs['Fac'], bump.inputs['Height'])
+        links.new(bump.outputs['Normal'], bs.inputs['Normal'])
+        bs.inputs['Roughness'].default_value = spec.get('roughness', .94)
     elif name in ('concrete', 'concreteDark', 'steel', 'rust', 'black', 'wood', 'fabric', 'charcoal', 'rug', 'rugLight'):
         if name == 'wood':
             mapping.inputs['Scale'].default_value = (7.0, 1.4, 1.4)
@@ -159,17 +187,17 @@ point_at(daylight, (-3, -2, 3.4))
 
 # Wide eye-height view from the open front floor toward the stair, lounge, and
 # glass-fronted mezzanine computer room; no foreground appliance blocks it.
-bpy.ops.object.camera_add(location=(13.5, -1.5, 2.15))
+bpy.ops.object.camera_add(location=(-4.0, 9.5, 1.7))
 cam = bpy.context.object
 cam.name = 'Interior review camera'
-point_at(cam, (-2.5, -9.5, 3.0))
-cam.data.lens = 27
+point_at(cam, (-3.0, -9.0, 3.5))
+cam.data.lens = 26
 bpy.context.scene.camera = cam
 
 scene = bpy.context.scene
 scene.render.engine = 'BLENDER_EEVEE_NEXT'
-scene.render.resolution_x = 900
-scene.render.resolution_y = 600
+scene.render.resolution_x = 1100
+scene.render.resolution_y = 900
 scene.render.resolution_percentage = 100
 scene.render.image_settings.file_format = 'PNG'
 scene.render.filepath = os.path.join(out_dir, 'portal-interior.png')

@@ -1,17 +1,17 @@
 const box=(name,size,position,material,options={})=>({name,shape:'box',size,position,rotation:options.rotation||[0,0,0],material,collider:options.collider,walkable:options.walkable});
 const cyl=(name,size,position,material,options={})=>({name,shape:'cylinder',size,position,rotation:options.rotation||[0,0,0],material,collider:options.collider,walkable:options.walkable});
-const sphere=(name,size,position,material)=>({name,shape:'sphere',size,position,rotation:[0,0,0],material});
+const sphere=(name,size,position,material,options={})=>({name,shape:'sphere',size,position,rotation:options.rotation||[0,0,0],material,collider:options.collider,walkable:options.walkable});
 const torus=(name,size,position,material,rotation=[Math.PI/2,0,0])=>({name,shape:'torus',size,position,rotation,material});
 
 export function buildRecipe(){
  const materials={
-  brick:{color:0x70453b,roughness:.94,metalness:0,pattern:'brick',brickSize:[.25,.08],mortar:.012},
-  brickDark:{color:0x49322e,roughness:.97,metalness:0,pattern:'brick',brickSize:[.25,.08],mortar:.012},
+  brick:{color:0x70453b,roughness:.94,metalness:0,pattern:'brick',brickSize:[.25,.08],mortar:.006},
+  brickDark:{color:0x49322e,roughness:.97,metalness:0,pattern:'brick',brickSize:[.25,.08],mortar:.006},
   concrete:{color:0x5f6260,roughness:.9,metalness:.02,pattern:'mottled'},
   concreteDark:{color:0x424644,roughness:.96,metalness:.02,pattern:'mottled'},
   steel:{color:0x20282a,roughness:.48,metalness:.78,pattern:'scratched'},
   rust:{color:0x643d2c,roughness:.82,metalness:.35,pattern:'scratched'},
-  glass:{color:0xcbd3d0,roughness:.16,metalness:.02,opacity:.22,transparent:true,depthWrite:false},
+  glass:{color:0xcbd3d0,roughness:.08,metalness:.02,opacity:.08,transparent:true,depthWrite:false},
   wood:{color:0x765238,roughness:.68,metalness:0,pattern:'wood'},
   fabric:{color:0xd8ccb7,roughness:.95,metalness:0,pattern:'fabric'},
   charcoal:{color:0x303332,roughness:.88,metalness:0,pattern:'fabric'},
@@ -28,7 +28,16 @@ export function buildRecipe(){
  const objects=[]; const add=o=>objects.push(o);
  // Shell: continuous material surfaces carry metre-scaled procedural brick/concrete detail.
  add(box('worn concrete floor',[32,.3,30],[0,-.15,3],'concrete',{collider:true,walkable:true}));
- add(box('west brick wall',[.38,12,30],[-16,6,3],'brick',{collider:true}));
+ // The reference-defining west wall is mostly tall glazing: solid sill/header and
+ // narrow brick piers retain the safe perimeter while cool daylight reads through.
+ add(box('west brick sill',[.38,1.2,30],[-16,.6,3],'brick',{collider:true}));
+ add(box('west brick header',[.38,2.55,30],[-16,10.725,3],'brickDark',{collider:true}));
+ for(const z of [-11.5,-6.5,-1.5,3.5,8.5,13.5,17.5])add(box('west window brick pier',[.4,8.25,1],[-16,5.325,z],'brick',{collider:true}));
+ for(const z of [-9,-4,1,6,11,15.5]){
+  add(box('west clear factory glazing',[.06,8.05,3.9],[-15.78,5.32,z],'glass',{collider:true}));
+  for(const dz of [-1.9,-.95,0,.95,1.9])add(box('west fine vertical mullion',[.13,8.12,.055],[-15.72,5.32,z+dz],'steel'));
+  for(const y of [1.35,2.7,4.05,5.4,6.75,8.1,9.35])add(box('west fine horizontal mullion',[.13,.055,3.92],[-15.72,y,z],'steel'));
+ }
  add(box('east brick wall',[.38,12,30],[16,6,3],'brick',{collider:true}));
  for(const z of [-12,18]){
   add(box('brick wall lower',[32,4,.38],[0,2,z],'brick',{collider:true}));
@@ -60,16 +69,29 @@ export function buildRecipe(){
  // Layered lounge, kept west of both verified routes.
  add(box('large lounge rug',[8,.04,6],[-9,.03,3.8],'rug'));
  add(box('small layered rug',[5,.045,3.5],[-8.5,.06,3.5],'rugLight',{rotation:[0,.08,0]}));
- for(const x of [-10.8,-9.6,-8.4,-7.2])add(box('cream sectional cushion',[1.08,.34,1.45],[x,.67,6.35],'fabric',{collider:true}));
- add(box('cream sectional back',[5,1.18,.34],[-9,1.26,7.02],'fabric',{collider:true}));
- for(const x of [-11.48,-6.52])add(box('sectional arm',[.36,.82,1.72],[x,.89,6.35],'fabric',{collider:true}));
- add(box('low wood table',[3,.15,1.55],[-9,.72,3],'wood',{collider:true}));
- for(const x of [-10.25,-7.75])for(const z of [2.4,3.6])add(box('coffee table leg',[.1,.65,.1],[x,.36,z],'steel'));
+ // Upholstered L-sectional: rigid base carries soft ellipsoid pads, backs, and loose pillows.
+ add(box('sectional timber base',[5.5,.22,1.7],[-8.85,.4,6.3],'wood',{collider:true}));
+ for(const x of [-10.8,-9.6,-8.4,-7.2]){
+  add(sphere('rounded sectional seat',[1.12,.38,1.42],[x,.69,6.25],'fabric',{rotation:[0,.02,0]}));
+  add(sphere('rounded sectional back',[1.08,.92,.34],[x,1.2,6.91],'fabric',{rotation:[-.12,0,0]}));
+ }
+ add(box('sectional return base',[1.7,.22,2.5],[-11.05,.4,4.4],'wood',{collider:true}));
+ for(const z of [5.25,4.25,3.3])add(sphere('sectional return seat',[1.4,.38,.88],[-11.05,.69,z],'fabric'));
+ for(const [x,z,r] of [[-10.35,6.72,-.18],[-8.95,6.7,.12],[-7.55,6.73,-.1],[-11.05,4.75,.18]])add(sphere('loose lounge pillow',[.72,.7,.22],[x,1.2,z],'rugLight',{rotation:[0,r,r]}));
+ for(const x of [-11.45,-6.45])add(box('sectional arm',[.3,.68,1.72],[x,.82,6.3],'fabric'));
+ for(const x of [-10.8,-8.1,-6.65])for(const z of [5.65,6.8])add(cyl('short sofa leg',[.07,.32,.07],[x,.2,z],'steel'));
+ // Two nesting tables and small lived-in props.
+ add(box('large nesting table',[2.6,.12,1.35],[-8.85,.67,3.25],'wood'));
+ add(box('small nesting table',[1.55,.1,1.05],[-7.15,.48,2.65],'concreteDark'));
+ for(const [x,z,h] of [[-9.95,2.72,.62],[-7.75,2.72,.62],[-8.05,3.78,.62],[-6.55,2.25,.43],[-7.75,3.05,.43]])add(cyl('coffee table leg',[.06,h,.06],[x,h/2,z],'steel'));
+ add(box('coffee table book',[.62,.06,.42],[-9.3,.78,3.2],'rust',{rotation:[0,.18,0]}));add(cyl('coffee mug',[.16,.2,.16],[-8.35,.82,3.15],'cream'));add(box('coffee tray',[.7,.035,.45],[-7.15,.56,2.65],'wood'));
  add(box('side table top',[1.1,.1,1.1],[-12.4,.65,4.6],'wood'));add(cyl('side table stem',[.1,.6,.1],[-12.4,.32,4.6],'steel'));
- // Plants use stems and individual leaves rather than spherical crowns.
+ // Branched plants with many thin ellipsoid leaves form irregular silhouettes.
  for(const [x,z,h] of [[-13,7,2.2],[-14,1.5,1.7],[13.5,-7,2],[11,16,1.8]]){
-  add(cyl('ceramic plant pot',[.72,.65,.72],[x,.33,z],'ceramic'));add(cyl('plant stem',[.12,h,.12],[x,.75+h/2,z],'leaf'));
-  for(let i=0;i<7;i++){const a=i*2.4;add(box('plant leaf',[.18,.05,.75],[x+Math.sin(a)*.38,1.15+i*h/9,z+Math.cos(a)*.38],'leaf',{rotation:[0,a,.55-(i%2)*1.1]}));}
+  add(cyl('ceramic plant pot',[.72,.65,.72],[x,.33,z],'ceramic'));
+  for(let b=0;b<3;b++){const ba=b*2.1+.35;add(cyl('plant branch',[.055,h*(.72+b*.1),.055],[x+Math.sin(ba)*.16,.65+h*.4,z+Math.cos(ba)*.16],'leaf'));
+   for(let i=0;i<6;i++){const a=ba+i*1.75;const y=.9+i*h/7+b*.08;add(sphere('tapered plant leaf',[.48,.09,.19],[x+Math.sin(a)*(.28+i*.035),y,z+Math.cos(a)*(.28+i*.035)],'leaf',{rotation:[0,a,(i%2?.38:-.38)]}));}
+  }
  }
  // Kitchen/bar with clear x=12 circulation lane.
  add(box('kitchen island',[6,.78,1.35],[5,.44,5],'wood',{collider:true}));add(box('stone worktop',[6.2,.12,1.55],[5,.89,5],'concreteDark',{collider:true}));
@@ -100,11 +122,28 @@ export function buildRecipe(){
  add(box('computer room front glass',[11,3.45,.08],[-7.5,5.38,7.3],'glass'));
  for(const x of [-13,-11,-9,-7,-5,-3,-2])add(box('computer room front mullion',[.1,3.55,.1],[x,5.4,7.3],'steel'));
  add(box('computer room header',[11,.14,.14],[-7.5,7.14,7.3],'steel'));
- // Warm visible CRT shelves and workstations on the mezzanine.
- for(const x of [-11.5,-8.5,-5.5]){
-  add(box('upper computer desk',[2.2,.14,.9],[x,4.25,9],'wood',{collider:true}));for(const dx of [-.9,.9])add(box('upper desk leg',[.1,.7,.1],[x+dx,3.88,9],'steel'));
-  add(box('upper CRT shell',[1.3,1,.78],[x,4.95,9.15],'cream'));add(box('upper CRT bezel',[1.04,.72,.06],[x,4.98,8.73],'black'));add(box('upper CRT screen',[.78,.5,.035],[x,5,8.69],'screen'));add(box('upper keyboard',[1.05,.07,.38],[x,4.38,8.38],'cream'));
-  add(box('office chair seat',[.7,.13,.7],[x,4.1,7.85],'charcoal'));add(box('office chair back',[.7,.85,.12],[x,4.55,8.16],'charcoal'));
+ // Three recognisable, realistically scaled period workstations. Screen artwork is
+ // described separately so runtime canvas and Blender can render the same text.
+ const screens=[
+  {id:'c64',object:'C64 screen',background:0x3155a4,border:0x78a4d8,foreground:0x9dc7eb,lines:['COMMODORE 64 BASIC V2','38911 BASIC BYTES FREE','READY.'],cursor:{column:0,row:3,color:0x9dc7eb,blink:true}},
+  {id:'bbc',object:'BBC screen',background:0x050505,border:0x111111,foreground:0xf2f2e8,lines:['BBC Computer 32K','BASIC','>'],cursor:{column:1,row:2,color:0xffffff,blink:true}},
+  {id:'sun',object:'Sun screen',background:0x76969b,border:0x30383a,foreground:0x171d1e,lines:['SunOS 4.1.3','OpenWindows','File Manager   Terminal'],windows:true}
+ ];
+ for(const [x,id] of [[-11.5,'c64'],[-8.5,'bbc'],[-5.5,'sun']]){
+  add(box(id+' workstation desk',[2.2,.14,.9],[x,4.25,9],'wood',{collider:true}));for(const dx of [-.9,.9])add(box(id+' desk leg',[.1,.7,.1],[x+dx,3.88,9],'steel'));
+  const sun=id==='sun', bbc=id==='bbc';
+  add(box(id+' CRT pedestal',[.34,.12,.34],[x,4.39,9.06],'cream'));
+  add(box(id+' CRT shell',[sun?.68:.6,sun?.57:.55,.5],[x,4.76,9.08],sun?'concreteDark':'cream'));
+  add(box(id+' CRT bezel',[sun?.57:.5,sun?.43:.4,.035],[x,4.78,8.815],'black'));
+  add(box((id==='c64'?'C64':id==='bbc'?'BBC':'Sun')+' screen',[sun?.49:.42,sun?.35:.32,.02],[x,4.79,8.79],'screen'));
+  // C64 breadbin, BBC wedge, and Sun pizza-box/keyboard silhouettes.
+  add(box(id+' computer base',[sun?.72:.64,.09,sun?.55:.42],[x,4.37,8.38],sun?'cream':bbc?'cream':'wood'));
+  add(box(id+' keyboard',[sun?.7:.62,.055,.3],[x,4.45,8.05],bbc?'black':sun?'cream':'wood'));
+  for(let r=0;r<3;r++)for(let k=0;k<9;k++)add(box(id+' key',[.052,.018,.045],[x-.24+k*.06,4.49,7.94+r*.07],bbc&&r===0?'rust':'black'));
+  if(sun){add(box('Sun purple accent',[.7,.035,.04],[x,4.4,8.08],'graffiti'));add(sphere('Sun mouse',[.13,.06,.18],[x+.52,4.42,8.04],'cream'));}
+  add(box((id==='c64'?'COMMODORE 64':id==='bbc'?'BBC MODEL B':'SUN SPARCSTATION')+' nameplate',[.62,.1,.025],[x,4.24,7.69],'cream'));
+  add(box(id+' vent',[.42,.025,.035],[x,4.43,8.68],'black'));
+  add(box('office chair seat',[.7,.13,.7],[x,4.1,7.45],'charcoal'));add(box('office chair back',[.7,.85,.12],[x,4.55,7.76],'charcoal'));
  }
  for(const y of [4.05,5.05,6.05])add(box('CRT display shelf',[9.2,.11,.55],[-7.5,y,12.7],'wood'));
  for(const x of [-11,-9.2,-7.4,-5.6,-3.8])for(const y of [4.55,5.55,6.55]){add(box('shelf CRT shell',[1.25,.78,.5],[x,y,12.45],'cream'));add(box('shelf CRT dark screen',[.82,.48,.035],[x,y,12.17],'black'));}
