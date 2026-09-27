@@ -2,7 +2,7 @@ import { Group, Mesh, BoxGeometry, CylinderGeometry, SphereGeometry, TorusGeomet
 import { standard } from '../materials/Materials.js';
 import { Texture } from '../engine/gpu/Texture.js';
 import { buildRecipe } from './PortalInteriorRecipe.js';
-import { makeRetroNameplateMaterial, makeRetroScreenMaterial } from './PortalRetroScreens.js';
+import { makeKeyboardLegendMaterial, makeRetroNameplateMaterial, makeRetroScreenMaterial } from './PortalRetroScreens.js';
 
 const shapeGeometry = (shape, size) => {
   if (shape === 'cylinder') return new CylinderGeometry(size[0] * .5, size[0] * .5, size[1], 16);
@@ -55,6 +55,9 @@ export class PortalInterior {
       const label = spec.id === 'c64' ? 'COMMODORE 64' : spec.id === 'bbc' ? 'BBC MODEL B' : 'SUN SPARCSTATION';
       return [`${label} nameplate`, makeRetroNameplateMaterial(label)];
     }));
+    this.keyboardLegendMaterials = new Map((this.recipe.screens || []).map(spec => [
+      `${spec.id} keyboard legends`, makeKeyboardLegendMaterial(spec.id)
+    ]));
     this.localLightSources = (this.recipe.lights || []).map((light, index) => this.app.localLights.add({
       position: new Vector3(this.origin.x + light.position[0], this.origin.y + light.position[1], this.origin.z + light.position[2]),
       color: new Color(light.color), intensity: light.intensity, range: light.range, kind: 0,
@@ -87,7 +90,8 @@ export class PortalInterior {
       geometry.applyMatrix4(matrix);
       const screenMaterial = this.screenMaterials.get(object.name);
       const nameplateMaterial = this.nameplateMaterials.get(object.name);
-      const displayMaterial = screenMaterial || nameplateMaterial;
+      const keyboardLegendMaterial = this.keyboardLegendMaterials.get(object.name);
+      const displayMaterial = screenMaterial || nameplateMaterial || keyboardLegendMaterial;
       if (displayMaterial) {
         const display = new Mesh(geometry, displayMaterial);
         display.name = `Portal ${object.name} generated ${screenMaterial ? 'display' : 'label'}`;

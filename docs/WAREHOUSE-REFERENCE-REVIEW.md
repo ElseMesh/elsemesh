@@ -6,7 +6,7 @@ Author: AgentControl
 
 The deterministic source is `src/world/PortalInteriorRecipe.js`: Y-up metres, fixed procedural placement, no random seed, and only box/cylinder/sphere/torus primitives. Runtime maps it directly; Blender maps engine `(x,y,z)` to `(x,-z,y)`. The protected circulation remains clear: mezzanine route `(3,.5) -> (3,10.9) -> (-3,10.9)` and ground route `(12,0) -> (12,10.5) -> (8,10.5)`. Portal entry, return state, and colliders remain on the established runtime path.
 
-The visual pass retains aged brown brick, black steel, tall left glazing, clear rear-loft glass, warm lounge/dining/kitchen pools, furniture, foliage, thin mezzanine fascia/supports, and structural roof diagonals. Shelf CRT cabinets were corrected from 1.25 m wide to 0.72 m wide. The three principal machines retain distinct C64 breadbin, BBC red-key-row, and Sun pizza-box silhouettes.
+The visual pass retains aged brown brick, black steel, tall left glazing, clear rear-loft glass, warm lounge/dining/kitchen pools, furniture, foliage, thin mezzanine fascia/supports, and structural roof diagonals. The cancelled rear shelf-computer bank has been removed and replaced by one original restrained geometric wall artwork using cyan, magenta, and amber neon accents. The three principal machines retain distinct C64 breadbin, BBC red-key-row, and Sun pizza-box silhouettes, each on a full-depth desk whose four corner legs span from the mezzanine floor to the raised desktop underside. Low-backed chairs are tucked beneath and slightly offset from the desks to keep screens and keyboards visible from the intended walking-glance view.
 
 ## Retro displays
 

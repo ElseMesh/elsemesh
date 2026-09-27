@@ -33,50 +33,134 @@ export function makeRetroNameplateMaterial(label) {
   });
 }
 
+function drawSunDesktop(ctx, width, height) {
+  const sx = width / 1536;
+  const sy = height / 1152;
+  ctx.save();
+  ctx.scale(sx, sy);
+  ctx.textBaseline = 'top';
+  ctx.fillStyle = '#a7aaa5';
+  ctx.fillRect(54, 48, 1428, 1056);
+
+  // OpenWindows desktop header and pinned workspace tools.
+  ctx.fillStyle = '#d8dad5';
+  ctx.fillRect(54, 48, 1428, 52);
+  ctx.strokeStyle = '#313735';
+  ctx.lineWidth = 4;
+  ctx.strokeRect(54, 48, 1428, 52);
+  ctx.fillStyle = '#202523';
+  ctx.font = 'bold 25px monospace';
+  ctx.fillText('OpenWindows', 78, 61);
+  ctx.font = '21px monospace';
+  ctx.fillText('Workspace   Programs   Utilities', 320, 64);
+  ctx.fillText('SunOS 4.1.3', 1260, 64);
+
+  const windowFrame = (x, y, w, h, title) => {
+    ctx.fillStyle = '#e5e6e1';
+    ctx.fillRect(x, y, w, h);
+    ctx.strokeStyle = '#252b29';
+    ctx.lineWidth = 5;
+    ctx.strokeRect(x, y, w, h);
+    ctx.fillStyle = '#59615e';
+    ctx.fillRect(x, y, w, 48);
+    ctx.fillStyle = '#f5f6f1';
+    ctx.font = 'bold 24px monospace';
+    ctx.fillText(title, x + 58, y + 11);
+    ctx.strokeStyle = '#eef0eb';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(x + 12, y + 11, 25, 25);
+  };
+
+  windowFrame(105, 145, 790, 650, 'File Manager - /home/demo');
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(110, 198, 780, 592);
+  ctx.clip();
+  ctx.fillStyle = '#c5c8c2';
+  ctx.fillRect(125, 215, 735, 43);
+  ctx.fillStyle = '#202523';
+  ctx.font = '20px monospace';
+  ctx.fillText('File   View   Edit   Go', 146, 225);
+  const folders = [
+    [180, 315, 'Documents'], [410, 315, 'Projects'], [640, 315, 'Mail'],
+    [180, 520, 'Calendar'], [410, 520, 'Demos'], [640, 520, 'System']
+  ];
+  for (const [x, y, label] of folders) {
+    ctx.fillStyle = '#d9c46e';
+    ctx.fillRect(x, y + 22, 112, 76);
+    ctx.fillRect(x + 12, y, 48, 28);
+    ctx.strokeStyle = '#554d2d';
+    ctx.lineWidth = 4;
+    ctx.strokeRect(x, y + 22, 112, 76);
+    ctx.fillStyle = '#202523';
+    ctx.font = '19px monospace';
+    ctx.fillText(label, x - 3, y + 113);
+  }
+  ctx.fillStyle = '#b8bbb5';
+  ctx.fillRect(855, 263, 19, 475);
+  ctx.fillStyle = '#626965';
+  ctx.fillRect(858, 340, 13, 145);
+  ctx.fillStyle = '#202523';
+  ctx.font = '18px monospace';
+  ctx.fillText('6 objects     24 MB available', 140, 753);
+  ctx.restore();
+
+  // The terminal is deliberately rebuilt with short fitted rows, not descriptor text.
+  windowFrame(630, 430, 780, 565, 'Terminal - shelltool');
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(635, 483, 770, 507);
+  ctx.clip();
+  ctx.fillStyle = '#f4f5ef';
+  ctx.fillRect(650, 498, 735, 470);
+  ctx.fillStyle = '#151a18';
+  ctx.font = '22px monospace';
+  const terminal = [
+    'SunOS Release 4.1.3 (GENERIC)',
+    'Copyright 1983-1992 Sun Microsystems, Inc.',
+    '',
+    'demo@warehouse% pwd',
+    '/home/demo',
+    'demo@warehouse% ls -F',
+    'Calendar/  Demos/  Documents/  Mail/  Projects/',
+    'demo@warehouse% uptime',
+    ' 3:42pm  up 12 days,  2 users,  load 0.08',
+    'demo@warehouse% openwin --version',
+    'OpenWindows Version 3',
+    'demo@warehouse% _'
+  ];
+  terminal.forEach((line, row) => ctx.fillText(line, 675, 520 + row * 34));
+  ctx.fillStyle = '#b8bbb5';
+  ctx.fillRect(1364, 510, 15, 430);
+  ctx.fillStyle = '#626965';
+  ctx.fillRect(1366, 565, 11, 122);
+  ctx.restore();
+}
+
 export function makeRetroScreenMaterial(spec) {
   const canvas = document.createElement('canvas');
-  canvas.width = 512;
-  canvas.height = 384;
+  canvas.width = spec.width || 1024;
+  canvas.height = spec.height || 768;
   const ctx = canvas.getContext('2d');
   ctx.imageSmoothingEnabled = false;
-  ctx.fillStyle = css(spec.border);
-  ctx.fillRect(0, 0, 512, 384);
-  ctx.fillStyle = css(spec.background);
-  ctx.fillRect(22, 18, 468, 348);
 
-  ctx.fillStyle = css(spec.foreground);
-  ctx.font = spec.id === 'sun' ? 'bold 25px monospace' : 'bold 27px monospace';
-  ctx.textBaseline = 'top';
-
-  if (spec.windows) {
-    // Keep the shared descriptor heading above the desktop; window contents are
-    // drawn separately so generic line rows cannot overwrite either title bar.
-    ctx.fillText(spec.lines[0], 40, 35);
-    ctx.fillStyle = '#aebfc0';
-    ctx.fillRect(52, 76, 276, 218);
-    ctx.fillStyle = '#334143';
-    ctx.fillRect(52, 76, 276, 25);
-    ctx.fillStyle = '#d5dfdc';
-    ctx.fillRect(196, 132, 260, 190);
-    ctx.fillStyle = '#344244';
-    ctx.fillRect(196, 132, 260, 25);
-    ctx.strokeStyle = '#263234';
-    ctx.lineWidth = 4;
-    ctx.strokeRect(52, 76, 276, 218);
-    ctx.strokeRect(196, 132, 260, 190);
-    ctx.fillStyle = '#66797b';
-    for (let y = 120; y < 270; y += 34) ctx.fillRect(76, y, 86, 18);
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 18px monospace';
-    ctx.fillText('File Manager', 68, 79);
-    ctx.fillText('Terminal', 212, 135);
-    ctx.fillStyle = '#1b2324';
-    ctx.font = '20px monospace';
-    ctx.fillText('$ openwin', 216, 174);
-    spec.lines.slice(1).forEach((line, row) => ctx.fillText(line, 216, 208 + row * 28));
+  if (spec.id === 'sun') {
+    ctx.fillStyle = css(spec.border);
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    drawSunDesktop(ctx, canvas.width, canvas.height);
   } else {
-    spec.lines.forEach((line, row) => ctx.fillText(line, 40, 35 + row * 48));
+    const scaleX = canvas.width / 1024;
+    const scaleY = canvas.height / 768;
+    ctx.fillStyle = css(spec.border);
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = css(spec.background);
+    ctx.fillRect(42 * scaleX, 36 * scaleY, 940 * scaleX, 696 * scaleY);
+    ctx.fillStyle = css(spec.foreground);
+    ctx.font = `bold ${54 * scaleY}px monospace`;
+    ctx.textBaseline = 'top';
+    spec.lines.forEach((line, row) => ctx.fillText(line, 80 * scaleX, (70 + row * 96) * scaleY));
   }
+
   const texture = new Texture({
     label: `${spec.id.toUpperCase()} generated display`,
     width: canvas.width, height: canvas.height,
@@ -85,19 +169,55 @@ export function makeRetroScreenMaterial(spec) {
 
   let cursor = '';
   if (spec.cursor?.blink) {
-    const x0 = (40 + spec.cursor.column * 17) / 512;
-    const x1 = x0 + 15 / 512;
-    // Texture sampling flips canvas Y, so cursor bounds are expressed in shader UV.
-    const top = 35 + spec.cursor.row * 48;
-    const y0 = 1 - (top + 28) / 384;
-    const y1 = 1 - top / 384;
+    const x0 = (80 + spec.cursor.column * 34) / 1024;
+    const x1 = x0 + 30 / 1024;
+    const top = 70 + spec.cursor.row * 96;
+    const y0 = 1 - (top + 56) / 768;
+    const y1 = 1 - top / 768;
     const c = spec.cursor.color;
     const rgb = [16, 8, 0].map(shift => ((c >> shift) & 255) / 255);
     cursor = `let cursor=step(${x0.toFixed(5)},in.uv.x)*step(in.uv.x,${x1.toFixed(5)})*step(${y0.toFixed(5)},in.uv.y)*step(in.uv.y,${y1.toFixed(5)})*step(fract(frame.time),0.5); ink=mix(ink,vec3f(${rgb.map(v => v.toFixed(4)).join(',')}),cursor);`;
   }
   return standard({
-    name: `${spec.id.toUpperCase()} decorative display`, color: 0xffffff, roughness: .35,
-    emissive: 0xffffff, emissiveIntensity: .22, textures: { retroDisplay: texture },
-    surface: `var ink=textureSample(retroDisplay,smpAnisoClamp,vec2f(in.uv.x,1.0-in.uv.y)).rgb; ${cursor} s.albedo=ink; s.emissive=ink*.38;`
+    name: `${spec.id.toUpperCase()} decorative display`, color: 0xffffff, roughness: .35, lit: false,
+    textures: { retroDisplay: texture },
+    surface: `var ink=textureSample(retroDisplay,smpAnisoClamp,vec2f(in.uv.x,1.0-in.uv.y)).rgb; ${cursor} s.albedo=ink;`
+  });
+}
+
+export function makeKeyboardLegendMaterial(id) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 1024;
+  canvas.height = 512;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.font = 'bold 34px monospace';
+  ctx.fillStyle = id === 'sun' ? '#342b46' : id === 'c64' ? '#efe0bb' : '#f4e8cf';
+  const rows = [
+    ['F1','F2','F3','F4','F5','F6','F7','F8','F9','F10'],
+    ['1','2','3','4','5','6','7','8','9','0','-','='],
+    ['Q','W','E','R','T','Y','U','I','O','P','[',']'],
+    ['A','S','D','F','G','H','J','K','L',';','RETURN'],
+    ['SHIFT','Z','X','C','V','B','N','M',',','.','SHIFT'],
+    ['CTRL','ALT','SPACE','ALT','DEL']
+  ];
+  rows.forEach((row, r) => {
+    const y = 42 + r * 82;
+    row.forEach((label, k) => {
+      const x = 48 + k * (928 / Math.max(1, row.length - 1));
+      ctx.fillText(label, x, y);
+    });
+  });
+  const texture = new Texture({
+    label: `${id.toUpperCase()} immutable keyboard legends`,
+    width: canvas.width, height: canvas.height,
+    data: ctx.getImageData(0, 0, canvas.width, canvas.height).data
+  });
+  return standard({
+    name: `${id.toUpperCase()} keyboard legend atlas`, color: 0xffffff, roughness: .7, lit: false, transparent: true,
+    textures: { keyboardLegend: texture },
+    surface: 'let ink=textureSample(keyboardLegend,smpAnisoClamp,vec2f(in.uv.x,1.0-in.uv.y)); s.albedo=ink.rgb; s.opacity=ink.a;'
   });
 }

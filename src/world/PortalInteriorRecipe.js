@@ -23,7 +23,14 @@ export function buildRecipe(){
   screen:{color:0xd6a85d,roughness:.3,metalness:.05,emissive:0x3c2108},
   leaf:{color:0x345b3b,roughness:.9,metalness:0},
   graffiti:{color:0x765c4f,roughness:.88,metalness:0},
-  cream:{color:0xd9ceb8,roughness:.72,metalness:0}
+  cream:{color:0xd9ceb8,roughness:.72,metalness:0},
+  c64Plastic:{color:0xc6a46f,roughness:.76,metalness:0},
+  c64Key:{color:0x4a382b,roughness:.7,metalness:0},
+  sunPlastic:{color:0xd8d3c8,roughness:.68,metalness:0},
+  sunPurple:{color:0x66507f,roughness:.64,metalness:0},
+  neonCyan:{color:0x35d8de,roughness:.28,metalness:.08,emissive:0x12636a},
+  neonMagenta:{color:0xe45aa8,roughness:.3,metalness:.06,emissive:0x6c1748},
+  neonAmber:{color:0xf0ad45,roughness:.32,metalness:.08,emissive:0x75410b}
  };
  const objects=[]; const add=o=>objects.push(o);
  // Shell: continuous material surfaces carry metre-scaled procedural brick/concrete detail.
@@ -125,28 +132,61 @@ export function buildRecipe(){
  // Three recognisable, realistically scaled period workstations. Screen artwork is
  // described separately so runtime canvas and Blender can render the same text.
  const screens=[
-  {id:'c64',object:'C64 screen',background:0x3155a4,border:0x78a4d8,foreground:0x9dc7eb,lines:['COMMODORE 64 BASIC V2','38911 BASIC BYTES FREE','READY.'],cursor:{column:0,row:3,color:0x9dc7eb,blink:true}},
-  {id:'bbc',object:'BBC screen',background:0x050505,border:0x111111,foreground:0xf2f2e8,lines:['BBC Computer 32K','BASIC','>'],cursor:{column:1,row:2,color:0xffffff,blink:true}},
-  {id:'sun',object:'Sun screen',background:0x76969b,border:0x30383a,foreground:0x171d1e,lines:['SunOS 4.1.3','OpenWindows','File Manager   Terminal'],windows:true}
+  {id:'c64',object:'C64 screen',width:1024,height:768,background:0x3155a4,border:0x78a4d8,foreground:0x9dc7eb,lines:['COMMODORE 64 BASIC V2','38911 BASIC BYTES FREE','READY.'],cursor:{column:0,row:3,color:0x9dc7eb,blink:true}},
+  {id:'bbc',object:'BBC screen',width:1024,height:768,background:0x050505,border:0x111111,foreground:0xf2f2e8,lines:['BBC Computer 32K','BASIC','>'],cursor:{column:1,row:2,color:0xffffff,blink:true}},
+  {id:'sun',object:'Sun screen',width:1536,height:1152,background:0xa7aaa5,border:0x343b3d,foreground:0x171d1e,windows:true}
  ];
  for(const [x,id] of [[-11.5,'c64'],[-8.5,'bbc'],[-5.5,'sun']]){
-  add(box(id+' workstation desk',[2.2,.14,.9],[x,4.25,9],'wood',{collider:true}));for(const dx of [-.9,.9])add(box(id+' desk leg',[.1,.7,.1],[x+dx,3.88,9],'steel'));
-  const sun=id==='sun', bbc=id==='bbc';
-  add(box(id+' CRT pedestal',[.34,.12,.34],[x,4.39,9.06],'cream'));
-  add(box(id+' CRT shell',[sun?.68:.6,sun?.57:.55,.5],[x,4.76,9.08],sun?'concreteDark':'cream'));
-  add(box(id+' CRT bezel',[sun?.57:.5,sun?.43:.4,.035],[x,4.78,8.815],'black'));
-  add(box((id==='c64'?'C64':id==='bbc'?'BBC':'Sun')+' screen',[sun?.49:.42,sun?.35:.32,.02],[x,4.79,8.79],'screen'));
-  // C64 breadbin, BBC wedge, and Sun pizza-box/keyboard silhouettes.
-  add(box(id+' computer base',[sun?.72:.64,.09,sun?.55:.42],[x,4.37,8.38],sun?'cream':bbc?'cream':'wood'));
-  add(box(id+' keyboard',[sun?.7:.62,.055,.3],[x,4.45,8.05],bbc?'black':sun?'cream':'wood'));
-  for(let r=0;r<3;r++)for(let k=0;k<9;k++)add(box(id+' key',[.052,.018,.045],[x-.24+k*.06,4.49,7.94+r*.07],bbc&&r===0?'rust':'black'));
-  if(sun){add(box('Sun purple accent',[.7,.035,.04],[x,4.4,8.08],'graffiti'));add(sphere('Sun mouse',[.13,.06,.18],[x+.52,4.42,8.04],'cream'));}
-  add(box((id==='c64'?'COMMODORE 64':id==='bbc'?'BBC MODEL B':'SUN SPARCSTATION')+' nameplate',[.62,.1,.025],[x,4.24,7.69],'cream'));
-  add(box(id+' vent',[.42,.025,.035],[x,4.43,8.68],'black'));
-  add(box('office chair seat',[.7,.13,.7],[x,4.1,7.45],'charcoal'));add(box('office chair back',[.7,.85,.12],[x,4.55,7.76],'charcoal'));
+  // Full-depth tops finish at 4.36 m and support every computer, keyboard and nameplate.
+  add(box(id+' workstation desk',[2.2,.14,1.9],[x,4.29,8.62],'wood',{collider:true}));
+  for(const dx of [-.9,.9])for(const dz of [-.72,.72])add(box(id+' desk leg',[.1,.61,.1],[x+dx,3.915,8.62+dz],'steel'));
+  const sun=id==='sun', bbc=id==='bbc', caseMaterial=sun?'sunPlastic':bbc?'cream':'c64Plastic';
+  const keyMaterial=sun?'sunPlastic':bbc?'black':'c64Key';
+  // Layered case pieces give the CRT a deep molded housing and recessed face.
+  add(box(id+' CRT pedestal',[.38,.12,.38],[x,4.43,9.03],caseMaterial));
+  add(box(id+' CRT rear case',[sun?.72:.64,sun?.59:.57,.58],[x,4.80,9.12],caseMaterial));
+  add(box(id+' CRT face surround',[sun?.7:.62,sun?.53:.5,.09],[x,4.81,8.80],caseMaterial));
+  add(box(id+' CRT recessed bezel',[sun?.59:.53,sun?.43:.41,.045],[x,4.83,8.745],'black'));
+  add(box((id==='c64'?'C64':id==='bbc'?'BBC':'Sun')+' screen',[sun?.51:.45,sun?.35:.33,.018],[x,4.84,8.714],'screen'));
+  for(let v=-2;v<=2;v++)add(box(id+' monitor vent slit',[.055,.018,.25],[x+v*.105,5.105,9.12],'black'));
+  add(cyl(id+' monitor knob',[.045,.025,.045],[x+.25,4.62,8.69],'black',{rotation:[Math.PI/2,0,0]}));
+  add(box(id+' monitor power button',[.065,.04,.025],[x+.17,4.61,8.69],'black'));
+  add(box(id+' monitor status LED',[.025,.025,.018],[x+.26,4.61,8.675],sun?'leaf':'amber'));
+  // Distinct breadbin, wedge, and pizza-box bodies sit behind full keyboards.
+  add(box(id+' computer base',[sun?.76:.68,.11,sun?.5:.44],[x,4.43,8.42],caseMaterial));
+  add(box(id+' keyboard tray',[sun?.78:.7,.065,.36],[x,4.43,8.16],caseMaterial,{rotation:[-.045,0,0]}));
+  const rows=[
+   {count:sun?14:13,z:8.27,offset:0},
+   {count:14,z:8.21,offset:.015},
+   {count:13,z:8.15,offset:.032},
+   {count:12,z:8.09,offset:.052}
+  ];
+  for(let r=0;r<rows.length;r++){const row=rows[r],pitch=.048,start=-(row.count-1)*pitch/2+row.offset;for(let k=0;k<row.count;k++){
+   let w=.041;if(r===3&&(k===0||k===row.count-1))w=.075;
+   add(box(id+' key r'+r+' k'+k,[w,.024,.043],[x+start+k*pitch,4.485,row.z],bbc&&r===0?'rust':keyMaterial));
+  }}
+  add(box(id+' space key',[.27,.024,.043],[x,4.485,8.03],keyMaterial));
+  add(box(id+' left shift key',[.115,.024,.043],[x-.285,4.485,8.03],keyMaterial));
+  add(box(id+' return key',[.1,.024,.095],[x+.3,4.485,8.115],keyMaterial));
+  for(let f=0;f<(sun?10:8);f++)add(box(id+' function key '+f,[.04,.025,.035],[x-.25+f*.056,4.49,8.32],bbc?'rust':keyMaterial));
+  // One transparent immutable atlas labels the complete key field without per-key materials.
+  add(box(id+' keyboard legends',[sun?.74:.66,.006,.34],[x,4.501,8.17],'black'));
+  if(sun){add(box('Sun purple accent',[.76,.025,.035],[x,4.47,8.335],'sunPurple'));add(sphere('Sun mouse',[.13,.06,.18],[x+.56,4.46,8.13],'sunPlastic'));}
+  add(box((id==='c64'?'COMMODORE 64':id==='bbc'?'BBC MODEL B':'SUN SPARCSTATION')+' nameplate',[.62,.1,.025],[x,4.34,7.69],'cream'));
+  for(let v=-2;v<=2;v++)add(box(id+' base vent slit',[.055,.018,.16],[x+v*.09,4.50,8.55],'black'));
+  // Low backs are tucked beneath and offset from the sightline across each keyboard.
+  const chairX=x+.42;
+  add(box('office chair seat',[.62,.12,.62],[chairX,4.08,7.92],'charcoal'));
+  add(box('office chair low back',[.62,.5,.1],[chairX,4.35,8.21],'charcoal'));
+  for(const dx of [-.22,.22])for(const dz of [-.22,.22])add(box('office chair leg',[.055,.42,.055],[chairX+dx,3.82,7.92+dz],'steel'));
  }
- for(const y of [4.05,5.05,6.05])add(box('CRT display shelf',[9.2,.11,.55],[-7.5,y,12.7],'wood'));
- for(const x of [-11,-9.2,-7.4,-5.6,-3.8])for(const y of [4.55,5.55,6.55]){add(box('shelf CRT shell',[.72,.52,.42],[x,y,12.45],'cream'));add(box('shelf CRT dark screen',[.5,.32,.025],[x,y,12.225],'black'));}
+ // One original rear-wall sculpture replaces the cancelled banks of shelf computers.
+ add(box('neon artwork backing',[7.8,2.55,.08],[-7.5,5.65,13.27],'black'));
+ add(box('neon artwork cyan diagonal',[.16,1.65,.055],[-9.55,5.75,13.20],'neonCyan',{rotation:[0,0,-.72]}));
+ add(box('neon artwork magenta diagonal',[.16,1.9,.055],[-7.45,5.7,13.19],'neonMagenta',{rotation:[0,0,.62]}));
+ add(box('neon artwork amber horizon',[3.4,.14,.055],[-6.05,5.05,13.18],'neonAmber'));
+ add(torus('neon artwork cyan orbit',[1.35,.11,1.35],[-5.05,5.95,13.15],'neonCyan',[Math.PI/2,0,0]));
+ add(sphere('neon artwork amber focus',[.34,.34,.08],[-8.45,6.15,13.14],'neonAmber'));
  // Sparse, faded industrial paint; no neon loops.
  for(const [z,r] of [[-4,.42],[2,-.34],[14,.28]]){add(box('faded graffiti stroke',[.035,.16,2.2],[15.79,3,z],'graffiti',{rotation:[r,0,0]}));add(box('faded graffiti mark',[.035,.12,1.3],[15.78,3.55,z+.3],'rust',{rotation:[-r,0,0]}));}
  // Pendants, task fixtures, hanging vines, and richer shelf-scale objects.
