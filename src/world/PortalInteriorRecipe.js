@@ -148,7 +148,7 @@ export function buildRecipe(){
   add(box(id+' CRT face surround',[sun?.7:.62,sun?.53:.5,.09],[x,4.81,8.80],caseMaterial));
   add(box(id+' CRT recessed bezel',[sun?.59:.53,sun?.43:.41,.045],[x,4.83,8.745],'black'));
   add(box((id==='c64'?'C64':id==='bbc'?'BBC':'Sun')+' screen',[sun?.51:.45,sun?.35:.33,.018],[x,4.84,8.714],'screen'));
-  for(let v=-2;v<=2;v++)add(box(id+' monitor vent slit',[.055,.018,.25],[x+v*.105,5.105,9.12],'black'));
+  for(let v=-2;v<=2;v++)add(box(id+' monitor vent slit',[.055,.003,.25],[x+v*.105,5.0955,9.12],'black'));
   add(cyl(id+' monitor knob',[.045,.025,.045],[x+.25,4.62,8.69],'black',{rotation:[Math.PI/2,0,0]}));
   add(box(id+' monitor power button',[.065,.04,.025],[x+.17,4.61,8.69],'black'));
   add(box(id+' monitor status LED',[.025,.025,.018],[x+.26,4.61,8.675],sun?'leaf':'amber'));
@@ -173,19 +173,19 @@ export function buildRecipe(){
   add(box(id+' keyboard legends',[sun?.74:.66,.006,.34],[x,4.501,8.17],'black'));
   if(sun){add(box('Sun purple accent',[.76,.025,.035],[x,4.47,8.335],'sunPurple'));add(sphere('Sun mouse',[.13,.06,.18],[x+.56,4.46,8.13],'sunPlastic'));}
   add(box((id==='c64'?'COMMODORE 64':id==='bbc'?'BBC MODEL B':'SUN SPARCSTATION')+' nameplate',[.62,.1,.025],[x,4.34,7.69],'cream'));
-  for(let v=-2;v<=2;v++)add(box(id+' base vent slit',[.055,.018,.16],[x+v*.09,4.50,8.55],'black'));
-  // Low backs are tucked beneath and offset from the sightline across each keyboard.
-  const chairX=x+.42;
-  add(box('office chair seat',[.62,.12,.62],[chairX,4.08,7.92],'charcoal'));
-  add(box('office chair low back',[.62,.5,.1],[chairX,4.35,8.21],'charcoal'));
-  for(const dx of [-.22,.22])for(const dz of [-.22,.22])add(box('office chair leg',[.055,.42,.055],[chairX+dx,3.82,7.92+dz],'steel'));
+  for(let v=-2;v<=2;v++)add(box(id+' base vent slit',[.055,.003,.16],[x+v*.09,4.4865,8.55],'black'));
+  // Low backs remain outside the tabletop volume on the front side of each desk.
+  const chairX=x+.60;
+  add(box('office chair seat',[.62,.12,.62],[chairX,4.08,7.85],'charcoal'));
+  add(box('office chair low back',[.62,.32,.1],[chairX,4.27,7.49],'charcoal'));
+  for(const dx of [-.22,.22])for(const dz of [-.22,.22])add(box('office chair leg',[.055,.42,.055],[chairX+dx,3.82,7.85+dz],'steel'));
  }
  // One original rear-wall sculpture replaces the cancelled banks of shelf computers.
  add(box('neon artwork backing',[7.8,2.55,.08],[-7.5,5.65,13.27],'black'));
  add(box('neon artwork cyan diagonal',[.16,1.65,.055],[-9.55,5.75,13.20],'neonCyan',{rotation:[0,0,-.72]}));
  add(box('neon artwork magenta diagonal',[.16,1.9,.055],[-7.45,5.7,13.19],'neonMagenta',{rotation:[0,0,.62]}));
  add(box('neon artwork amber horizon',[3.4,.14,.055],[-6.05,5.05,13.18],'neonAmber'));
- add(torus('neon artwork cyan orbit',[1.35,.11,1.35],[-5.05,5.95,13.15],'neonCyan',[Math.PI/2,0,0]));
+ add(torus('neon artwork cyan orbit',[1.35,.11,1.35],[-5.05,5.95,13.15],'neonCyan',[0,0,0]));
  add(sphere('neon artwork amber focus',[.34,.34,.08],[-8.45,6.15,13.14],'neonAmber'));
  // Sparse, faded industrial paint; no neon loops.
  for(const [z,r] of [[-4,.42],[2,-.34],[14,.28]]){add(box('faded graffiti stroke',[.035,.16,2.2],[15.79,3,z],'graffiti',{rotation:[r,0,0]}));add(box('faded graffiti mark',[.035,.12,1.3],[15.78,3.55,z+.3],'rust',{rotation:[-r,0,0]}));}

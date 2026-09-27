@@ -64,8 +64,8 @@ function drawSunDesktop(ctx, width, height) {
     ctx.fillStyle = '#59615e';
     ctx.fillRect(x, y, w, 48);
     ctx.fillStyle = '#f5f6f1';
-    ctx.font = 'bold 24px monospace';
-    ctx.fillText(title, x + 58, y + 11);
+    ctx.font = 'bold 30px monospace';
+    ctx.fillText(title, x + 58, y + 8);
     ctx.strokeStyle = '#eef0eb';
     ctx.lineWidth = 3;
     ctx.strokeRect(x + 12, y + 11, 25, 25);
@@ -114,22 +114,19 @@ function drawSunDesktop(ctx, width, height) {
   ctx.fillStyle = '#f4f5ef';
   ctx.fillRect(650, 498, 735, 470);
   ctx.fillStyle = '#151a18';
-  ctx.font = '22px monospace';
+  ctx.font = 'bold 30px monospace';
   const terminal = [
-    'SunOS Release 4.1.3 (GENERIC)',
-    'Copyright 1983-1992 Sun Microsystems, Inc.',
-    '',
+    'SunOS 4.1.3 (GENERIC)',
     'demo@warehouse% pwd',
     '/home/demo',
     'demo@warehouse% ls -F',
-    'Calendar/  Demos/  Documents/  Mail/  Projects/',
+    'Calendar/ Demos/ Documents/',
+    'Mail/ Projects/',
     'demo@warehouse% uptime',
-    ' 3:42pm  up 12 days,  2 users,  load 0.08',
-    'demo@warehouse% openwin --version',
-    'OpenWindows Version 3',
+    'up 12 days, load 0.08',
     'demo@warehouse% _'
   ];
-  terminal.forEach((line, row) => ctx.fillText(line, 675, 520 + row * 34));
+  terminal.forEach((line, row) => ctx.fillText(line, 675, 520 + row * 42));
   ctx.fillStyle = '#b8bbb5';
   ctx.fillRect(1364, 510, 15, 430);
   ctx.fillStyle = '#626965';
@@ -193,23 +190,39 @@ export function makeKeyboardLegendMaterial(id) {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.font = 'bold 34px monospace';
+  ctx.font = 'bold 22px monospace';
   ctx.fillStyle = id === 'sun' ? '#342b46' : id === 'c64' ? '#efe0bb' : '#f4e8cf';
-  const rows = [
-    ['F1','F2','F3','F4','F5','F6','F7','F8','F9','F10'],
-    ['1','2','3','4','5','6','7','8','9','0','-','='],
-    ['Q','W','E','R','T','Y','U','I','O','P','[',']'],
-    ['A','S','D','F','G','H','J','K','L',';','RETURN'],
-    ['SHIFT','Z','X','C','V','B','N','M',',','.','SHIFT'],
-    ['CTRL','ALT','SPACE','ALT','DEL']
+  const atlasWidth = id === 'sun' ? .74 : .66;
+  const canvasX = localX => (.5 - localX / atlasWidth) * canvas.width;
+  const canvasY = z => (8.34 - z) / .34 * canvas.height;
+  const keyRows = [
+    ['1','2','3','4','5','6','7','8','9','0','-','=','DEL'],
+    ['Q','W','E','R','T','Y','U','I','O','P','[',']','\\','TAB'],
+    ['A','S','D','F','G','H','J','K','L',';','"','RETURN','CTRL'],
+    ['SHIFT','Z','X','C','V','B','N','M',',','.','/','SHIFT']
   ];
-  rows.forEach((row, r) => {
-    const y = 42 + r * 82;
-    row.forEach((label, k) => {
-      const x = 48 + k * (928 / Math.max(1, row.length - 1));
-      ctx.fillText(label, x, y);
-    });
+  const rowSpecs = [
+    { count: id === 'sun' ? 14 : 13, z: 8.27, offset: 0 },
+    { count: 14, z: 8.21, offset: .015 },
+    { count: 13, z: 8.15, offset: .032 },
+    { count: 12, z: 8.09, offset: .052 }
+  ];
+  const keyLabelWidth = .042 / atlasWidth * canvas.width;
+  rowSpecs.forEach((row, r) => {
+    const labels = Array.from({ length: row.count }, (_, k) => keyRows[r][k] || 'ESC');
+    const start = -(row.count - 1) * .048 / 2 + row.offset;
+    for (let k = 0; k < row.count; k++) {
+      ctx.fillText(labels[row.count - 1 - k], canvasX(start + k * .048), canvasY(row.z), keyLabelWidth);
+    }
   });
+  const functionCount = id === 'sun' ? 10 : 8;
+  for (let k = 0; k < functionCount; k++) {
+    ctx.fillText(`F${functionCount - k}`, canvasX(-.25 + k * .056), canvasY(8.32), keyLabelWidth);
+  }
+  ctx.font = 'bold 20px monospace';
+  ctx.fillText('SPACE', canvasX(0), canvasY(8.03), .19 / atlasWidth * canvas.width);
+  ctx.fillText('SHIFT', canvasX(-.285), canvasY(8.03), .08 / atlasWidth * canvas.width);
+  ctx.fillText('RETURN', canvasX(.3), canvasY(8.115), .08 / atlasWidth * canvas.width);
   const texture = new Texture({
     label: `${id.toUpperCase()} immutable keyboard legends`,
     width: canvas.width, height: canvas.height,
@@ -218,6 +231,6 @@ export function makeKeyboardLegendMaterial(id) {
   return standard({
     name: `${id.toUpperCase()} keyboard legend atlas`, color: 0xffffff, roughness: .7, lit: false, transparent: true,
     textures: { keyboardLegend: texture },
-    surface: 'let ink=textureSample(keyboardLegend,smpAnisoClamp,vec2f(in.uv.x,1.0-in.uv.y)); s.albedo=ink.rgb; s.opacity=ink.a;'
+    surface: 'let ink=textureSample(keyboardLegend,smpAnisoClamp,vec2f(1.0-in.uv.x,in.uv.y)); s.albedo=ink.rgb; s.opacity=ink.a;'
   });
 }
