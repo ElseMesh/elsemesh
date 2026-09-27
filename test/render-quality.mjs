@@ -1,0 +1,24 @@
+// Agent Control: guard adaptive hysteresis, profile limits and physical glass/rail clearances.
+import assert from 'node:assert/strict';
+import { AdaptiveResolution, qualityFor, QUALITY } from '../src/core/RenderQuality.js';
+import { pressureArch } from '../src/world/PressureTunnel.js';
+assert.equal(qualityFor('auto', true), 'mobile');
+assert.equal(qualityFor('auto', false), 'balanced');
+assert.equal(qualityFor('high', true), 'high');
+const a = new AdaptiveResolution(); let scale = 0.75;
+for (let i = 0; i < 90; i++) scale = a.update(1 / 15, scale, 0.75);
+assert.equal(scale, 0.7, 'sustained overload lowers resolution once, without frame-to-frame resizing');
+for (let i = 0; i < 950; i++) scale = a.update(1 / 60, scale, 0.75);
+assert.equal(scale, 0.75, 'sustained headroom restores quality');
+for (let i = 0; i < 2000; i++) scale = a.update(1 / 10, scale, 0.75);
+assert.equal(scale, 0.5);
+assert.equal(a.update(NaN, scale), scale);
+assert(QUALITY.mobile.pixels < QUALITY.balanced.pixels);
+const outer = pressureArch(5.1, -14.8, -18.7, 40), inner = pressureArch(2.8, -13.4, -15.8, 11);
+outer.computeBoundingBox(); inner.computeBoundingBox();
+assert(Math.abs(outer.boundingBox.max.y - -9.7) < 0.001, 'rounded top reaches arch crown');
+assert(inner.boundingBox.max.y < outer.boundingBox.max.y - 0.5, 'train roof clears pressure roof');
+assert(inner.boundingBox.min.z > outer.boundingBox.min.z + 1, 'train sides clear outer shell');
+assert(outer.boundingBox.min.y < -18.6, 'glass sidewalls meet solid foundation');
+for (const g of [outer, inner]) for (const v of g.attributes.normal.array) assert(Number.isFinite(v));
+console.log('Agent Control: rendering budget and tunnel clearance checks passed');

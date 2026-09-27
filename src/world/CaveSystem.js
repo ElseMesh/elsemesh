@@ -1,6 +1,7 @@
 import { Color, Group, Mesh, Vector3 } from '../engine/index.js';
 import { standard } from '../materials/Materials.js';
 import { parseGLB } from './debris/GLB.js';
+import { loadCaveStone, isCaveRock } from './CaveStone.js';
 
 const BASE = ((import.meta.env && import.meta.env.BASE_URL) || '/') + 'models/world/';
 const sq = (x) => x * x;
@@ -67,6 +68,7 @@ export class CaveSystem {
 		cave.doorMeshes = [];
 		cave.keypadLights = [];
 		const materials = new Map();
+		const stone = await loadCaveStone();
 		for (const { name, geometry } of parsed.meshes) {
 			const color = caveColor(name);
 			if (!materials.has(color)) {
@@ -79,9 +81,11 @@ export class CaveSystem {
 				mat.localLightsCheap = true;
 				materials.set(color, mat);
 			}
-			const mesh = new Mesh(geometry, materials.get(color));
+			const mesh = new Mesh(geometry, isCaveRock(name) ? stone : materials.get(color));
 			mesh.name = name;
-			mesh.frustumCulled = false;
+			// Agent Control: baked world geometry still needs bounds for view and shadow culling.
+			geometry.computeBoundingSphere();
+			mesh.frustumCulled = true;
 			mesh.receiveShadow = true;
 			mesh.castShadow = true;
 			mesh.staticVelocity = true;

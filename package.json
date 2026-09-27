@@ -6,7 +6,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "online": "node tools/networking/online-server.mjs",
-    "test": "node test/survival-toggle.mjs && node test/game-logic.mjs && node test/cave-system.mjs && node test/monorail-route.mjs && node test/engine-smoke.mjs && node --test test/helicopter.mjs test/helicopter-online.mjs",
+    "test": "node test/render-quality.mjs && node test/survival-toggle.mjs && node test/game-logic.mjs && node test/cave-system.mjs && node test/monorail-route.mjs && node test/engine-smoke.mjs && node --test test/helicopter.mjs test/helicopter-online.mjs test/static-cache.mjs",
     "test:network": "node --test test/network-foundation.mjs test/network-player.mjs test/federation.mjs test/online-room.mjs test/ten-player-room.mjs test/network-speech.mjs test/avatar-appearance.mjs",
     "world:export": "node tools/blender/export-terrain.mjs artifacts/world"
   },

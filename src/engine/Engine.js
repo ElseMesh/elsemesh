@@ -12,6 +12,7 @@ export class Engine {
 
 		this.container = container;
 		this.renderScale = 1;
+		this.maxOutputPixels = Infinity; // Agent Control: cap full-resolution post buffers on smaller GPUs.
 		this.clock = new Timer();
 		this.frame = 0;
 		this.onResize = [];
@@ -58,7 +59,7 @@ export class Engine {
 	resize() {
 
 		const w = window.innerWidth, h = window.innerHeight;
-		const dpr = this.renderScale;
+		const dpr = Math.min(this.renderScale, Math.sqrt(this.maxOutputPixels / (w * h)));
 		this.canvas.width = Math.max( 1, Math.floor( w * dpr ) );
 		this.canvas.height = Math.max( 1, Math.floor( h * dpr ) );
 		this.canvas.style.width = w + 'px';

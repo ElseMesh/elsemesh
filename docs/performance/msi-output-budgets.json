@@ -1,0 +1,536 @@
+{
+  "high": {
+    "author": "Agent Control",
+    "profile": "high",
+    "output": [
+      2560,
+      1440
+    ],
+    "internalScale": 1,
+    "device": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36 Edg/154.0.0.0",
+    "warm": 45,
+    "frames": 90,
+    "result": {
+      "beach": {
+        "wall": 80.557,
+        "gpu": 63.503,
+        "gpuMedian": 62.849,
+        "cpu": 20.041,
+        "passes": [
+          [
+            "opaque",
+            14.85
+          ],
+          [
+            "water + transparent",
+            12.099
+          ],
+          [
+            "TAAU",
+            6.543
+          ],
+          [
+            "refraction",
+            2.925
+          ],
+          [
+            "haze march",
+            2.492
+          ],
+          [
+            "Clouds Trace",
+            2.331
+          ],
+          [
+            "beauty (AO + haze + underwater)",
+            1.929
+          ],
+          [
+            "final (grade + tonemap)",
+            1.839
+          ]
+        ]
+      },
+      "boatHelm": {
+        "wall": 83.861,
+        "gpu": 75.463,
+        "gpuMedian": 74.383,
+        "cpu": 20.368,
+        "passes": [
+          [
+            "water + transparent",
+            19.702
+          ],
+          [
+            "opaque",
+            14.765
+          ],
+          [
+            "refraction",
+            8.212
+          ],
+          [
+            "TAAU",
+            6.591
+          ],
+          [
+            "haze march",
+            2.482
+          ],
+          [
+            "beauty (AO + haze + underwater)",
+            2.246
+          ],
+          [
+            "Clouds Trace",
+            2.034
+          ],
+          [
+            "final (grade + tonemap)",
+            1.645
+          ]
+        ]
+      },
+      "cave": {
+        "wall": 55.761,
+        "gpu": 51.053,
+        "gpuMedian": 51.184,
+        "cpu": 13.967,
+        "passes": [
+          [
+            "opaque",
+            8.512
+          ],
+          [
+            "TAAU",
+            6.819
+          ],
+          [
+            "water + transparent",
+            6.682
+          ],
+          [
+            "Clouds Trace",
+            2.539
+          ],
+          [
+            "beauty (AO + haze + underwater)",
+            2.321
+          ],
+          [
+            "refraction",
+            1.877
+          ],
+          [
+            "GTAO",
+            1.857
+          ],
+          [
+            "final (grade + tonemap)",
+            1.769
+          ]
+        ]
+      },
+      "tunnel": {
+        "wall": 70.37,
+        "gpu": 45.97,
+        "gpuMedian": 45.22,
+        "cpu": 11.456,
+        "passes": [
+          [
+            "opaque",
+            8.066
+          ],
+          [
+            "TAAU",
+            7.057
+          ],
+          [
+            "Clouds Trace",
+            2.522
+          ],
+          [
+            "haze march",
+            2.437
+          ],
+          [
+            "GTAO",
+            2.141
+          ],
+          [
+            "water + transparent",
+            1.807
+          ],
+          [
+            "Ocean FFT",
+            1.678
+          ],
+          [
+            "beauty (AO + haze + underwater)",
+            1.67
+          ]
+        ]
+      },
+      "total": {
+        "wall": 290.549,
+        "gpu": 235.989
+      }
+    }
+  },
+  "balanced": {
+    "author": "Agent Control",
+    "profile": "balanced",
+    "output": [
+      1440,
+      810
+    ],
+    "internalScale": 0.75,
+    "device": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36 Edg/154.0.0.0",
+    "warm": 45,
+    "frames": 90,
+    "result": {
+      "beach": {
+        "wall": 33.639,
+        "gpu": 28.383,
+        "gpuMedian": 27.984,
+        "cpu": 22.347,
+        "passes": [
+          [
+            "opaque",
+            6.417
+          ],
+          [
+            "water + transparent",
+            3.691
+          ],
+          [
+            "TAAU",
+            2.133
+          ],
+          [
+            "refraction",
+            1.753
+          ],
+          [
+            "shadow cascade 0",
+            1.689
+          ],
+          [
+            "Ocean FFT",
+            1.664
+          ],
+          [
+            "causticsFine",
+            1.093
+          ],
+          [
+            "Clouds Panorama",
+            0.902
+          ]
+        ]
+      },
+      "boatHelm": {
+        "wall": 33.959,
+        "gpu": 30.259,
+        "gpuMedian": 29.884,
+        "cpu": 21.283,
+        "passes": [
+          [
+            "opaque",
+            6.546
+          ],
+          [
+            "water + transparent",
+            4.936
+          ],
+          [
+            "refraction",
+            2.787
+          ],
+          [
+            "TAAU",
+            2.142
+          ],
+          [
+            "Ocean FFT",
+            1.631
+          ],
+          [
+            "shadow cascade 0",
+            1.63
+          ],
+          [
+            "causticsFine",
+            1.025
+          ],
+          [
+            "Clouds Panorama",
+            0.874
+          ]
+        ]
+      },
+      "cave": {
+        "wall": 24.213,
+        "gpu": 22.003,
+        "gpuMedian": 21.955,
+        "cpu": 13.065,
+        "passes": [
+          [
+            "opaque",
+            3.805
+          ],
+          [
+            "water + transparent",
+            2.372
+          ],
+          [
+            "TAAU",
+            2.073
+          ],
+          [
+            "Ocean FFT",
+            1.618
+          ],
+          [
+            "shadow cascade 0",
+            1.342
+          ],
+          [
+            "refraction",
+            1.137
+          ],
+          [
+            "causticsFine",
+            1.069
+          ],
+          [
+            "Clouds Trace",
+            0.861
+          ]
+        ]
+      },
+      "tunnel": {
+        "wall": 20.277,
+        "gpu": 19.295,
+        "gpuMedian": 19.071,
+        "cpu": 10.821,
+        "passes": [
+          [
+            "opaque",
+            3.159
+          ],
+          [
+            "TAAU",
+            1.983
+          ],
+          [
+            "Ocean FFT",
+            1.604
+          ],
+          [
+            "water + transparent",
+            1.161
+          ],
+          [
+            "shadow cascade 0",
+            1.03
+          ],
+          [
+            "causticsFine",
+            0.992
+          ],
+          [
+            "refraction",
+            0.894
+          ],
+          [
+            "Clouds Panorama",
+            0.835
+          ]
+        ]
+      },
+      "total": {
+        "wall": 112.088,
+        "gpu": 99.94
+      }
+    }
+  },
+  "mobile": {
+    "author": "Agent Control",
+    "profile": "mobile",
+    "output": [
+      960,
+      540
+    ],
+    "internalScale": 0.65,
+    "device": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36 Edg/154.0.0.0",
+    "warm": 45,
+    "frames": 90,
+    "result": {
+      "beach": {
+        "wall": 21.1,
+        "gpu": 17.203,
+        "gpuMedian": 17.105,
+        "cpu": 14.612,
+        "passes": [
+          [
+            "opaque",
+            4.336
+          ],
+          [
+            "water + transparent",
+            1.991
+          ],
+          [
+            "Ocean FFT",
+            1.665
+          ],
+          [
+            "refraction",
+            1.48
+          ],
+          [
+            "causticsFine",
+            1.081
+          ],
+          [
+            "TAAU",
+            0.938
+          ],
+          [
+            "Clouds Panorama",
+            0.881
+          ],
+          [
+            "Clouds Trace",
+            0.647
+          ]
+        ]
+      },
+      "boatHelm": {
+        "wall": 21.888,
+        "gpu": 18.004,
+        "gpuMedian": 17.957,
+        "cpu": 15.532,
+        "passes": [
+          [
+            "opaque",
+            4.407
+          ],
+          [
+            "water + transparent",
+            2.385
+          ],
+          [
+            "refraction",
+            1.797
+          ],
+          [
+            "Ocean FFT",
+            1.649
+          ],
+          [
+            "causticsFine",
+            1.045
+          ],
+          [
+            "TAAU",
+            0.96
+          ],
+          [
+            "Clouds Panorama",
+            0.856
+          ],
+          [
+            "Clouds Trace",
+            0.627
+          ]
+        ]
+      },
+      "cave": {
+        "wall": 17.091,
+        "gpu": 15.368,
+        "gpuMedian": 15.204,
+        "cpu": 11.916,
+        "passes": [
+          [
+            "opaque",
+            3.072
+          ],
+          [
+            "Ocean FFT",
+            1.662
+          ],
+          [
+            "water + transparent",
+            1.618
+          ],
+          [
+            "causticsFine",
+            1.07
+          ],
+          [
+            "TAAU",
+            1.001
+          ],
+          [
+            "Clouds Panorama",
+            0.939
+          ],
+          [
+            "refraction",
+            0.939
+          ],
+          [
+            "Clouds Trace",
+            0.663
+          ]
+        ]
+      },
+      "tunnel": {
+        "wall": 14.44,
+        "gpu": 13.527,
+        "gpuMedian": 13.369,
+        "cpu": 7.953,
+        "passes": [
+          [
+            "opaque",
+            2.505
+          ],
+          [
+            "Ocean FFT",
+            1.638
+          ],
+          [
+            "causticsFine",
+            1.057
+          ],
+          [
+            "TAAU",
+            0.942
+          ],
+          [
+            "water + transparent",
+            0.926
+          ],
+          [
+            "Clouds Panorama",
+            0.863
+          ],
+          [
+            "refraction",
+            0.838
+          ],
+          [
+            "Clouds Trace",
+            0.615
+          ]
+        ]
+      },
+      "total": {
+        "wall": 74.519,
+        "gpu": 64.102
+      }
+    }
+  }
+}

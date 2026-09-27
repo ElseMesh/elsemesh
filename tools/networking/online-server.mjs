@@ -1,5 +1,8 @@
 import { createServer } from 'node:http';
-import { readFile, stat } from 'node:fs/promises';
+import { stat } from 'node:fs/promises';
+import { createReadStream } from 'node:fs';
+import { createGzip } from 'node:zlib';
+import { pipeline } from 'node:stream/promises';
 import { resolve, relative, extname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { WebSocketServer, WebSocket } from 'ws';
@@ -24,10 +27,25 @@ export async function createOnlineServer({ root = resolve('dist'), host = '127.0
 			if (rel.startsWith('..') || rel.includes(':') || rel === '' || extname(target) === '') { response.writeHead(404).end(); return; }
 			const info = await stat(target);
 			if (!info.isFile()) { response.writeHead(404).end(); return; }
-			const bytes = await readFile(target);
-			response.writeHead(200, { 'Content-Type': TYPES[extname(target)] || 'application/octet-stream', 'Content-Length': bytes.length, 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'no-referrer' });
-			response.end(request.method === 'HEAD' ? undefined : bytes);
-		} catch { response.writeHead(404).end(); }
+			// Agent Control: stream large models, revalidate reusable assets, and compress text bundles.
+			const etag = `W/"${info.size.toString(16)}-${info.mtimeMs.toString(16)}"`;
+			const immutable = /^assets[\\/].+-[\w-]{8,}\.(js|css)$/.test(rel);
+			const headers = { 'Content-Type': TYPES[extname(target)] || 'application/octet-stream',
+				'Cache-Control': immutable ? 'public, max-age=31536000, immutable' : 'public, max-age=0, must-revalidate',
+				ETag: etag, Vary: 'Accept-Encoding', 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'no-referrer' };
+			if (request.headers['if-none-match']?.split(',').map(v => v.trim()).includes(etag)) { response.writeHead(304, headers).end(); return; }
+			const acceptsGzip = (request.headers['accept-encoding'] || '').split(',').some(token => {
+				const [coding, ...params] = token.trim().split(';');
+				const q = params.find(p => p.trim().startsWith('q='));
+				return coding === 'gzip' && (!q || Number(q.trim().slice(2)) > 0);
+			});
+			const gzip = acceptsGzip && /\.(js|css|html|json|svg)$/.test(target);
+			if (gzip) headers['Content-Encoding'] = 'gzip'; else headers['Content-Length'] = info.size;
+			response.writeHead(200, headers);
+			if (request.method === 'HEAD') { response.end(); return; }
+			if (gzip) await pipeline(createReadStream(target), createGzip(), response);
+			else await pipeline(createReadStream(target), response);
+		} catch { if (!response.headersSent) response.writeHead(404).end(); else response.destroy(); }
 	});
 
 	server.on('upgrade', (request, socket, head) => {

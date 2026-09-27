@@ -1,6 +1,7 @@
 import { BoxGeometry, BufferGeometry, Float32BufferAttribute, CylinderGeometry, Euler, Group, Mesh, SphereGeometry, Vector3, Color } from '../engine/index.js';
 import { standard } from '../materials/Materials.js';
 import { RAIL, railPosition, secondIslandHeight } from './MonorailRoute.js';
+import { addArch, addGlassEnd, TunnelMarineLife } from './PressureTunnel.js';
 
 const mat = (name, color, extra = {}) => {
 	const m = standard({ name, color, roughness: 0.65, metalness: 0.15, side: 'double', ...extra });
@@ -13,9 +14,8 @@ const metal = mat('Station_dark_metal', 0x394a55, { metalness: 0.55, roughness: 
 const brass = mat('Station_brass', 0xb88e4d, { metalness: 0.65, roughness: 0.28, emissive: 0x6b4d26, emissiveIntensity: 0.36 });
 const light = mat('Station_light', 0x72c9e8, { emissive: 0x43a9e4, emissiveIntensity: 2 });
 const deepSea = mat('Undersea_view', 0x0b3449, { emissive: 0x0a3c58, emissiveIntensity: 0.6 });
-const glass = mat('Pressure_glass', 0x8ce7e9, { transparent: true, opacity: 0.19, depthWrite: false, metalness: 0.15, roughness: 0.08 });
-const roofGlass = mat('Pressure_glass_roof', 0x247d9d, { transparent: true, opacity: 0.55, depthWrite: false,
-	metalness: 0.08, roughness: 0.12, emissive: 0x155f83, emissiveIntensity: 0.55 });
+// Agent Control: two clear glass layers with ordered blending; the curved roof admits the sea view.
+const glass = mat('Pressure_glass', 0x8ce7e9, { transparent: true, opacity: 0.10, depthWrite: false, metalness: 0.05, roughness: 0.08 });
 const floorMat = mat('Island_dark_sand', 0x76694b);
 const leaf = mat('Island_green', 0x385f42);
 const trunk = mat('Island_wood', 0x544536);
@@ -117,12 +117,12 @@ export class MonorailSystem {
 		box(g, 'Deep_sea_south_view', (a + b) / 2, -14, -10, a - b + 80, 29, 0.5, deepSea);
 		box(g, 'Seabed_outside_tube', (a + b) / 2, -24, -30, a - b + 80, 0.5, 40, rock);
 		box(g, 'Rail_guideway', (a + b) / 2, -18.7, -30, a - b, 0.48, 2.0, brass);
-		box(g, 'Tinted_glass_tube_roof', (a + b) / 2, -8.52, -30, a - b, 0.12, 10.2, roofGlass);
-		for (let x = a - 20; x > b + 20; x -= 40) {
-			cylinder(g, 'Pressure_glass_span', x - 20, -13.7, -30, 5.1, 39.6, glass, 16);
-			cylinder(g, 'Steel_pressure_collar', x - 40, -13.7, -30, 5.12, 0.42, metal, 16);
-			box(g, 'Guideway_light', x - 18, -18.34, -30, 7, 0.08, 0.3, light);
-			box(g, 'Ceiling_light', x - 18, -8.43, -30, 5, 0.08, 0.3, light);
+		box(g, 'Pressure_tunnel_foundation', (a + b) / 2, -19.15, -30, a - b, 0.9, 10.6, rock);
+		for (const z of [-31.1, -28.9]) box(g, 'Maglev_guide_rail', (a + b) / 2, -18.15, z, a - b, 0.65, 0.45, metal);
+		for (let x = a; x > b; x -= 40) {
+			addArch(g, 'Rounded_pressure_glass_span', x - 20, 5.1, -14.8, -18.7, 39.6, glass);
+			addArch(g, 'Arched_pressure_rib', x, 5.12, -14.8, -18.7, 0.24, metal);
+			for (const z of [-34.65, -25.35]) box(g, 'Guideway_light', x - 20, -18.34, z, 7, 0.08, 0.14, light);
 		}
 		for (const [label, s] of [['A', RAIL.stationA], ['B', RAIL.stationB]]) {
 			box(g, `Station_${label}_floor`, s.x + 10, -16.35, -24, 34, 0.7, 18, rock);
@@ -140,25 +140,15 @@ export class MonorailSystem {
 		this.car.name = 'Two_way_monorail_car';
 		g.add(this.car);
 		box(this.car, 'Car_floor', 0, -16.05, -30, 11, 0.5, 5.6, metal);
-		box(this.car, 'Car_roof', 0, -11.7, -30, 11, 0.35, 5.6, metal);
+		addArch(this.car, 'Glass_monocoque_roof_and_sides', 0, 2.8, -13.4, -15.8, 11, glass, 1);
+		for (const x of [-5.4, 0, 5.4]) addArch(this.car, 'Car_arch_frame', x, 2.82, -13.4, -15.8, 0.14, metal);
 		for (const z of [-32.8, -27.2]) {
-			box(this.car, 'Car_sill', 0, -14.95, z, 11, 1.3, 0.22, brass);
-			for (const x of [-5.2, 0, 5.2]) box(this.car, 'Car_window_post', x, -13.35, z, 0.23, 3.2, 0.25, metal);
+			box(this.car, 'Car_sill', 0, -15.58, z, 11, 0.36, 0.16, brass);
 		}
-		for (const x of [-5.5, 5.5]) box(this.car, 'Car_end', x, -13.9, -30, 0.24, 4, 5.6, glass);
+		for (const x of [-5.5, 5.5]) addGlassEnd(this.car, x, glass);
 		this.car.position.x = RAIL.stationA.x;
 		// Small schools and sea-floor vents provide readable motion at train speed.
-		for (let i = 0; i < 140; i++) {
-			const x = b + 30 + rng(i * 7) * (a - b - 60);
-			const z = -30 + (i % 2 ? 1 : -1) * (7 + rng(i * 11) * 6);
-			const y = -17 + rng(i * 13) * 9;
-			const fish = new Mesh(new SphereGeometry(0.48 + rng(i * 17) * 0.52, 8, 6), fishMat[i % fishMat.length]);
-			fish.name = 'Marine_life_visible_through_glass';
-			fish.position.set(x, y, z);
-			fish.scale.set(1.7, 0.6, 0.55);
-			fish.staticVelocity = true;
-			g.add(fish);
-		}
+		this.marine = new TunnelMarineLife(g, fishMat, a, b);
 		const island = new Mesh(islandGeometry(), floorMat);
 		island.name = 'Second_island_walkable_terrain';
 		island.staticVelocity = true;

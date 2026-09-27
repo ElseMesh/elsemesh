@@ -45,6 +45,7 @@ import { ShoreSim } from './ocean/ShoreSim.js';
 import { Caustics } from './ocean/Caustics.js';
 import { installUnderwaterLighting } from './ocean/UnderwaterLighting.js';
 import { RefractionPass } from './ocean/RefractionPass.js';
+import { QUALITY, qualityFor, AdaptiveResolution } from './core/RenderQuality.js';
 import { installGroundBounce } from './materials/GroundBounce.js';
 import { LocalLights, addVillageLights, addBoatLights } from './materials/LocalLights.js';
 import { WaterQuery } from './ocean/WaterQuery.js';
@@ -360,8 +361,13 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 		} );
 		this.post = new PostFX( renderer, { sceneRenderer: this.sceneRenderer, camera, underwater: this.underwater, clouds: this.clouds, sunDir: this.atmosphere.sunDir, haze: this.haze } );
 		G.exposure.value = this.settings.exposure;
-		if ( qs.has( 'scale' ) ) this.settings.renderScale = Number( qs.get( 'scale' ) ) || 1;
-		this.setRenderScale( this.settings.renderScale );
+		// Agent Control: automatic budgets apply to Windows and mobile as well as Linux.
+		this.adaptiveResolution = new AdaptiveResolution();
+		this.setQuality(qs.get('quality') || 'auto');
+		if (qs.has('scale')) {
+			this.settings.autoResolution = false;
+			this.setRenderScale(Number(qs.get('scale')) || 1);
+		}
 
 		// ---------------------------------------------------------------- audio
 		// recorded field recordings (public/audio, credits in public/audio/CREDITS.md); ?noAudio turns it off
@@ -592,6 +598,10 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 	}
 
 	updateFPS( dt ) {
+		if (this.settings.autoResolution && !this.qs.has('bench') && !document.hidden) {
+			const scale = this.adaptiveResolution.update(dt, this.settings.renderScale, QUALITY[this.settings.qualityProfile].scale);
+			if (scale !== this.settings.renderScale) this.setRenderScale(scale);
+		}
 
 		const f = this._fps || ( this._fps = { el: document.getElementById( 'fps' ), acc: 0, n: 0, worst: 0 } );
 		f.acc += dt;
@@ -669,6 +679,7 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 		else if ( this.monorail.state !== 'riding' && !this.thirdIsland.active ) this.player.update( dt );
 		if ( ! this.freeCam && !this.thirdIsland.active ) this.monorail.update( dt, this.player, this.input, this.camera, ( message ) => this.ui?.ui.toast( message ) );
 		this.thirdIsland.update( dt );
+		this.monorail.marine.update(dt, this.camera.position);
 		this.avatar.update( dt, this.player, this.camera, this.freeCam );
 		if ( this.networkDemo ) this.networkDemo.update( dt );
 		this.pistol.update( dt, this.camera, this.input, ! this.freeCam && this.monorail.state !== 'riding' && this.player.mode === 'walk', ( message ) => this.ui?.ui.toast( message ) );
@@ -768,8 +779,22 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 
 	}
 
-	// Internal render resolution relative to the output (0.5..1), set by hand: changing it re-creates
-	// the scene / post / cloud targets, so nothing adjusts it automatically.
+	// Agent Control: manual resolution changes remain available beside the adaptive profile.
+	setQuality(name = 'auto') {
+		const mobile = matchMedia('(pointer: coarse)').matches || Math.min(innerWidth, innerHeight) < 600;
+		const profile = qualityFor(name, mobile), q = QUALITY[profile];
+		this.settings.quality = name;
+		this.settings.qualityProfile = profile;
+		this.settings.autoResolution = name === 'auto';
+		this.engine.maxOutputPixels = q.pixels;
+		this.engine.resize();
+		this.refraction.scale = q.refraction;
+		this.shadows.enabled = q.shadows;
+		this.waterMaterial.params.ssr.value = q.reflections ? 1 : 0;
+		this.setRenderScale(q.scale);
+		this.adaptiveResolution?.reset();
+	}
+
 	setRenderScale( v ) {
 
 		const scale = MathUtils.clamp( Math.round( v * 20 ) / 20, 0.5, 1 );

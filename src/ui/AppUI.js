@@ -243,7 +243,12 @@ export class AppUI {
 		live.addInfo( { label: 'CPU per frame', get: () => `${ ( app.cpuMs || 0 ).toFixed( 2 ) } ms` } );
 		live.addInfo( { label: 'Render size', get: () => `${ app.sceneRenderer.width } × ${ app.sceneRenderer.height }` } );
 		const quality = perf.addFolder( 'Quality', { icon: 'layers' } );
-		quality.addSlider( { label: 'Render scale', object: s, key: 'renderScale', min: 0.5, max: 1, step: 0.05, format: ( v ) => `${ Math.round( v * 100 ) }%`, tooltip: 'Internal resolution; the temporal upscaler reconstructs the full output resolution.', onChange: ( v ) => app.setRenderScale( v ) } );
+		// Agent Control: explicit quality and automatic-resolution controls, with a manual escape hatch.
+		s.quality = app.settings.quality;
+		s.autoResolution = app.settings.autoResolution;
+		quality.addSelect({ label: 'Quality profile', object: s, key: 'quality', options: ['auto', 'high', 'balanced', 'mobile'].map(value => ({label: value[0].toUpperCase() + value.slice(1), value})), onChange: v => app.setQuality(v) });
+		quality.addToggle({ label: 'Adaptive resolution', object: s, key: 'autoResolution', onChange: v => { app.settings.autoResolution = v; app.adaptiveResolution.reset(); } });
+		quality.addSlider( { label: 'Render scale', object: s, key: 'renderScale', min: 0.5, max: 1, step: 0.05, format: ( v ) => `${ Math.round( v * 100 ) }%`, tooltip: 'Manual internal resolution; changing this turns adaptive resolution off.', onChange: ( v ) => { app.settings.autoResolution = false; app.setRenderScale( v ); } } );
 		// anti-aliasing: the TAA with 2..16 jitter positions averaged per pixel, or none
 		s.aa = app.post.aaMode === 'none' ? 0 : app.post.taau.jitterPhaseOverride;
 		quality.addSelect( { label: 'Anti-aliasing', object: s, key: 'aa', tooltip: 'Temporal anti-aliasing: each pixel averages this many sub-pixel sample positions over successive frames (it also smooths dithered fades and shadow noise). More samples cost nothing per frame but take a few more frames to settle.', options: [ { label: 'Off', value: 0 }, { label: '2x', value: 2 }, { label: '4x', value: 4 }, { label: '8x', value: 8 }, { label: '16x', value: 16 } ], onChange: ( v ) => {
@@ -254,7 +259,7 @@ export class AppUI {
 
 		} } );
 		quality.addToggle( { label: 'Shadows', object: s, key: 'shadows', onChange: ( v ) => { app.shadows.enabled = v; } } );
-		s.ssr = true;
+		s.ssr = !!app.waterMaterial.params.ssr.value;
 		quality.addToggle( { label: 'Water reflections', object: s, key: 'ssr', tooltip: 'Screen-space reflections of the pier, boats and hills on the water.', onChange: ( v ) => { app.waterMaterial.params.ssr.value = v ? 1 : 0; } } );
 
 		this._t = 0;
@@ -268,6 +273,9 @@ export class AppUI {
 		const ui = this.ui;
 		ui.setStats( { fps: app.fps, frameMs: dt * 1000 } );
 		this.s.renderScale = app.post.scale;
+		this.s.autoResolution = app.settings.autoResolution;
+		this.s.shadows = app.shadows.enabled;
+		this.s.ssr = !!app.waterMaterial.params.ssr.value;
 
 		const p = app.player;
 		if ( app.freeCam ) {

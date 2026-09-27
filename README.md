@@ -21,7 +21,7 @@ The project is also exploring an **open federated virtual-world protocol**: inde
 1. Walk the home island, explore the shore and take the boat around the western headland.
 2. Follow the water channel into **UNDERNEATH**. Stop the boat in the deeper water before the landing, leave the helm, jump overboard and wade up the shallow stone ramp. The explorer is visible seated at the wheel, aboard and on foot.
 3. Use the flashing electronic reader. Its door rises into the cave ceiling and reveals the lit station, platform and waiting train. Press **N** to see the three-island map.
-4. Board the two-way monorail. Its glass pressure tube crosses below the sea, with fish visible outside.
+4. Board the two-way monorail. Its curved glass monocoque travels through a rounded glass pressure tunnel above a solid maglev base, with swimming fish visible through both enclosures.
 5. Explore the second island, read the expedition log in Station B, and locate the silent signal mast. The same train returns to the home island.
 6. Sail south past Godzilla to the third island's north-facing jetty. Stop alongside in deep water and step ashore. Meet Loz outside **Loz's Helicopter Rental** and press **E** for the keys.
 7. Follow the lit path to the central helipad. Board the neon pink helicopter with **E**, climb with **Space**, and fly around the islands. Trees sway and a windsock shows the gusts. See the [flight guide](docs/THIRD-ISLAND-HELICOPTER.md).
@@ -65,6 +65,19 @@ The mystery story is an evolving playable prototype. The existing signal objecti
 | F1 or ? | Full controls |
 
 ## Run and build
+
+### Rendering quality
+
+**H → Performance → Quality profile** offers Auto, High, Balanced and Mobile.
+Auto uses a bounded output resolution and adapts the internal resolution to
+sustained load. Manual render-scale changes turn adaptation off. High restores
+full resolution, shadows and screen-space water reflections. Balanced retains
+shadows; Mobile reduces the budget further and disables sun shadow maps.
+
+UNDERNEATH uses CC0 scanned stone textures with normal/roughness detail and wet
+surfaces. The undersea route has rounded glass enclosures and batched swimming
+marine life. See the [Agent Control performance report](docs/performance/README.md)
+for measured PC results, quality tradeoffs and untested physical-phone limits.
 
 Requires a WebGPU-capable browser and GPU. The first launch may take a minute while shaders compile.
 
@@ -112,6 +125,15 @@ Source code is MIT licensed under [LICENSE](LICENSE). Third-party assets keep th
 ## Agent Control walkthrough capture
 
 `tools/video/susie-capture.js` and `susie-receiver.mjs` record Susie (female, blonde) using scripted inputs to the actual game controllers. The capture is edited in chapters, with initial/restored recording fixtures and exterior inspection cameras; it is not an uninterrupted manual play test. Source footage and the final MP4 are kept on D: outside Git. Body-runoff telemetry distinguishes falling water from waterline splashes.
+
+The completed local MP4 is `D:\Downloads\Burning-Horizons-Susie-Complete-Journey.mp4`.
+It includes avatar setup, cave/rail return, rental-island arrival, keys, take-off,
+flight around Godzilla and a final runoff inspection. Travel playback is labelled
+2×/4×; the recording resumes in open water after an interruption. Rental arrival
+uses a water exit and swim/wade ashore. The final appended inspection shows the
+updated stone and curved-glass tunnel; the earlier journey retains its recorded
+pre-update scenery. The video is silent. All 12 sampled final-inspection frames
+emitted zero new body-runoff particles; waterline splashes remain intentional.
 
 ## Hosted multiplayer preview
 

@@ -3,6 +3,15 @@
 The code in this repository is released under the MIT license (see `LICENSE`). The third-party
 assets below keep their own licences.
 
+## Rendering changes — Agent Control
+
+September 2026 rendering integration and new code: **Agent Control**.
+The performance review consulted [Rebroad's Tidewater fork](https://github.com/rebroad/tidewater)
+(revision `59a2a52`), particularly its Linux quality budgets and adapter fallback.
+Existing upstream authorship and MIT notices remain in place.
+The cave's CC0 Poly Haven stone maps are credited in
+[`public/textures/cave/CREDITS.md`](public/textures/cave/CREDITS.md).
+
 ## Audio: `public/audio/`
 
 42 field recordings from [Freesound](https://freesound.org), all released under

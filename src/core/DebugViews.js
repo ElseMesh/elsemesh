@@ -3,6 +3,9 @@ import { Vector3 } from '../engine/math/index.js';
 // Named review cameras used to check every change from the same set of angles.
 // window.__view( name ) jumps there; window.__views lists them.
 export const VIEWS = {
+	// Agent Control: reproducible UNDERNEATH and double-glass inspection cameras.
+	cave: { p: [-322, 3, 80], yaw: -Math.PI / 2, pitch: 0, time: 16.2 },
+	tunnel: { p: [-650, -14.45, -30], yaw: 0.5, pitch: 0, time: 16.2 },
 	beach: { p: [ 15, 3.0, - 58 ], yaw: Math.PI, pitch: - 0.08, time: 16.2 },
 	surf: { p: [ 12, 1.7, - 44 ], yaw: Math.PI + 0.25, pitch: - 0.02, time: 16.2 },
 	surfSide: { p: [ 40, 2.2, - 36 ], yaw: Math.PI * 0.62, pitch: - 0.08, time: 10.5 },

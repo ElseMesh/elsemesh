@@ -5,6 +5,11 @@ Reporting period: **26–27 September 2026**. This summary follows repository hi
 
 ## 27 September 2026
 
+- **Agent Control:** reviewed Rebroad's Linux rendering changes and added cross-platform Auto/High/Balanced/Mobile profiles, bounded output resolution, adaptive internal resolution and GPU adapter fallback.
+- **Agent Control:** enabled cave view/shadow culling, replaced flat cave materials with shared CC0 scanned-stone PBR maps, built curved glass tunnel/train shells above the maglev foundation, and batched/animated the marine life.
+- **Agent Control:** added static-asset cache revalidation, text compression and streaming on the online host. Recorded fixed-view PC GPU measurements and explicitly separated mobile-profile emulation from physical phone qualification.
+- **Agent Control:** completed the edited, silent Susie journey video and a rendering-update inspection, stored outside Git on D:.
+
 - Disabled hunger by default with a reversible Gameplay settings switch. Preserved survival code and saved hunger; disabled food consumption, HUD and hunger slowdown while off.
 - Added a local character-name field, including the blonde female Susie walkthrough setup.
 - Added chapter-based gameplay recording and actual Godzilla body-runoff emission evidence.
