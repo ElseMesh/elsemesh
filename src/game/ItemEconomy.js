@@ -132,17 +132,21 @@ export class ItemEconomy {
 		this.offers = this.offers.filter(o => o.from !== id && o.to !== id);
 		delete this.accounts[id]; delete this.positions[id]; this.revision++;
 	}
-	packet() { return { type: 'economy', v: 1, revision: this.revision, items: this.items, accounts: this.accounts, offers: this.offers, serial: this.serial, crateOpened: this.crateOpened, salvage: this.salvage.snapshot() }; }
+	packet() { return { type: 'economy', v: 1, revision: this.revision, items: this.items, accounts: this.accounts, offers: this.offers, serial: this.serial, crateOpened: this.crateOpened, salvageSpawnVersion: 1, salvage: this.salvage.snapshot() }; }
 	load(data) {
 		if (data?.v !== 1 || !Array.isArray(data.items) || !data.accounts || data.items.length > 2000) return false;
 		const ids = new Set();
 		if (!data.items.every(i => i && typeof i.id === 'string' && !ids.has(i.id) && ids.add(i.id) && Object.hasOwn(ITEM_TYPES,i.type) && Number.isFinite(i.x) && Number.isFinite(i.z) && (i.owner === null || typeof i.owner === 'string'))) return false;
 		if (!Object.values(data.accounts).every(a => a && Number.isSafeInteger(a.credits) && a.credits >= 0)) return false;
-		this.items = data.items.map(item => ({ ...item, ...(item.held ? {} : { held: undefined }) }));
-		for (const [id, type, x, z, y] of ITEM_SPAWNS) {
-			if (!this.items.some(item => item.id === id)) this.items.push({ id, type, x, z, ...(Number.isFinite(y) ? { y } : {}), owner: null });
+		this.items = data.items.map(item => ({ ...item }));
+		if (data.salvageSpawnVersion == null) {
+			for (const [id, type, x, z, y] of ITEM_SPAWNS.filter(([id]) => id.startsWith('salvage-'))) {
+				if (!this.items.some(item => item.id === id)) this.items.push({ id, type, x, z, ...(Number.isFinite(y) ? { y } : {}), owner: null });
+			}
 		}
 		for (const item of this.items) delete item.held;
-		this.accounts = data.accounts; this.serial = Number.isSafeInteger(data.serial) ? data.serial : 0; this.crateOpened = !!data.crateOpened; return true;
+		this.accounts = data.accounts; this.serial = Number.isSafeInteger(data.serial) ? data.serial : 0; this.crateOpened = !!data.crateOpened;
+		this.salvage = new SalvageAuthority(this);
+		return true;
 	}
 }

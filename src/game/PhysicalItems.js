@@ -79,7 +79,13 @@ export class PhysicalItems {
 				const velocity=boat.velocity||boat.body?.velocity;
 				this.ledger.boat({position:[boat.position.x,boat.position.y,boat.position.z],quaternion:[boat.quaternion.x,boat.quaternion.y,boat.quaternion.z,boat.quaternion.w],velocity:[velocity?.x||0,velocity?.y||0,velocity?.z||0]},now);
 			}
+			const heldBefore=this.ledger.salvage?.heldItemId;
 			this.ledger.tick(now); this.data=this.ledger.packet();
+			const recovered=heldBefore && !this.ledger.salvage?.heldItemId && this.data.items.some(item=>item.id===heldBefore&&item.owner===this.id);
+			if(recovered){
+				this.sync();
+				try{localStorage.setItem(SAVE,JSON.stringify(this.data));}catch{}
+			}
 		}
 		if(!this.data)return;
 		let closest=null, distance=3;
@@ -90,8 +96,8 @@ export class PhysicalItems {
 			if(item.owner===null){
 				const y=Number.isFinite(item.y)?item.y:app.terrainData.heightAt(item.x,item.z);
 				mesh.position.set(item.x,y+.055,item.z); mesh.rotation.set(Math.PI/2,0,.4);mesh.visible=true;
-				const d=Math.hypot(p.position.x-item.x,p.position.z-item.z);
-				if(p.mode==='walk'&&d<distance){closest=item;distance=d;}
+				const d=Math.hypot(p.position.x-item.x,p.position.y-y,p.position.z-item.z);
+				if(p.mode==='walk'&&!item.held&&d<distance){closest=item;distance=d;}
 			} else if(item.owner===this.id && this.account?.equipped===item.id && item.type!=='rod'){
 				// Visible in hand from first person; the world object remains the same owned instance.
 				mesh.position.copy(app.camera.position).add(new Vector3(.28,-.25,-.6).applyQuaternion(app.camera.quaternion));
