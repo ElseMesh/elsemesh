@@ -755,7 +755,7 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 		this.settings.renderScale = scale;
 		if ( this.engine.renderScale !== canvasScale ) this.engine.setRenderScale( canvasScale );
 		if ( this.post.scale !== postScale ) this.post.setScale( postScale );
-		if ( this.clouds ) this.clouds.resolutionScale = scale;
+		if ( this.clouds ) this.clouds.resolutionScale = postScale;
 
 	}
 

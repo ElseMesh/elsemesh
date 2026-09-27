@@ -13,9 +13,9 @@ linux.engine = { get renderScale() { return scales.engine; }, setRenderScale( v 
 linux.post = { get scale() { return scales.post; }, setScale( v ) { scales.post = v; } };
 linux.clouds = { resolutionScale: 1 };
 linux.setRenderScale( 0.75 ); // initialization must apply the Linux output scale despite the default setting
-if ( scales.engine !== 0.8 || Math.abs( scales.post - 0.9375 ) > 1e-6 || linux.clouds.resolutionScale !== 0.75 ) throw new Error( 'Linux should preserve internal scale while reducing post output size' );
+if ( scales.engine !== 0.8 || Math.abs( scales.post - 0.9375 ) > 1e-6 || Math.abs( linux.clouds.resolutionScale - 0.9375 ) > 1e-6 ) throw new Error( 'Linux should preserve internal and cloud resolution while reducing post output size' );
 linux.setRenderScale( 0.5 );
-if ( scales.engine !== 0.8 || Math.abs( scales.post - 0.625 ) > 1e-6 ) throw new Error( 'Linux render scale should keep the canvas at 80% and preserve effective internal scale' );
+if ( scales.engine !== 0.8 || Math.abs( scales.post - 0.625 ) > 1e-6 || Math.abs( linux.clouds.resolutionScale - 0.625 ) > 1e-6 ) throw new Error( 'Linux render scale should keep the canvas at 80% and preserve effective internal and cloud scale' );
 
 globalThis.location.search = '?scale=0.5';
 const manual = new App();
