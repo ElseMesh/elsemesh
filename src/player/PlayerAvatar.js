@@ -4,8 +4,11 @@ import { HOUSE } from '../world/boat/Wheelhouse.js';
 import { loadGLB } from '../engine/loaders/GLTF.js';
 import { SkinnedModel } from '../engine/render/Skinning.js';
 
-let scanSource;
-const scan = () => scanSource ||= loadGLB((import.meta.env?.BASE_URL || '/') + 'models/characters/scanned-explorer.glb');
+const characterSources = new Map();
+function characterSource(name) {
+	if (!characterSources.has(name)) characterSources.set(name, loadGLB((import.meta.env?.BASE_URL || '/') + `models/characters/${name}.glb`));
+	return characterSources.get(name);
+}
 
 const cloth = standard({ name: 'Explorer_orange_jacket', color: 0xc86624, roughness: 0.9, emissive: 0x542307, emissiveIntensity: 0.16 });
 const vest = standard({ name: 'Explorer_life_vest', color: 0xe8962b, roughness: 0.78, emissive: 0x51300a, emissiveIntensity: 0.2 });
@@ -35,7 +38,8 @@ function limb(parent, name, from, to, radius, material) {
 
 // Visible in external views and cinematics; hidden close to the first-person camera.
 export class PlayerAvatar {
-	constructor(scene, boat) {
+	constructor(scene, boat, { character = 'stock-player' } = {}) {
+		this.characterAsset = character;
 		this.scene = scene;
 		this.boat = boat;
 		this.group = new Group();
@@ -104,11 +108,11 @@ export class PlayerAvatar {
 		this._parent = null;
 		this._place(scene);
 		this.proceduralParts = [...this.group.children];
-		this.ready = this.loadScanned().catch(error => { console.warn('Explorer scan unavailable', error); });
+		this.ready = this.loadCharacter().catch(error => { console.warn('Explorer character unavailable', error); });
 	}
 
-	async loadScanned() {
-		const model = await SkinnedModel.create(await scan());
+	async loadCharacter() {
+		const model = await SkinnedModel.create(await characterSource(this.characterAsset));
 		for (const clip of ['idle', 'walk', 'run', 'helm']) if (!model.clipNames().includes(clip)) throw new Error(`Missing character clip: ${clip}`);
 		for (const material of model.materials) material.underwaterLighting = 'lite';
 		model.play('idle', { fade: .01 }); model.update(0);

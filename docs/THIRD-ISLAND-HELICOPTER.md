@@ -62,7 +62,8 @@ wave-propagation field to generate curling lips and spray. Fresh whitewater shad
 also works outside the original beach simulation area. Persistent advected foam
 and wet-sand history remain limited to the original beach's simulation tile.
 
-Loz and player/remote avatars now load the existing Blender-rigged KIRI scan.
+Loz loads the existing Blender-rigged KIRI scan. Player/remote avatars instead
+load the [stock male character](STOCK-PLAYER.md), not the user's likeness.
 Idle, walking, running and seated helm clips crossfade; first-person hiding and
 shared boat seating remain intact. The procedural figure is a loading/error fallback.
 See [source, limitations and animation attribution](SCANNED-CHARACTER.md).

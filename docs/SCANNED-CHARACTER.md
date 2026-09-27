@@ -1,5 +1,11 @@
 # First scanned playable character
 
+**Current use:** this scan is now reserved for the rental NPC Loz. It is no longer
+the local or multiplayer player avatar. The scan's locomotion had visible outward
+leg/foot deformation; players now use the independently rigged
+[stock male character](STOCK-PLAYER.md). The source and earlier pipeline below are
+retained for provenance. Loz uses the idle clip.
+
 The player's exterior avatar now loads the KIRI scan as a skinned GLB. It
 follows the existing player and boat transforms, crossfades between idle,
 walk, run and helm clips, and is hidden near the first-person camera as the

@@ -1,6 +1,8 @@
 # Blender (4.2+ / 5.x) batch converter (see README): Rocketbox avatar FBX + clip FBXs -> one GLB (skin + clips).
 # blender -b --python convert.py -- <avatar.fbx> <texdir (prepared jpg/png)> <prefix m106> <out.glb> <anim1.fbx> [anim2.fbx ...]
 import bpy, sys, os
+from mathutils import Vector
+stock_player = os.environ.get('BH_STOCK_PLAYER') == '1'
 argv = sys.argv[sys.argv.index('--') + 1:]
 avatar, texdir, prefix, out = argv[:4]
 anims = argv[4:]
@@ -93,6 +95,20 @@ for path in anims:
                      use_current_action=False, bake_types={'POSE'})
     bpy.ops.object.mode_set(mode='OBJECT')
     baked = arm.animation_data.action
+    if stock_player:
+        # Remove only linear world-space travel. Preserve the donor's lateral sway,
+        # vertical hip motion and all knee/ankle rotations.
+        if clip.startswith(('walk_', 'run_')):
+            pelvis = arm.pose.bones['Bip01 Pelvis']
+            scene.frame_set(f0); start = (arm.matrix_world @ pelvis.matrix).translation.copy()
+            scene.frame_set(f1); end = (arm.matrix_world @ pelvis.matrix).translation.copy()
+            inverse = (arm.matrix_world.to_3x3() @ pelvis.bone.matrix_local.to_3x3()).inverted()
+            for frame in range(f0,f1+1):
+                scene.frame_set(frame)
+                travel = start.lerp(end,(frame-f0)/max(1,f1-f0)); travel.z=0
+                pelvis.location -= inverse @ travel
+                pelvis.keyframe_insert(data_path='location',frame=frame)
+        clip = {'idle_neutral_01':'idle','walk_neutral_01':'walk','run_neutral_01':'run','sit_chair_idle_neutral_01':'helm'}.get(clip,clip)
     baked.name = clip
     baked.use_fake_user = True
     arm.animation_data.action = None
@@ -110,6 +126,9 @@ for path in anims:
 for a in list(bpy.data.actions):
     if not a.use_fake_user: bpy.data.actions.remove(a)
 arm.animation_data.action = None
+
+if stock_player:
+    bpy.ops.wm.save_as_mainfile(filepath=os.environ['BH_STOCK_BLEND'])
 
 bpy.ops.export_scene.gltf(
     filepath=out, export_format='GLB', export_image_format='AUTO', export_jpeg_quality=88,

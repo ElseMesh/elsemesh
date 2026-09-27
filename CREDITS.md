@@ -82,6 +82,13 @@ The included `public/models/godzilla/steam79-walk.glb` is a Blender-prepared, re
 
 ## Scanned explorer and Loz
 
+The playable **Male Adult 08** model and its matching idle, walk, run and seated
+animation sources are from [Microsoft Rocketbox](https://github.com/microsoft/Microsoft-Rocketbox),
+under the MIT licence retained in `public/models/characters/LICENSE-Rocketbox.md`.
+Prepared in Blender: textures reduced to 1024 pixels, animation baked to the
+avatar rig, linear locomotion removed for game-driven movement, clips renamed,
+and exported as `stock-player.glb`. The user's KIRI scan is used only for NPC Loz.
+
 The two rental greeting/mission WAVs in `public/audio/loz-rental` were generated
 with the user's existing accepted Loz OmniVoice profile for this game. Private
 voice samples, profile representation and credentials are not included.

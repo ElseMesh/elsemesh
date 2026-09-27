@@ -61,7 +61,7 @@ export class ThirdIslandSystem {
   const roof=box(p,dark,105,hy+3.55,575,9,.25,6);roof.rotation.x=.10;
   sign(p,"Loz's Helicopter Rental",'KEYS • FLIGHT BRIEFING • ISLAND 03',105,hy+3.15,571.84,8.4,1.7).rotation.y=Math.PI;
   // Rotate sign to face north; correct its placement and readable orientation.
-  this.loz=new PlayerAvatar(this.app.scene,this.app.boatCtl);
+  this.loz=new PlayerAvatar(this.app.scene,this.app.boatCtl,{character:'scanned-explorer'});
   this.loz.cinematic={x:108.5,y:T.heightAt(108.5,570.5),z:570.5,yaw:Math.PI,walk:false};
   this.key=add(p,new TorusGeometry(.12,.035,8,16),gold,108.2,this.loz.cinematic.y+1.1,570);
   box(this.key,gold,0,-.2,0,.05,.25,.04);box(this.key,gold,.055,-.29,0,.12,.045,.04);

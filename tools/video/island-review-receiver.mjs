@@ -1,6 +1,6 @@
 import http from 'node:http';
 import fs from 'node:fs';
-const routes={'/loz':'Loz-rental-avatar.png','/surf':'Third-island-breakers.png','/video':'Third-island-avatar-review.webm'};
+const routes={'/loz':'Loz-rental-avatar.png','/surf':'Third-island-breakers.png','/video':'Third-island-avatar-review.webm','/stock-video':'Stock-player-walk-run.webm','/stock-image':'Stock-player-in-game.png'};
 http.createServer((req,res)=>{
  res.setHeader('Access-Control-Allow-Origin','http://127.0.0.1:5189');
  res.setHeader('Access-Control-Allow-Headers','Content-Type');

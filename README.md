@@ -26,7 +26,7 @@ The mystery story is an evolving playable prototype. The existing signal objecti
 
 ## Survival and the world
 
-- Loz at the helicopter rental and player avatars use the existing textured KIRI scan, rigged in Blender with idle, walk, run and seated helm clips. See [character pipeline and provenance](docs/SCANNED-CHARACTER.md).
+- Player avatars use Microsoft Rocketbox's MIT-licensed **Male Adult 08**, prepared in Blender with matching idle, walk, run and seated clips. Your scanned likeness is reserved for rental NPC Loz. See [stock character](docs/STOCK-PLAYER.md) and [scan provenance](docs/SCANNED-CHARACTER.md).
 - Third-island trunks bend progressively in gusts with anchored roots; crowns sway independently. Helipad edge beacons flash alternating double pulses. Breaking-wave lips and fresh whitewater now reach the third-island shoreline.
 
 - Hunger falls during play. Press **B** to prepare and eat a fish from the cooler; low hunger slows walking.
