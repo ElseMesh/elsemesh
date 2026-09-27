@@ -47,7 +47,7 @@ export class SalvageAuthority {
 		return this.boat.valid && now - this.boat.at >= 0 && now - this.boat.at < POSE_STALE_MS &&
 			!!pose && now - pose.at >= 0 && now - pose.at < POSE_STALE_MS && (pose.mode === 'boat' || pose.mode === 'deck') &&
 			Math.hypot(pose.x - this.boat.position[0], pose.y - this.boat.position[1], pose.z - this.boat.position[2]) <= 10 &&
-			Math.hypot(...this.boat.velocity) <= .6;
+			Math.hypot(this.boat.velocity[0], this.boat.velocity[2]) <= .6;
 	}
 	action(id, input, now = Date.now()) {
 		const fail = message => ({ ok: false, message });

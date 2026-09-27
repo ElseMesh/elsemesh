@@ -103,6 +103,7 @@ export class BoatController {
 		this.driven = false;
 		this.moored = true;
 		this.mooring = { anchor: WORLD.boatDock.position.clone(), heading: WORLD.boatDock.heading };
+		this.salvageMooring = null;
 
 		const n = this.samples.length;
 		this.waterH = new Float32Array( n ); // latest read-back
@@ -145,6 +146,16 @@ export class BoatController {
 
 	setInput( throttle, steer, dt ) {
 
+		// A claimed salvage winch temporarily holds the boat on station. Neutralize helm input while
+		// it is active; the caller's requested controls take effect normally again after release.
+		if ( this.salvageMooring ) {
+
+			throttle = 0;
+			steer = 0;
+			this.throttle = 0;
+			this.steer = 0;
+
+		}
 		// the throttle lever moves with some inertia (the engine then spools after it); the rudder
 		// follows the wheel
 		this.throttleTarget = throttle;
@@ -397,15 +408,16 @@ export class BoatController {
 		_v.set( - aLoc.x * 25000, - aLoc.y * 2000, - aLoc.z * ( 4500 + 900 * au ) ).multiplyScalar( wd ).applyQuaternion( this.quaternion );
 		T.add( _v );
 
-		// ---- mooring lines when docked and not driven
-		if ( this.moored && ! this.driven ) {
+		// ---- dock mooring or temporary salvage station-keeping; both use physical spring/damper forces
+		const activeMooring = this.salvageMooring || ( this.moored && ! this.driven ? this.mooring : null );
+		if ( activeMooring ) {
 
-			const a = this.mooring.anchor;
+			const a = activeMooring.anchor;
 			const k = 5500, c = 4200;
 			const dx = a.x - this.position.x, dz = a.z - this.position.z;
 			F.x += dx * k - this.velocity.x * c;
 			F.z += dz * k - this.velocity.z * c;
-			let dy = this.mooring.heading - this.getYaw();
+			let dy = activeMooring.heading - this.getYaw();
 			dy = Math.atan2( Math.sin( dy ), Math.cos( dy ) );
 			T.y += dy * 60000 - this.angular.y * 30000;
 

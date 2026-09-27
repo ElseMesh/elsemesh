@@ -17,6 +17,7 @@ export class BoatSalvage {
 		this.axes = { ...ZERO }; this.sentAxes = { ...ZERO }; this.lastControl = 0;
 		this.open = false; this.minimized = false; this.selected = null; this.registered = false;
 		this.pointerButtons = new Map(); this.resumeInput = false; this.camera = null; this.lastSonar = -Infinity;
+		this.lastOperator = null;
 		this._a = new Vector3(); this._b = new Vector3(); this._dir = new Vector3();
 		this._buildMeshes();
 		app.boat?.group?.add(this.group); app.scene?.add(this.world);
@@ -68,6 +69,14 @@ export class BoatSalvage {
 		return [local.x,-depth,local.z];
 	}
 	_isOperator(s=this._snapshot()) { return !!s?.operator && s.operator === this.items.id; }
+	_syncMooring(s) {
+		const operator=s?.operator||null, boatCtl=this.app.boatCtl;
+		if (boatCtl && !boatCtl.networkReplica) {
+			if (operator && !this.lastOperator && !boatCtl.salvageMooring) boatCtl.salvageMooring={anchor:boatCtl.position.clone(),heading:boatCtl.getYaw()};
+			else if (!operator && this.lastOperator) boatCtl.salvageMooring=null;
+		}
+		this.lastOperator=operator;
+	}
 
 	_ensureUI() {
 		if (this.registered || !this.app.ui?.windows) return; this.registered=true;
@@ -110,7 +119,7 @@ export class BoatSalvage {
 		this.sonarEl.innerHTML=`<svg class="salvage-plot" width="150" height="150" viewBox="0 0 150 150" aria-label="80 metre polar sonar plot"><circle cx="75" cy="75" r="66" fill="#03191e" stroke="#28727b"/><circle cx="75" cy="75" r="33" fill="none" stroke="#174b52"/><path d="M75 9V141M9 75H141" stroke="#174b52"/>${dots}</svg><div class="salvage-contacts">${list || 'No salvage contacts within 80m / 50m depth.'}</div>`;
 	}
 	update(now=performance.now()) {
-		this._ensureUI(); const s=this._snapshot(); const hook=this._hook(s); const aboard=this._onBoat();
+		this._ensureUI(); const s=this._snapshot(); this._syncMooring(s); const hook=this._hook(s); const aboard=this._onBoat();
 		if (this.launcher) this.launcher.hidden=!aboard;
 		this.grabber.position.set(...hook); this.jaws.children.forEach(j=>{j.rotation.z=s?.heldItemId?-.2:.32;});
 		this.app.boat?.group?.localToWorld(this._a.copy(BOOM)); this._b.set(...hook); this._dir.subVectors(this._b,this._a); const length=this._dir.length(); this.cable.position.copy(this._a).add(this._b).multiplyScalar(.5); if (length>.001) this.cable.quaternion.setFromUnitVectors(this.cable.up,this._dir.normalize()); this.cable.scale.set(1,length,1);
@@ -121,13 +130,13 @@ export class BoatSalvage {
 		const target=contacts.find(c=>c.itemId===this.selected);
 		let guidance='';
 		if (target) {
-			const item=(this.items.data?.items||[]).find(i=>(i.id||i.itemId)===target.itemId); const p=item?.position||item?.pos;
+			const item=(this.items.data?.items||[]).find(i=>(i.id||i.itemId)===target.itemId); const p=item?.position||item?.pos||(Number.isFinite(item?.x)&&Number.isFinite(item?.y)&&Number.isFinite(item?.z)?[item.x,item.y,item.z]:null);
 			if (p) { const dx=p[0]-hook[0], dz=p[2]-hook[2], dy=p[1]-hook[1], q=this.app.boat?.group?.quaternion; this._dir.set(dx,0,dz); if (q) this._dir.applyQuaternion(q.clone().invert()); const lr=this._dir.x<0?`${Math.abs(this._dir.x).toFixed(1)}m port`:`${this._dir.x.toFixed(1)}m starboard`; const fa=this._dir.z<0?`${Math.abs(this._dir.z).toFixed(1)}m aft`:`${this._dir.z.toFixed(1)}m forward`; guidance=` · ${lr}, ${fa}, ${Math.abs(dy).toFixed(1)}m ${dy<0?'below':'above'}`; }
 		}
 		if (this.root) this.root.querySelectorAll('.salvage-grid button').forEach(b=>{ if (b.textContent!=='Claim') b.disabled=!this._isOperator(s)||!!s?.returning; });
-		if (this.statusEl) this.statusEl.textContent=`${this._isOperator(s)?'Controls active':s?.operator?`Busy: ${s.operator}`:'Winch unclaimed'} · cable ${Math.max(0,s?.depth||0).toFixed(1)}/50m · sonar 80m${guidance}${s?.returning?' · retrieving':''}${s?.error?` · ${s.error}`:''}${this.camera?.error?` · ${this.camera.error}`:''}`;
+		if (this.statusEl) this.statusEl.textContent=`${this._isOperator(s)?'Controls active · anchored for salvage':s?.operator?`Busy: ${s.operator} · anchored for salvage`:'Winch unclaimed'} · cable ${Math.max(0,s?.depth||0).toFixed(1)}/50m · sonar 80m${guidance}${s?.returning?' · retrieving':''}${s?.error?` · ${s.error}`:''}${this.camera?.error?` · ${this.camera.error}`:''}`;
 		if (now-this.lastSonar>=200) { this.lastSonar=now; this._renderSonar(contacts); }
 	}
 	renderCamera(now) { if (this.open&&!this.minimized) this.camera?.render(this.grabber.position.toArray(),now); }
-	dispose() { this.deactivate(); document.removeEventListener('visibilitychange',this._visibility); window.removeEventListener('blur',this._blur); window.removeEventListener('keydown',this._key); this.launcher?.remove(); this.camera?.dispose(); this.group.removeFromParent(); this.world.removeFromParent(); }
+	dispose() { this.deactivate(); if (this.app.boatCtl && !this.app.boatCtl.networkReplica) this.app.boatCtl.salvageMooring=null; this.lastOperator=null; document.removeEventListener('visibilitychange',this._visibility); window.removeEventListener('blur',this._blur); window.removeEventListener('keydown',this._key); this.launcher?.remove(); this.camera?.dispose(); this.group.removeFromParent(); this.world.removeFromParent(); }
 }

@@ -36,7 +36,9 @@ test('claim requires fresh validated stationary boat and is exclusive',()=>{
 	const e=setup(); assert.ok(e.act('loz',{action:'salvage',command:'claim'},10000).ok);
 	assert.equal(e.act('ed',{action:'salvage',command:'claim'},10000).ok,false);
 	const stale=setup(); assert.equal(stale.act('loz',{action:'salvage',command:'claim'},15000).ok,false);
-	const moving=setup(); moving.boat({...boat,velocity:[.61,0,0]},10000);
+	const waveBobbing=setup(); waveBobbing.boat({...boat,velocity:[0,2,0]},10000);
+	assert.equal(waveBobbing.act('loz',{action:'salvage',command:'claim'},10000).ok,true);
+	const moving=setup(); moving.boat({...boat,velocity:[.61,2,0]},10000);
 	assert.equal(moving.act('loz',{action:'salvage',command:'claim'},10000).ok,false);
 });
 
