@@ -112,3 +112,9 @@ Source code is MIT licensed under [LICENSE](LICENSE). Third-party assets keep th
 ## Agent Control walkthrough capture
 
 `tools/video/susie-capture.js` and `susie-receiver.mjs` record Susie (female, blonde) using scripted inputs to the actual game controllers. The capture is edited in chapters, with initial/restored recording fixtures and exterior inspection cameras; it is not an uninterrupted manual play test. Source footage and the final MP4 are kept on D: outside Git. Body-runoff telemetry distinguishes falling water from waterline splashes.
+
+## Hosted multiplayer preview
+
+The [hosted online preview](https://hpubuntu.taila22e8a.ts.net/play-online.html) uses the same integrated game code published here. A host can invite up to nine guests to one private room. Players see each other and numbered radar markers, exchange typed speech with **T**, and ride one boat with only the host at the helm. Paired searchlights illuminate the route ahead at night. The host's accepted private OmniVoice profile can generate audio when the separately hosted worker is healthy; guests currently have text only.
+
+The relay has an automated ten-client test and the hosted HTTPS/WebSocket route has been probed. A physical ten-device gameplay and voice check remains to be done. Keep the host game URL private: it contains a separate key for the helm. See the [network node setup](https://github.com/lozknowles/Burning-Horizons/blob/main/docs/networking/multi-player-nodes.md) and the [preview branch README](https://github.com/lozknowles/Burning-Horizons/blob/main/README.md) for current operations and limitations.
