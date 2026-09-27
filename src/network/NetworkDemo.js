@@ -30,6 +30,7 @@ export class NetworkDemo {
 		this.transport = transport || new LocalDemoTransport(app.qs.get('session') || 'public-local', role);
 		this.physical = !!transport;
 		if (online) {
+			app.game.items.connect(this.transport,role);
 			this.remotes = new Map();
 			this.transport.onState((state) => this.observeOnline(state));
 			this.transport.onPeerLeft((playerId) => this.removeOnline(playerId));

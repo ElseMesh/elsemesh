@@ -10,6 +10,7 @@ import { ONLINE_ROLES, PLAYER_IDS, MAX_ROOM_PLAYERS, validateState } from '../..
 import { validateSpeechEvent } from '../../src/network/SpeechProtocol.js';
 import { loadPrivateSpeechProvider } from './SpeechProvider.mjs';
 import { HelicopterLease } from '../../src/network/HelicopterLease.js';
+import { ItemEconomy } from '../../src/game/ItemEconomy.js';
 
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json', '.glb': 'model/gltf-binary', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.svg': 'image/svg+xml', '.woff2': 'font/woff2', '.mp3': 'audio/mpeg', '.ogg': 'audio/ogg', '.webm': 'video/webm' };
 const ROOM = /^[a-f0-9]{32}$/;
@@ -64,6 +65,8 @@ export async function createOnlineServer({ root = resolve('dist'), host = '127.0
 				if (role === 'loz') peers.hostKey = hostKey;
 				peers.set(role, client);
 				peers.helicopter ||= new HelicopterLease();
+				peers.economy ||= new ItemEconomy();
+				peers.economy.join(role);
 				let lastPlayer = null;
 				let nodeId = null, windowStart = Date.now(), sent = 0;
 				const broadcast = (packet) => {
@@ -72,6 +75,7 @@ export async function createOnlineServer({ root = resolve('dist'), host = '127.0
 				};
 				client.send(JSON.stringify({ type: 'welcome', role, playerId: PLAYER_IDS[role], capacity: MAX_ROOM_PLAYERS }));
 				client.send(JSON.stringify(peers.helicopter.packet()));
+				broadcast(peers.economy.packet());
 				const notify = () => {
 					broadcast({ type: 'peer-status', connected: peers.size > 1, count: peers.size, capacity: MAX_ROOM_PLAYERS, roles: [...peers.keys()] });
 				};
@@ -82,6 +86,12 @@ export async function createOnlineServer({ root = resolve('dist'), host = '127.0
 						if (now - windowStart >= 1000) { windowStart = now; sent = 0; }
 						if (++sent > 20) return;
 						const packet = JSON.parse(bytes.toString());
+						if(packet.type==='economy-action'){
+							const result=peers.economy.act(role,packet);
+							client.send(JSON.stringify({type:'economy-result',action:packet.action,litres:packet.litres,...result}));
+							if(result.ok)broadcast(peers.economy.packet());
+							return;
+						}
 						if (packet.type === 'helicopter-action') {
 							if(packet.action==='release' && packet.state) peers.helicopter.update(role,packet.state);
 							const accepted = peers.helicopter.action(role, packet.action, lastPlayer);
@@ -94,6 +104,7 @@ export async function createOnlineServer({ root = resolve('dist'), host = '127.0
 							nodeId ||= state.nodeId;
 							if (state.mode === 'helicopter' && peers.helicopter.owner !== role) return;
 							lastPlayer = state;
+							peers.economy.position(role,state);
 							if (state.helicopter && peers.helicopter.update(role,state.helicopter)) broadcast(peers.helicopter.packet());
 							const data = JSON.stringify({ type: 'state', state });
 							for (const peer of peers.values()) if (peer !== client && peer.readyState === WebSocket.OPEN) peer.send(data);
@@ -123,6 +134,7 @@ export async function createOnlineServer({ root = resolve('dist'), host = '127.0
 				client.on('close', () => {
 					if (peers.get(role) !== client) return;
 					peers.delete(role);
+					peers.economy.disconnect(role);broadcast(peers.economy.packet());
 					peers.helicopter.disconnect(role); broadcast(peers.helicopter.packet());
 					if (peers.size) { broadcast({ type: 'peer-left', role, playerId: PLAYER_IDS[role] }); notify(); }
 					else rooms.delete(room);

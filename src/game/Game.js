@@ -8,10 +8,11 @@ import { FishingRod } from './FishingRod.js';
 import { FishStand } from './FishStand.js';
 import { Chandlery } from './Chandlery.js';
 import { CatchDisplay } from './CatchDisplay.js';
-import { UPGRADES, fuelBurn } from './Gear.js';
+import { UPGRADES, fuelBurn, FUEL_PRICE } from './Gear.js';
 import { GameHUD } from './GameHUD.js';
 import { Minimap } from './Minimap.js';
 import { Guide } from './Guide.js';
+import { PhysicalItems } from './PhysicalItems.js';
 
 // how long the catch card stays up unless dismissed (ms)
 const CATCH_CARD_MS = 9000;
@@ -55,6 +56,7 @@ export class Game {
 		this._tmp = new Vector3();
 		this.applyGear();
 		this.state.onChange( () => this.applyGear() );
+		this.items = new PhysicalItems(this);
 
 	}
 
@@ -103,6 +105,7 @@ export class Game {
 	}
 
 	buy( key ) {
+		if(this.items)return this.items.act('upgrade',{key});
 
 		const r = this.state.buy( key );
 		if ( r ) this.toast( `${ UPGRADES[ key ].name }: ${ r.label }` );
@@ -111,6 +114,7 @@ export class Game {
 	}
 
 	refuel() {
+		if(this.items)return this.items.act('fuel',{litres:Math.floor(Math.min(this.state.stats.fuelL-this.state.fuelL,this.state.money / FUEL_PRICE))});
 
 		const l = this.state.refuel();
 		if ( l > 0 ) {
@@ -134,7 +138,7 @@ export class Game {
 	get canFish() {
 
 		const app = this.app, p = app.player;
-		return ! app.freeCam && ! app.pistol?.equipped && app.monorail?.state !== 'riding' && ( p.mode === 'walk' || p.mode === 'deck' ) && ! ( app.ui && app.ui.ui && app.ui.ui._photo );
+		return !!this.items?.hasRod && ! app.freeCam && ! app.pistol?.equipped && app.monorail?.state !== 'riding' && ( p.mode === 'walk' || p.mode === 'deck' ) && ! ( app.ui && app.ui.ui && app.ui.ui._photo );
 
 	}
 
@@ -281,6 +285,7 @@ export class Game {
 		} );
 		if ( this.minimap ) this.minimap.update( dt );
 		if ( this.guide ) this.guide.update( dt );
+		this.items?.update();
 
 	}
 
@@ -376,6 +381,7 @@ export class Game {
 	}
 
 	sellAll() {
+		if(this.items)return this.items.act('sellFish');
 
 		const r = this.state.sell();
 		if ( r.count ) this.toast( `Sold ${ r.count } fish for $${ r.total }` );
@@ -385,6 +391,7 @@ export class Game {
 	}
 
 	sell( ids ) {
+		if(this.items)return this.items.act('sellFish',{fishId:ids[0]});
 
 		const r = this.state.sell( ids );
 		if ( r.count ) this.toast( `Sold for $${ r.total }` );
@@ -519,6 +526,7 @@ export class Game {
 		if ( st === 'caught' ) {
 
 			const entry = this.state.addFish( f.species, f.kg, this.hour );
+			if(entry)this.items?.act('catch',{species:f.species,kg:entry.kg});
 			const info = this.state.lastCatch;
 			if ( au && au.fishSplash ) au.fishSplash( this.rod.bobber, 0.8 );
 			if ( au && au.fishFlop ) au.fishFlop();

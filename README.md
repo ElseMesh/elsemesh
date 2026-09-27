@@ -141,3 +141,7 @@ emitted zero new body-runoff particles; waterline splashes remain intentional.
 The [hosted online preview](https://hpubuntu.taila22e8a.ts.net/play-online.html) uses the same integrated game code published here. A host can invite up to nine guests to one private room. Players see each other and numbered radar markers, exchange typed speech with **T**, and ride one boat with only the host at the helm. Paired searchlights illuminate the route ahead at night. The host's accepted private OmniVoice profile can generate audio when the separately hosted worker is healthy; guests currently have text only.
 
 The relay has an automated ten-client test and the hosted HTTPS/WebSocket route has been probed. A physical ten-device gameplay and voice check remains to be done. Keep the host game URL private: it contains a separate key for the helm. See the [network node setup](https://github.com/lozknowles/Burning-Horizons/blob/main/docs/networking/multi-player-nodes.md) and the [preview branch README](https://github.com/lozknowles/Burning-Horizons/blob/main/README.md) for current operations and limitations.
+
+## Found objects, general shop and credits
+
+Players start without a rod. Find physical objects, press J or tap Pick up, then use I / Tab to carry, use, drop or offer trades. Joe's general shop buys finds and fish for credits. Online trades require the other player's acceptance. See [item controls, persistence and verification](docs/ITEMS-AND-CREDITS.md). This candidate has not been deployed.

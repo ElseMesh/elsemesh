@@ -68,15 +68,15 @@ const row = ( keys, text ) => `<div class="gm-guide-row"><span class="k">${ keys
 const CARDS = [
 	{
 		eyebrow: 'Welcome to Burning Horizons',
-		title: 'Fish the island, sell your catch',
-		body: `<p>Catch fish from the <b>beach</b>, the <b>pier</b> or your <b>boat</b>. Different fish bite in the shallows, around the pier, over the reef and out in deep water, and they change with the time of day.</p>
-			<p>Sell your catch to <b>Joe</b> at the fish stand by the pier, then spend the money on upgrades from <b>Marta</b> at the chandlery by the boathouse: stronger line, a faster reel, a bigger hold, a fish finder and lights for fishing at night.</p>`,
+		title: 'Explore the island, find supplies and trade',
+		body: `<p>Search the shoreline for useful objects and clues. Press <b>J</b> or tap <b>Pick up</b> near a find, then open your bag with <b>I</b>. Find a fishing rod before you can fish. Watches, tools and lost phones can be used, dropped, sold or traded with another player.</p>
+			<p>Sell your catch to <b>Joe</b> at the general shop by the pier, then spend the credits on upgrades from <b>Marta</b> at the chandlery by the boathouse: stronger line, a faster reel, a bigger hold, a fish finder and lights for fishing at night.</p>`,
 	},
 	{
 		eyebrow: 'Fishing',
 		title: 'Cast, strike, reel',
 		body: `<div class="gm-guide-list">
-			${ row( k( 'R' ), 'Take out the rod (by the water or on the boat)' ) }
+			${ row( k( 'R' ), 'Find a rod first; then take it out by the water' ) }
 			${ row( k( 'Hold', 'LMB' ), 'Wind up, release to cast. Hold longer to cast farther' ) }
 			${ row( k( 'LMB' ), 'Strike when the bobber is <b>pulled under</b> (dips are only nibbles)' ) }
 			${ row( k( 'Hold', 'LMB' ), 'Reel in. <b>Let go when the tension turns red</b>, or the line snaps' ) }
@@ -93,7 +93,7 @@ const CARDS = [
 			${ row( k( 'F1' ), 'All controls, and this guide again' ) }
 		</div>
 		<div class="gm-guide-where">
-			<div class="is-joe"><i></i><span><b>Joe</b> · fish stand by the pier</span><em data-where="joe"></em></div>
+			<div class="is-joe"><i></i><span><b>Joe</b> · general shop by the pier</span><em data-where="joe"></em></div>
 			<div class="is-marta"><i></i><span><b>Marta</b> · chandlery by the boathouse</span><em data-where="marta"></em></div>
 		</div>
 		<p style="margin:0;color:var(--tw-ink-3);font-size:var(--tw-fs-sm)">Both are marked on the map in the lower right.</p>`,
@@ -104,7 +104,7 @@ const TIPS = {
 	rodOut: 'Hold the <b>left mouse button</b> to wind up and release to cast. Try deeper water, around the pier or over the reef.',
 	nibble: 'The bobber is dipping: something is <b>nibbling</b>. Wait until it is <b>pulled under</b>, then click to strike.',
 	fishOn: '<b>Hold the left mouse button</b> to reel. When the tension needle nears the <b>red</b>, let go until it settles, then reel again.',
-	caught: 'Into the cooler (<kbd>I</kbd>). Sell your catch to <b>Joe</b> at the fish stand by the pier: he is on the map.',
+	caught: 'Into the cooler (<kbd>I</kbd>). Sell your catch to <b>Joe</b> at the general shop by the pier: he is on the map.',
 	full: 'Your cooler is <b>full</b>. Sell to Joe, or buy a bigger hold from Marta at the chandlery.',
 	boat: 'Your boat. <kbd>E</kbd> to board, <kbd>E</kbd> again at the wheel to drive (<kbd>W</kbd><kbd>S</kbd> throttle, <kbd>A</kbd><kbd>D</kbd> steer). Diesel is sold by Marta.',
 	joe: '<b>Joe</b> buys your fish. <kbd>E</kbd> to see what he will pay.',
@@ -299,7 +299,7 @@ export class Guide {
 		const ui = this.ui, g = this.game, app = g.app, p = app.player;
 
 		// the intro, once the start overlay is gone
-		if ( this._wait >= 0 && ! ui._start ) {
+		if ( this._wait >= 0 && ! ui._start && !g.hud?.invOpen && !g.hud?.standOpen ) {
 
 			this._wait -= dt;
 			if ( this._wait < 0 ) this.show( 0 );

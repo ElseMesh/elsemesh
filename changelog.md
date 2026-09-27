@@ -40,3 +40,14 @@ Reporting period: **26–27 September 2026**. This summary follows repository hi
 ## Qualification limits
 
 Automated game and ten-client networking tests do not replace a ten-device physical play test. Video capture uses scripted controller inputs and chapter edits. Federation gameplay handoff, helicopter passengers, combat damage and a complete mystery ending remain unfinished. A private voice worker is optional; text remains available without it.
+
+## 2026-09-27 — Physical items and credits
+
+Author: Agent Control
+
+- Removed the starting fishing rod; fishing now requires owning a found or purchased rod.
+- Added original physical rod, utility knife, watch and washed-up phone models, pickup, bag, use and drop.
+- Converted Joe's stall to a general shop with credits, fixed buy/sell prices and a regenerated sign.
+- Added server-owned room inventories and accepted item/credit/barter offers, with exclusive pickup and atomic transfers.
+- Added solo save migration and explicit session-only online lifetime, plus economy and real WebSocket tests.
+- Candidate only: no push or hosted deployment.

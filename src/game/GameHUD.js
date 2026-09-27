@@ -6,7 +6,7 @@ import { FishPortrait } from './FishPortrait.js';
 //   top right     purse and cooler / hold load
 //   bottom centre the fight: line tension with its safe band, the fish's stamina, line out
 //   centre        "!" when a fish takes the bait
-//   panels        inventory (I / Tab) and the fish stand's offer
+//   panels        inventory (I / Tab) and the general shop's offer
 //   catch card    full screen: the world dims and blurs, the fish lies side-on in its own studio light
 //                 (FishPortrait) with the species above and length, weight, value, record below
 const CSS = /* css */`
@@ -172,7 +172,7 @@ export class GameHUD {
 		style.textContent = CSS;
 		document.head.append( style );
 
-		this.purse = h( 'div', 'gm-purse tw-glass', `<span class="gm-money">$0</span><span class="gm-cooler"><span class="gm-cooler-label">Cooler</span><span class="gm-cooler-bar"><span></span></span><span class="gm-cooler-kg">0 / 30 kg</span></span><span class="gm-gauge gm-fuel"><span>Fuel</span><span class="gm-cooler-bar gm-fuel-bar"><span></span></span><b class="gm-fuel-l">40 L</b></span><span class="gm-gauge gm-sonar"><span>Sonar</span><b class="gm-sonar-d">0 m</b><span class="gm-sonar-dots"></span></span>` );
+		this.purse = h( 'div', 'gm-purse tw-glass', `<span class="gm-money">0 cr</span><span class="gm-cooler"><span class="gm-cooler-label">Cooler</span><span class="gm-cooler-bar"><span></span></span><span class="gm-cooler-kg">0 / 30 kg</span></span><span class="gm-gauge gm-fuel"><span>Fuel</span><span class="gm-cooler-bar gm-fuel-bar"><span></span></span><b class="gm-fuel-l">40 L</b></span><span class="gm-gauge gm-sonar"><span>Sonar</span><b class="gm-sonar-d">0 m</b><span class="gm-sonar-dots"></span></span>` );
 		this.fuelEl = this.purse.querySelector( '.gm-fuel' );
 		this.fuelBar = this.purse.querySelector( '.gm-fuel-bar > span' );
 		this.fuelL = this.purse.querySelector( '.gm-fuel-l' );
@@ -208,6 +208,7 @@ export class GameHUD {
 		// panels (interactive)
 		this.inv = h( 'div', 'gm-panel tw-glass tw-interactive' );
 		this.stand = h( 'div', 'gm-panel tw-glass tw-interactive' );
+		this.inv.inert = this.stand.inert = true;
 		ui.root.append( this.inv, this.stand );
 		this.invOpen = false;
 		this.standOpen = false;
@@ -227,7 +228,7 @@ export class GameHUD {
 
 		const s = this.game.state;
 		const st = s.stats;
-		this.moneyEl.textContent = `$${ s.money.toLocaleString() }`;
+		this.moneyEl.textContent = `${ s.money.toLocaleString() } cr`;
 		const kg = s.holdKg;
 		this.coolerLabel.textContent = s.upgrades.hold > 0 ? 'Hold' : 'Cooler';
 		this.coolerKg.textContent = `${ kg.toFixed( 1 ) } / ${ st.holdKg } kg`;
@@ -332,7 +333,7 @@ export class GameHUD {
 				<div class="gm-catch-stats">
 					<div class="gm-stat"><span>Length</span><b>${ info.cm }<small>cm</small></b><i>${ inch.toFixed( 1 ) } in</i></div>
 					<div class="gm-stat"><span>Weight</span><b>${ info.kg < 1 ? info.kg.toFixed( 2 ) : info.kg.toFixed( 1 ) }<small>kg</small></b><i>${ lb.toFixed( 1 ) } lb</i></div>
-					<div class="gm-stat is-value"><span>Value</span><b>$${ info.value }</b><i>${ info.kept ? 'in the cooler' : 'let go' }</i></div>
+					<div class="gm-stat is-value"><span>Value</span><b>Cr ${ info.value }</b><i>${ info.kept ? 'in the cooler' : 'let go' }</i></div>
 				</div>
 				${ note }
 				<div class="gm-catch-foot"><kbd>Click</kbd> or <kbd>E</kbd> to continue<span class="gm-catch-timer"><span></span></span></div>
@@ -370,6 +371,7 @@ export class GameHUD {
 	toggleInventory( force ) {
 
 		this.invOpen = force ?? ! this.invOpen;
+		this.inv.inert = !this.invOpen;
 		if ( this.invOpen ) {
 
 			this.closeStand();
@@ -385,23 +387,25 @@ export class GameHUD {
 	renderInventory() {
 
 		const s = this.game.state;
-		const rows = s.inventory.map( ( f ) => `<div class="gm-row has-cm"><span>${ FISH[ f.species ].name }${ f.record ? '<small>record</small>' : '' }</span><span class="gm-cm">${ f.cm ?? Math.round( fishLengthCm( f.species, f.kg ) ) } cm</span><span class="gm-kg">${ f.kg.toFixed( 2 ) } kg</span><span class="gm-val">$${ f.value }</span><button class="gm-mini" data-release="${ f.id }">Release</button></div>` ).join( '' );
+		const rows = s.inventory.map( ( f ) => `<div class="gm-row has-cm"><span>${ FISH[ f.species ].name }${ f.record ? '<small>record</small>' : '' }</span><span class="gm-cm">${ f.cm ?? Math.round( fishLengthCm( f.species, f.kg ) ) } cm</span><span class="gm-kg">${ f.kg.toFixed( 2 ) } kg</span><span class="gm-val">Cr ${ f.value }</span><button class="gm-mini" data-release="${ f.id }">Release</button></div>` ).join( '' );
 		const logged = Object.entries( s.log ).filter( ( [ k ] ) => FISH[ k ] ).map( ( [ k, v ] ) => `${ FISH[ k ].name }: ${ v.count } caught, best ${ v.bestKg.toFixed( 2 ) } kg · ${ v.bestCm ?? Math.round( fishLengthCm( k, v.bestKg ) ) } cm` ).join( '<br>' );
 		this.inv.innerHTML = `
-			<h2>${ s.upgrades.hold > 0 ? 'Fish hold' : 'Cooler' }</h2>
-			<p class="gm-sub">${ s.inventory.length } fish · ${ s.holdKg.toFixed( 1 ) } of ${ s.stats.holdKg } kg · worth $${ s.holdValue }</p>
+			<h2>Inventory</h2>
+			<p class="gm-sub">${ s.inventory.length } fish · ${ s.holdKg.toFixed( 1 ) } of ${ s.stats.holdKg } kg · worth Cr ${ s.holdValue }</p>
 			<div class="gm-list">${ rows || '<div class="gm-empty">Nothing yet. Cast from the pier, the beach or the boat.</div>' }</div>
 			${ logged ? `<div class="gm-log"><b>Fish log</b><br>${ logged }</div>` : '' }
-			<div class="gm-foot"><span class="gm-sub">Sell at the fish stand by the pier</span><button class="gm-btn is-ghost" data-close>Close (I)</button></div>`;
+			<div class="gm-foot"><span class="gm-sub">Sell at the general shop by the pier</span><button class="gm-btn is-ghost" data-close>Close (I)</button></div>`;
 		this.inv.querySelector( '[data-close]' ).onclick = () => this.toggleInventory( false );
-		for ( const b of this.inv.querySelectorAll( '[data-release]' ) ) b.onclick = () => s.release( Number( b.dataset.release ) );
+		for ( const b of this.inv.querySelectorAll( '[data-release]' ) ) b.onclick = () => this.game.items.act('releaseFish',{fishId:Number(b.dataset.release)});
+		this.game.items?.controls(this.inv);
 
 	}
 
-	// ---- fish stand
+	// ---- general shop
 	openStand( vendor ) {
 
 		this.standOpen = true;
+		this.stand.inert = false;
 		this.vendor = vendor;
 		this.toggleInventory( false );
 		if ( vendor.kind === 'shop' ) this.renderShop();
@@ -415,6 +419,7 @@ export class GameHUD {
 
 		this.standOpen = false;
 		this.stand.classList.remove( 'is-open' );
+		this.stand.inert = true;
 
 	}
 
@@ -422,15 +427,16 @@ export class GameHUD {
 
 		const s = this.game.state;
 		const v = this.vendor || { name: 'Fish buyer' };
-		const rows = s.inventory.map( ( f ) => `<div class="gm-row has-cm"><span>${ FISH[ f.species ].name }</span><span class="gm-cm">${ f.cm ?? Math.round( fishLengthCm( f.species, f.kg ) ) } cm</span><span class="gm-kg">${ f.kg.toFixed( 2 ) } kg</span><span class="gm-val">$${ f.value }</span><button class="gm-mini" data-sell="${ f.id }">Sell</button></div>` ).join( '' );
+		const rows = s.inventory.map( ( f ) => `<div class="gm-row has-cm"><span>${ FISH[ f.species ].name }</span><span class="gm-cm">${ f.cm ?? Math.round( fishLengthCm( f.species, f.kg ) ) } cm</span><span class="gm-kg">${ f.kg.toFixed( 2 ) } kg</span><span class="gm-val">Cr ${ f.value }</span><button class="gm-mini" data-sell="${ f.id }">Sell</button></div>` ).join( '' );
 		this.stand.innerHTML = `
 			<h2>${ v.name }</h2>
 			<p class="gm-sub">${ s.inventory.length ? v.greeting || 'Let\'s see what you caught.' : v.idle || 'Come back when you\'ve got fish.' }</p>
 			<div class="gm-list">${ rows || '<div class="gm-empty">Your cooler is empty.</div>' }</div>
-			<div class="gm-foot"><button class="gm-btn is-ghost" data-close>Leave (E)</button><button class="gm-btn" data-all ${ s.inventory.length ? '' : 'disabled' }>Sell all · $${ s.holdValue }</button></div>`;
+			<div class="gm-foot"><button class="gm-btn is-ghost" data-close>Leave (E)</button><button class="gm-btn" data-all ${ s.inventory.length ? '' : 'disabled' }>Sell all · Cr ${ s.holdValue }</button></div>`;
 		this.stand.querySelector( '[data-close]' ).onclick = () => this.closeStand();
 		this.stand.querySelector( '[data-all]' ).onclick = () => this.game.sellAll();
 		for ( const b of this.stand.querySelectorAll( '[data-sell]' ) ) b.onclick = () => this.game.sell( [ Number( b.dataset.sell ) ] );
+		this.game.items?.controls(this.stand,true);
 
 	}
 
@@ -445,16 +451,16 @@ GameHUD.prototype.renderShop = function () {
 		const cur = track.levels[ s.upgrades[ key ] | 0 ];
 		const next = nextLevel( s.upgrades, key );
 		const btn = next
-			? `<button class="gm-btn" data-buy="${ key }" ${ next.cost > s.money ? 'disabled' : '' }>$${ next.cost }</button>`
+			? `<button class="gm-btn" data-buy="${ key }" ${ next.cost > s.money ? 'disabled' : '' }>Cr ${ next.cost }</button>`
 			: '<span class="gm-have">Top of the line</span>';
 		return `<div class="gm-shop-row"><span>${ track.name }: ${ next ? next.label : cur.label }<small>Now: ${ cur.label }</small></span>${ btn }</div>`;
 
 	} ).join( '' );
 	const missing = s.stats.fuelL - s.fuelL;
-	const fuelRow = `<div class="gm-shop-row"><span>Diesel · $${ FUEL_PRICE.toFixed( 2 ) } / L<small>Tank: ${ s.fuelL.toFixed( 0 ) } of ${ s.stats.fuelL } L</small></span>${ missing > 0.5 ? `<button class="gm-btn" data-fuel ${ s.money < FUEL_PRICE ? 'disabled' : '' }>Fill · $${ s.refuelCost() }</button>` : '<span class="gm-have">Full</span>' }</div>`;
+	const fuelRow = `<div class="gm-shop-row"><span>Diesel · Cr ${ FUEL_PRICE.toFixed( 2 ) } / L<small>Tank: ${ s.fuelL.toFixed( 0 ) } of ${ s.stats.fuelL } L</small></span>${ missing > 0.5 ? `<button class="gm-btn" data-fuel ${ s.money < FUEL_PRICE ? 'disabled' : '' }>Fill · Cr ${ s.refuelCost() }</button>` : '<span class="gm-have">Full</span>' }</div>`;
 	this.stand.innerHTML = `
 		<h2>${ v.name }</h2>
-		<p class="gm-sub">${ v.greeting } · You have $${ s.money.toLocaleString() }</p>
+		<p class="gm-sub">${ v.greeting } · You have Cr ${ s.money.toLocaleString() }</p>
 		<div class="gm-list">${ fuelRow }${ rows }</div>
 		<div class="gm-foot"><span class="gm-sub">Upgrades take effect at once</span><button class="gm-btn is-ghost" data-close>Leave (E)</button></div>`;
 	this.stand.querySelector( '[data-close]' ).onclick = () => this.closeStand();

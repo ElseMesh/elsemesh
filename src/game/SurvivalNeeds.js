@@ -40,7 +40,8 @@ export class SurvivalNeeds {
 			else if (this.hunger > 90) toast('You are not hungry yet');
 			else {
 				const fish = inventory[0];
-				this.game.state.release(fish.id);
+				if(this.game.items)this.game.items.act('releaseFish',{fishId:fish.id});
+				else this.game.state.release(fish.id);
 				this.hunger = Math.min(100, this.hunger + 28 + Math.min(22, fish.kg * 3));
 				this.save();
 				toast(`Prepared and ate ${fish.species} · hunger ${Math.ceil(this.hunger)}%`);
