@@ -3,11 +3,11 @@ import { Engine } from '../src/engine/Engine.js';
 
 globalThis.location = { search: '' };
 const linux = new App();
-if ( ! linux.desktopAdaptiveScale || linux.settings.renderScale !== 0.75 || linux.desktopCanvasScale !== 0.7 || linux.desktopFrameRateLimit !== 24 || linux.desktopAntiAliasingMode !== 'none' ) throw new Error( 'Linux desktop should start with adaptive scaling and a 24 fps GPU budget' );
+if ( ! linux.desktopAdaptiveScale || linux.settings.renderScale !== 0.75 || linux.desktopCanvasScale !== 0.7 || linux.desktopFrameRateLimit !== 24 || linux.desktopAntiAliasingMode !== 'none' || linux.desktopRefractionScale !== 0.35 ) throw new Error( 'Linux desktop should start with adaptive scaling and a 24 fps GPU budget' );
 
 Object.defineProperty( globalThis, 'navigator', { configurable: true, value: { platform: 'Linux arm64', userAgent: 'Mozilla/5.0 Android 16' } } );
 const android = new App();
-if ( android.desktopAdaptiveScale || android.autoScale || android.settings.renderScale !== 1 || android.desktopCanvasScale !== 1 || android.desktopFrameRateLimit !== 0 || android.desktopAntiAliasingMode !== null ) throw new Error( 'Android should keep the original full-quality path' );
+if ( android.desktopAdaptiveScale || android.autoScale || android.settings.renderScale !== 1 || android.desktopCanvasScale !== 1 || android.desktopFrameRateLimit !== 0 || android.desktopAntiAliasingMode !== null || android.desktopRefractionScale !== 0.5 ) throw new Error( 'Android should keep the original full-quality path' );
 
 const originalRAF = globalThis.requestAnimationFrame;
 function countFrames( maxFps, rafFrames ) {

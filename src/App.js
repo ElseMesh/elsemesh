@@ -82,6 +82,8 @@ export class App {
 		this.desktopFrameRateLimit = this.desktopAdaptiveScale ? 24 : 0;
 		// The temporal resolve is a measured GPU cost on Linux; keep the full temporal path on Android.
 		this.desktopAntiAliasingMode = this.desktopAdaptiveScale ? 'none' : null;
+		// Water refraction redraws the submerged scene every frame; it can use fewer pixels on Linux.
+		this.desktopRefractionScale = this.desktopAdaptiveScale ? 0.35 : 0.5;
 		// ?scale is a deliberate override, useful for profiling and manual quality selection.
 		this.autoScale = this.desktopAdaptiveScale && ! this.qs.has( 'scale' );
 		this._scaleBelowTarget = 0;
@@ -239,7 +241,7 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 		installGroundBounce( { terrain: this.terrainGPU, clouds: this.clouds } );
 		this.sceneRenderer = new SceneRenderer( engine.meshRenderer, scene, camera );
 		// the water's refraction source: the scene below the water only, half resolution
-		this.refraction = new RefractionPass( { meshRenderer: engine.meshRenderer, scene, camera, sceneRenderer: this.sceneRenderer, scale: 0.5 } );
+		this.refraction = new RefractionPass( { meshRenderer: engine.meshRenderer, scene, camera, sceneRenderer: this.sceneRenderer, scale: this.desktopRefractionScale } );
 		this.sceneRenderer.onBeforeWater = () => this.refraction.render( G.seaLevel.value );
 		if ( this.sky.background ) this.sceneRenderer.background = this.sky.background;
 		// lanterns, lamp posts, path lights, lit windows, the boat's cabin / navigation lights and the
