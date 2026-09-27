@@ -66,14 +66,18 @@ export class ThirdIslandSystem {
   add(p,new CylinderGeometry(10,10,.22,64),dark,115,7.91,638);
   for(const x of [-1.8,1.8])box(p,white,115+x,8.035,638,.48,.035,5);
   box(p,white,115,8.035,638,3.6,.035,.48);
-  for(let i=0;i<20;i++){const a=i*Math.PI/10;add(p,new SphereGeometry(.16,8,6),cyan,115+9.2*Math.cos(a),8.2,638+9.2*Math.sin(a));}
+  this.padLamps = [0,1].map(i => material('Helipad beacon '+i,0x62ffe1,{emissive:0x32ffd3,emissiveIntensity:5}));
+  for(let i=0;i<20;i++){const a=i*Math.PI/10;add(p,new SphereGeometry(.20,10,8),this.padLamps[i%2],115+9.2*Math.cos(a),8.2,638+9.2*Math.sin(a));}
   for(let i=0;i<48;i++){
    const a=i*2.39996,r=44+(i%7)*6,x=115+Math.cos(a)*r,z=650+Math.sin(a)*r*.82;
    if(Math.abs(x-115)<9 && z<640 || Math.hypot(x-105,z-575)<13)continue;
    const y=T.heightAt(x,z);if(y<2)continue;
-   const g=new Group();g.position.set(x,y,z);p.add(g);this.trees.push(g);
-   const height=6+(i%5)*.7;add(g,new CylinderGeometry(.12,.34,height,7),bark,0,height/2,0);
-   for(let k=0;k<5;k++){const crown=add(g,new SphereGeometry(1,9,6),green,Math.cos(k*1.26)*1.1,height-.8+k*.19,Math.sin(k*1.26));crown.scale.set(2.6,1,1.4);crown.rotation.y=k*1.26;}
+   const g=new Group();g.position.set(x,y,z);p.add(g);
+   const height=6+(i%5)*.7, joints=[], crowns=[];let parent=g;
+   // Nested trunk sections keep the root fixed while curvature increases toward the crown.
+   for(let j=0;j<10;j++){const joint=new Group();joint.position.y=j?height/10:0;parent.add(joint);joints.push(joint);add(joint,new CylinderGeometry(.34-(j+1)*.022,.34-j*.022,height/10+.035,10),bark,0,height/20,0);parent=joint;}
+   for(let k=0;k<5;k++){const crown=add(parent,new SphereGeometry(1,12,8),green,Math.cos(k*1.26)*1.1,height/10-.8+k*.19,Math.sin(k*1.26));crown.scale.set(2.6,1,1.4);crown.rotation.y=k*1.26;crowns.push(crown);}
+   this.trees.push({root:g,joints,crowns});
    C.addCylinder(x,z,.5,y,y+height,{tag:'rental-tree'});
   }
   add(p,new CylinderGeometry(.06,.1,7,8),white,132,11.5,638);
@@ -132,7 +136,8 @@ export class ThirdIslandSystem {
  }
  update(dt) {
   this.time+=dt;const {player:p,input:inp,camera}=this.app,s=this.state;
-  for(let i=0;i<this.trees.length;i++){const g=this.trees[i];g.rotation.z=-.13+Math.sin(this.time*1.7+i)*.045+Math.sin(this.time*.7)*.03;g.rotation.x=Math.sin(this.time*1.3+i*.7)*.04;}
+  for(let i=0;i<this.trees.length;i++){const tree=this.trees[i];for(let j=0;j<tree.joints.length;j++){const flex=j/9;tree.joints[j].rotation.z=flex*(-.045+Math.sin(this.time*1.7+i*.4-j*.18)*.023+Math.sin(this.time*.7)*.016);tree.joints[j].rotation.x=flex*Math.sin(this.time*1.3+i*.7-j*.12)*.013;}for(let k=0;k<tree.crowns.length;k++)tree.crowns[k].rotation.z=Math.sin(this.time*3+i+k)*.055;}
+  for(let i=0;i<2;i++){const phase=(this.time+i*.65)%1.3;this.padLamps[i].emissiveIntensity=phase<.12||(phase>.22&&phase<.34)?8:.3;}
   this.sock.rotation.y=.25+Math.sin(this.time*1.7)*.13;this.sock.rotation.z=Math.sin(this.time*4)*.05;
   this.loz.update(dt,p,camera,true);this.key.rotation.y+=dt;
   if(this.active){

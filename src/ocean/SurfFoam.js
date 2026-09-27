@@ -345,12 +345,16 @@ fn surfFoamShading( a: SurfFoamArgs ) -> SurfFoamInfo {
 	var thinPat = 0.0; var thinK = 0.0;
 	var bubPat = 0.0; var bubK = 0.0;
 	// surf look near the beach, the default whitecap look offshore
-	let surf = smoothstep( 7.0, 3.0, a.depth ) * shoreSimInside( shoreSimUvOf( xz ) );
+	// Fresh breaking-wave foam exists on every coast, including islands outside
+	// the persistent main-beach foam simulation tile.
+	let surf = smoothstep( 7.0, 3.0, a.depth );
 	if ( surf > 0.0 && coverage > 0.04 ) {
 
 		// flow of the water here, from the shore simulation (along the local wave direction)
-		let dir = shoreDirAt( xz ).xy;
-		let speed = a.simState.w;
+		let simulated = shoreSimInside( shoreSimUvOf( xz ) );
+		let phase = shorePhaseAt( xz );
+		let dir = select( phase.dir, shoreDirAt( xz ).xy, simulated > 0.5 );
+		let speed = mix( sqrt( max( a.depth, 0.3 ) * 9.81 ) * sat( a.fresh ), a.simState.w, simulated );
 		let flow = dir * speed;
 
 		// --- pattern: world-space lace carried by the flow; on steep faces a vertical projection

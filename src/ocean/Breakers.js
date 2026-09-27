@@ -2,6 +2,7 @@ import { Vector3, Sphere, Mesh, BufferGeometry, BufferAttribute } from '../engin
 import { GPU, StorageBuffer, UniformBlock, ShaderModule, ComputeKernel, Material, Readback, commonModule, LAYERS } from '../engine/webgpu.js';
 import { GRAVITY, G } from '../engine/render/Frame.js';
 import { makeLaceTexture, LACE_TILE } from './SurfFoam.js';
+import { THIRD } from '../world/ThirdIslandLayout.js';
 
 // Plunging breakers along the main beach.
 //
@@ -598,6 +599,12 @@ fn breakersEmit( i: u32, slot: u32, root: vec3f, dir: vec2f, b: f32, H: f32, tro
 			for ( let k = 0; k < NV - 1; k ++ ) {
 
 				const a = v0 + k, b = v0 + k + 1, c = v0 + NV + k, d = v0 + NV + k + 1;
+				// Separate shorelines must never be joined by an ocean-spanning ribbon.
+				const st = this.stationData, n = seg * 4;
+				if (Math.hypot(st[n+4]-st[n], st[n+5]-st[n+1]) > this.spacing*3) {
+					for(let degenerate=0;degenerate<6;degenerate++) index[q++]=a;
+					continue;
+				}
 				index[ q ++ ] = a; index[ q ++ ] = c; index[ q ++ ] = b;
 				index[ q ++ ] = b; index[ q ++ ] = c; index[ q ++ ] = d;
 
@@ -885,6 +892,17 @@ export function buildStations( terrain, { x0 = - 175, x1 = 195, spacing = 0.6 } 
 
 	}
 
+	// Closed third-island shore. Solve the actual heightfield zero crossing;
+	// the propagation field already includes this island's bathymetry.
+	const samples = Math.ceil(2*Math.PI*THIRD.radius/spacing);
+	for(let i=0;i<=samples;i++) {
+		const angle=i/samples*Math.PI*2, dx=Math.cos(angle), dz=Math.sin(angle);
+		let lo=0, hi=THIRD.radius*1.4;
+		for(let k=0;k<20;k++){const r=(lo+hi)/2;if(terrain.heightAt(THIRD.x+dx*r,THIRD.z+dz*r)>0)lo=r;else hi=r;}
+		const r=(lo+hi)/2,x=THIRD.x+dx*r,z=THIRD.z+dz*r;
+		const nx=terrain.heightAt(x-1,z)-terrain.heightAt(x+1,z),nz=terrain.heightAt(x,z-1)-terrain.heightAt(x,z+1),length=Math.hypot(nx,nz);
+		out.push(x,z,length>1e-5?nx/length:dx,length>1e-5?nz/length:dz);
+	}
 	return { data: new Float32Array( out ), count: out.length / 4, spacing };
 
 }

@@ -80,6 +80,19 @@ The included `public/models/godzilla/steam79-walk.glb` is a Blender-prepared, re
 
 ## Techniques and references
 
+## Scanned explorer and Loz
+
+The user-supplied KIRI scan is prepared in Blender as `scanned-explorer.glb`.
+Walk and run motion is adapted from **Mannequiny v0.4.0**, by GDQuest,
+Luciano Muñoz and contributors, licensed under
+[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
+[Original source](https://github.com/gdquest-demos/godot-3d-mannequin).
+The donor mesh was removed and motion retargeted to the scan's humanoid rig,
+with stride and foot-position corrections. See
+[motion attribution](tools/character_pipeline/third_party/ATTRIBUTION.md).
+
+### Rendering references
+
 These are published techniques. No code from the papers is included.
 
 | Technique | Source |

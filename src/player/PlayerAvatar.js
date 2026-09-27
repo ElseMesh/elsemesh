@@ -1,6 +1,11 @@
 import { BoxGeometry, CylinderGeometry, Group, Mesh, SphereGeometry, Vector3 } from '../engine/index.js';
 import { standard } from '../materials/Materials.js';
 import { HOUSE } from '../world/boat/Wheelhouse.js';
+import { loadGLB } from '../engine/loaders/GLTF.js';
+import { SkinnedModel } from '../engine/render/Skinning.js';
+
+let scanSource;
+const scan = () => scanSource ||= loadGLB((import.meta.env?.BASE_URL || '/') + 'models/characters/scanned-explorer.glb');
 
 const cloth = standard({ name: 'Explorer_orange_jacket', color: 0xc86624, roughness: 0.9, emissive: 0x542307, emissiveIntensity: 0.16 });
 const vest = standard({ name: 'Explorer_life_vest', color: 0xe8962b, roughness: 0.78, emissive: 0x51300a, emissiveIntensity: 0.2 });
@@ -98,6 +103,16 @@ export class PlayerAvatar {
 		this.clock = 0;
 		this._parent = null;
 		this._place(scene);
+		this.proceduralParts = [...this.group.children];
+		this.ready = this.loadScanned().catch(error => { console.warn('Explorer scan unavailable', error); });
+	}
+
+	async loadScanned() {
+		const model = await SkinnedModel.create(await scan());
+		for (const clip of ['idle', 'walk', 'run', 'helm']) if (!model.clipNames().includes(clip)) throw new Error(`Missing character clip: ${clip}`);
+		for (const material of model.materials) material.underwaterLighting = 'lite';
+		model.play('idle', { fade: .01 }); model.update(0);
+		this.group.add(model.group); this.scanned = model;
 	}
 
 	_place(parent) {
@@ -158,5 +173,15 @@ export class PlayerAvatar {
 		const headWorld = this.group.localToWorld(new Vector3(0, 1.58, 0));
 		const close = !freeCam && camera.position.distanceTo(headWorld) < 0.85;
 		this.group.visible = !localFirstPerson && !close;
+		if (this.scanned) {
+			for (const child of this.proceduralParts) child.visible = false;
+			const pos = this.group.position;
+			const measuredSpeed = this.lastPosition && dt > 0 ? Math.hypot(pos.x-this.lastPosition.x,pos.z-this.lastPosition.z)/dt : 0;
+			this.lastPosition = {x:pos.x,z:pos.z};
+			const speed = c ? (c.speed ?? measuredSpeed) : (aboard ? player.deckVel.length() : Math.hypot(player.velocity.x,player.velocity.z));
+			const clip = atHelm ? 'helm' : moving ? (speed > 4.3 ? 'run' : 'walk') : 'idle';
+			if (this.scanned.current !== clip) this.scanned.play(clip, {fade:.2});
+			this.scanned.update(dt);
+		}
 	}
 }

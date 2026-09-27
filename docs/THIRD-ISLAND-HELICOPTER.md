@@ -40,4 +40,25 @@ The relay validates ownership and bounded state, but player movement remains cli
 
 `node tools/video/helicopter-receiver.mjs` receives local capture files into `D:/Downloads`. Start the Vite game with `?bench&noAudio`, wait for `window.__app`, then invoke the exported `recordHelicopterJourney` from `tools/video/helicopter-capture.js` in the local developer console. The recording begins aboard the moored boat and uses scripted inputs through the live boat, walking and helicopter controllers. Key pickup and boarding use the normal interaction methods. Camera direction is choreographed for visibility. Captions and cockpit readouts are composited over actual rendered frames. Inspect the capture report for any failure before distributing the video.
 
-Generated video and screenshots stay outside Git. All added geometry is original procedural project code; existing asset attribution remains unchanged.
+Generated video and screenshots stay outside Git. Island and aircraft geometry is original procedural project code.
+
+## Wind, surf and characters
+
+Trunks use ten connected sections: the base remains fixed while progressively
+stronger bending and delayed gust motion reach the canopy. Foliage has independent
+flutter. Twenty helipad beacons flash alternating double pulses at night and day.
+
+The breaker system samples the actual third-island waterline and uses the existing
+wave-propagation field to generate curling lips and spray. Fresh whitewater shading
+also works outside the original beach simulation area. Persistent advected foam
+and wet-sand history remain limited to the original beach's simulation tile.
+
+Loz and player/remote avatars now load the existing Blender-rigged KIRI scan.
+Idle, walking, running and seated helm clips crossfade; first-person hiding and
+shared boat seating remain intact. The procedural figure is a loading/error fallback.
+See [source, limitations and animation attribution](SCANNED-CHARACTER.md).
+
+Checks: `node test/third-island-surf.mjs`, the existing game/network suites,
+and an in-engine visual review of the rental NPC, walk/run, surf and night beacons.
+The review video uses choreographed camera/character positions to show animation;
+it is not a recording of a ten-person online session.
