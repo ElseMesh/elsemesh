@@ -4,6 +4,7 @@ import { WebSocket } from 'ws';
 import { createOnlineServer } from '../tools/networking/online-server.mjs';
 import { makeState, ONLINE_ROLES, PLAYER_IDS } from '../src/network/PlayerProtocol.js';
 import { makeSpeechEvent } from '../src/network/SpeechProtocol.js';
+import { DEFAULT_APPEARANCE } from '../src/player/AvatarAppearance.js';
 
 const nodeId = (n) => `bh-node:${n.toString(16).repeat(64)}`;
 const player = (n) => ({ position: { x: 50 + n, y: 2, z: -70 }, yaw: 0, mode: 'walk', velocity: { lengthSq: () => 1 } });
@@ -57,6 +58,13 @@ test('ten room slots relay player, boat and speech state; full rooms reject and 
 		assert.equal(clients[0].packets.some((p) => p.type === 'state' && p.state.playerId === PLAYER_IDS.guest9), false, 'guest cannot publish a boat');
 		last.socket.send(JSON.stringify({ type: 'state', state: makeState({ playerId: PLAYER_IDS.guest9, nodeId: nodeId(10), sequence: 1, player: player(9) }) }));
 		for (const peer of clients.slice(0, 9)) await peer.wait((p) => p.type === 'state' && p.state.playerId === PLAYER_IDS.guest9);
+		// Every slot can choose its own avatar; every other peer receives it intact.
+		for(let i=0;i<10;i++) {
+			const appearance={...DEFAULT_APPEARANCE,style:i%2?'female':'male',shirt:`#${(0x224400+i*0x1111).toString(16).padStart(6,'0')}`};
+			const state=makeState({playerId:PLAYER_IDS[ONLINE_ROLES[i]],nodeId:nodeId(i+1),sequence:3,player:{...player(i),avatarAppearance:appearance}});
+			clients[i].socket.send(JSON.stringify({type:'state',state}));
+			for(let j=0;j<10;j++) if(j!==i) assert.deepEqual((await clients[j].wait(p=>p.type==='state'&&p.state.playerId===state.playerId&&p.state.sequence===3)).state.appearance,appearance);
+		}
 		const speech = makeSpeechEvent({ role: 'guest9', nodeId: nodeId(10), text: 'Meet at the pier' });
 		last.socket.send(JSON.stringify({ type: 'speech', event: speech }));
 		for (const peer of clients) assert.equal((await peer.wait((p) => p.type === 'speech' && p.event.messageId === speech.messageId)).event.text, speech.text);

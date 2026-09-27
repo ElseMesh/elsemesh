@@ -61,6 +61,7 @@ import { AirHaze } from './post/AirHaze.js';
 import { FlyCamera } from './player/FlyCamera.js';
 import { Player } from './player/Player.js';
 import { PlayerAvatar } from './player/PlayerAvatar.js';
+import { AvatarChooser } from './player/AvatarChooser.js';
 import { SurvivalPistol } from './player/SurvivalPistol.js';
 import { Game } from './game/Game.js';
 import { SurvivalNeeds } from './game/SurvivalNeeds.js';
@@ -331,6 +332,7 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 		this.surface.wake = this.wake;
 		this.player = new Player( { camera, input: this.input, terrain: this.terrainData, colliders: this.colliders, query: this.query, boat: this.boatCtl, reef: this.reef, spray: this.spray, cave: this.caves, transit: this.monorail } );
 		this.avatar = new PlayerAvatar( scene, this.boatCtl );
+		this.avatarChooser = new AvatarChooser({ app: this });
 		this.thirdIsland = new ThirdIslandSystem( this );
 		this.monorail.restorePlayer( this.player );
 		this.pistol = new SurvivalPistol( scene );
@@ -639,6 +641,7 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 		} else if ( s.timeSpeed !== 0 ) s.timeOfDay = ( s.timeOfDay + dt * s.timeSpeed + 24 ) % 24;
 
 		// ---- player / boat (boat physics first so the cameras follow this frame's pose)
+		if ( this.input.hit( 'KeyK' ) ) this.avatarChooser.show();
 		if ( this.input.hit( 'KeyF' ) && !this.thirdIsland.active ) this.setFreeCam( ! this.freeCam );
 		if ( this.input.hit( 'KeyT' ) ) {
 			if ( this.networkDemo?.online ) this.networkDemo.openTalk();

@@ -106,8 +106,7 @@ export class NetworkDemo {
 	removeOnline(playerId) {
 		const entry = this.remotes.get(playerId);
 		if (!entry) return;
-		entry.avatar.group.parent?.remove(entry.avatar.group);
-		entry.avatar.group.traverse((part) => part.geometry?.dispose?.());
+		entry.avatar.dispose();
 		this.remotes.delete(playerId);
 	}
 	updateOnline(dt) {
@@ -127,6 +126,7 @@ export class NetworkDemo {
 		for (const entry of this.remotes.values()) {
 			if (now - entry.receivedAt >= 1500 || !entry.remote.state) { entry.avatar.group.visible = false; entry.avatar.speaking = false; continue; }
 			const pose = entry.remote.interpolated(entry.previous, (now - entry.receivedAt) / 100);
+			entry.avatar.setAppearance(pose.appearance)?.catch(() => {});
 			entry.avatar.cinematic = { x: pose.position[0], y: pose.position[1], z: pose.position[2], yaw: pose.yaw + Math.PI, walk: pose.moving, mode: pose.mode, deckLocal: pose.deckLocal, deckYaw: pose.yaw - (this.app.boatCtl.getYaw() + Math.PI) };
 			entry.avatar.update(dt, this.app.player, this.app.camera, this.app.freeCam);
 			if(pose.mode==='helicopter')entry.avatar.group.visible=false;
@@ -163,6 +163,7 @@ export class NetworkDemo {
 		if (connected) {
 			if (this.agent && this.agent.command.tool === 'stop') this.agent.follow_player('player:loz');
 			const pose = this.remote.interpolated(this.remotePrevious, (performance.now() - this.remoteReceivedAt) / 100);
+			this.remoteAvatar.setAppearance(pose.appearance)?.catch(() => {});
 			this.remoteAvatar.cinematic = { x: pose.position[0], y: pose.position[1], z: pose.position[2], yaw: pose.yaw + Math.PI, walk: pose.moving, mode: pose.mode, deckLocal: pose.deckLocal, deckYaw: pose.yaw - (this.app.boatCtl.getYaw() + Math.PI) };
 			this.remoteAvatar.update(dt, player, this.app.camera, this.app.freeCam);
 			if (this.agent) this.agent.setTarget(received);

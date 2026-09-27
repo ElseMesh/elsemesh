@@ -53,12 +53,18 @@ for slot in mesh.material_slots:
     nm = nt.nodes.new('ShaderNodeNormalMap')
     nt.links.new(n.outputs['Color'], nm.inputs['Color'])
     nt.links.new(nm.outputs['Normal'], bsdf.inputs['Normal'])
-    o = nt.nodes.new('ShaderNodeTexImage'); o.image = img(f'{prefix}_{kind}_orm.jpg')
+    o = nt.nodes.new('ShaderNodeTexImage'); o.image = img(f'{prefix}_{kind}_orm.png') or img(f'{prefix}_{kind}_orm.jpg')
     if o.image: o.image.colorspace_settings.name = 'Non-Color'
     sep = nt.nodes.new('ShaderNodeSeparateColor')
     nt.links.new(o.outputs['Color'], sep.inputs['Color'])
     nt.links.new(sep.outputs['Green'], bsdf.inputs['Roughness'])
     nt.links.new(sep.outputs['Blue'], bsdf.inputs['Metallic'])
+    if os.environ.get('BH_AVATAR_MASKS') == '1':
+        # Export ORM red via glTF occlusion; runtime interprets it as the tint-zone ID.
+        group = bpy.data.node_groups.get('glTF Material Output') or bpy.data.node_groups.new('glTF Material Output','ShaderNodeTree')
+        if not group.interface.items_tree: group.interface.new_socket(name='Occlusion',in_out='INPUT',socket_type='NodeSocketFloat')
+        gn=nt.nodes.new('ShaderNodeGroup'); gn.node_tree=group
+        nt.links.new(sep.outputs['Red'],gn.inputs['Occlusion'])
     m.name = kind
 
 # ---- animations: retargeted by bone name in world space. The clips' skeleton has its own rest

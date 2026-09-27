@@ -3,6 +3,8 @@ import { standard } from '../materials/Materials.js';
 import { HOUSE } from '../world/boat/Wheelhouse.js';
 import { loadGLB } from '../engine/loaders/GLTF.js';
 import { SkinnedModel } from '../engine/render/Skinning.js';
+import { AVATAR_STYLES, DEFAULT_APPEARANCE, validateAppearance, appearanceKey } from './AvatarAppearance.js';
+import { avatarMaterialOptions, tintAvatar } from './AvatarMaterials.js';
 
 const characterSources = new Map();
 function characterSource(name) {
@@ -40,6 +42,9 @@ function limb(parent, name, from, to, radius, material) {
 export class PlayerAvatar {
 	constructor(scene, boat, { character = 'stock-player' } = {}) {
 		this.characterAsset = character;
+		this.customizable = character === 'stock-player';
+		this.appearance = { ...DEFAULT_APPEARANCE };
+		this.loadVersion = 0;
 		this.scene = scene;
 		this.boat = boat;
 		this.group = new Group();
@@ -112,11 +117,36 @@ export class PlayerAvatar {
 	}
 
 	async loadCharacter() {
-		const model = await SkinnedModel.create(await characterSource(this.characterAsset));
+		const version = ++this.loadVersion;
+		const source = await characterSource(this.characterAsset);
+		if (this.disposed || version !== this.loadVersion) return;
+		const model = await SkinnedModel.create(source, this.customizable ? { materials: avatarMaterialOptions } : {});
+		if (this.disposed || version !== this.loadVersion) { model.dispose(); return; }
 		for (const clip of ['idle', 'walk', 'run', 'helm']) if (!model.clipNames().includes(clip)) throw new Error(`Missing character clip: ${clip}`);
 		for (const material of model.materials) material.underwaterLighting = 'lite';
 		model.play('idle', { fade: .01 }); model.update(0);
+		if (this.customizable) tintAvatar(model,this.appearance);
+		if (this.scanned) { this.group.remove(this.scanned.group); this.scanned.dispose(); }
 		this.group.add(model.group); this.scanned = model;
+	}
+
+	setAppearance(appearance = DEFAULT_APPEARANCE) {
+		if (!this.customizable || this.disposed) return this.ready;
+		validateAppearance(appearance);
+		if (appearanceKey(appearance) === this.appearanceId) return this.ready;
+		this.appearanceId = appearanceKey(appearance); this.appearance = { ...appearance };
+		const asset = AVATAR_STYLES[appearance.style].asset;
+		if (asset !== this.characterAsset) {
+			this.characterAsset = asset;
+			this.ready = this.loadCharacter().catch(error => { this.appearanceId = null; console.warn('Avatar unavailable',error); throw error; });
+		} else if (this.scanned) tintAvatar(this.scanned,this.appearance);
+		return this.ready;
+	}
+
+	dispose() {
+		this.disposed = true; ++this.loadVersion;
+		this.group.parent?.remove(this.group); this.scanned?.dispose();
+		for (const part of this.proceduralParts) part.traverse(p => p.geometry?.dispose?.());
 	}
 
 	_place(parent) {

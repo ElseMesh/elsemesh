@@ -26,7 +26,7 @@ The mystery story is an evolving playable prototype. The existing signal objecti
 
 ## Survival and the world
 
-- Player avatars use Microsoft Rocketbox's MIT-licensed **Male Adult 08**, prepared in Blender with matching idle, walk, run and seated clips. Your scanned likeness is reserved for rental NPC Loz. See [stock character](docs/STOCK-PLAYER.md) and [scan provenance](docs/SCANNED-CHARACTER.md).
+- Choose your avatar in the online lobby, or press **K** in-game. Male and female Microsoft Rocketbox characters have idle, walk, run and seated clips. Choose shirt, trouser, skin and hair colours; choices are saved in this browser and shared with all room peers. The initial hairstyles are short hair (man) and ponytail (woman). Skin tone is independent of gender; these are appearance options, not racial categories. Your scanned likeness is reserved for rental NPC Loz. See [avatar chooser](docs/AVATAR-CHOOSER.md), [stock character](docs/STOCK-PLAYER.md) and [scan provenance](docs/SCANNED-CHARACTER.md).
 - Third-island trunks bend progressively in gusts with anchored roots; crowns sway independently. Helipad edge beacons flash alternating double pulses. Breaking-wave lips and fresh whitewater now reach the third-island shoreline.
 
 - Hunger falls during play. Press **B** to prepare and eat a fish from the cooler; low hunger slows walking.
@@ -43,6 +43,7 @@ The mystery story is an evolving playable prototype. The existing signal objecti
 | Shift / Space | Sprint / jump or swim up |
 | E | Interact with boat, cave door, monorail, logs and signal mast |
 | N | Three-island map |
+| K | Choose avatar and colours |
 | WASD / mouse (helicopter) | Fly forward/back/sideways / steer heading |
 | Space / C / Shift (helicopter) | Ascend / descend / faster cruise |
 | Left / right cursor (helicopter) | Look through side windows |

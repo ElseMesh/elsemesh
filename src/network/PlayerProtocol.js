@@ -1,4 +1,5 @@
 import { validateHelicopter } from './HelicopterLease.js';
+import { DEFAULT_APPEARANCE, validateAppearance } from '../player/AvatarAppearance.js';
 export const WORLD_ID = 'bh:burning-horizons';
 export const SECTOR_ID = 'bh:ISLAND-01';
 export const ONLINE_ROLES = Object.freeze(['loz', 'ed', ...Array.from({ length: 8 }, (_, i) => `guest${i + 2}`)]);
@@ -14,6 +15,7 @@ export function makeState({ playerId, nodeId, sequence, player, boat = null, obs
 		position: [ player.position.x, player.position.y, player.position.z ],
 		yaw: player.yaw, moving: player.velocity.lengthSq() > 0.12,
 		mode: player.mode, timestamp: Date.now(),
+		appearance: { ...(player.avatarAppearance || DEFAULT_APPEARANCE) },
 	};
 	if (player.mode === 'deck') state.deckLocal = [player.deckPos.x, player.deckPos.y, player.deckPos.z];
 	if (boat && playerId === PLAYER_IDS.loz) state.boat = {
@@ -32,6 +34,7 @@ export function validateState(state) {
 	if (!Array.isArray(state.position) || state.position.length !== 3 || !state.position.every((v) => Number.isFinite(v) && Math.abs(v) < 10000)) throw new Error('Invalid position');
 	if (!Number.isFinite(state.yaw) || Math.abs(state.yaw) > 1000 || typeof state.moving !== 'boolean' || !['walk', 'swim', 'deck', 'boat', 'helicopter'].includes(state.mode)) throw new Error('Invalid pose');
 	if (state.helicopter !== undefined) validateHelicopter(state.helicopter);
+	if (state.appearance !== undefined) validateAppearance(state.appearance);
 	if (state.deckLocal !== undefined && (state.mode !== 'deck' || !Array.isArray(state.deckLocal) || state.deckLocal.length !== 3 || !state.deckLocal.every((v) => Number.isFinite(v) && Math.abs(v) < 20))) throw new Error('Invalid deck pose');
 	if (state.boat !== undefined) {
 		const b = state.boat;

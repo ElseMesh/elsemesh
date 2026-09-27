@@ -18,6 +18,8 @@
   <p class="hint">Press T to type and Enter to send. Click “Enable friend voice” in-game to hear supported speech. Voice falls back to text when unavailable. Rooms hold up to ten players; solo play is available from the main game.</p>
 </main>
 <script type="module">
+  import { AvatarChooser } from './src/player/AvatarChooser.js';
+  new AvatarChooser({parent:document.querySelector('main')});
   const $ = (id) => document.getElementById(id);
   const roomPattern = /^[a-f0-9]{32}$/;
   const hostGame = (room, hostKey) => `./index.html?demo=online&role=loz&room=${room}&hostKey=${hostKey}`;
