@@ -178,7 +178,7 @@ export function makeRetroScreenMaterial(spec) {
   return standard({
     name: `${spec.id.toUpperCase()} decorative display`, color: 0xffffff, roughness: .35, lit: false,
     textures: { retroDisplay: texture },
-    surface: `var ink=textureSample(retroDisplay,smpAnisoClamp,vec2f(in.uv.x,1.0-in.uv.y)).rgb; ${cursor} s.albedo=ink;`
+    surface: `var ink=textureSample(retroDisplay,smpAnisoClamp,vec2f(in.uv.x,1.0-in.uv.y)).rgb; ${cursor} s.albedo=pow(ink,vec3f(2.2));`
   });
 }
 
@@ -231,6 +231,6 @@ export function makeKeyboardLegendMaterial(id) {
   return standard({
     name: `${id.toUpperCase()} keyboard legend atlas`, color: 0xffffff, roughness: .7, lit: false, transparent: true,
     textures: { keyboardLegend: texture },
-    surface: 'let ink=textureSample(keyboardLegend,smpAnisoClamp,vec2f(1.0-in.uv.x,in.uv.y)); s.albedo=ink.rgb; s.opacity=ink.a;'
+    surface: 'let ink=textureSample(keyboardLegend,smpAnisoClamp,vec2f(1.0-in.uv.x,in.uv.y)); s.albedo=pow(ink.rgb,vec3f(2.2)); s.alpha=ink.a;'
   });
 }
