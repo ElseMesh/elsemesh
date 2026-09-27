@@ -1,12 +1,35 @@
 import { App } from '../src/App.js';
+import { Engine } from '../src/engine/Engine.js';
 
 globalThis.location = { search: '' };
 const linux = new App();
-if ( ! linux.desktopAdaptiveScale || linux.settings.renderScale !== 0.75 || linux.desktopCanvasScale !== 0.8 ) throw new Error( 'Linux desktop should start with adaptive scaling' );
+if ( ! linux.desktopAdaptiveScale || linux.settings.renderScale !== 0.75 || linux.desktopCanvasScale !== 0.8 || linux.desktopFrameRateLimit !== 24 ) throw new Error( 'Linux desktop should start with adaptive scaling and a 24 fps GPU budget' );
 
 Object.defineProperty( globalThis, 'navigator', { configurable: true, value: { platform: 'Linux arm64', userAgent: 'Mozilla/5.0 Android 16' } } );
 const android = new App();
-if ( android.desktopAdaptiveScale || android.autoScale || android.settings.renderScale !== 1 || android.desktopCanvasScale !== 1 ) throw new Error( 'Android should keep the original full-quality path' );
+if ( android.desktopAdaptiveScale || android.autoScale || android.settings.renderScale !== 1 || android.desktopCanvasScale !== 1 || android.desktopFrameRateLimit !== 0 ) throw new Error( 'Android should keep the original full-quality path' );
+
+const originalRAF = globalThis.requestAnimationFrame;
+function countFrames( maxFps, rafFrames ) {
+
+	let callback, n = 0;
+	globalThis.requestAnimationFrame = ( fn ) => { callback = fn; return 1; };
+	const clock = {
+		last: 0, delta: 0, elapsed: 0,
+		update( t ) { this.delta = t - this.last; this.last = t; this.elapsed = t; },
+		getDelta() { return this.delta / 1000; },
+		getElapsed() { return this.elapsed / 1000; },
+	};
+	const engine = { clock, frame: 0 };
+	Engine.prototype.start.call( engine, () => n ++, maxFps );
+	for ( let i = 1; i <= rafFrames; i ++ ) callback( i * 1000 / 60 );
+	return n;
+
+}
+if ( countFrames( 24, 120 ) !== 48 ) throw new Error( 'Linux frame pacing should average 24 fps on a 60 Hz display' );
+if ( countFrames( 0, 120 ) !== 120 ) throw new Error( 'Uncapped frame pacing should preserve every animation frame' );
+if ( originalRAF === undefined ) delete globalThis.requestAnimationFrame;
+else globalThis.requestAnimationFrame = originalRAF;
 
 const scales = { engine: 1, post: 1 };
 linux.engine = { get renderScale() { return scales.engine; }, setRenderScale( v ) { scales.engine = v; } };

@@ -77,15 +77,34 @@ export class Engine {
 
 	}
 
-	start( update ) {
+	start( update, maxFps = 0 ) {
 
+		const frameInterval = maxFps > 0 ? 1000 / maxFps : 0;
+		let pendingDt = 0;
+		let nextFrame = null;
 		const loop = ( t ) => {
 
 			this.clock.update( t );
-			let dt = this.clock.getDelta();
-			if ( dt > 0.1 ) dt = 0.1;
-			this.frame ++;
-			update( dt, this.clock.getElapsed() );
+			pendingDt += this.clock.getDelta();
+			if ( ! frameInterval || nextFrame === null || t >= nextFrame ) {
+
+				const dt = Math.min( pendingDt, 0.1 );
+				pendingDt = 0;
+				if ( frameInterval ) {
+
+					if ( nextFrame === null ) nextFrame = t + frameInterval;
+					else {
+
+						nextFrame += frameInterval;
+						if ( nextFrame <= t ) nextFrame += ( Math.floor( ( t - nextFrame ) / frameInterval ) + 1 ) * frameInterval;
+
+					}
+
+				} else nextFrame = t;
+				this.frame ++;
+				update( dt, this.clock.getElapsed() );
+
+			}
 			this._raf = requestAnimationFrame( loop );
 
 		};

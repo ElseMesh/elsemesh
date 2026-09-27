@@ -78,6 +78,8 @@ export class App {
 		// Keep the Linux canvas slightly below the display resolution so full-screen post passes
 		// (temporal upscale, haze, bloom and grading) do not remain full cost when the scene scale drops.
 		this.desktopCanvasScale = this.desktopAdaptiveScale ? 0.8 : 1;
+		// Leave some GPU time for the desktop compositor once the game can sustain the accepted rate.
+		this.desktopFrameRateLimit = this.desktopAdaptiveScale ? 24 : 0;
 		// ?scale is a deliberate override, useful for profiling and manual quality selection.
 		this.autoScale = this.desktopAdaptiveScale && ! this.qs.has( 'scale' );
 		this._scaleBelowTarget = 0;
@@ -565,7 +567,7 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 
 	start() {
 
-		this.engine.start( ( dt, t ) => this.frame( dt, t ) );
+		this.engine.start( ( dt, t ) => this.frame( dt, t ), this.desktopFrameRateLimit );
 
 	}
 
