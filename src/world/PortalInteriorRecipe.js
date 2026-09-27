@@ -13,6 +13,7 @@ export function buildRecipe(){
   rust:{color:0x643d2c,roughness:.82,metalness:.35,pattern:'scratched'},
   glass:{color:0xcbd3d0,roughness:.08,metalness:.02,opacity:.08,transparent:true,depthWrite:false},
   wood:{color:0x765238,roughness:.68,metalness:0,pattern:'wood'},
+  charredWood:{color:0x211713,roughness:.86,metalness:0,pattern:'wood'},
   fabric:{color:0xd8ccb7,roughness:.95,metalness:0,pattern:'fabric'},
   charcoal:{color:0x303332,roughness:.88,metalness:0,pattern:'fabric'},
   rug:{color:0x675a50,roughness:1,metalness:0,pattern:'fabric'},
@@ -138,8 +139,8 @@ export function buildRecipe(){
  ];
  for(const [x,id] of [[-11.5,'c64'],[-8.5,'bbc'],[-5.5,'sun']]){
   // Full-depth tops finish at 4.36 m and support every computer, keyboard and nameplate.
-  add(box(id+' workstation desk',[2.2,.14,1.9],[x,4.29,8.62],'wood',{collider:true}));
-  for(const dx of [-.9,.9])for(const dz of [-.72,.72])add(box(id+' desk leg',[.1,.61,.1],[x+dx,3.915,8.62+dz],'steel'));
+  add(box(id+' workstation desk',[2.2,.14,1.9],[x,4.29,8.62],'charredWood',{collider:true}));
+  for(const dx of [-.9,.9])for(const dz of [-.72,.72])add(box(id+' desk leg',[.1,.61,.1],[x+dx,3.915,8.62+dz],'black'));
   const sun=id==='sun', bbc=id==='bbc', caseMaterial=sun?'sunPlastic':bbc?'cream':'c64Plastic';
   const keyMaterial=sun?'sunPlastic':bbc?'black':'c64Key';
   // Layered case pieces give the CRT a deep molded housing and recessed face.

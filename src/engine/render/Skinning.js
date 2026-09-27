@@ -208,6 +208,9 @@ export class SkinnedModel {
 		this.meshes = [];
 		this.materials = [];
 		this.onClipEnd = null;
+		// Optional per-instance hook for additive local-pose adjustments. It runs after
+		// animation sampling and before hierarchy/world matrix generation.
+		this.poseModifier = null;
 		this._pose();
 
 	}
@@ -459,6 +462,8 @@ export class SkinnedModel {
 			} else L.r.set( R.r );
 
 		}
+
+		if ( this.poseModifier ) this.poseModifier( this.local, this.gltf.nodes );
 
 		const W = this.world, M = this._localM;
 		for ( const i of this.order ) {
