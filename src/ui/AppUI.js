@@ -43,16 +43,20 @@ export class AppUI {
 			if ( syncingSettings ) return settingsToggle( open );
 			syncingSettings = true;
 			settingsToggle( open );
+			// The settings panel now lives in a movable window, so the original
+			// full-screen-panel rail lock must never block its launcher controls.
+			ui.rail.inert = false;
 			if ( open ) settingsWindow.show(); else if ( settingsWindow.open ) settingsWindow.close();
 			syncingSettings = false;
 		};
 
 		let syncingHelp = false;
 		const helpToggle = ui.toggleHelp.bind( ui );
-		const helpCard = ui.helpEl.querySelector( '.tw-help-card' ) || ui.helpEl;
+		// Move the complete help overlay into shared chrome so its former full-screen
+		// ancestor cannot intercept the world while the window is closed/minimized.
 		ui.helpEl.setAttribute( 'aria-modal', 'false' );
 		const helpWindow = this.windows.register( {
-			id: 'help', element: helpCard, title: 'Controls & Help',
+			id: 'help', element: ui.helpEl, title: 'Controls & Help',
 			onOpen: () => {
 				if ( syncingHelp || ui._help ) return;
 				syncingHelp = true;

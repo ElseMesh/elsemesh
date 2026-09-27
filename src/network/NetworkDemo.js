@@ -145,8 +145,23 @@ export class NetworkDemo {
 	#mountOverlay() {
 		const el = document.createElement('div');
 		el.className = 'bh-network-overlay';
-		el.style.cssText = 'position:fixed;top:12px;left:12px;z-index:1100;padding:11px 14px;background:rgba(4,18,28,.82);border:1px solid #6bd6df;border-radius:8px;color:#eaffff;font:12px/1.5 system-ui;pointer-events:none;min-width:205px;text-shadow:0 1px 2px #000;';
-		document.body.append(el); this.overlay = el;
+		el.style.cssText = 'padding:11px 14px;color:#eaffff;font:12px/1.5 system-ui;pointer-events:auto;min-width:205px;text-shadow:0 1px 2px #000;';
+		const manager = this.app.ui?.ui?.windows;
+		if (manager) {
+			const networkWindow = manager.register({ id: 'network', element: el, title: 'Network Status' });
+			this.networkWindow = networkWindow;
+			const launcher = document.createElement('button');
+			launcher.type = 'button';
+			launcher.className = 'bh-network-launcher tw-interactive';
+			launcher.textContent = 'Network';
+			launcher.setAttribute('aria-label', 'Open Network Status');
+			launcher.addEventListener('click', () => networkWindow.show());
+			(this.app.ui.ui.root || document.body).append(launcher);
+			networkWindow.show();
+		} else {
+			document.body.append(el);
+		}
+		this.overlay = el;
 	}
 	update(dt) {
 		if (this.online) return this.updateOnline(dt);

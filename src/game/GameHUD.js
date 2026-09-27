@@ -220,8 +220,16 @@ export class GameHUD {
 				this.toggleInventory( true );
 				syncingInventory = false;
 			},
-			onClose: () => {
+			onClose: reason => {
 				if ( syncingInventory || ! this.invOpen ) return;
+				if ( reason === 'minimize' ) {
+
+					this.invOpen = false;
+					this.inv.inert = true;
+					this.inv.classList.remove( 'is-open' );
+					return;
+
+				}
 				syncingInventory = true;
 				this.toggleInventory( false );
 				syncingInventory = false;
@@ -236,8 +244,16 @@ export class GameHUD {
 				this.openStand( this.vendor );
 				syncingStand = false;
 			},
-			onClose: () => {
+			onClose: reason => {
 				if ( syncingStand || ! this.standOpen ) return;
+				if ( reason === 'minimize' ) {
+
+					this.standOpen = false;
+					this.stand.inert = true;
+					this.stand.classList.remove( 'is-open' );
+					return;
+
+				}
 				syncingStand = true;
 				this.closeStand();
 				syncingStand = false;
@@ -413,6 +429,12 @@ export class GameHUD {
 		}
 
 		this.inv.classList.toggle( 'is-open', this.invOpen );
+		if ( this.inventoryWindow ) {
+
+			if ( this.invOpen && ( ! this.inventoryWindow.open || this.inventoryWindow.minimized ) ) this.inventoryWindow.show();
+			else if ( ! this.invOpen && this.inventoryWindow.open ) this.inventoryWindow.close();
+
+		}
 
 	}
 
@@ -436,6 +458,14 @@ export class GameHUD {
 	// ---- general shop
 	openStand( vendor ) {
 
+		const player = this.game.app?.player;
+		if ( ! vendor || player?.mode !== 'walk' || ! vendor.inRange?.( player.position ) ) {
+
+			this.closeStand();
+			return;
+
+		}
+
 		this.standOpen = true;
 		this.stand.inert = false;
 		this.vendor = vendor;
@@ -443,6 +473,7 @@ export class GameHUD {
 		if ( vendor.kind === 'shop' ) this.renderShop();
 		else this.renderStand();
 		this.stand.classList.add( 'is-open' );
+		if ( this.standWindow && ( ! this.standWindow.open || this.standWindow.minimized ) ) this.standWindow.show();
 		releaseMouse();
 
 	}
@@ -452,6 +483,7 @@ export class GameHUD {
 		this.standOpen = false;
 		this.stand.classList.remove( 'is-open' );
 		this.stand.inert = true;
+		if ( this.standWindow?.open ) this.standWindow.close();
 
 	}
 
