@@ -52,9 +52,19 @@ export function buildRecipe(){
  // Fourteen sub-0.35m risers rise east of the mezzanine edge, avoiding head collision.
  for(let i=0;i<14;i++){const y=.14+i*.25,z=1.45+i*.65;add(box('stair tread',[4,.28,.82],[3,y,z],'concrete',{collider:true,walkable:true}));}
  // The top landing bridges west to the mezzanine without placing the flight beneath it.
- add(box('stair landing',[5,.22,3.2],[1.5,3.42,10.25],'concrete',{collider:true,walkable:true}));
- for(const side of [.92,5.08]){for(let i=0;i<8;i++)add(box('stair railing post',[.08,1.02,.08],[side,.82+i*.44,1.4+i*1.12],'steel'));add(box('sloped stair handrail',[.1,.1,10.2],[side,2.45,5.65],'steel',{rotation:[-.366,0,0]}));}
- add(box('mezzanine floor',[14,.22,8],[-7,3.5,10],'wood',{collider:true,walkable:true}));for(const z of [6.2,8.7,11.2,13.7])add(box('mezzanine rail post',[.1,1.1,.1],[-.15,4.08,z],'steel'));add(box('mezzanine handrail',[.1,.1,8],[-.15,4.62,10],'steel'));
+ add(box('stair landing',[5,.22,1.7],[1.5,3.42,10.9],'concrete',{collider:true,walkable:true}));
+ for(const side of [.92,5.08]){for(let i=0;i<8;i++)add(box('stair railing safety guard',[.12,1.02,1.15],[side,.82+i*.44,1.4+i*1.12],'steel',{collider:true}));add(box('sloped stair handrail',[.1,.1,10.2],[side,2.45,5.65],'steel',{rotation:[-.366,0,0]}));}
+ // Vertical guard boxes follow the flight in short sections; no rotated slope AABB can block headroom.
+ add(box('landing north guard',[5,1.1,.12],[1.5,4.08,11.81],'steel',{collider:true}));
+ add(box('landing east guard',[.12,1.1,1.7],[4.06,4.08,10.9],'steel',{collider:true}));
+ add(box('mezzanine floor',[14,.22,8],[-7,3.5,10],'wood',{collider:true,walkable:true}));
+ // Split the east edge around the full landing mouth (z 10.0..11.8) for the verified x=3 to x=-3 route.
+ for(const [z,depth] of [[8,4],[12.9,2.2]])add(box('mezzanine safety guard',[.12,1.1,depth],[-.15,4.08,z],'steel',{collider:true}));
+ // Slim vertical boxes protect every other exposed loft edge; the short landing-front guard ends at x=1 so the x=1..4 stair mouth stays clear.
+ for(const z of [5.94,14.06])add(box('mezzanine perimeter guard',[14,1.1,.12],[-7,4.08,z],'steel',{collider:true}));
+ add(box('mezzanine west guard',[.12,1.1,8],[-14.06,4.08,10],'steel',{collider:true}));
+ add(box('landing front guard',[2,1.1,.12],[0,4.08,9.99],'steel',{collider:true}));
+ for(const z of [6.2,8.7,12.1,13.7])add(box('mezzanine rail post',[.1,1.1,.1],[-.15,4.08,z],'steel'));add(box('mezzanine handrail south',[.1,.1,4],[-.15,4.62,8],'steel'));add(box('mezzanine handrail north',[.1,.1,2.2],[-.15,4.62,12.9],'steel'));
  add(box('bed base',[4,.45,2],[-10,3.85,12],'wood',{collider:true}));add(box('bed mattress',[3.9,.42,1.9],[-10,4.28,12],'cream'));add(box('bed headboard',[4,1.25,.2],[-10,4.45,12.95],'leather'));for(const x of [-11,-9])add(box('bed pillow',[.8,.16,.55],[x,4.55,12.55],'white'));
  add(box('condo rug',[6,.04,4],[-7,3.64,12],'rug'));add(box('condo desk top',[3,.14,.8],[-4,4.3,12],'wood'));for(const x of [-5.3,-2.7])add(box('condo desk leg',[.1,.72,.1],[x,3.92,12],'steel'));
  // Retro zone: desks with legs, CRT shells/bezels/feet, screens and individual keycaps.
