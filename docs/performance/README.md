@@ -84,3 +84,19 @@ The harness stops gameplay and isolates flight/rail cameras before selecting vie
 An initial run with the flight camera still active was rejected and excluded.
 Shader compilation and the first cold launch are not covered by these warm-frame
 measurements. This is a custom engine GPU benchmark, not a Lighthouse report.
+
+## Release checks
+
+- `npm test` and `npm run build` passed on MSI, including rendering-budget,
+  tunnel-clearance, cave route, GPU smoke, hunger toggle, helicopter and HTTP cache tests.
+- All **29** networking tests passed on hpubuntu. On Windows, the existing raw
+  TCP/UDP reference-transport test stalled and was stopped; the other **28** tests
+  passed when run without that case. The browser WebSocket tests passed on both hosts.
+- A 390 × 844 browser emulation selected Mobile automatically, displayed the full
+  title and rendered without logged GPU/shader errors. This is not a physical phone test.
+- GitHub Pages deployment for `314e2d5` succeeded; Pages and hpubuntu served
+  `main-B2tEzysx.js`. Public HTTPS/WebSocket movement relay passed. Cave-texture
+  requests returned HTTP 200 initially and 304 when revalidated with their ETag.
+- The edited Susie video is 809.9 seconds, 284,536,616 bytes, on D: outside Git.
+  SHA-256: `7c6d4a6b5a63b894ee8436a9fe8ddfa5a914b146979b4ae4bcf2b845f78e52ac`.
+  It is silent and chapter-edited; the appendix is a staged rendering inspection.
