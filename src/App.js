@@ -80,6 +80,8 @@ export class App {
 		this.desktopCanvasScale = this.desktopAdaptiveScale ? 0.7 : 1;
 		// Leave some GPU time for the desktop compositor once the game can sustain the accepted rate.
 		this.desktopFrameRateLimit = this.desktopAdaptiveScale ? 24 : 0;
+		// The temporal resolve is a measured GPU cost on Linux; keep the full temporal path on Android.
+		this.desktopAntiAliasingMode = this.desktopAdaptiveScale ? 'none' : null;
 		// ?scale is a deliberate override, useful for profiling and manual quality selection.
 		this.autoScale = this.desktopAdaptiveScale && ! this.qs.has( 'scale' );
 		this._scaleBelowTarget = 0;
@@ -343,6 +345,7 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 			sky: this.sky, clouds: this.clouds, terrain: this.terrainGPU, csm: this.csm,
 		} );
 		this.post = new PostFX( renderer, { sceneRenderer: this.sceneRenderer, camera, underwater: this.underwater, clouds: this.clouds, sunDir: this.atmosphere.sunDir, haze: this.haze } );
+		if ( this.desktopAntiAliasingMode ) this.post.aaMode = this.desktopAntiAliasingMode;
 		G.exposure.value = this.settings.exposure;
 		if ( qs.has( 'scale' ) ) this.settings.renderScale = Number( qs.get( 'scale' ) ) || 1;
 		this.setRenderScale( this.settings.renderScale );
