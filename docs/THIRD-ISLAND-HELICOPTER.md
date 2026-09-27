@@ -44,6 +44,15 @@ Generated video and screenshots stay outside Git. Island and aircraft geometry i
 
 ## Wind, surf and characters
 
+Loz greets an approaching player on foot within 5.5 metres. Press **E** nearby
+to receive the keys and hear: “Here are the keys. You need to fly to Rocket
+Island. Follow the lights to the helipad.” A caption bubble accompanies both
+lines. Dialogue is personal to each visitor; greetings have a 45-second cooldown
+and require leaving the area before repeating. Sound follows the game's mute
+setting. These two prerecorded lines use the existing accepted Loz OmniVoice
+profile; private voice configuration and representation are not distributed.
+Rocket Island is a dialogue destination at this stage; this change adds no new island.
+
 Trunks use ten connected sections: the base remains fixed while progressively
 stronger bending and delayed gust motion reach the canopy. Foliage has independent
 flutter. Twenty helipad beacons flash alternating double pulses at night and day.

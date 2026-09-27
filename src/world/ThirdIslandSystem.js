@@ -33,6 +33,9 @@ export class ThirdIslandSystem {
   this.trees=[];this.buildIsland();this.buildHelicopter();
   this.state={x:THIRD.pad.x,y:THIRD.pad.y+.25,z:THIRD.pad.z,yaw:0,vx:0,vy:0,vz:0,rpm:0,pitch:0,roll:0,grounded:true};
   this.resetPose();
+  this.dialogue=document.createElement('div');this.dialogue.setAttribute('role','status');
+  this.dialogue.style.cssText='display:none;position:fixed;z-index:1300;max-width:320px;padding:12px 16px;border-radius:14px;background:#f0ffff;color:#102b31;font:16px/1.4 system-ui;box-shadow:0 4px 18px #0008;pointer-events:none;transform:translate(-50%,-100%);';document.body.append(this.dialogue);
+  this.greeted=false;this.greetingAt=-100;this.dialogueUntil=0;
   this.hud=document.createElement('div');this.hud.id='bh-flight-hud';
   this.hud.style.cssText='display:none;position:fixed;bottom:32px;left:50%;transform:translateX(-50%);background:#091e26e8;border:1px solid #63ffdd;border-radius:16px;padding:14px 22px;color:#baffec;font:14px monospace;text-align:center;z-index:1200;pointer-events:none;max-width:70vw;';document.body.append(this.hud);
  }
@@ -114,9 +117,33 @@ export class ThirdIslandSystem {
  resetPose() {const s=this.state;this.helicopter.position.set(s.x,s.y,s.z);this.helicopter.quaternion.setFromEuler(new Euler(s.pitch,s.yaw,s.roll,'YXZ'));}
  collectKey() {
   const p=this.app.player, n=this.loz.cinematic;
-  if(p.mode!=='walk'||Math.hypot(p.position.x-n.x,p.position.z-n.z)>3.4)return false;
-  this.hasKey=true;this.key.visible=false;this.network?.('key');
-  this.toast("Loz: Here are your keys. Follow the lights to the helipad. WASD flies; Space climbs; C descends. Land before leaving.");return true;
+  if(p.mode!=='walk'||Math.hypot(p.position.x-n.x,p.position.z-n.z)>3.4||Math.abs(p.position.y-n.y)>2.5)return false;
+  if(!this.hasKey){this.hasKey=true;this.key.visible=false;this.network?.('key');}
+  this.greeted=true;this.greetingAt=this.time;
+  this.sayLoz('keys','Here are the keys. You need to fly to Rocket Island. Follow the lights to the helipad.');return true;
+ }
+ sayLoz(id,text) {
+  if(this.lastDialogue===id&&this.time<this.dialogueUntil-5)return;
+  this.lastDialogue=id;this.dialogueUntil=this.time+10;
+  if(this.voice){this.voice.pause();this.voice=null;}
+  this.dialogue.textContent='Loz: '+text;this.toast('Loz: '+text);
+  if(this.app.audio&&!this.app.audio.muted){
+   const voice=this.voice=new Audio((import.meta.env.BASE_URL||'/')+'audio/loz-rental/'+id+'.wav');
+   voice.volume=.9;voice.play().catch(()=>{}); // Captions remain if browser audio is blocked.
+  }
+ }
+ updateLozDialogue() {
+  const p=this.app.player,n=this.loz.cinematic,d=Math.hypot(p.position.x-n.x,p.position.z-n.z);
+  if(d>12)this.greeted=false;
+  if(!this.app.freeCam&&p.mode==='walk'&&d<5.5&&Math.abs(p.position.y-n.y)<2.5&&!this.greeted&&this.time-this.greetingAt>45){
+   this.greeted=true;this.greetingAt=this.time;
+   this.sayLoz(this.hasKey?'keys':'greeting',this.hasKey?'Here are the keys. You need to fly to Rocket Island. Follow the lights to the helipad.':"Hello! Welcome to Loz's Helicopter Rental. Come over and I'll give you the keys.");
+  }
+  if(this.voice)this.voice.volume=this.app.audio?.muted?0:Math.max(0,1-d/18)*.9;
+  const point=new Vector3(n.x,n.y+2.1,n.z).project(this.app.camera);
+  const visible=this.time<this.dialogueUntil&&d<18&&point.z>-1&&point.z<1&&Math.abs(point.x)<1&&Math.abs(point.y)<1;
+  this.dialogue.style.display=visible?'block':'none';
+  if(visible){this.dialogue.style.left=(point.x+1)*innerWidth/2+'px';this.dialogue.style.top=(1-point.y)*innerHeight/2+'px';}
  }
  toast(t){this.app.ui?.ui.toast(t);this.lastMessage=t;}
  enter() {
@@ -140,6 +167,7 @@ export class ThirdIslandSystem {
   for(let i=0;i<2;i++){const phase=(this.time+i*.65)%1.3;this.padLamps[i].emissiveIntensity=phase<.12||(phase>.22&&phase<.34)?8:.3;}
   this.sock.rotation.y=.25+Math.sin(this.time*1.7)*.13;this.sock.rotation.z=Math.sin(this.time*4)*.05;
   this.loz.update(dt,p,camera,true);this.key.rotation.y+=dt;
+  this.updateLozDialogue();
   if(this.active){
    const look=inp.consumeLook(dt);s.yaw-=look.x*.0022;s.yaw=Math.atan2(Math.sin(s.yaw),Math.cos(s.yaw));this.lookPitch=Math.max(-.6,Math.min(.5,this.lookPitch-look.y*.0022));
    const axes=inp.moveAxes();

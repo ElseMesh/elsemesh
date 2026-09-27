@@ -82,6 +82,10 @@ The included `public/models/godzilla/steam79-walk.glb` is a Blender-prepared, re
 
 ## Scanned explorer and Loz
 
+The two rental greeting/mission WAVs in `public/audio/loz-rental` were generated
+with the user's existing accepted Loz OmniVoice profile for this game. Private
+voice samples, profile representation and credentials are not included.
+
 The user-supplied KIRI scan is prepared in Blender as `scanned-explorer.glb`.
 Walk and run motion is adapted from **Mannequiny v0.4.0**, by GDQuest,
 Luciano Muñoz and contributors, licensed under
