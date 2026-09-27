@@ -19,14 +19,22 @@ export class GrabberCamera {
 		this.camera = new PerspectiveCamera(62, WIDTH / HEIGHT, 0.03, 60);
 		this.camera.up.set(0, 0, 1);
 		this.frameBlock = createViewUniforms('salvage-grabber-camera');
+		this._sunDir = new Vector3(0, 1, 0);
+		this._sunColor = new Color(2.4, 2.6, 2.8);
 		const copyGlobals = this.frameBlock.onBeforePack;
 		this.frameBlock.onBeforePack = () => {
 			copyGlobals();
-			// These values are deliberately owned rather than mutated after the global copy.
-			this.frameBlock.fields.cameraUnderwater.value = 1;
-			this.frameBlock.fields.exposure.value = 1.35;
-			this.frameBlock.fields.skyIrradiance.value = new Color(0.18, 0.42, 0.52);
-			this.frameBlock.fields.sunColor.value = new Color(0.12, 0.34, 0.4);
+			// Camera-owned worklight values; never mutate the global frame uniforms.
+			this.frameBlock.fields.sunDir.value = this._sunDir;
+			this.frameBlock.fields.sunColor.value = this._sunColor;
+			this.frameBlock.fields.envIntensity.value = 1;
+		};
+		this._filter = (object) => {
+			const grabber = this.app.game?.salvage?.grabber;
+			for (let current = object; current; current = current.parent) {
+				if (current === grabber) return false;
+			}
+			return true;
 		};
 		this._target = new Vector3();
 		this._up = new Vector3();
@@ -77,6 +85,8 @@ export class GrabberCamera {
 				camera: this.camera,
 				frameBlock: this.frameBlock,
 				kind: 'color',
+				defines: { STUDIO_LIGHTING: 1 },
+				filter: this._filter,
 				colorViews: [this.context.getCurrentTexture().createView()],
 				colorFormats: [GPU.format],
 				depthView: this.depth.createView(),

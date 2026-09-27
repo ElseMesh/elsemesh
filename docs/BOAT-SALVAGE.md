@@ -16,6 +16,6 @@ The rear deck carries a sonar console, pedestal winch, drum, and an outboard boo
 
 ## Grabber camera
 
-The panel canvas is a real secondary WebGPU view of the existing scene. It uses its own perspective camera, view-uniform block, and depth texture, while sharing the existing renderer and frame command encoder. It renders immediately before the application's single GPU submission and never starts or submits a separate frame.
+The panel canvas is a real secondary WebGPU view of the existing scene. It uses its own perspective camera, view-uniform block, depth texture, and independent simulated downward worklight, while sharing the existing renderer and frame command encoder. The camera-only lighting pass does not alter scene lights, materials, visibility, or global uniforms. It renders immediately before the application's single GPU submission and never starts or submits a separate frame.
 
-To limit GPU cost, the 512 × 288 grabber view updates at a maximum of **10 Hz** and draws only while the panel is open and not minimized. Unsupported WebGPU canvas setup is reported in the panel without stopping the game. The downward-mounted view is intended to show terrain, physical salvage, and the grabber edges; browser/device visual qualification remains a separate manual check.
+To limit GPU cost, the 512 × 288 grabber view updates at a maximum of **10 Hz** and draws only while the panel is open and not minimized. The grabber and all of its descendant meshes are excluded only from this view so its housing and closed jaws cannot obscure the lens; terrain and physical salvage remain the actual scene objects. Unsupported WebGPU canvas setup is reported in the panel without stopping the game. Browser/device visual qualification remains a separate manual check.
