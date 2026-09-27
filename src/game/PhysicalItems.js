@@ -45,7 +45,12 @@ export class PhysicalItems {
 		this.game.state.storage=null; // Agent Control: room state must not overwrite the solo save.
 		transport.onEconomy(packet=>{
 			if(packet.type==='economy'){this.data=packet;this.sync();}
-			else {this.game.toast(packet.message,4500); if(packet.ok && packet.action==='fuel')this.game.state.fuel=Math.min(this.game.state.stats.fuelL,this.game.state.fuelL+packet.litres);}
+			else {
+				const quietMessages=['Winch controls claimed','Winch moving','Winch released'];
+				const quietSalvage=packet.ok && packet.action==='salvage' && quietMessages.includes(packet.message);
+				if(!quietSalvage)this.game.toast(packet.message,4500);
+				if(packet.ok && packet.action==='fuel')this.game.state.fuel=Math.min(this.game.state.stats.fuelL,this.game.state.fuelL+packet.litres);
+			}
 		});
 	}
 	get account(){return this.data?.accounts[this.id];}
@@ -55,9 +60,13 @@ export class PhysicalItems {
 		if(this.transport){return this.transport.economyAction({action,...fields});}
 		const p=this.app.player; this.ledger.position(this.id,{position:[p.position.x,p.position.y,p.position.z],mode:p.mode});
 		const result=this.ledger.act(this.id,{action,...fields}); this.sync();
+		const quietControl=result.ok && action==='salvage' && fields.command==='control';
 		if(result.ok && action==='fuel')this.game.state.fuel=Math.min(this.game.state.stats.fuelL,this.game.state.fuelL+fields.litres);
-		try{localStorage.setItem(SAVE,JSON.stringify(this.ledger.packet()));}catch{}
-		this.game.toast(result.message,4500); return result.ok;
+		if(!quietControl){
+			try{localStorage.setItem(SAVE,JSON.stringify(this.ledger.packet()));}catch{}
+		}
+		if(!quietControl && !(result.ok && action==='salvage' && ['claim','stop'].includes(fields.command)))this.game.toast(result.message,4500);
+		return result.ok;
 	}
 	sync(){
 		if(!this.transport)this.data=this.ledger.packet();
@@ -73,7 +82,7 @@ export class PhysicalItems {
 		const app=this.app,p=app.player;
 		if(!this.pickupButton && this.game.hud){this.pickupButton=document.createElement('button');this.pickupButton.className='tw-interactive';this.pickupButton.style.cssText='position:fixed;bottom:18%;left:50%;transform:translateX(-50%);padding:12px 20px;border:1px solid #9ce5db;border-radius:24px;background:#10272ded;color:white;z-index:30;cursor:pointer';document.body.append(this.pickupButton);this.pickupButton.onclick=()=>{if(this.nearest)this.act('pickup',{itemId:this.nearest.id});};}
 		if(!this.transport){
-			const now=Date.now(),boat=this.game.boatCtl;
+			const now=Date.now(),boat=this.app.boatCtl;
 			this.ledger.position(this.id,{position:[p.position.x,p.position.y,p.position.z],mode:p.mode},now);
 			if(boat?.position&&boat?.quaternion){
 				const velocity=boat.velocity||boat.body?.velocity;

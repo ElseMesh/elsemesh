@@ -59,6 +59,7 @@ The mystery story is an evolving playable prototype. The existing signal objecti
 | R / left mouse | Equip fishing rod / cast and reel while it is equipped |
 | I or Tab | Cooler, fish log and inventory |
 | V | Boat camera |
+| O / Sonar button | Open the boat sonar and grabber-winch panel while aboard or on deck |
 | L | Flashlight |
 | H | Settings |
 | T | Talk in an online room (Enter sends, Esc cancels); otherwise pause or resume manual time |

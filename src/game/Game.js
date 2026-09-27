@@ -13,6 +13,7 @@ import { GameHUD } from './GameHUD.js';
 import { Minimap } from './Minimap.js';
 import { Guide } from './Guide.js';
 import { PhysicalItems } from './PhysicalItems.js';
+import { BoatSalvage } from './BoatSalvage.js';
 
 // how long the catch card stays up unless dismissed (ms)
 const CATCH_CARD_MS = 9000;
@@ -57,6 +58,7 @@ export class Game {
 		this.applyGear();
 		this.state.onChange( () => this.applyGear() );
 		this.items = new PhysicalItems(this);
+		this.salvage = new BoatSalvage(app, this);
 
 	}
 
@@ -286,6 +288,7 @@ export class Game {
 		if ( this.minimap ) this.minimap.update( dt );
 		if ( this.guide ) this.guide.update( dt );
 		this.items?.update();
+		this.salvage?.update();
 
 	}
 

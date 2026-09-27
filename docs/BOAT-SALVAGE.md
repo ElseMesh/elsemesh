@@ -1,21 +1,21 @@
-# Boat salvage authority
+# Boat sonar and salvage winch
 
-Boat salvage is owned by `ItemEconomy` through the pure `SalvageAuthority`; clients submit intents and never submit hook coordinates, target item IDs, ownership, balances, or time deltas. The same authority is used by solo play and online rooms. This foundation intentionally contains no salvage UI or camera.
+Maintained by Agent Control.
 
-## Snapshot and commands
+## Controls
 
-`ItemEconomy.packet().salvage` exposes the current operator, depth, boat-local `offsetX`/`offsetZ`, held item ID, retrieval state, world hook position, validated boat position/quaternion/velocity, error, and sonar contacts. Commands use economy action `salvage` with `claim`, `control`, `grab`, `release`, `retrieve`, or `stop`. Control axes `x`, `z`, and `depth` must each be finite numbers in `[-1, 1]`.
+While aboard the boat or standing on its deck, press **O** or use the visible **Sonar** button to open the combined sonar and grabber panel. Sonar remains available while sailing and derives its 80 m contacts directly from current physical-item data and the boat's current position. Selecting a contact only highlights navigation guidance; it does not move the winch or an item.
 
-The winch begins stowed at depth `-2.4`, uses a boat-local origin of `(2.8, 2.4, -2)`, permits four metres of lateral offset, descends no deeper than 50 metres, and advances only from authority-clock elapsed time. Vertical speed is capped at 2 m/s and lateral speed at 1 m/s. Controls stop after 600 ms without a fresh control intent, and tick catch-up is capped.
+Stop the boat before claiming winch control. The panel reports another operator as busy and requires a new claim after the panel is closed, minimized, blurred, or hidden. Hold **Lower**, **Raise**, **Port**, **Starboard**, **Forward**, or **Aft** to move the grabber. Releasing a held control immediately zeros the corresponding axes. **Grab** closes on a nearby eligible item, **Release** releases the held item without surrendering the operator, **Retrieve** starts the automatic hoist, and **Stop**/closing the panel releases winch control.
 
-## Safety and ownership
+The authority snapshot is the source of winch depth, offset, held item, returning state, and operator. Controls are sent through `items.act('salvage', ...)`; the UI never mutates inventory or authority state directly. Axis traffic is limited to five updates per second, and successful movement/claim notifications are quiet while errors and meaningful results remain visible.
 
-A single operator may claim the winch. Claiming and operating require a fresh validated boat pose, a fresh player pose in boat/deck mode within 10 metres, and boat speed no greater than 0.6 m/s. Only validated Loz host boat state is accepted online. Stale or moving boat/player state releases the operator and drops held salvage at the current hook point. Disconnect and `stop` use the same release semantics; closing the future UI should send `stop`.
+## Physical equipment
 
-`grab` selects the nearest unowned physical item within 0.8 metres of the hook, provided its depth is greater than zero and no more than 50 metres. A held item remains unowned and reserved, follows the hook, and cannot be picked up or sold. Ownership transfers exactly once, only when retrieval reaches the stowed position and the operator has room in the 12-item bag. If the bag becomes full, the item remains held at deck level with a clear error until space is available or it is released.
+The rear deck carries a sonar console, pedestal winch, drum, and an outboard boom. A world-space cable joins the boom tip to the authoritative hook position. The yellow steel grabber has three articulated jaws, a camera housing, and cyan lamps; its jaws close while holding an item. During an active winch session, the network authority snapshot drives the grabber. When idle or stowed, its position follows the current physics boat transform so stale broadcast coordinates do not leave it behind.
 
-Sonar reports unowned, unheld physical objects with known depth, at depth `(0, 50]` and within the requested horizontal radius. Normal pickup checks three-dimensional proximity for items with a finite `y`, preventing shore pickup of submerged objects.
+## Grabber camera
 
-## Persistence and fixed sites
+The panel canvas is a real secondary WebGPU view of the existing scene. It uses its own perspective camera, view-uniform block, and depth texture, while sharing the existing renderer and frame command encoder. It renders immediately before the application's single GPU submission and never starts or submits a separate frame.
 
-Transient winch state is not loaded from saves. Existing version-1 inventory and ownership remain intact, while missing fixed salvage spawn IDs are merged once. Five measured seabed sites provide watches, phones, and a knife, including deep contacts near 35 and 48 metres.
+To limit GPU cost, the 512 × 288 grabber view updates at a maximum of **10 Hz** and draws only while the panel is open and not minimized. Unsupported WebGPU canvas setup is reported in the panel without stopping the game. The downward-mounted view is intended to show terrain, physical salvage, and the grabber edges; browser/device visual qualification remains a separate manual check.

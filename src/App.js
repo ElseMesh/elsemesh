@@ -772,6 +772,7 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 		if ( this.post.flare ) this.post.flare.kernel.dispatch( 1 );
 		this.post.render();
 		this.post.endFrame();
+		this.game?.salvage?.renderCamera( performance.now() );
 		GPU.submit();
 		this.profiler.update( dt );
 
