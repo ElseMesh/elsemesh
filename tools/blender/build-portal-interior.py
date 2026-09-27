@@ -12,18 +12,76 @@ with open(recipe_path, encoding='utf8') as f:
 
 bpy.ops.wm.read_factory_settings(use_empty=True)
 materials = {}
-for name, spec in recipe['materials'].items():
+
+def procedural_material(name, spec):
     m = bpy.data.materials.new('Portal ' + name)
     rgb = [((spec['color'] >> shift) & 255) / 255 for shift in (16, 8, 0)]
-    m.diffuse_color = (*rgb, 1)
-    m.roughness = spec.get('roughness', .7)
-    m.metallic = spec.get('metalness', 0)
+    alpha = spec.get('opacity', 1.0)
+    m.diffuse_color = (*rgb, alpha)
+    m.use_nodes = True
+    nodes, links = m.node_tree.nodes, m.node_tree.links
+    bs = nodes.get('Principled BSDF')
+    bs.inputs['Base Color'].default_value = (*rgb, 1)
+    bs.inputs['Roughness'].default_value = spec.get('roughness', .7)
+    bs.inputs['Metallic'].default_value = spec.get('metalness', 0)
+    bs.inputs['Alpha'].default_value = alpha
     if spec.get('emissive'):
-        m.use_nodes = True
-        bs = m.node_tree.nodes.get('Principled BSDF')
         bs.inputs['Emission Color'].default_value = (*rgb, 1)
-        bs.inputs['Emission Strength'].default_value = 1.5
-    materials[name] = m
+        bs.inputs['Emission Strength'].default_value = .8
+    if spec.get('transparent'):
+        m.surface_render_method = 'DITHERED'
+        m.use_transparency_overlap = False
+
+    tex = nodes.new('ShaderNodeTexCoord')
+    mapping = nodes.new('ShaderNodeMapping')
+    links.new(tex.outputs['Generated'], mapping.inputs['Vector'])
+    noise = nodes.new('ShaderNodeTexNoise')
+    noise.inputs['Scale'].default_value = 3.2
+    noise.inputs['Detail'].default_value = 5.0
+    noise.inputs['Roughness'].default_value = .72
+    links.new(mapping.outputs['Vector'], noise.inputs['Vector'])
+    ramp = nodes.new('ShaderNodeValToRGB')
+    ramp.color_ramp.elements[0].color = (*[c * .62 for c in rgb], 1)
+    ramp.color_ramp.elements[1].color = (*[min(1, c * 1.18) for c in rgb], 1)
+    links.new(noise.outputs['Fac'], ramp.inputs['Fac'])
+
+    if name in ('brick', 'brickDark'):
+        brick = nodes.new('ShaderNodeTexBrick')
+        brick.offset = .5
+        brick.offset_frequency = 2
+        brick.squash = 1.0
+        brick.inputs['Color1'].default_value = (*[c * .76 for c in rgb], 1)
+        brick.inputs['Color2'].default_value = (*[min(1, c * 1.12) for c in rgb], 1)
+        brick.inputs['Mortar'].default_value = (.055, .045, .038, 1)
+        brick.inputs['Scale'].default_value = 4.0
+        brick.inputs['Mortar Size'].default_value = .035
+        brick.inputs['Mortar Smooth'].default_value = .01
+        brick.inputs['Brick Width'].default_value = 1.0
+        brick.inputs['Row Height'].default_value = .32
+        links.new(mapping.outputs['Vector'], brick.inputs['Vector'])
+        links.new(brick.outputs['Color'], bs.inputs['Base Color'])
+        links.new(brick.outputs['Fac'], bs.inputs['Roughness'])
+    elif name in ('concrete', 'concreteDark', 'steel', 'rust', 'black', 'wood', 'fabric', 'charcoal', 'rug', 'rugLight'):
+        if name == 'wood':
+            mapping.inputs['Scale'].default_value = (7.0, 1.4, 1.4)
+            noise.inputs['Scale'].default_value = 5.0
+            noise.inputs['Distortion'].default_value = 2.0
+        elif name in ('steel', 'rust', 'black'):
+            mapping.inputs['Scale'].default_value = (2.0, 18.0, 2.0)
+            noise.inputs['Scale'].default_value = 5.5
+        elif name in ('fabric', 'charcoal', 'rug', 'rugLight'):
+            noise.inputs['Scale'].default_value = 42.0
+            noise.inputs['Detail'].default_value = 2.0
+        links.new(ramp.outputs['Color'], bs.inputs['Base Color'])
+        bump = nodes.new('ShaderNodeBump')
+        bump.inputs['Strength'].default_value = .12 if name in ('steel', 'black') else .22
+        bump.inputs['Distance'].default_value = .08
+        links.new(noise.outputs['Fac'], bump.inputs['Height'])
+        links.new(bump.outputs['Normal'], bs.inputs['Normal'])
+    return m
+
+for name, spec in recipe['materials'].items():
+    materials[name] = procedural_material(name, spec)
 
 # Engine coordinates are right-handed Y-up. Blender is right-handed Z-up; this
 # basis change maps engine (x,y,z) to Blender (x,-z,y), preserving handedness.
@@ -75,30 +133,37 @@ print(f'Portal recipe bounds validated: {len(created)} objects')
 def point_at(obj, target):
     obj.rotation_euler = (Vector(target) - obj.location).to_track_quat('-Z', 'Y').to_euler()
 
-# Interior eye-level composition looking from lounge across dining toward the
-# staircase and retro zone. Area lights are explicitly aimed into the room.
-bpy.ops.object.light_add(type='AREA', location=(2, -5, 9))
-key = bpy.context.object
-key.name = 'Warm warehouse key'
-key.data.energy = 1500
-key.data.color = (1.0, .68, .42)
-key.data.shape = 'RECTANGLE'
-key.data.size = 9
-point_at(key, (1, 2, 3))
+# Mirror the recipe's warm task lights. Engine (x,y,z) maps to Blender
+# (x,-z,y); modest powers preserve the cool-daylight / amber-interior balance.
+for index, light in enumerate(recipe.get('lights', [])):
+    x, y, z = light['position']
+    bpy.ops.object.light_add(type='POINT', location=(x, -z, y))
+    lamp = bpy.context.object
+    lamp.name = light.get('name', f'Portal task light {index + 1}')
+    packed = light['color']
+    lamp.data.color = tuple(((packed >> shift) & 255) / 255 for shift in (16, 8, 0))
+    lamp.data.energy = light['intensity'] * 42
+    lamp.data.shadow_soft_size = .7
+    lamp.data.cutoff_distance = light['range']
 
-bpy.ops.object.light_add(type='AREA', location=(-10, 4, 6))
-fill = bpy.context.object
-fill.name = 'Window fill'
-fill.data.energy = 1100
-fill.data.color = (.55, .72, 1.0)
-fill.data.size = 7
-point_at(fill, (-3, 1, 4))
+# Broad neutral window illumination stands in for exterior daylight in the
+# isolated Blender review scene; it is deliberately non-cyan.
+bpy.ops.object.light_add(type='AREA', location=(-15, -1, 6.5))
+daylight = bpy.context.object
+daylight.name = 'Neutral factory-window daylight'
+daylight.data.energy = 1050
+daylight.data.color = (.82, .88, 1.0)
+daylight.data.shape = 'RECTANGLE'
+daylight.data.size = 10
+point_at(daylight, (-3, -2, 3.4))
 
-bpy.ops.object.camera_add(location=(14, -9, 2.2))
+# Wide eye-height view from the open front floor toward the stair, lounge, and
+# glass-fronted mezzanine computer room; no foreground appliance blocks it.
+bpy.ops.object.camera_add(location=(13.5, -1.5, 2.15))
 cam = bpy.context.object
 cam.name = 'Interior review camera'
-point_at(cam, (0, 2, 2.8))
-cam.data.lens = 30
+point_at(cam, (-2.5, -9.5, 3.0))
+cam.data.lens = 27
 bpy.context.scene.camera = cam
 
 scene = bpy.context.scene

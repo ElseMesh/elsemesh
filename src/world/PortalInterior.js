@@ -1,4 +1,4 @@
-import { Group, Mesh, BoxGeometry, CylinderGeometry, SphereGeometry, TorusGeometry, Vector3, Euler, Quaternion, Matrix4, mergeGeometries } from '../engine/index.js';
+import { Group, Mesh, BoxGeometry, CylinderGeometry, SphereGeometry, TorusGeometry, Vector3, Color, Euler, Quaternion, Matrix4, mergeGeometries } from '../engine/index.js';
 import { standard } from '../materials/Materials.js';
 import { Texture } from '../engine/gpu/Texture.js';
 import { buildRecipe } from './PortalInteriorRecipe.js';
@@ -8,6 +8,25 @@ const shapeGeometry = (shape, size) => {
   if (shape === 'sphere') return new SphereGeometry(.5, 16, 10);
   if (shape === 'torus') return new TorusGeometry(size[0] * .5, size[1] * .5, 12, 24);
   return new BoxGeometry(size[0], size[1], size[2]);
+};
+
+// Deterministic world-space detail keeps the merged batches small while retaining
+// credible metre scale. The warm term is intentionally material-scoped: the global
+// local-light pass is night-gated, so this restrained diffuse approximation preserves
+// daytime task-light pools without changing the island sun or clock.
+const portalSurface = (name, lights, origin) => {
+  const fill = lights.map((light, i) => {
+    const p = light.position.map((v, axis) => v + [origin.x, origin.y, origin.z][axis]);
+    const c = new Color(light.color);
+    return `let lp${i}=vec3f(${p[0]},${p[1]},${p[2]}); let lv${i}=lp${i}-in.P; let ld${i}=length(lv${i}); let la${i}=max(0.0,1.0-ld${i}/${light.range}); warm+=vec3f(${c.r.toFixed(4)},${c.g.toFixed(4)},${c.b.toFixed(4)})*max(0.0,dot(in.N,normalize(lv${i})))*la${i}*la${i}*${(light.intensity * .018).toFixed(4)};`;
+  }).join('');
+  let detail = '';
+  if (name === 'brick' || name === 'brickDark') detail = `let course=floor(in.P.y/.08); let q=vec2f(in.P.x+select(0.0,.125,i32(course)%2==1),in.P.y); let cell=fract(q/vec2f(.25,.08)); let joint=min(min(cell.x,1.0-cell.x)*.25,min(cell.y,1.0-cell.y)*.08); let grain=fract(sin(dot(floor(q/vec2f(.25,.08)),vec2f(12.9898,78.233)))*43758.5453); let mortar=1.0-smoothstep(.009,.014,joint); s.albedo=mix(s.albedo*(.76+grain*.28),vec3f(.105,.095,.085),mortar); s.roughness=mix(.92,1.0,mortar);`;
+  else if (name === 'concrete' || name === 'concreteDark') detail = `let n=fract(sin(dot(floor(in.P.xz*3.0),vec2f(12.9898,78.233)))*43758.5453); let damp=smoothstep(.72,.96,fract(sin(dot(floor(in.P.xz*.55),vec2f(41.7,17.3)))*951.135)); s.albedo*=.82+n*.22-damp*.12; s.roughness=.82+n*.16-damp*.14;`;
+  else if (name === 'steel' || name === 'rust' || name === 'black') detail = `let scratch=smoothstep(.94,.985,fract(sin(dot(floor(in.P.xy*vec2f(7.0,45.0)),vec2f(19.19,73.31)))*3157.7)); s.albedo*=1.0-scratch*.28; s.roughness+=scratch*.18;`;
+  else if (name === 'wood') detail = `let grain=.5+.5*sin((in.P.x+sin(in.P.z*2.3)*.12)*38.0); s.albedo*=.84+grain*.2; s.roughness=.6+grain*.12;`;
+  else if (name === 'fabric' || name === 'charcoal' || name === 'rug' || name === 'rugLight') detail = `let weave=.5+.5*sin(in.P.x*95.0)*sin(in.P.z*91.0); s.albedo*=.9+weave*.1; s.roughness=.94+weave*.05;`;
+  return `${detail} var warm=vec3f(0.0); ${fill} s.emissive+=warm;`;
 };
 
 export class PortalInterior {
@@ -22,8 +41,19 @@ export class PortalInterior {
     app.scene.add(this.group);
     this.materials = {};
     for (const [name, spec] of Object.entries(this.recipe.materials)) {
-      this.materials[name] = standard({ name: `Portal ${name}`, color: spec.color, roughness: spec.roughness, metalness: spec.metalness, emissive: spec.emissive || 0, emissiveIntensity: spec.emissive ? 0.35 : 0, transparent: !!spec.transparent, opacity: spec.opacity ?? 1, depthWrite: spec.depthWrite ?? true, underwaterLighting: 'none', localLightsCheap: true });
+      this.materials[name] = standard({
+        name: `Portal ${name}`, color: spec.color, roughness: spec.roughness, metalness: spec.metalness,
+        emissive: spec.emissive || 0, emissiveIntensity: spec.emissive ? 0.35 : 0,
+        transparent: !!spec.transparent, opacity: spec.opacity ?? 1, depthWrite: spec.depthWrite ?? true,
+        underwaterLighting: 'none', localLightsCheap: true,
+        surface: portalSurface(name, this.recipe.lights || [], this.origin)
+      });
     }
+    this.localLightSources = (this.recipe.lights || []).map((light, index) => this.app.localLights.add({
+      position: new Vector3(this.origin.x + light.position[0], this.origin.y + light.position[1], this.origin.z + light.position[2]),
+      color: new Color(light.color), intensity: light.intensity, range: light.range, kind: 0,
+      phase: index / Math.max(1, this.recipe.lights.length), enabled: false
+    }));
     this.interiorColliders = [];
     this.buildGeometry();
     this.setInteriorCollidersEnabled(false);
@@ -108,6 +138,7 @@ export class PortalInterior {
     if (this.inside || p.mode !== 'walk') return;
     this.returnState = { position: p.position.clone(), yaw: p.yaw };
     this.setInteriorCollidersEnabled(true);
+    for (const source of this.localLightSources) source.enabled = true;
     this.inside = true;
     this.group.visible = true;
     p.position.set(this.origin.x + this.recipe.zones.arrival[0], this.origin.y + this.recipe.zones.arrival[1], this.origin.z + this.recipe.zones.arrival[2]);
@@ -119,6 +150,7 @@ export class PortalInterior {
     const p = this.app.player;
     this.inside = false;
     this.group.visible = false;
+    for (const source of this.localLightSources) source.enabled = false;
     this.setInteriorCollidersEnabled(false);
     if (this.returnState) {
       p.position.copy(this.returnState.position);
