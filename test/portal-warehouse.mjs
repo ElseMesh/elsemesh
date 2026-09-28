@@ -22,7 +22,7 @@ test('portal warehouse retains reference detail without changing circulation zon
   assert.deepEqual(recipe.zones.retro,[-7.5,4,10]);
 });
 
-test('Agent Control reference-detail operation is complete and preserves protected zones', async () => {
+test('Agent Control reference-detail manifest resolves and preserves protected zones', async () => {
   const recipe=buildRecipe(), names=new Set(recipe.objects.map(object=>object.name));
   const operation=JSON.parse(await readFile(new URL('../tools/portal_interior/reference-detail-v1.json',import.meta.url),'utf8'));
   assert.equal(operation.schema,'agent-control.portal-interior-reference-detail/v1');

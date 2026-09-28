@@ -3,7 +3,7 @@
   "id": "portal-warehouse-reference-detail-v1",
   "governance": {
     "controller": "Agent Control",
-    "status": "CANDIDATE_PENDING_RUNTIME_VERIFICATION",
+    "status": "VERIFIED_WITH_AGENT_CONTROL_REVIEW_BLOCKED",
     "mutationBoundary": [
       "src/world/PortalInteriorRecipe.js",
       "src/world/PortalInterior.js",
@@ -52,7 +52,15 @@
     "near wall graffiti overspray",
     "small terracotta plant pot",
     "mezzanine leather swivel seat",
-    "mezzanine open book"
+    "mezzanine open book",
+    "lounge gallery console",
+    "lounge gallery picture frame",
+    "south wall mural dark field",
+    "south wall mural angled stroke",
+    "kitchen spice jar",
+    "dining rug woven border",
+    "mezzanine archive device",
+    "foreground black steel column"
   ],
   "protectedInvariants": {
     "arrivalZone": [0, 1, 0],
@@ -68,6 +76,7 @@
     "focused portal warehouse test passes",
     "full game and network tests pass",
     "production build passes",
-    "Windows WebGPU runtime capture shows the new detail without route obstruction"
+    "Windows WebGPU runtime capture shows the new detail without route obstruction",
+    "side-by-side low-wide comparison is captured against the supplied reference"
   ]
 }

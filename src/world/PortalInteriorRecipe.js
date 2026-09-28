@@ -15,7 +15,7 @@ export function buildRecipe(){
   glass:{color:0xcbd3d0,roughness:.08,metalness:.02,opacity:.08,transparent:true,depthWrite:false},
   wood:{color:0x765238,roughness:.68,metalness:0,pattern:'wood'},
   charredWood:{color:0x211713,roughness:.86,metalness:0,pattern:'wood'},
-  fabric:{color:0xd8ccb7,roughness:.95,metalness:0,pattern:'fabric'},
+  fabric:{color:0x8f8578,roughness:.95,metalness:0,pattern:'fabric'},
   charcoal:{color:0x303332,roughness:.88,metalness:0,pattern:'fabric'},
   rug:{color:0x675a50,roughness:1,metalness:0,pattern:'fabric'},
   rugLight:{color:0xa89a86,roughness:1,metalness:0,pattern:'fabric'},
@@ -300,6 +300,33 @@ export function buildRecipe(){
   for(let spoke=0;spoke<4;spoke++){const a=spoke*Math.PI/2;add(box('mezzanine chair foot',[.055,.045,.42],[x+Math.sin(a)*.18,3.5,z+Math.cos(a)*.18],'chrome',{rotation:[0,a,0]}));}
  }
  add(box('mezzanine reading side table',[1.05,.11,.72],[-11.25,4.02,9.85],'charredWood'));add(cyl('mezzanine side table stem',[.09,.5,.09],[-11.25,3.75,9.85],'chrome'));add(box('mezzanine open book',[.5,.025,.34],[-11.25,4.1,9.85],'cream',{rotation:[0,.08,0]}));
+ // Agent Control comparison correction: the first browser capture proved that
+ // the shell read clearly but the inhabited areas lacked the layered density
+ // visible in the supplied reference. These additions stay outside the route
+ // and reuse the existing material batches.
+ add(box('lounge gallery console',[5.8,.16,.62],[-9.2,.78,7.42],'charredWood'));
+ for(const x of [-11.7,-9.2,-6.7]){add(box('lounge gallery console leg',[.12,.72,.12],[x,.39,7.42],'steel'));add(box('lounge gallery picture frame',[1.35,1.85,.08],[x,2.05,7.72],'black'));add(box('lounge gallery print',[1.12,1.58,.035],[x,2.05,7.66],x===-9.2?'graffitiCream':'concreteDark'));}
+ for(let i=0;i<11;i++)add(box('lounge console book',[.16+(i%3)*.025,.48+(i%2)*.12,.3],[-11.2+i*.39,1.1,7.35],i%4===0?'rust':i%4===1?'cream':i%4===2?'graffitiCyan':'wood',{rotation:[0,0,(i%3-1)*.04]}));
+ add(cyl('lounge console table lamp stem',[.055,.56,.055],[-6.95,1.25,7.38],'chrome'));add(cyl('lounge console table lamp shade',[.42,.34,.42],[-6.95,1.63,7.38],'black'));add(sphere('lounge console table lamp glow',[.18,.14,.18],[-6.95,1.53,7.38],'stairGlow'));
+ for(const [x,z,s] of [[-12.4,2.15,.78],[-5.55,6.55,.68],[-2.7,12.1,.62]]){add(cyl('layered indoor planter',[s,.68,s],[x,.35,z],'rust'));for(let i=0;i<11;i++){const a=i*2.39996;add(box('layered indoor plant leaf',[.24,.045,.78],[x+Math.cos(a)*.23,.82+(i%4)*.22,z+Math.sin(a)*.23],'leaf',{rotation:[0,-a,.38+(i%3)*.15]}));}}
+ // Original, layered mural and painted marks on the wall seen from the main
+ // low-wide approach. It deliberately avoids copying the reference artwork.
+ add(box('south wall mural dark field',[7.6,3.5,.035],[-10.2,2.05,-11.76],'charcoal'));
+ for(let i=0;i<22;i++){const x=-13.45+(i%11)*.62,y=.85+Math.floor(i/11)*1.05+(i%4)*.22;add(box('south wall mural angled stroke',[.58,.13,.04],[x,y,-11.7],i%3===0?'graffitiCyan':i%3===1?'graffitiCoral':'graffitiCream',{rotation:[0,0,(i%2?-.48:.56)]}));}
+ for(const [x,y,w] of [[-5.8,2.9,1.7],[-5.65,2.5,2.0],[-5.5,2.1,2.3]])add(box('south wall painted statement glyph',[w,.1,.045],[x,y,-11.7],'graffitiCream'));
+ // Kitchen and dining close-up detail.
+ add(box('kitchen cabinet toe kick',[8,.13,.1],[5.15,.12,7.48],'black'));
+ for(let i=0;i<8;i++){add(cyl('kitchen spice jar',[.09,.22,.09],[2.55+i*.38,1.18,5.18],i%3===0?'rust':i%3===1?'leaf':'cream'));add(box('kitchen spice label',[.11,.08,.018],[2.55+i*.38,1.18,5.08],'cream'));}
+ add(sphere('kitchen serving bowl',[.52,.18,.52],[6.05,1.12,5.08],'ceramic'));for(let i=0;i<5;i++)add(sphere('kitchen bowl fruit',[.13,.13,.13],[5.82+i*.12,1.28,5.02+(i%2)*.1],i%2?'neonAmber':'rust'));
+ for(let i=0;i<16;i++){const side=i<8?-1:1,index=i%8;add(box('dining rug woven border',[i<8?.62:.045,.025,i<8?.045:.48],[4.75+index*.64,.075,-5+side*1.88],i%2?'rugStair':'rust'));}
+ for(const x of [4.7,5.15,8.85,9.3])for(let i=0;i<4;i++)add(box('dining rug tassel',[.035,.018,.18],[x+i*.11,.078,-7.18],'cream'));
+ // Extra archive objects turn the mezzanine book wall into a collection rather
+ // than a row of repeated boxes.
+ for(const [x,y,w,m] of [[-11.2,5.45,.7,'c64Plastic'],[-9.8,5.43,.82,'sunPlastic'],[-8.2,6.18,.62,'cream'],[-6.2,5.48,.76,'rust']]){add(box('mezzanine archive device',[w,.34,.3],[x,y,12.55],m));add(box('mezzanine archive device face',[w*.72,.18,.025],[x,y,12.37],'black'));for(let k=0;k<3;k++)add(cyl('archive device control',[.035,.025,.035],[x-w*.22+k*w*.22,y,12.34],'chrome',{rotation:[Math.PI/2,0,0]}));}
+ for(const [x,z] of [[-12.1,11.7],[-10.9,11.9],[-3.7,11.85]]){add(box('retro room document stack',[.58,.045,.42],[x,4.42,z],'cream',{rotation:[0,.12,0]}));add(box('retro room document cover',[.52,.025,.38],[x,4.48,z],'rust',{rotation:[0,-.08,0]}));}
+ // Riveted foreground columns strengthen depth and match the aged black metal
+ // substructure in the reference.
+ for(const x of [-14.7,13.9]){add(box('foreground black steel column',[.46,10.7,.52],[x,5.35,-8.9],'steel'));for(let y=.7;y<10;y+=.65){add(sphere('foreground column rivet',[.055,.055,.04],[x-.25,y,-8.72],'chrome'));add(sphere('foreground column rivet',[.055,.055,.04],[x+.25,y,-8.72],'chrome'));}}
  // Recessed downlights under the mezzanine create the warm pools seen in the reference.
  for(const x of [-12,-9,-6,-3]){add(cyl('recessed ceiling trim',[.22,.035,.22],[x,3.37,9.8],'chrome'));add(sphere('recessed warm lamp',[.13,.06,.13],[x,3.34,9.8],'stairGlow'));}
  add(box('display shelf',[5,.12,.55],[11,2.2,16.5],'wood'));add(box('display shelf',[5,.12,.55],[11,1.25,16.5],'wood'));

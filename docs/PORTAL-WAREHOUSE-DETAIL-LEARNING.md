@@ -14,6 +14,9 @@ The operation deliberately works in the existing primitive batching recipe. Repe
 | Add richer objects directly to the scene | Detail increased, but a naïve asset-per-object approach would increase draw calls and runtime memory | Added geometry to existing merged material batches and reused procedural materials | Prefer batched primitive detail for repeated small props; reserve imported assets for silhouette-critical objects |
 | Add decorative furniture freely | Some placements could obstruct the proven stair and mezzanine routes | Kept all additions outside the arrival and retro-zone route and retained existing collider geometry | Treat circulation zones and interaction radii as immutable constraints during detail passes |
 | Reuse the existing generic fabric shader for every rug | Rugs remained flat and visually interchangeable | Added a separate woven motif treatment for rug materials while retaining the same material count | Material variation can be added inside a shared shader branch without introducing texture downloads or extra draw batches |
+| Accept the first browser capture after structural checks passed | The WebGPU side-by-side showed a credible shell but sparse living zones, a blank approach wall, pale seating and insufficient archive clutter | Added a darker upholstery palette, layered wall mural, lounge gallery console, framed prints, plants, kitchen objects, dining rug trim, archive devices and riveted foreground columns using existing batches | Runtime comparison at the intended camera angle is a required correction signal; object-count tests alone cannot validate visual density |
+| Run the governed repository review on the shared Agent Control instance | The controller failed closed because the repository was outside its allowed root | Started an isolated Agent Control instance scoped only to this worktree, leaving the shared service unchanged | Repository policy should be explicit per isolated execution environment |
+| Route the isolated review through configured reasoning roles | Four review attempts failed closed (`work_parcel_reasoning_planner_unconfigured`, `repository_path_outside_policy`, `model_role_missing`, then `model_route_unavailable`) | Retained every run identifier and continued with deterministic operation checks and observed WebGPU evidence; no successful autonomous review is claimed | Agent acknowledgement and a queued job are not completion; route health must be verified before autonomous review can be credited |
 
 ## Reusable sequence
 
@@ -26,8 +29,29 @@ The operation deliberately works in the existing primitive batching recipe. Repe
 7. Capture runtime evidence from the actual browser renderer.
 8. Record any failed placement or visual mismatch before correcting it.
 
+Run the deterministic Agent Control evidence gate with:
+
+```bash
+npm run verify:portal-detail
+```
+
+It emits `agent-control.portal-interior-reference-detail-evidence/v1` JSON with named checks and measured scene counts. A passing result verifies the declared operation contract; it does not replace runtime visual evidence or a healthy governed model review.
+
+## Governed review evidence
+
+- Shared natural-task parcel `parcel-5a10e6c0-d465-4165-a125-38e7e966831b`: failed closed, reasoning planner unconfigured.
+- Shared parameterised review `7801ac9c-1671-47b1-84a2-0c0f1ac8521b`: failed closed, repository outside policy.
+- Isolated review `048017bd-8f92-4736-81a3-f19635f608b3`: failed closed, model role missing.
+- Isolated review `7e1efb89-c234-49ec-b4b7-a7c58679540f`: failed closed, model route unavailable.
+- Isolated review `285c4b3c-6ccf-47cb-a4cf-1087be42d54e`: failed closed, model route unavailable after resolving an ambiguous saved-job route.
+- Exact-candidate review `0d31c245-6309-4275-80a1-4050b4088205`: failed closed, model route unavailable.
+
+These failures are retained as learning evidence. They do not count as a successful Agent Control repository review. The reusable operation remains dependent on deterministic manifest checks, regression tests, production build, and observed browser evidence until an Agent Control model route is independently qualified.
+
 ## Learning state
 
-`CANDIDATE_PENDING_RUNTIME_VERIFICATION`
+`VERIFIED_WITH_AGENT_CONTROL_REVIEW_BLOCKED`
 
-Agent Control must complete its governed repository review and the browser evidence must pass before this operation can be labelled `VERIFIED_REUSABLE_OPERATION`. It is not promoted as an autonomous deterministic skill from a single execution.
+The deterministic operation gate passed with 1,725 objects, 34 materials, 13 lights and 96 colliders. The focused tests, full 24-test game suite, 29-test network suite and production build passed. Edge/WebGPU runtime validation confirmed PBR readiness, C64 availability and Building #002 coexistence with no observed console or resource errors. The requested low-wide comparison is stored at `D:\Downloads\Burning-Horizons-Portal-Detail-Comparison\portal-warehouse-reference-vs-runtime.png`.
+
+The governed model review remains blocked by unavailable routing, so this is not labelled `VERIFIED_REUSABLE_OPERATION` or promoted as an autonomous skill. Agent Control can deterministically rerun and measure the operation, while future route qualification remains an explicit prerequisite for model-led review.
