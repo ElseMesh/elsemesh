@@ -9,7 +9,7 @@ export function buildRecipe(){
   brickDark:{color:0x49322e,roughness:.97,metalness:0,pattern:'brick',brickSize:[.25,.08],mortar:.006},
   concrete:{color:0x5f6260,roughness:.9,metalness:.02,pattern:'mottled'},
   concreteDark:{color:0x424644,roughness:.96,metalness:.02,pattern:'mottled'},
-  polishedTile:{color:0x514b43,roughness:.3,metalness:.03,pattern:'tile'},
+  polishedTile:{color:0x30302e,roughness:.38,metalness:.03,pattern:'industrialConcrete'},
   steel:{color:0x20282a,roughness:.48,metalness:.78,pattern:'scratched'},
   rust:{color:0x643d2c,roughness:.82,metalness:.35,pattern:'scratched'},
   glass:{color:0xcbd3d0,roughness:.08,metalness:.02,opacity:.08,transparent:true,depthWrite:false},
@@ -43,6 +43,16 @@ export function buildRecipe(){
  const objects=[]; const add=o=>objects.push(o);
  // Shell: continuous material surfaces carry metre-scaled procedural brick/concrete detail.
  add(box('polished tiled warehouse floor',[32,.3,30],[0,-.15,3],'polishedTile',{collider:true,walkable:true}));
+ // Sparse physical floor details sit flush with the shader-driven slabs. They
+ // break the large surface at walking scale without recreating the former grid.
+ for(const z of [-7.8,13.6]){
+  add(box('aged floor expansion joint',[27,.012,.045],[0,.012,z],'steel'));
+  for(let x=-12;x<=12;x+=4)add(box('expansion joint brass repair',[.34,.016,.085],[x,.02,z],'amber'));
+ }
+ for(const [x,z] of [[-13,-8.8],[12.2,14.6]]){
+  add(box('warehouse drain recess',[1.25,.018,.62],[x,.018,z],'black'));
+  for(let bar=-.48;bar<=.48;bar+=.16)add(box('warehouse drain grate',[.055,.022,.54],[x+bar,.032,z],'steel'));
+ }
  // The reference-defining west wall is mostly tall glazing: solid sill/header and
  // narrow brick piers retain the safe perimeter while cool daylight reads through.
  add(box('west brick sill',[.38,1.2,30],[-16,.6,3],'brick',{collider:true}));

@@ -15,6 +15,7 @@ Reporting period: **26–28 September 2026**. This summary follows repository hi
 - **Agent Control:** made Esmie's one-minute introduction and five-minute random Edinburgh memories available throughout the entire game instead of limiting them to time spent inside the portal warehouse.
 - **Agent Control:** performed a second governed portal-warehouse reference pass with arched glazing detail, structural rivets, layered textiles, richer living, kitchen and dining props, denser planting and graffiti, and a more lived-in retro mezzanine. Added a versioned operation manifest and learning ledger so future reference-detail work can repeat the observation, batching, invariant and verification sequence.
 - **Agent Control:** used the first WebGPU side-by-side comparison as a correction signal, then darkened the upholstery and added the missing lounge gallery, framed prints, layered mural, kitchen objects, rug trim, archive devices, indoor planting and foreground riveted columns. Retained every failed governed-review attempt in the learning ledger rather than claiming autonomous success.
+- **Agent Control:** replaced the pale showroom floor grid with darker polished industrial concrete, larger irregular slab joints, mottled wear, bounded damp reflections, hairline distress, embedded expansion repairs and two grated drains. The walkable collider and route remain unchanged.
 - **Agent Control:** retained Building #001, Building #002 and all existing island gameplay; added focused regression tests and Windows WebGPU visual evidence.
 
 ## 27 September 2026

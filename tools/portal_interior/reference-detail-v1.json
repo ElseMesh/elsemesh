@@ -60,7 +60,10 @@
     "kitchen spice jar",
     "dining rug woven border",
     "mezzanine archive device",
-    "foreground black steel column"
+    "foreground black steel column",
+    "aged floor expansion joint",
+    "expansion joint brass repair",
+    "warehouse drain grate"
   ],
   "protectedInvariants": {
     "arrivalZone": [0, 1, 0],
@@ -77,6 +80,7 @@
     "full game and network tests pass",
     "production build passes",
     "Windows WebGPU runtime capture shows the new detail without route obstruction",
-    "side-by-side low-wide comparison is captured against the supplied reference"
+    "side-by-side low-wide comparison is captured against the supplied reference",
+    "industrial concrete floor uses large irregular slabs, damp reflection variation and sparse physical repairs"
   ]
 }
