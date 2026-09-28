@@ -33,12 +33,14 @@ test('C64 interaction uses a modal terminal and Building 001 sign remains', asyn
 test('Esmie is an internal Alba voice with no popup and remembers Edinburgh landmarks', async () => {
   const ghost=await readFile(new URL('../src/world/WarehouseGhost.js',import.meta.url),'utf8');
   const portal=await readFile(new URL('../src/world/PortalInterior.js',import.meta.url),'utf8');
+  const app=await readFile(new URL('../src/App.js',import.meta.url),'utf8');
   assert.match(ghost,/this\.elapsed>=60/);
   assert.match(ghost,/this\.quoteElapsed>=300/);
   assert.match(ghost,/audio\/esmie/); assert.match(ghost,/voice\.volume=\.28/);
   assert.doesNotMatch(ghost,/createElement|caption|speechSynthesis|SpeechSynthesisUtterance|this\.active|setActive|paused/);
-  assert.match(portal,/this\.ghost\.update\(dt\)/);
-  assert.doesNotMatch(portal,/ghost\.setActive/);
+  assert.doesNotMatch(portal,/WarehouseGhost|this\.ghost|ghost\.setActive/);
+  assert.match(app,/this\.esmie = new WarehouseGhost\( this \)/);
+  assert.match(app,/this\.esmie\.update\( dt \)/);
   for(const landmark of ['Royal Mile','Calton Hill','Edinburgh Castle','Water of Leith','Greyfriars','Arthur\'s Seat','Waverley Station']) assert.match(ghost,new RegExp(landmark.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')));
   assert.match(ghost,/ship/); assert.match(ghost,/treasure/); assert.match(ghost,/Esmie, from Edinburgh/);
   const manifest=JSON.parse(await readFile(new URL('../public/audio/esmie/manifest.json',import.meta.url),'utf8'));

@@ -74,6 +74,7 @@ import { WakeSim } from './ocean/WakeSim.js';
 import { Vegetation } from './world/Vegetation.js';
 import { loadScannedBark } from './world/vegetation/ScannedBark.js';
 import { SoundScape } from './audio/SoundScape.js';
+import { WarehouseGhost } from './world/WarehouseGhost.js';
 import { updateCameraVelocity, useStaticVelocity } from './post/CameraVelocity.js';
 
 const _up = new Vector3( 0, 1, 0 );
@@ -375,6 +376,8 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 		// recorded field recordings (public/audio, credits in public/audio/CREDITS.md); ?noAudio turns it off
 		this.audio = qs.has( 'noAudio' ) ? null : new SoundScape();
 		this.player.audio = this.audio;
+		// Esmie is an internal voice for the complete world, independent of location.
+		this.esmie = new WarehouseGhost( this );
 		// the fishing game (rod, bites, catch, cooler, fish stand)
 		this.game = new Game( this );
 		this.needs = new SurvivalNeeds( this.game );
@@ -681,6 +684,7 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 		else if ( this.monorail.state !== 'riding' && !this.thirdIsland.active ) this.player.update( dt );
 		if ( ! this.freeCam && !this.thirdIsland.active ) this.monorail.update( dt, this.player, this.input, this.camera, ( message ) => this.ui?.ui.toast( message ) );
 		this.thirdIsland.update( dt );
+		this.esmie.update( dt );
 		this.monorail.marine.update(dt, this.camera.position);
 		this.avatar.update( dt, this.player, this.camera, this.freeCam );
 		if ( this.networkDemo ) this.networkDemo.update( dt );

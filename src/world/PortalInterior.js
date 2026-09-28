@@ -6,7 +6,6 @@ import { decodeImage } from '../engine/loaders/GLTF.js';
 import { buildRecipe } from './PortalInteriorRecipe.js';
 import { makeKeyboardLegendMaterial, makeRetroNameplateMaterial, makeRetroScreenMaterial } from './PortalRetroScreens.js';
 import { C64Computer } from './C64Computer.js';
-import { WarehouseGhost } from './WarehouseGhost.js';
 
 const shapeGeometry = (shape, size) => {
   if (shape === 'cylinder') return new CylinderGeometry(size[0] * .5, size[0] * .5, size[1], 16);
@@ -90,7 +89,6 @@ export class PortalInterior {
     this.cooldown = 0;
     this.returnState = null;
     this.c64 = new C64Computer(app);
-    this.ghost = new WarehouseGhost(app);
   }
 
   async loadSurfaceTextures(){
@@ -220,7 +218,6 @@ export class PortalInterior {
     this.cooldown = Math.max(0, this.cooldown - dt);
     const p = this.app.player;
     if (!p) return;
-    this.ghost.update(dt);
     if (this.c64.active) return;
     if (!this.exteriorGroundResolved) {
       const ground = p.groundAt?.(100, 580, 30);
