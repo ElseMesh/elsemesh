@@ -8,6 +8,7 @@ import { secondIslandHeight } from './MonorailRoute.js';
 import { createTreeBarkMaterial } from './vegetation/ScannedBark.js';
 import { TreeWildlife } from './TreeWildlife.js';
 import { PortalInterior } from './PortalInterior.js';
+import { AbandonedWarehouse } from './AbandonedWarehouse.js';
 import { fruitTreeCrownGeometry, fruitTreeLeafMaterial } from './vegetation/FruitTreeCrown.js';
 
 const material = (name, color, extra = {}) => { const m = standard({ name, color, roughness: .65, ...extra }); m.underwaterLighting = 'none'; m.localLightsCheap = true; return m; };
@@ -39,6 +40,7 @@ export class ThirdIslandSystem {
   this.trees=[];this.buildIsland();this.buildHelicopter();
   this.wildlife=new TreeWildlife(this.group,this.trees,this.bark);
   this.portalInterior=new PortalInterior(app);
+  this.abandonedWarehouse=new AbandonedWarehouse(app);
   this.state={x:THIRD.pad.x,y:THIRD.pad.y+.25,z:THIRD.pad.z,yaw:0,vx:0,vy:0,vz:0,rpm:0,pitch:0,roll:0,grounded:true};
   this.resetPose();
   this.dialogue=document.createElement('div');this.dialogue.setAttribute('role','status');
@@ -83,6 +85,7 @@ export class ThirdIslandSystem {
    const a=i*2.39996,r=44+(i%7)*6;
    const groves=[[106,592],[124,606],[105,618]], near=groves[i-48];
    const x=near?near[0]:115+Math.cos(a)*r,z=near?near[1]:650+Math.sin(a)*r*.82;
+   if(x>118&&x<172&&z>585&&z<634)continue;
    if(Math.abs(x-115)<9 && z<640 || Math.hypot(x-105,z-575)<13)continue;
    const y=T.heightAt(x,z);if(y<2)continue;
    const g=new Group();g.position.set(x,y,z);p.add(g);
@@ -183,6 +186,7 @@ export class ThirdIslandSystem {
   this.loz.update(dt,p,camera,true);this.key.rotation.y+=dt;
   this.updateLozDialogue();
   this.portalInterior.update(dt);
+  this.abandonedWarehouse.update(dt);
   if(this.active){
    const look=inp.consumeLook(dt);s.yaw-=look.x*.0022;s.yaw=Math.atan2(Math.sin(s.yaw),Math.cos(s.yaw));this.lookPitch=Math.max(-.6,Math.min(.5,this.lookPitch-look.y*.0022));
    const axes=inp.moveAxes();

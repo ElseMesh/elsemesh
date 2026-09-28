@@ -25,3 +25,14 @@ Codex executed the first Agent Control pipeline successfully: the extension-free
 ## Evidence boundary and follow-up
 
 Agent Control authored this repository refinement and runs only the configured repository verifier at the declared acceptance boundary. It has not run Blender for the refined pipeline, inspected the refined generated outputs, or claimed a reduced output size or visual approval. Codex must run the exact documented Blender 4.5.9 command, retain the compact JSON result including texture metrics and output byte size, inspect the working `.blend` and GLB, record output hashes and observations, and resolve any visual or structural deviations before a separate runtime integration task.
+
+## Runtime integration attempt and Codex correction
+
+| Agent Control attempted | Result | Codex correction | Generalisable lesson |
+| --- | --- | --- | --- |
+| Runtime task configured with 900 changed lines, 160,000 bytes and a 600-second verifier | Startup rejected `coding_budget_invalid` and `coding_verifier_invalid` | Reduced to the enforced 800-line, 100,000-byte and 300-second ceilings | Generate task budgets from controller limits before starting a service |
+| Static GLB loader, placement, collision and documentation in one 24-turn task | `coding_turn_budget_exhausted`; no file changed | Implemented the bounded loader and integration in the prepared targets, then ran the independent build and browser qualification | Split static-loader authoring from placement/collision; preserve zero-write failures |
+| First GLB export with original packed texture sizes | Valid 200,549,608-byte GLB failed the runtime-size gate | Agent Control authored runtime-only 1024-pixel image copies; Codex reran Blender and measured a 40,703,788-byte GLB | Measure the first export, preserve it, then optimize duplicated runtime images without altering the archival source |
+| Ubuntu GPU evidence capture | Existing ocean/post passes exceeded the Quadro P5000's WebGPU storage/sampled-texture limits and the device was lost | Retained the failed capture and ran the same scene on Windows Edge WebGPU, where both buildings loaded and evidence completed | Video-capture hardware is part of qualification; never convert a device-loss run into a pass |
+
+The runtime correction added `AbandonedWarehouse.js`, instantiated it beside the existing `PortalInterior`, reserved its tree footprint, added an entrance route and a conservative collision shell. It did not modify Building #001. Future Agent Control tasks should be staged as: (1) static asset loader, (2) placement and route, (3) collision, and (4) browser evidence and documentation, each with its own verifier.

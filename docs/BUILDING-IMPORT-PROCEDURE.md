@@ -35,3 +35,14 @@ Treat the principal ground-level floor as only a candidate accessible area. Coll
 ## Acceptance record
 
 Record the Blender version, command, timestamp, final JSON result, output hashes, visual findings, and any deviations. Agent Control authored the reusable preparation material but did not claim Blender or browser execution. Codex is responsible for executing this procedure and visually qualifying the outputs before any separate runtime integration task.
+
+## Reusable runtime integration stage
+
+1. Copy only the qualified, hashed runtime GLB into `public/models/buildings/`; never copy or mutate the archival `.blend`.
+2. Load the static glTF hierarchy with the engine's GLB parser. Preserve node translation, rotation, scale, indices, normals, UVs, base colour, ORM and normal textures. Reject required unsupported extensions.
+3. Instantiate the building as a named, independent scene group. Keep the existing building system untouched.
+4. Measure the placed render bounds in the browser. Reserve the footprint from procedural vegetation before adding collision.
+5. Add a dedicated walkable floor, coarse exterior wall collision with the visually verified entrance left open, and a walkable approach route. Do not use the high-detail render mesh directly as collision.
+6. Test approach, entry, principal-floor traversal, exit, and the route back to the existing building. Record inaccessible upper or detailed source areas.
+7. Run `npm run build`, then qualify in a real WebGPU browser. Record the renderer, application errors, frame-rate range, screenshots and walkthrough video. Preserve hardware-specific negative results separately.
+8. Commit only after source hash, runtime hash, Building #001 preservation and evidence paths are recorded.
