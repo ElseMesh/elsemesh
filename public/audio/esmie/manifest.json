@@ -1,0 +1,89 @@
+{
+  "schema": "burning-horizons.esmie-audio/v1",
+  "generatedAt": "2026-09-28T06:50:39Z",
+  "character": "Esmie",
+  "voice": "Alba",
+  "serviceHost": "Sentinel",
+  "records": [
+    {
+      "file": "intro.wav",
+      "bytes": 1306668,
+      "durationSeconds": 29.629,
+      "sha256": "f0386daba08ce5767eda357ded27a4219509dae41710dcf70d8a2c04b9749871",
+      "provider": "sentinel:piper",
+      "model": "en_GB-alba-medium.onnx",
+      "voiceLabel": "Alba",
+      "logicalVoice": "burning_horizons.npc.test_voice"
+    },
+    {
+      "file": "memory-royal-mile.wav",
+      "bytes": 392236,
+      "durationSeconds": 8.893,
+      "sha256": "70a7b2b5e09c4e607fa45ad9346b40b81c03c562fe40a8eb75e101347e5a67c4",
+      "provider": "sentinel:piper",
+      "model": "en_GB-alba-medium.onnx",
+      "voiceLabel": "Alba",
+      "logicalVoice": "burning_horizons.npc.test_voice"
+    },
+    {
+      "file": "memory-calton-hill.wav",
+      "bytes": 308268,
+      "durationSeconds": 6.989,
+      "sha256": "fcbe6e13122f9968899d3cff33e71d0dabe234a37f585e0fc43e2eb2e2552288",
+      "provider": "sentinel:piper",
+      "model": "en_GB-alba-medium.onnx",
+      "voiceLabel": "Alba",
+      "logicalVoice": "burning_horizons.npc.test_voice"
+    },
+    {
+      "file": "memory-castle.wav",
+      "bytes": 326188,
+      "durationSeconds": 7.396,
+      "sha256": "3059af3438dad48aa23c14bc1495cebd6369f642454000e75587f322e9f72ede",
+      "provider": "sentinel:piper",
+      "model": "en_GB-alba-medium.onnx",
+      "voiceLabel": "Alba",
+      "logicalVoice": "burning_horizons.npc.test_voice"
+    },
+    {
+      "file": "memory-water-of-leith.wav",
+      "bytes": 344108,
+      "durationSeconds": 7.802,
+      "sha256": "58c853fab75b21097520627b2901061a383964720c5be15f24bd26d9fa8e752a",
+      "provider": "sentinel:piper",
+      "model": "en_GB-alba-medium.onnx",
+      "voiceLabel": "Alba",
+      "logicalVoice": "burning_horizons.npc.test_voice"
+    },
+    {
+      "file": "memory-greyfriars.wav",
+      "bytes": 285228,
+      "durationSeconds": 6.467,
+      "sha256": "3730d93e52e3e3020cf74d87c8036e579bf5078a0dd4ad04d0d724cfddd05402",
+      "provider": "sentinel:piper",
+      "model": "en_GB-alba-medium.onnx",
+      "voiceLabel": "Alba",
+      "logicalVoice": "burning_horizons.npc.test_voice"
+    },
+    {
+      "file": "memory-arthurs-seat.wav",
+      "bytes": 335404,
+      "durationSeconds": 7.605,
+      "sha256": "ff7acd07a6b7a505e428ed9ddcf1f877ec319af348459623faa4bd8e18672692",
+      "provider": "sentinel:piper",
+      "model": "en_GB-alba-medium.onnx",
+      "voiceLabel": "Alba",
+      "logicalVoice": "burning_horizons.npc.test_voice"
+    },
+    {
+      "file": "memory-waverley.wav",
+      "bytes": 324140,
+      "durationSeconds": 7.349,
+      "sha256": "1b325940c69ebd4f2380dc31131a59b9cca46b505c2fc214ac3a18999e5cd002",
+      "provider": "sentinel:piper",
+      "model": "en_GB-alba-medium.onnx",
+      "voiceLabel": "Alba",
+      "logicalVoice": "burning_horizons.npc.test_voice"
+    }
+  ]
+}

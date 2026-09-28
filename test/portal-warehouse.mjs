@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import { readFile, stat } from 'node:fs/promises';
 import test from 'node:test';
 import { Interpreter } from '../src/vendor/basic-m6502/interpreter.js';
 import { buildRecipe } from '../src/world/PortalInteriorRecipe.js';
@@ -30,11 +30,16 @@ test('C64 interaction uses a modal terminal and Building 001 sign remains', asyn
   assert.match(portal,/Use Commodore 64/); assert.match(portal,/WAREHOUSE LOFT/);
 });
 
-test('Esmie waits a minute, uses faint speech and remembers Edinburgh landmarks', async () => {
+test('Esmie is an internal Alba voice with no popup and remembers Edinburgh landmarks', async () => {
   const ghost=await readFile(new URL('../src/world/WarehouseGhost.js',import.meta.url),'utf8');
-  assert.match(ghost,/this\.elapsed >= 60/);
-  assert.match(ghost,/this\.quoteElapsed >= 300/);
-  assert.match(ghost,/utterance\.volume = \.28/);
+  assert.match(ghost,/this\.elapsed>=60/);
+  assert.match(ghost,/this\.quoteElapsed>=300/);
+  assert.match(ghost,/audio\/esmie/); assert.match(ghost,/voice\.volume=\.28/);
+  assert.doesNotMatch(ghost,/createElement|caption|speechSynthesis|SpeechSynthesisUtterance/);
   for(const landmark of ['Royal Mile','Calton Hill','Edinburgh Castle','Water of Leith','Greyfriars','Arthur\'s Seat','Waverley Station']) assert.match(ghost,new RegExp(landmark.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')));
   assert.match(ghost,/ship/); assert.match(ghost,/treasure/); assert.match(ghost,/Esmie, from Edinburgh/);
+  const manifest=JSON.parse(await readFile(new URL('../public/audio/esmie/manifest.json',import.meta.url),'utf8'));
+  assert.equal(manifest.voice,'Alba'); assert.equal(manifest.serviceHost,'Sentinel'); assert.equal(manifest.records.length,8);
+  assert.ok(manifest.records[0].durationSeconds>=28&&manifest.records[0].durationSeconds<=32);
+  for(const record of manifest.records){const file=new URL(`../public/audio/esmie/${record.file}`,import.meta.url);assert.ok((await stat(file)).size>100000);assert.equal((await readFile(file)).subarray(0,4).toString(),'RIFF');}
 });
