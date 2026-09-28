@@ -1,6 +1,8 @@
 import { Noise2D, smoothstep, clamp, lerp } from '../util/Noise.js';
 import { WORLD } from './WorldLayout.js';
 import { THIRD, thirdIslandHeight } from './ThirdIslandLayout.js';
+import { FOURTH, fourthIslandHeight } from './FourthIslandLayout.js';
+import { ISLAND_FIVE, islandFiveHeight } from './IslandFiveLayout.js';
 import { softRamp, erosionNoise, sampleGrid, upsample2, boxBlur } from './terrain/TerrainNoise.js';
 import { ridgeEnvelope, SEA_STACKS, PATHS, polylineDistance } from './terrain/IslandShape.js';
 
@@ -71,8 +73,49 @@ export class TerrainData {
 		this.generate();
 		this.carveCaveApproach();
 		this.addThirdIsland();
+		this.addFourthIsland();
+		this.addFifthIsland();
 		this.buildMinMax();
 
+	}
+
+	addFourthIsland() {
+		const { res, origin, texel } = this;
+		for ( let j = 0; j < res; j ++ ) {
+			const z = origin + ( j + 0.5 ) * texel;
+			if ( Math.abs( z - FOURTH.z ) > FOURTH.radiusZ * 1.45 ) continue;
+			for ( let i = 0; i < res; i ++ ) {
+				const x = origin + ( i + 0.5 ) * texel, k = j * res + i;
+				if ( Math.abs( x - FOURTH.x ) > FOURTH.radiusX * 1.45 ) continue;
+				const h = fourthIslandHeight( x, z );
+				if ( h <= this.heights[ k ] ) continue;
+				this.heights[ k ] = h;
+				this.rock[ k ] = h < 1 ? 0.12 : 0.04;
+				this.sand[ k ] = h < 3.8 ? 225 : 18;
+				this.seagrass[ k ] = h < -1 && h > -12 ? 95 : 0;
+				this.path[ k ] = 0;
+			}
+		}
+	}
+
+	addFifthIsland() {
+		const { res, origin, texel } = this;
+		const extent = ISLAND_FIVE.radius * 1.45;
+		for ( let j = 0; j < res; j ++ ) {
+			const z = origin + ( j + 0.5 ) * texel;
+			if ( Math.abs( z - ISLAND_FIVE.center.z ) > extent ) continue;
+			for ( let i = 0; i < res; i ++ ) {
+				const x = origin + ( i + 0.5 ) * texel, k = j * res + i;
+				if ( Math.abs( x - ISLAND_FIVE.center.x ) > extent ) continue;
+				const h = islandFiveHeight( x, z );
+				if ( h <= this.heights[ k ] ) continue;
+				this.heights[ k ] = h;
+				this.rock[ k ] = 0.08;
+				this.sand[ k ] = h < 2.4 ? 235 : 24;
+				this.seagrass[ k ] = h < -1 && h > -12 ? 100 : 0;
+				this.path[ k ] = 0;
+			}
+		}
 	}
 
 	addThirdIsland() {

@@ -102,6 +102,16 @@ The included `public/models/godzilla/steam79-walk.glb` is a Blender-prepared, re
 
 [Abandoned Warehouse](https://sketchfab.com/3d-models/abandoned-warehouse-698a34300af34095ac6593f348585daa) by Arsen Ismailov is licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). The preserved author-linked source is `warehouseupload2.blend`; the Building 002 pipeline creates a working derivative and runtime GLB while retaining this attribution.
 
+## Island Four: Forest Cabin
+
+[Forest Cabin](https://www.blendkit.com/asset-gallery-detail/a1b23c3e-5e04-4ee5-8dc5-ce4016d0e90a/)
+by **3dquads blender** is released under Creative Commons Zero (CC0). The untouched
+74,493,172-byte Blender source is preserved outside the public repository with SHA-256
+`8861540e29e3457adba400f36b4ac9dfb9d1775e01f11d92df2a2423184c3c8f`.
+The included `public/models/buildings/forest-cabin.glb` is a game-oriented derivative:
+58,662 triangles, 20 materials, 26 retained 512 px texture images and SHA-256
+`d63b2edf668272d53c1217e9413f3810b94e548b4ea56313c2cf3a264c457d6c`.
+
 ## Techniques and references
 
 ## Scanned explorer and Loz

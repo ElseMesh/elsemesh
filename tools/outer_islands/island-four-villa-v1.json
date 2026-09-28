@@ -1,0 +1,34 @@
+{
+  "schema": "agent-control.outer-island-villa/v1",
+  "operation": "island-four-forest-edge-villa",
+  "author": "Agent Control",
+  "additive": true,
+  "source": {
+    "name": "Forest Cabin",
+    "url": "https://www.blendkit.com/asset-gallery-detail/a1b23c3e-5e04-4ee5-8dc5-ce4016d0e90a/",
+    "author": "3dquads blender",
+    "licence": "CC0",
+    "assetBaseId": "a1b23c3e-5e04-4ee5-8dc5-ce4016d0e90a",
+    "versionId": "72521002-7689-43fe-a95c-ef5cc9fbbbb7",
+    "sourceBytes": 74493172,
+    "sourceSha256": "8861540e29e3457adba400f36b4ac9dfb9d1775e01f11d92df2a2423184c3c8f"
+  },
+  "runtime": {
+    "path": "public/models/buildings/forest-cabin.glb",
+    "bytes": 8289512,
+    "sha256": "d63b2edf668272d53c1217e9413f3810b94e548b4ea56313c2cf3a264c457d6c",
+    "meshObjects": 50,
+    "vertices": 30269,
+    "triangles": 58662,
+    "materials": 20,
+    "textureImages": 26,
+    "maximumTextureDimension": 512
+  },
+  "placement": {
+    "islandCentre": [-500, 650],
+    "villa": [-500, 720],
+    "relationship": "far southern forest edge overlooking the open ocean",
+    "forestViewCorridorProtected": true
+  },
+  "protected": ["island-one", "underneath", "island-two", "island-three", "building-001", "building-002"]
+}

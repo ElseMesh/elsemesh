@@ -35,6 +35,8 @@ import { Whale } from './world/marine/Whale.js';
 import { KaijuEncounter } from './world/KaijuEncounter.js';
 import { MonorailSystem } from './world/MonorailSystem.js';
 import { ThirdIslandSystem } from './world/ThirdIslandSystem.js';
+import { FourthIslandSystem } from './world/FourthIslandSystem.js';
+import { IslandFiveSystem } from './world/IslandFiveSystem.js';
 
 import { OceanFFT } from './ocean/OceanFFT.js';
 import { WaterSurface } from './ocean/WaterSurface.js';
@@ -338,6 +340,8 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 		this.avatar = new PlayerAvatar( scene, this.boatCtl );
 		this.avatarChooser = new AvatarChooser({ app: this });
 		this.thirdIsland = new ThirdIslandSystem( this );
+		this.fourthIsland = new FourthIslandSystem( this );
+		this.fifthIsland = new IslandFiveSystem( this );
 		this.monorail.restorePlayer( this.player );
 		this.pistol = new SurvivalPistol( scene );
 		// birds, beach crabs, sanderlings (after spray / query / boat, which they use)
@@ -423,6 +427,7 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 			await GPU.queue.onSubmittedWorkDone();
 
 		}
+		if ( this.qs.has( 'view' ) ) window.__view?.( this.qs.get( 'view' ) );
 
 	}
 
@@ -684,6 +689,8 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 		else if ( this.monorail.state !== 'riding' && !this.thirdIsland.active ) this.player.update( dt );
 		if ( ! this.freeCam && !this.thirdIsland.active ) this.monorail.update( dt, this.player, this.input, this.camera, ( message ) => this.ui?.ui.toast( message ) );
 		this.thirdIsland.update( dt );
+		this.fourthIsland.update( dt );
+		this.fifthIsland.update( dt );
 		this.esmie.update( dt );
 		this.monorail.marine.update(dt, this.camera.position);
 		this.avatar.update( dt, this.player, this.camera, this.freeCam );

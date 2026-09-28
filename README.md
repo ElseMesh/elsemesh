@@ -25,6 +25,7 @@ The project is also exploring an **open federated virtual-world protocol**: inde
 5. Explore the second island, read the expedition log in Station B, and locate the silent signal mast. The same train returns to the home island.
 6. Sail south past Godzilla to the third island's north-facing jetty. Stop alongside in deep water and step ashore. Meet Loz outside **Loz's Helicopter Rental** and press **E** for the keys.
 7. Follow the lit path to the central helipad. Board the neon pink helicopter with **E**, climb with **Space**, and fly around the islands. Trees sway and a windsock shows the gusts. See the [flight guide](docs/THIRD-ISLAND-HELICOPTER.md).
+8. Continue west by boat or helicopter to Island Four. Cross the natural shoreline into its forest; the CC0 villa is set at the far southern woodland edge overlooking the open ocean. See the [Island Four source and placement report](docs/ISLAND-FOUR-FOREST-VILLA.md).
 
 The mystery story is an evolving playable prototype. The existing signal objective has a first reveal; a longer investigation and ending are still to be built. The firearm is a finite-ammo survival sidearm with muzzle flash and reload; combat and damage are not yet implemented. The second island terrain and rail architecture are procedural in-game assets. UNDERNEATH was authored in Blender.
 
@@ -119,6 +120,8 @@ The local journey video is captured from the running game with `tools/video/jour
 ## Blender and world editing
 
 `npm run world:export` exports the home island's heightfield and masks into `artifacts/world/` for Blender. [The Blender workflow](docs/BLENDER-MODDING.md) describes the cave model and import/export process. The cave GLB and layout are under `public/models/world/`. The prepared Godzilla asset is `public/models/godzilla/steam79-walk.glb`; `tools/blender/prepare_godzilla.py` documents its reduction and animation.
+
+Island Four adds a forest residence using the CC0 BlendKit Forest Cabin at the far ocean-facing edge. Island Five is a separate forest-only island built through a governed Agent Control experiment. The [Island Four asset record](docs/ISLAND-FOUR-FOREST-VILLA.md) and [Island Five learning ledger](docs/ISLAND-FIVE-AGENT-CONTROL.md) record source hashes, controller failures, Codex corrections, and current limits.
 
 ## Project status
 

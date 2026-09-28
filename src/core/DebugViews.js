@@ -43,6 +43,11 @@ export const VIEWS = {
 	// the isolated interior while this explicit review view is active.
 	portalLoft: { p: [ 313, 20, 292 ], yaw: 2.29, pitch: 0.04, time: 17.1, portal: true },
 	portalMezzanine: { p: [ 299, 22.6, 308.2 ], yaw: 1.80, pitch: - 0.04, time: 17.1, portal: true },
+	// Island Four: approach from the open ocean and inspect the villa at the
+	// far forest edge without disturbing gameplay state.
+	islandFourVilla: { p: [ - 500, 13.5, 758 ], yaw: 0, pitch: - 0.12, time: 16.4 },
+	islandFourAerial: { p: [ - 430, 92, 770 ], yaw: - 0.72, pitch: - 0.58, time: 16.4 },
+	islandFiveForest: { p: [ - 800, 38, 520 ], yaw: 0, pitch: - 0.2, time: 15.2 },
 };
 
 export function installDebugViews( app ) {

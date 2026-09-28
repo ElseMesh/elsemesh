@@ -5,6 +5,8 @@ Reporting period: **26–28 September 2026**. This summary follows repository hi
 
 ## 28 September 2026
 
+- **Agent Control:** attempted the bounded Island Five forest-only build in an isolated clean worktree. The controller correctly blocked undeclared context and dirty state, produced four useful deterministic module/test/document files, then failed its full parcel on a nested allowed-path defect. Codex retained the failures, corrected island overlap, integrated terrain and runtime rendering, and added regression coverage.
+- **Agent Control:** created additive Island Four west of Island Three, preserved the three existing islands, formed a natural boat-reachable shoreline and placed a qualified CC0 Forest Cabin at the far southern forest edge overlooking the ocean. Reduced the untouched 74.5 MB Blender source to an 8.29 MB browser GLB with 512 px textures while retaining all 58,662 triangles.
 - **Agent Control:** extended Island 3 beneath Building #002 with a rounded terrain plateau, removed its redundant separate path and retained the existing portal-warehouse sign.
 - **Agent Control:** upgraded the portal warehouse with CC0 scanned brick and concrete PBR maps, polished tiled flooring, restrained reflections, rusted black RSJs, warmer local lighting, stair tread lights, chrome details, near-wall graffiti, rugs, plants, pictures, living, dining and kitchen detail.
 - **Agent Control:** rebuilt the mezzanine presentation with swivel chairs, populated bookshelves, detailed retro desks, a black feature wall and an original period-inspired rainbow computer emblem in place of the neon artwork.
