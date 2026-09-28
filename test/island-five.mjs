@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { ISLAND_FIVE, islandFiveHeight, islandFiveContains } from '../src/world/IslandFiveLayout.js';
-import { createIslandFiveForestData } from '../src/world/IslandFiveSystem.js';
+import { createIslandFiveForestData, createIslandFiveCanopyRecords } from '../src/world/IslandFiveSystem.js';
 import { FOURTH } from '../src/world/FourthIslandLayout.js';
 
 test('Island Five is bounded, separated, forest-only, and deterministic', () => {
@@ -22,4 +22,18 @@ test('Island Five is bounded, separated, forest-only, and deterministic', () => 
     assert.ok(Number.isFinite(tree.scale) && Number.isFinite(tree.rotation));
   }
   assert.ok(new Set(treesA.map(tree => tree.index)).size === treesA.length);
+});
+
+test('Island Five has rolling relief and emits established canopy records', () => {
+  const heights = [];
+  for (let x = -855; x <= -745; x += 11) for (let z = 385; z <= 475; z += 9) {
+    if (islandFiveContains(x, z)) heights.push(islandFiveHeight(x, z));
+  }
+  assert.ok(Math.max(...heights) - Math.min(...heights) > 8, 'terrain must read as rolling rather than flat');
+  const canopy = createIslandFiveCanopyRecords();
+  assert.equal(canopy.length, createIslandFiveForestData().length);
+  for (const record of canopy) {
+    assert.ok(record.H > 7 && Number.isFinite(record.seed));
+    assert.ok(Number.isFinite(record.la) && record.l > 0);
+  }
 });

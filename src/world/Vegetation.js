@@ -14,6 +14,7 @@ import {
 import { createPlantLeafMaterial, createCanopyMaterial, createCanopyBakeMaterials, impostorColor, uCanopyNear } from './vegetation/VegMaterials.js';
 import { ImpostorAtlas, buildImpostorQuad } from './vegetation/Impostors.js';
 import { LeafAtlas } from './vegetation/LeafTextures.js';
+import { createIslandFiveCanopyRecords } from './IslandFiveSystem.js';
 
 // Island vegetation: coconut palms along the back of the beach (leaning to the sea), a closed
 // rainforest canopy on the hillsides and gullies thinning into scattered trees and shrub
@@ -109,6 +110,9 @@ export class Vegetation {
 		for (const [i, [x,z]] of [[102,588],[108,590],[127,603],[126,608]].entries()) {
 			recs.bananas.push({x,z,y:terrain.heightAt(x,z),H:2.4,l:0,la:0,s:1,seed:.12+i*.21,yaw:i*1.7});
 		}
+		// Agent Control: Island Five reuses the authoritative canopy records rather than
+		// placeholder spheres. This shares the same atlas, geometry, wind and LOD path.
+		recs.trees.push(...createIslandFiveCanopyRecords());
 		this.records = recs;
 		const t1 = performance.now();
 		const grassMask = buildGrassMask( site );

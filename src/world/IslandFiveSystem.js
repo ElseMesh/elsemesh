@@ -1,14 +1,10 @@
-import { CylinderGeometry, SphereGeometry, Group, Mesh } from '../engine/index.js';
-import { standard } from '../materials/Materials.js';
+import { CylinderGeometry, Group, Mesh } from '../engine/index.js';
 import { createTreeBarkMaterial } from './vegetation/ScannedBark.js';
 import { ISLAND_FIVE, islandFiveHeight, islandFiveForestContains } from './IslandFiveLayout.js';
 
 const TREE_COUNT = 180;
 const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5));
 
-const canopyMaterial = standard({ name: 'Island Five forest canopy', color: 0x2d6337, roughness: 0.95 });
-canopyMaterial.underwaterLighting = 'none';
-canopyMaterial.localLightsCheap = true;
 const add = (parent, geometry, material, x = 0, y = 0, z = 0) => {
   const mesh = new Mesh(geometry, material);
   mesh.position.set(x, y, z);
@@ -43,6 +39,21 @@ export function createIslandFiveForestData() {
   return Object.freeze(trees);
 }
 
+// Agent Control: adapt the bounded forest recipe to the exact record contract used by the
+// established Vegetation canopy. Island Five therefore shares its leaf atlas, wind shader,
+// near geometry and distant crown impostors instead of maintaining a second visual system.
+export function createIslandFiveCanopyRecords() {
+  return createIslandFiveForestData().map((tree) => {
+    const sy = 0.86 + ((tree.index * 17) % 23) / 100;
+    const s = 0.78 + ((tree.index * 37) % 31) / 100;
+    return Object.freeze({
+      x: tree.x, y: tree.y - 0.12, z: tree.z, s, sy,
+      yaw: tree.rotation, la: tree.rotation, l: sy,
+      H: 12.5 * s * sy, seed: ((tree.index * 73) % 997) / 997
+    });
+  });
+}
+
 export class IslandFiveSystem {
   constructor(app, options = {}) {
     this.app = app;
@@ -50,9 +61,7 @@ export class IslandFiveSystem {
     this.group.name = 'Island Five — forest only';
     this.trees = createIslandFiveForestData();
     this.trunkGeometry = new CylinderGeometry(0.34, 0.46, 5.8, 8);
-    this.canopyGeometry = new SphereGeometry(2.1, 10, 8);
     this.trunkMaterial = options.trunkMaterial || createTreeBarkMaterial();
-    this.canopyMaterial = options.canopyMaterial || canopyMaterial;
     this.build();
   }
 
@@ -64,7 +73,8 @@ export class IslandFiveSystem {
       root.rotation.y = tree.rotation;
       root.scale.setScalar(tree.scale);
       add(root, this.trunkGeometry, this.trunkMaterial, 0, 2.9, 0);
-      add(root, this.canopyGeometry, this.canopyMaterial, 0, 6.0, 0);
+      // The visible crown comes from Vegetation's shared mapped canopy. A short scanned-bark
+      // base remains here for close inspection and collision grounding.
       this.group.add(root);
       this.app?.colliders?.addCylinder(tree.x, tree.z, tree.collision.radius, tree.collision.yMin, tree.collision.yMax, tree.collision);
     }

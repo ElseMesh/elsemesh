@@ -15,8 +15,8 @@ const smoothstep = value => {
   return t * t * (3 - 2 * t);
 };
 
-// Analytic height: sea outside the island, a smooth beach fringe, and a low
-// forestable interior. The function is bounded and side-effect free for
+// Analytic height: sea outside the island, a smooth beach fringe, and a rolling
+// forest interior. The function is bounded and side-effect free for
 // TerrainData integration or deterministic tests.
 export function islandFiveHeight(x, z) {
   const dx = (x - ISLAND_FIVE.center.x) / ISLAND_FIVE.radius;
@@ -27,8 +27,12 @@ export function islandFiveHeight(x, z) {
 
   const land = smoothstep((1 - distance) / 0.18);
   const interior = smoothstep((1 - distance) / 0.62);
-  const relief = 0.75 * Math.sin((x + 17) * 0.071) * Math.cos((z - 9) * 0.063);
-  return Math.max(-4, -3.5 + land * 4.5 + interior * (3.2 + relief));
+  const shoreFade = smoothstep((1 - distance) / 0.28);
+  const broadRidge = Math.sin((x + 34) * 0.024) * 2.4 + Math.cos((z - 51) * 0.031) * 1.8;
+  const crossedRidge = Math.sin((x + z) * 0.043) * 1.35 + Math.cos((x - z) * 0.037) * 1.1;
+  const hummocks = Math.sin((x + 17) * 0.091) * Math.cos((z - 9) * 0.083) * 0.65;
+  const relief = (broadRidge + crossedRidge + hummocks) * shoreFade;
+  return Math.max(-4, -3.5 + land * 5.0 + interior * 8.8 + relief);
 }
 
 export function islandFiveContains(x, z) {

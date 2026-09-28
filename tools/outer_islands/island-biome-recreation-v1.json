@@ -1,0 +1,33 @@
+{
+  "schema": "agent-control.outer-island-biomes/v1",
+  "author": "Agent Control",
+  "operation": "recreate-real-and-cartoon-forest-islands",
+  "constraints": {
+    "additive": true,
+    "preserveExistingWorld": true,
+    "maxNewRealCanopyRecords": 180,
+    "externalAssets": false
+  },
+  "islands": [
+    {
+      "id": "island-five",
+      "style": "realistic",
+      "terrain": "bounded rolling analytic relief",
+      "vegetation": "reuse authoritative Vegetation canopy geometry, leaf atlas, wind and LOD impostors",
+      "forbidden": ["sphere canopy placeholders", "flat disc terrain"]
+    },
+    {
+      "id": "island-four",
+      "name": "Cartoon Island",
+      "style": "intentional stylised",
+      "features": ["forest villa", "banana trees", "curved banana bunches", "articulated cartoon monkeys"]
+    }
+  ],
+  "acceptance": [
+    "island-five-relief-range-gt-8m",
+    "island-five-canopy-record-contract",
+    "cartoon-island-banana-trees",
+    "cartoon-island-monkeys",
+    "production-build"
+  ]
+}
