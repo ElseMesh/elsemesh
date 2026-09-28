@@ -19,6 +19,43 @@ export function reviewCameraMinimumHeight(terrainHeight, colliderHeight, waterHe
   return ground > -2 ? ground + 1.7 : (Number.isFinite(waterHeight) ? waterHeight : 0) + 0.45;
 }
 
+// Agent Control: broad visual bounds let the centre of the camera act as an
+// island identifier without raycasting every tree, building and terrain tile.
+const VISIBLE_ISLANDS = Object.freeze([
+  Object.freeze({ name: 'Home Island · Island 1', x: 0, y: 22, z: -120, radius: 270 }),
+  Object.freeze({ name: 'Station Island · Island 2', x: RAIL.island.x, y: 12, z: RAIL.island.z, radius: RAIL.island.radius + 8 }),
+  Object.freeze({ name: 'Helicopter Island · Island 3', x: THIRD.x, y: 13, z: THIRD.z, radius: THIRD.radius + 15 }),
+  Object.freeze({ name: 'Cartoon Island · Island 4', x: FOURTH.x, y: 13, z: FOURTH.z, radius: Math.max(FOURTH.radiusX, FOURTH.radiusZ) }),
+  Object.freeze({ name: 'Forest Island · Island 5', x: ISLAND_FIVE.center.x, y: 13, z: ISLAND_FIVE.center.z, radius: ISLAND_FIVE.radius })
+]);
+
+export function resolveViewedIsland(x, y, z, dx, dy, dz) {
+  const directionLength = Math.hypot(dx, dy, dz);
+  if (!Number.isFinite(directionLength) || directionLength < 0.0001) return null;
+  dx /= directionLength;
+  dy /= directionLength;
+  dz /= directionLength;
+  let best = null;
+  for (const island of VISIBLE_ISLANDS) {
+    const horizontalDistance = Math.hypot(island.x - x, island.z - z);
+    if (horizontalDistance <= island.radius * 1.05) continue;
+    const tx = island.x - x;
+    const ty = island.y - y;
+    const tz = island.z - z;
+    const distance = Math.hypot(tx, ty, tz);
+    const alignment = (tx * dx + ty * dy + tz * dz) / distance;
+    if (alignment <= 0) continue;
+    const angle = Math.acos(Math.max(-1, Math.min(1, alignment)));
+    const angularRadius = Math.asin(Math.min(0.92, island.radius / distance)) + 0.025;
+    if (angle > angularRadius) continue;
+    const score = angle / angularRadius;
+    if (!best || score < best.score || (Math.abs(score - best.score) < 0.05 && distance < best.distance)) {
+      best = { name: island.name, distance, score };
+    }
+  }
+  return best ? { name: best.name, distance: best.distance } : null;
+}
+
 export const OUTER_ISLAND_NAMES = Object.freeze({
   [FOURTH.x + ',' + FOURTH.z]: 'Cartoon Island · Island 4',
   [ISLAND_FIVE.center.x + ',' + ISLAND_FIVE.center.z]: 'Forest Island · Island 5'

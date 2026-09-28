@@ -3,7 +3,7 @@ import { UI } from './UI.js';
 import { G } from '../core/Globals.js';
 import { GroundBounce } from '../materials/GroundBounce.js';
 import { WindowManager } from './WindowManager.js';
-import { resolveWorldLocation } from '../world/WorldLocation.js';
+import { resolveViewedIsland, resolveWorldLocation } from '../world/WorldLocation.js';
 
 // Binds the Burning Horizons UI (panel + HUD) to the running app.
 const SEA = {
@@ -19,6 +19,7 @@ export class AppUI {
 
 		this.app = app;
 		this.ui = ui;
+		this.viewDirection = new THREE.Vector3();
 		this.windows = ui.windows = new WindowManager( { root: ui.root, releasePointerLock: () => document.exitPointerLock?.() } );
 
 		let syncingSettings = false;
@@ -344,6 +345,11 @@ export class AppUI {
 		const p = app.player;
 		const locationPoint = app.freeCam ? app.camera.position : p.position;
 		ui.setLocation( resolveWorldLocation( locationPoint.x, locationPoint.y, locationPoint.z, app.terrainData.heightAt( locationPoint.x, locationPoint.z ) ) );
+		app.camera.getWorldDirection( this.viewDirection );
+		ui.setViewedLocation( resolveViewedIsland(
+			app.camera.position.x, app.camera.position.y, app.camera.position.z,
+			this.viewDirection.x, this.viewDirection.y, this.viewDirection.z
+		) );
 		if ( app.freeCam ) {
 
 			ui.setMode( 'Free camera' );

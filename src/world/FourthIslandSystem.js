@@ -97,7 +97,7 @@ export class FourthIslandSystem {
     const terrain=this.app.terrainData, colliders=this.app.colliders;
     const crownGeometry=fruitTreeCrownGeometry(), crownMaterial=fruitTreeLeafMaterial();
     this.trees=[];
-    for(let index=0; index<58; index++) {
+    for(let index=0; index<82; index++) {
       const angle=index*2.3999632297, radius=23+(index%15)*6.1;
       const x=FOURTH.x+Math.cos(angle)*radius, z=FOURTH.z+Math.sin(angle)*radius*.78;
       if(!fourthIslandContains(x,z,-9))continue;
@@ -116,13 +116,22 @@ export class FourthIslandSystem {
         crown.position.set(Math.cos(a)*.85,height/9-.65+crownIndex*.14,Math.sin(a)*.85);
         crown.scale.set(2.25,1.1,1.55);crown.rotation.y=a;crown.castShadow=true;parent.add(crown);crowns.push(crown);
       }
+      // Agent Control: side limbs emerge from different trunk joints and rise at
+      // varied angles, so the canopy reads as grown wood rather than horizontal props.
+      for(let branchIndex=0;branchIndex<3;branchIndex++){
+        const joint=joints[4+branchIndex], a=index*.91+branchIndex*2.18;
+        const direction=new Vector3(Math.cos(a)*(1.65+branchIndex*.18),.72+branchIndex*.22,Math.sin(a)*(1.65+branchIndex*.18));
+        const branch=new Mesh(new CylinderGeometry(.055,.15,direction.length(),7),this.bark);
+        branch.position.copy(direction).multiplyScalar(.5);branch.quaternion.setFromUnitVectors(new Vector3(0,1,0),direction.clone().normalize());branch.castShadow=true;joint.add(branch);
+        const sideCrown=new Mesh(crownGeometry,crownMaterial);sideCrown.position.copy(direction);sideCrown.scale.set(1.2,.78,1.0);sideCrown.castShadow=true;joint.add(sideCrown);crowns.push(sideCrown);
+      }
       this.trees.push({root,joints,crowns});colliders.addCylinder(x,z,.54,y,y+height,{tag:'cartoon-island-tree'});
     }
     this.buildBananaGrove(terrain,colliders);
   }
   buildBananaGrove(terrain,colliders) {
     const stemGeometry=new CylinderGeometry(.20,.31,4.3,8), leafGeometry=new SphereGeometry(1,10,6);
-    for(let index=0;index<12;index++){
+    for(let index=0;index<18;index++){
       const angle=index*2.3999632297,x=FOURTH.x-37+Math.cos(angle)*(13+(index%3)*4),z=FOURTH.z-8+Math.sin(angle)*(14+(index%4)*3);
       const y=terrain.heightAt(x,z);if(y<2||Math.hypot(x-FOURTH.villa.x,z-FOURTH.villa.z)<25)continue;
       const tree=new Group();tree.name='Cartoon banana tree';tree.position.set(x,y,z);tree.rotation.y=index*.83;this.group.add(tree);

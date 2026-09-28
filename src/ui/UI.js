@@ -1949,6 +1949,12 @@ export class UI {
 
 		// top-centre: notifications
 		this.toastsEl = h( 'div', 'tw-toasts', { 'aria-live': 'polite' } );
+		this.viewedLocationEl = h( 'div', 'tw-viewed-location tw-glass', {
+			role: 'status', 'aria-label': 'Island in view', hidden: ''
+		} );
+		this.viewedLocationEl.innerHTML = '<span class="tw-viewed-reticle" aria-hidden="true"></span><span><small>Island in view</small><strong></strong></span><em></em>';
+		this.viewedLocationName = this.viewedLocationEl.querySelector( 'strong' );
+		this.viewedLocationDistance = this.viewedLocationEl.querySelector( 'em' );
 
 		// bottom-centre: interaction prompt
 		this.promptEl = h( 'div', 'tw-prompt tw-glass', { 'aria-live': 'polite' } );
@@ -1971,7 +1977,7 @@ export class UI {
 		this.depthCanvas = this.depthEl.querySelector( '.tw-depth-tape' );
 		this.depthNum = this.depthEl.querySelector( '.tw-depth-num' );
 
-		hud.append( tl, this.toastsEl, this.promptEl, this.boatEl, this.depthEl );
+		hud.append( tl, this.toastsEl, this.viewedLocationEl, this.promptEl, this.boatEl, this.depthEl );
 
 		// the one element that survives photo mode
 		this.photoHint = h( 'div', 'tw-photo-hint' );
@@ -2729,6 +2735,24 @@ export class UI {
 		if ( label === this._location ) return;
 		this._location = label;
 		this.locationEl.textContent = label;
+
+	}
+
+	setViewedLocation( target ) {
+
+		if ( ! target ) {
+			this._viewedLocation = '';
+			this.viewedLocationEl.hidden = true;
+			return;
+		}
+		const metres = Math.max( 0, target.distance );
+		const distance = metres >= 1000 ? `${ ( metres / 1000 ).toFixed( 1 ) } km` : `${ Math.round( metres ) } m`;
+		const signature = `${ target.name }|${ distance }`;
+		if ( signature === this._viewedLocation ) return;
+		this._viewedLocation = signature;
+		this.viewedLocationName.textContent = target.name;
+		this.viewedLocationDistance.textContent = distance;
+		this.viewedLocationEl.hidden = false;
 
 	}
 

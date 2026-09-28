@@ -645,6 +645,45 @@ body {
 	text-shadow: 0 1px 8px #000;
 }
 
+.tw-viewed-location {
+	position: absolute;
+	top: calc(76 * var(--tw-u));
+	left: 50%;
+	transform: translateX(-50%);
+	display: flex;
+	align-items: center;
+	gap: calc(10 * var(--tw-u));
+	padding: calc(8 * var(--tw-u)) calc(13 * var(--tw-u));
+	border: 1px solid color-mix(in srgb, var(--tw-cyan) 45%, transparent);
+	pointer-events: none;
+	text-transform: uppercase;
+	box-shadow: 0 6px 24px #0006;
+}
+
+.tw-viewed-location[hidden] { display: none; }
+.tw-viewed-location span:not(.tw-viewed-reticle) { display: grid; gap: calc(2 * var(--tw-u)); }
+.tw-viewed-location small,
+.tw-viewed-location em {
+	font-family: var(--tw-mono);
+	font-size: calc(8 * var(--tw-u));
+	font-style: normal;
+	letter-spacing: .13em;
+	color: var(--tw-muted);
+}
+.tw-viewed-location strong {
+	font-family: var(--tw-mono);
+	font-size: calc(11 * var(--tw-u));
+	letter-spacing: .1em;
+	color: var(--tw-text);
+}
+.tw-viewed-reticle {
+	width: calc(10 * var(--tw-u));
+	height: calc(10 * var(--tw-u));
+	border: 1px solid var(--tw-cyan);
+	border-radius: 50%;
+	box-shadow: 0 0 10px color-mix(in srgb, var(--tw-cyan) 75%, transparent);
+}
+
 .tw-root.is-idle .tw-stats,
 .tw-root.is-idle .tw-mark,
 .tw-root.is-idle .tw-brand-name,

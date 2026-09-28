@@ -22,6 +22,9 @@ test('Island Four is the declared Cartoon Island biome', async () => {
   assert.match(source, /Cartoon Island/);
   assert.match(source, /Cartoon banana tree/);
   assert.match(source, /new TreeWildlife/);
+  assert.match(source, /index<82/);
+  assert.match(source, /index<18/);
+  assert.match(source, /side limbs emerge from different trunk joints/);
   assert.match(source, /TorusGeometry\(\.16,.045/);
   assert.match(source, /new Box3\(\)\.setFromObject\(model\)/);
   assert.match(source, /y\+\.08-base/);

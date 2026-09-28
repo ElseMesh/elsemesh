@@ -63,8 +63,9 @@ export class TreeWildlife {
 		const leafGeometry=fruitTreeCrownGeometry(), leafMaterial=fruitTreeLeafMaterial();
 		this.a=new Vector3(); this.b=new Vector3(); this.c=new Vector3(); this.rotation=new Quaternion();
 		// Agent Control: closest trees to the rental-to-pad path get wildlife; all fruit follows real wind joints.
-		const chosen=[...trees].sort((a,b)=>Math.hypot(a.root.position.x-115,a.root.position.z-606)-Math.hypot(b.root.position.x-115,b.root.position.z-606));
-		for(let i=0;i<Math.min(8,chosen.length);i++) {
+		const centre=trees.reduce((p,t)=>p.add(t.root.position),new Vector3()).multiplyScalar(1/Math.max(1,trees.length));
+		const chosen=[...trees].sort((a,b)=>a.root.position.distanceToSquared(centre)-b.root.position.distanceToSquared(centre));
+		for(let i=0;i<Math.min(12,chosen.length);i++) {
 			const tree=chosen[i], anchor=new Group(); anchor.rotation.y=i*1.73; tree.joints[4+i%3].add(anchor);
 			const habitat={anchor,tree,variant:i%3,scale:1,position:new Vector3(),distance:0};this.habitats.push(habitat);
 			const branch=(a,b,r)=>{
@@ -90,11 +91,11 @@ export class TreeWildlife {
 				const twig=new Mesh(curvedBranchGeometry((t,out)=>out.copy(start).lerp(end,t).add(new Vector3(0,Math.sin(t*Math.PI)*.18,0)),t=>.055*(1-t)+.008,8),bark);twig.castShadow=true;anchor.add(twig);
 				const leaves=new Mesh(leafGeometry,leafMaterial);leaves.position.copy(end);leaves.scale.set(.7,.8,.8);leaves.castShadow=true;anchor.add(leaves);
 			}
-			if(i<4)this.monkeys.push({anchor,tree,home:habitat,index:i,position:new Vector3()});
+			if(i<10)this.monkeys.push({anchor,tree,home:habitat,index:i,position:new Vector3()});
 		}
 		// Agent Control: only admit reachable different-tree landings with clearance from both trunks.
 		for(const monkey of this.monkeys) {
-			const from=new Vector3().setFromMatrixPosition(branchFrame(monkey.home,.83,-Math.PI/2,new Matrix4()));let best=5;
+			const from=new Vector3().setFromMatrixPosition(branchFrame(monkey.home,.83,-Math.PI/2,new Matrix4()));let best=9.5;
 			for(const candidate of this.habitats) {
 				if(candidate.tree===monkey.tree)continue;
 				const to=new Vector3().setFromMatrixPosition(branchFrame(candidate,.83,-Math.PI/2,new Matrix4())),d=from.distanceTo(to);
@@ -130,7 +131,7 @@ export class TreeWildlife {
 		for(const monkey of this.monkeys) {
 			monkey.anchor.getWorldPosition(monkey.position);
 			if(monkey.position.distanceToSquared(camera)>110*110)continue;
-			const cycle=(this.time+monkey.index*19)%96,away=monkey.destination&&cycle>=25.25&&cycle<49.25;
+			const cycle=(this.time+monkey.index*9.3)%96,away=monkey.destination&&cycle>=25.25&&cycle<49.25;
 			const jumping=!!monkey.destination&&((cycle>=24&&cycle<25.25)||(cycle>=49.25&&cycle<50.5));
 			const localTime=monkey.destination?(away?cycle-25.25:cycle>=50.5?Math.min(24,cycle-50.5):Math.min(cycle,24)):this.time+monkey.index*5.7;
 			const p=monkeyPatrol(localTime+12), t=p.phase,habitat=away?monkey.destination:monkey.home;

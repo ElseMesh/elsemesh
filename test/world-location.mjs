@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { resolveWorldLocation, reviewCameraMinimumHeight } from '../src/world/WorldLocation.js';
+import { resolveViewedIsland, resolveWorldLocation, reviewCameraMinimumHeight } from '../src/world/WorldLocation.js';
 
 test('HUD resolves every island and open water', () => {
   assert.equal(resolveWorldLocation(-500, 10, 650, 8), 'Cartoon Island · Island 4');
@@ -15,4 +15,13 @@ test('review cameras cannot descend under terrain or the sea surface', () => {
   assert.equal(reviewCameraMinimumHeight(7.8, -Infinity, 0), 9.5);
   assert.equal(reviewCameraMinimumHeight(-20, -Infinity, 0.8), 1.25);
   assert.equal(reviewCameraMinimumHeight(5, 9, 0), 10.7);
+});
+
+test('centre-view targeting names distant islands and ignores the current island', () => {
+  const towardsHome = { x: 500, y: 9, z: -840 };
+  const home = resolveViewedIsland(-500, 13, 720, towardsHome.x, towardsHome.y, towardsHome.z);
+  assert.equal(home?.name, 'Home Island · Island 1');
+  assert.ok(home.distance > 900);
+  assert.equal(resolveViewedIsland(-500, 13, 720, -towardsHome.x, -towardsHome.y, -towardsHome.z), null);
+  assert.notEqual(resolveViewedIsland(-500, 13, 720, 0, 0, -1)?.name, 'Cartoon Island · Island 4');
 });

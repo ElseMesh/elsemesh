@@ -41,7 +41,7 @@ test('fruit and monkeys follow swaying branch frames, with finite matrices and b
 		const joint=new Group();joint.position.y=4;tree.add(joint);trees.push({root:tree,joints:Array(10).fill(joint)});
 	}
 	const wildlife=new TreeWildlife(root,trees,standard({color:0x555555}));
-	assert.equal(wildlife.monkeys.length,4);assert.equal(wildlife.fruit.length,96);
+	assert.equal(wildlife.monkeys.length,8);assert.equal(wildlife.fruit.length,96);
 	assert.ok(wildlife.monkeys.some(m=>m.destination));
 	for(const m of wildlife.monkeys)if(m.destination)assert.notEqual(m.destination.tree,m.tree);
 	const camera=new Vector3(115,8,608);wildlife.update(0,camera);
