@@ -36,9 +36,9 @@ The interpreter is the MIT-licensed BASIC-M6502-TS browser build derived from Mi
 
 ## Esmie
 
-After one uninterrupted minute inside, Esmie from Edinburgh gives a faint, 29.6-second account of the islands' wrecks, hidden treasure and connected past. A different childhood memory is selected about every five minutes after that, with immediate repeats prevented. The memory pool mentions the Royal Mile, Calton Hill, Edinburgh Castle, the Water of Leith, Greyfriars Kirkyard, Arthur's Seat and Waverley Station.
+After one uninterrupted minute of play, Esmie from Edinburgh gives a faint, 29.6-second account of the islands' wrecks, hidden treasure and connected past. Her voice belongs to the entire game rather than this warehouse: a different childhood memory is selected about every five minutes wherever the player is, with immediate repeats prevented. The memory pool mentions the Royal Mile, Calton Hill, Edinburgh Castle, the Water of Leith, Greyfriars Kirkyard, Arthur's Seat and Waverley Station.
 
-The user-selected Alba voice (`en_GB-alba-medium.onnx`) was generated through the Sentinel Agent Control speech service. The eight qualified WAV files and a non-secret hash/provenance manifest are bundled under `public/audio/esmie/`, so no speech credential or provider endpoint is exposed to the browser. Playback is deliberately quiet, non-spatial and heard as an internal voice. There is no character, caption, speech bubble, toast or dialogue panel. Audio respects the game mute setting and pauses during C64 use or while the browser tab is hidden.
+The user-selected Alba voice (`en_GB-alba-medium.onnx`) was generated through the Sentinel Agent Control speech service. The eight qualified WAV files and a non-secret hash/provenance manifest are bundled under `public/audio/esmie/`, so no speech credential or provider endpoint is exposed to the browser. Playback is deliberately quiet, non-spatial and heard as an internal voice. There is no character, caption, speech bubble, toast or dialogue panel. Audio respects the game mute setting and pauses while the browser tab is hidden.
 
 ## Verification
 

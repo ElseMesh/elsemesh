@@ -12,6 +12,7 @@ Reporting period: **26–28 September 2026**. This summary follows repository hi
 - **Agent Control:** vendored the MIT-licensed BASIC-M6502-TS interpreter, adapted browser save/load to local storage, and made the mezzanine Commodore 64 a full-screen programmable terminal with login, queued input, `LIST`, `RUN`, `SAVE` and `LOAD`.
 - **Agent Control:** added Esmie from Edinburgh as a faint captioned warehouse voice: a one-minute island-history introduction and non-repeating Edinburgh childhood memories at five-minute intervals while the player remains inside.
 - **Agent Control:** replaced Esmie's provisional browser voice and caption with the user-selected Sentinel Piper Alba voice. Bundled eight verified WAVs, removed all narration popup UI and kept Esmie as quiet, non-spatial audio inside the player's head.
+- **Agent Control:** made Esmie's one-minute introduction and five-minute random Edinburgh memories available throughout the entire game instead of limiting them to time spent inside the portal warehouse.
 - **Agent Control:** retained Building #001, Building #002 and all existing island gameplay; added focused regression tests and Windows WebGPU visual evidence.
 
 ## 27 September 2026

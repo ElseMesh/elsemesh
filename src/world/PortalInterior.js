@@ -191,7 +191,6 @@ export class PortalInterior {
     this.setInteriorCollidersEnabled(true);
     for (const source of this.localLightSources) source.enabled = true;
     this.inside = true;
-    this.ghost.setActive(true);
     this.group.visible = true;
     p.position.set(this.origin.x + this.recipe.zones.arrival[0], this.origin.y + this.recipe.zones.arrival[1], this.origin.z + this.recipe.zones.arrival[2]);
     p.velocity.set(0, 0, 0);
@@ -201,7 +200,6 @@ export class PortalInterior {
   exit() {
     const p = this.app.player;
     this.inside = false;
-    this.ghost.setActive(false);
     this.group.visible = false;
     for (const source of this.localLightSources) source.enabled = false;
     this.setInteriorCollidersEnabled(false);
@@ -222,7 +220,7 @@ export class PortalInterior {
     this.cooldown = Math.max(0, this.cooldown - dt);
     const p = this.app.player;
     if (!p) return;
-    this.ghost.update(dt, this.c64.active);
+    this.ghost.update(dt);
     if (this.c64.active) return;
     if (!this.exteriorGroundResolved) {
       const ground = p.groundAt?.(100, 580, 30);

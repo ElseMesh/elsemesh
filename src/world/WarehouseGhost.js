@@ -12,16 +12,12 @@ export const ESMIE_MEMORIES = Object.freeze([
 
 export class WarehouseGhost {
   constructor(app) {
-    this.app=app; this.active=false; this.elapsed=0; this.introSpoken=false;
+    this.app=app; this.elapsed=0; this.introSpoken=false;
     this.quoteElapsed=0; this.lastMemory=-1; this.speaking=false; this.voice=null;
   }
   stop() {
     if(this.voice){this.voice.pause();this.voice.removeAttribute('src');this.voice.load();this.voice=null;}
     this.speaking=false;
-  }
-  setActive(active) {
-    if(active&&!this.active){this.elapsed=0;this.quoteElapsed=0;}
-    this.active=active;if(!active)this.stop();
   }
   chooseMemory() {
     let index=Math.floor(Math.random()*ESMIE_MEMORIES.length);
@@ -35,9 +31,8 @@ export class WarehouseGhost {
     voice.onended=voice.onerror=()=>{if(this.voice===voice){this.voice=null;this.speaking=false;}};
     this.speaking=true;voice.play().catch(()=>{if(this.voice===voice){this.voice=null;this.speaking=false;}});
   }
-  update(dt,paused=false) {
-    if(!this.active)return;
-    if(paused||document.hidden){if(this.speaking)this.stop();return;}
+  update(dt) {
+    if(document.hidden){if(this.speaking)this.stop();return;}
     if(this.voice)this.voice.volume=this.app.audio?.muted?0:.28;
     this.elapsed+=dt;
     if(!this.introSpoken&&this.elapsed>=60){this.introSpoken=true;this.quoteElapsed=0;this.speak('intro');}
