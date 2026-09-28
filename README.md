@@ -33,6 +33,8 @@ The mystery story is an evolving playable prototype. The existing signal objecti
 - Choose your avatar in the online lobby, or press **K** in-game. Male and female Microsoft Rocketbox characters have idle, walk, run and seated clips. Set a local character name and choose shirt, trouser, skin and hair colours; choices are saved in this browser and shared with all room peers. The initial hairstyles are short hair (man) and ponytail (woman). Skin tone is independent of gender; these are appearance options, not racial categories. Your scanned likeness is reserved for rental NPC Loz. See [avatar chooser](docs/AVATAR-CHOOSER.md), [stock character](docs/STOCK-PLAYER.md) and [scan provenance](docs/SCANNED-CHARACTER.md).
 - Third-island trunks bend progressively in gusts with anchored roots; crowns sway independently. Helipad edge beacons flash alternating double pulses. Breaking-wave lips and fresh whitewater now reach the third-island shoreline.
 - Photographed CC0 bark maps add trunk detail. Banana plants carry curved fruit in hanging bunches; coconut palms and mango trees also carry fruit. Four animated monkeys patrol curved, tapering branches and occasionally jump between nearby trees beside the third island's rental-to-helipad path. Limbs grow from different trunk heights; mango crowns have individual folded leaves. Fruit and wildlife are currently decorative. See [trees and wildlife](docs/TREES-AND-WILDLIFE.md).
+- The signed **Warehouse Loft** on Island 3 is now an explorable industrial home: scanned CC0 brick and concrete surfaces, polished tile reflections, rusted black steel, warm stair lighting, rugs, plants, living/dining/kitchen areas and a glass-fronted retro-computer mezzanine. The stair glass follows the handrail and ends below it. At the Commodore 64, press **E**, log in, enter numbered Microsoft BASIC lines and use `LIST`, `RUN`, `SAVE "NAME"` or `LOAD "NAME"`; programs save in this browser. See the [portal warehouse guide](docs/PORTAL-WAREHOUSE.md).
+- After one uninterrupted minute inside the warehouse, Esmie from Edinburgh tells a faint, captioned account of wrecks, treasure and the islands' shared past. While the player remains inside, she recalls a varied Edinburgh childhood memory about every five minutes. Speech respects mute, pauses while the C64 is in use and falls back to captions if the browser has no speech voice.
 
 - Hunger is **off by default on every launch**. In **H → Gameplay → Survival**, enable **Enable hunger** to restore the retained food system. With the switch off, hunger stays unchanged, the hunger HUD is hidden, B does not consume fish, and low hunger cannot slow walking. Existing saved hunger is preserved. The prototype has no starvation death mechanic.
 - When optional hunger is enabled, press **B** to prepare a fish from the cooler; low hunger slows walking.
@@ -65,6 +67,7 @@ The mystery story is an evolving playable prototype. The existing signal objecti
 | T | Talk in an online room (Enter sends, Esc cancels); otherwise pause or resume manual time |
 | M | Mute |
 | F1 or ? | Full controls |
+| E at the mezzanine C64 | Sit at the terminal and enter Microsoft BASIC |
 
 ## Run and build
 

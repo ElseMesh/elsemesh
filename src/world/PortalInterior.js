@@ -1,14 +1,27 @@
 import { Group, Mesh, BoxGeometry, CylinderGeometry, SphereGeometry, TorusGeometry, Vector3, Color, Euler, Quaternion, Matrix4, mergeGeometries } from '../engine/index.js';
 import { standard } from '../materials/Materials.js';
 import { Texture } from '../engine/gpu/Texture.js';
+import { generateMipmaps } from '../engine/gpu/Mipmaps.js';
+import { decodeImage } from '../engine/loaders/GLTF.js';
 import { buildRecipe } from './PortalInteriorRecipe.js';
 import { makeKeyboardLegendMaterial, makeRetroNameplateMaterial, makeRetroScreenMaterial } from './PortalRetroScreens.js';
+import { C64Computer } from './C64Computer.js';
+import { WarehouseGhost } from './WarehouseGhost.js';
 
 const shapeGeometry = (shape, size) => {
   if (shape === 'cylinder') return new CylinderGeometry(size[0] * .5, size[0] * .5, size[1], 16);
   if (shape === 'sphere') return new SphereGeometry(.5, 16, 10);
   if (shape === 'torus') return new TorusGeometry(size[0] * .5, size[1] * .5, 12, 24);
   return new BoxGeometry(size[0], size[1], size[2]);
+};
+
+const pixelTexture = (label, rgba, srgb=false) => new Texture({label,width:1,height:1,format:srgb?'rgba8unorm-srgb':'rgba8unorm',data:new Uint8Array(rgba),sampler:'anisoRepeat'});
+const loadPortalTexture = async (name, srgb=false) => {
+  const url=(import.meta.env.BASE_URL||'/')+'textures/portal-warehouse/'+name;
+  const response=await fetch(url); if(!response.ok)throw new Error(`${url}: ${response.status}`);
+  const image=await decodeImage(new Uint8Array(await response.arrayBuffer()),'image/jpeg');
+  const texture=new Texture({label:name,width:image.width,height:image.height,format:srgb?'rgba8unorm-srgb':'rgba8unorm',data:image.data,mips:true,usage:['sample','copyDst'],sampler:'anisoRepeat'});
+  texture.getGPU();generateMipmaps(texture);return texture;
 };
 
 // Deterministic world-space detail keeps the merged batches small while retaining
@@ -22,7 +35,8 @@ const portalSurface = (name, lights, origin) => {
     return `let lp${i}=vec3f(${p[0]},${p[1]},${p[2]}); let lv${i}=lp${i}-in.P; let ld${i}=length(lv${i}); let la${i}=max(0.0,1.0-ld${i}/${light.range}); warm+=vec3f(${c.r.toFixed(4)},${c.g.toFixed(4)},${c.b.toFixed(4)})*max(0.0,dot(in.N,normalize(lv${i})))*la${i}*la${i}*${(light.intensity * .018).toFixed(4)};`;
   }).join('');
   let detail = '';
-  if (name === 'brick' || name === 'brickDark') detail = `let wallU=select(in.P.x,in.P.z,abs(in.N.x)>abs(in.N.z)); let course=floor(in.P.y/.08); let q=vec2f(wallU+select(0.0,.125,i32(course)%2==1),in.P.y); let cell=fract(q/vec2f(.25,.08)); let joint=min(min(cell.x,1.0-cell.x)*.25,min(cell.y,1.0-cell.y)*.08); let grain=fract(sin(dot(floor(q/vec2f(.25,.08)),vec2f(12.9898,78.233)))*43758.5453); let mortar=1.0-smoothstep(.004,.007,joint); s.albedo=mix(s.albedo*(.82+grain*.18),vec3f(.16,.145,.13),mortar); s.roughness=mix(.9,.98,mortar);`;
+  if (name === 'brick' || name === 'brickDark') detail = `let wallU=select(in.P.x,in.P.z,abs(in.N.x)>abs(in.N.z));let puv=vec2f(wallU/3.0,in.P.y/3.0);let bc=textureSample(portalBrickAlbedo,smpAnisoRepeat,puv);let arm=textureSample(portalBrickArm,smpAnisoRepeat,puv);let nm=textureSample(portalBrickNormal,smpAnisoRepeat,puv).xyz*2.0-1.0;s.albedo*=bc.rgb;s.ao*=arm.r;s.roughness=clamp(arm.g*.9+.08,.35,1.0);s.normal=perturbNormalByMap(in.P,in.N,puv,nm);`;
+  else if (name === 'polishedTile') detail = `let puv=in.P.xz/2.1;let bc=textureSample(portalFloorAlbedo,smpAnisoRepeat,puv);let arm=textureSample(portalFloorArm,smpAnisoRepeat,puv);let nm=textureSample(portalFloorNormal,smpAnisoRepeat,puv).xyz*2.0-1.0;let tile=fract(in.P.xz/1.8);let edge=min(min(tile.x,1.0-tile.x),min(tile.y,1.0-tile.y));let grout=1.0-smoothstep(.008,.022,edge);let damp=smoothstep(.58,.9,.5+.5*sin(in.P.x*.33+sin(in.P.z*.41)));s.albedo=mix(s.albedo*bc.rgb,s.albedo*bc.rgb*.42,grout);s.ao*=arm.r;s.roughness=mix(.24,.42,arm.g)-damp*.08+grout*.42;s.normal=perturbNormalByMap(in.P,in.N,puv,nm);s.envIntensity=1.35;`;
   else if (name === 'concrete' || name === 'concreteDark') detail = `let p=in.P.xz; let a=fract(sin(dot(floor(p*.7),vec2f(12.9898,78.233)))*43758.5453); let b=fract(sin(dot(floor(p*.7)+vec2f(1.0,0.0),vec2f(12.9898,78.233)))*43758.5453); let c=fract(sin(dot(floor(p*.7)+vec2f(0.0,1.0),vec2f(12.9898,78.233)))*43758.5453); let d=fract(sin(dot(floor(p*.7)+vec2f(1.0,1.0),vec2f(12.9898,78.233)))*43758.5453); var f=fract(p*.7); f=f*f*(3.0-2.0*f); let n=mix(mix(a,b,f.x),mix(c,d,f.x),f.y); let ripple=.5+.5*sin(p.x*.31+p.y*.19+n*4.0); let damp=smoothstep(.72,.93,n*.72+ripple*.28); s.albedo*=.9+n*.12-damp*.1; s.roughness=clamp(.91+n*.06-damp*.13,.76,.98);`;
   else if (name === 'steel' || name === 'rust' || name === 'black') detail = `let scratch=smoothstep(.94,.985,fract(sin(dot(floor(in.P.xy*vec2f(7.0,45.0)),vec2f(19.19,73.31)))*3157.7)); s.albedo*=1.0-scratch*.28; s.roughness+=scratch*.18;`;
   else if (name === 'wood') detail = `let grain=.5+.5*sin((in.P.x+sin(in.P.z*2.3)*.12)*38.0); s.albedo*=.84+grain*.2; s.roughness=.6+grain*.12;`;
@@ -41,13 +55,16 @@ export class PortalInterior {
     this.group.position.copy(this.origin);
     this.group.visible = false;
     app.scene.add(this.group);
+    const flatAlbedo=pixelTexture('Portal PBR albedo placeholder',[255,255,255,255],true),flatNormal=pixelTexture('Portal PBR normal placeholder',[128,128,255,255]),flatArm=pixelTexture('Portal PBR ARM placeholder',[255,190,0,255]);
+    this.pbr={brick:{albedo:flatAlbedo,normal:flatNormal,arm:flatArm},floor:{albedo:flatAlbedo,normal:flatNormal,arm:flatArm}};
     this.materials = {};
     for (const [name, spec] of Object.entries(this.recipe.materials)) {
+      const textures=(name==='brick'||name==='brickDark')?{portalBrickAlbedo:this.pbr.brick.albedo,portalBrickNormal:this.pbr.brick.normal,portalBrickArm:this.pbr.brick.arm}:name==='polishedTile'?{portalFloorAlbedo:this.pbr.floor.albedo,portalFloorNormal:this.pbr.floor.normal,portalFloorArm:this.pbr.floor.arm}:{};
       this.materials[name] = standard({
         name: `Portal ${name}`, color: spec.color, roughness: spec.roughness, metalness: spec.metalness,
         emissive: spec.emissive || 0, emissiveIntensity: spec.emissive ? 0.35 : 0,
         transparent: !!spec.transparent, opacity: spec.opacity ?? 1, depthWrite: spec.depthWrite ?? true,
-        underwaterLighting: 'none', localLightsCheap: true,
+        underwaterLighting: 'none', localLightsCheap: true, textures,
         surface: portalSurface(name, this.recipe.lights || [], this.origin)
       });
     }
@@ -66,11 +83,25 @@ export class PortalInterior {
     }));
     this.interiorColliders = [];
     this.buildGeometry();
+    this.textureReady=this.loadSurfaceTextures();
     this.setInteriorCollidersEnabled(false);
     this.buildExteriorPortal();
     this.inside = false;
     this.cooldown = 0;
     this.returnState = null;
+    this.c64 = new C64Computer(app);
+    this.ghost = new WarehouseGhost(app);
+  }
+
+  async loadSurfaceTextures(){
+    try{
+      const [ba,bn,br,fa,fn,fr]=await Promise.all([
+        loadPortalTexture('brick_wall_001_diffuse_1k.jpg',true),loadPortalTexture('brick_wall_001_nor_gl_1k.jpg'),loadPortalTexture('brick_wall_001_arm_1k.jpg'),
+        loadPortalTexture('concrete_floor_diff_1k.jpg',true),loadPortalTexture('concrete_floor_nor_gl_1k.jpg'),loadPortalTexture('concrete_floor_arm_1k.jpg')]);
+      for(const name of ['brick','brickDark']){const m=this.materials[name];m.bindings.portalBrickAlbedo.texture=ba;m.bindings.portalBrickNormal.texture=bn;m.bindings.portalBrickArm.texture=br;m.needsUpdate=true;}
+      const floor=this.materials.polishedTile;floor.bindings.portalFloorAlbedo.texture=fa;floor.bindings.portalFloorNormal.texture=fn;floor.bindings.portalFloorArm.texture=fr;floor.needsUpdate=true;
+      this.pbrReady=true;
+    }catch(error){console.warn('Portal warehouse PBR textures unavailable; using deterministic fallback',error);this.pbrReady=false;}
   }
 
   buildGeometry() {
@@ -160,6 +191,7 @@ export class PortalInterior {
     this.setInteriorCollidersEnabled(true);
     for (const source of this.localLightSources) source.enabled = true;
     this.inside = true;
+    this.ghost.setActive(true);
     this.group.visible = true;
     p.position.set(this.origin.x + this.recipe.zones.arrival[0], this.origin.y + this.recipe.zones.arrival[1], this.origin.z + this.recipe.zones.arrival[2]);
     p.velocity.set(0, 0, 0);
@@ -169,6 +201,7 @@ export class PortalInterior {
   exit() {
     const p = this.app.player;
     this.inside = false;
+    this.ghost.setActive(false);
     this.group.visible = false;
     for (const source of this.localLightSources) source.enabled = false;
     this.setInteriorCollidersEnabled(false);
@@ -189,6 +222,8 @@ export class PortalInterior {
     this.cooldown = Math.max(0, this.cooldown - dt);
     const p = this.app.player;
     if (!p) return;
+    this.ghost.update(dt, this.c64.active);
+    if (this.c64.active) return;
     if (!this.exteriorGroundResolved) {
       const ground = p.groundAt?.(100, 580, 30);
       if (Number.isFinite(ground)) {
@@ -201,7 +236,11 @@ export class PortalInterior {
     const exteriorY = p.groundAt(100, 580, 30);
     const nearOutside = !this.inside && Math.hypot(p.position.x - 100, p.position.z - 580) < 4.2 && (!Number.isFinite(exteriorY) || Math.abs(p.position.y - exteriorY) < 3);
     const nearInside = this.inside && Math.hypot(p.position.x - (this.origin.x - 4), p.position.z - this.origin.z) < 3.5;
-    if (nearOutside) {
+    const nearC64 = this.inside && Math.hypot(p.position.x - (this.origin.x - 11.5), p.position.z - (this.origin.z + 8.0)) < 1.9 && Math.abs(p.position.y - (this.origin.y + 4)) < 2;
+    if (nearC64) {
+      p.prompt = { key: 'E', text: 'Use Commodore 64' };
+      if (this.app.input.hit('KeyE')) { this.c64.open(); this.cooldown = .8; }
+    } else if (nearOutside) {
       p.prompt = { key: 'E', text: 'Enter warehouse loft' };
       if (this.app.input.hit('KeyE')) { this.enter(); this.cooldown = .8; }
     } else if (nearInside) {

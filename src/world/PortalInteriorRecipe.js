@@ -9,6 +9,7 @@ export function buildRecipe(){
   brickDark:{color:0x49322e,roughness:.97,metalness:0,pattern:'brick',brickSize:[.25,.08],mortar:.006},
   concrete:{color:0x5f6260,roughness:.9,metalness:.02,pattern:'mottled'},
   concreteDark:{color:0x424644,roughness:.96,metalness:.02,pattern:'mottled'},
+  polishedTile:{color:0x514b43,roughness:.3,metalness:.03,pattern:'tile'},
   steel:{color:0x20282a,roughness:.48,metalness:.78,pattern:'scratched'},
   rust:{color:0x643d2c,roughness:.82,metalness:.35,pattern:'scratched'},
   glass:{color:0xcbd3d0,roughness:.08,metalness:.02,opacity:.08,transparent:true,depthWrite:false},
@@ -32,10 +33,16 @@ export function buildRecipe(){
   neonCyan:{color:0x35d8de,roughness:.28,metalness:.08,emissive:0x12636a},
   neonMagenta:{color:0xe45aa8,roughness:.3,metalness:.06,emissive:0x6c1748},
   neonAmber:{color:0xf0ad45,roughness:.32,metalness:.08,emissive:0x75410b}
+  ,chrome:{color:0xc6ccd0,roughness:.16,metalness:.92}
+  ,stairGlow:{color:0xffc270,roughness:.28,metalness:.08,emissive:0x8f430d}
+  ,graffitiCyan:{color:0x2d9298,roughness:.78,metalness:0}
+  ,graffitiCoral:{color:0xa24a4c,roughness:.8,metalness:0}
+  ,graffitiCream:{color:0xb7a98d,roughness:.86,metalness:0}
+  ,rugStair:{color:0x59443c,roughness:.98,metalness:0,pattern:'fabric'}
  };
  const objects=[]; const add=o=>objects.push(o);
  // Shell: continuous material surfaces carry metre-scaled procedural brick/concrete detail.
- add(box('worn concrete floor',[32,.3,30],[0,-.15,3],'concrete',{collider:true,walkable:true}));
+ add(box('polished tiled warehouse floor',[32,.3,30],[0,-.15,3],'polishedTile',{collider:true,walkable:true}));
  // The reference-defining west wall is mostly tall glazing: solid sill/header and
  // narrow brick piers retain the safe perimeter while cool daylight reads through.
  add(box('west brick sill',[.38,1.2,30],[-16,.6,3],'brick',{collider:true}));
@@ -69,6 +76,14 @@ export function buildRecipe(){
   }
  }
  for(const z of [-8,2,12])add(box('high longitudinal I beam',[31,.38,.3],[0,9.2,z],'steel'));
+ // Source-informed black substructure: real I profiles, rusted splice plates and bolt heads.
+ for(const x of [-14,-7,0]){
+  add(box('mezzanine RSJ web',[.16,3.55,.52],[x,1.77,5.82],'steel'));
+  for(const z of [5.58,6.06])add(box('mezzanine RSJ flange',[.56,3.55,.08],[x,1.77,z],'steel'));
+  add(box('rusted RSJ splice plate',[.62,.72,.06],[x,2.72,5.52],'rust'));
+  for(const y of [2.5,2.94])for(const dx of [-.2,.2])add(sphere('RSJ rivet',[.07,.07,.05],[x+dx,y,5.47],'chrome'));
+ }
+ add(box('deep mezzanine front beam',[14,.62,.42],[-7,3.18,5.85],'steel'));
  // Arrival and restrained return marker; no cyan bloom.
  add(box('arrival runner',[4,.035,3],[0,.04,0],'rugLight'));
  add(box('return portal plinth',[2.6,.25,1.4],[-4,.25,0],'steel',{collider:true}));
@@ -77,6 +92,7 @@ export function buildRecipe(){
  // Layered lounge, kept west of both verified routes.
  add(box('large lounge rug',[8,.04,6],[-9,.03,3.8],'rug'));
  add(box('small layered rug',[5,.045,3.5],[-8.5,.06,3.5],'rugLight',{rotation:[0,.08,0]}));
+ add(box('subtle stair runner',[4.6,.042,2.8],[4.1,.035,-.55],'rugStair',{rotation:[0,-.025,0]}));
  // Upholstered L-sectional: rigid base carries soft ellipsoid pads, backs, and loose pillows.
  add(box('sectional timber base',[5.5,.22,1.7],[-8.85,.4,6.3],'wood',{collider:true}));
  for(const x of [-10.8,-9.6,-8.4,-7.2]){
@@ -113,10 +129,15 @@ export function buildRecipe(){
  for(const x of [5,7,9])for(const z of [-6.5,-3.5]){add(box('dining chair seat',[.78,.13,.78],[x,.54,z],'charcoal',{collider:true}));add(box('dining chair back',[.78,.95,.12],[x,1.02,z+(z<-5?.34:-.34)],'charcoal'));for(const dx of [-.28,.28])for(const dz of [-.28,.28])add(box('chair leg',[.07,.5,.07],[x+dx,.26,z+dz],'steel'));}
  // Proven staircase, landing, mezzanine footprint, and collision boundaries are unchanged.
  for(let i=0;i<14;i++)add(box('stair tread',[4,.28,.82],[3,.14+i*.25,1.45+i*.65],'concreteDark',{collider:true,walkable:true}));
+ for(let i=0;i<14;i++)add(box('stair amber tread light',[3.72,.035,.045],[3,.31+i*.25,1.035+i*.65],'stairGlow'));
  add(box('stair landing',[5,.22,1.7],[1.5,3.42,10.9],'concreteDark',{collider:true,walkable:true}));
- for(const side of [.92,5.08]){for(let i=0;i<8;i++)add(box('stair glass safety guard',[.08,1.02,1.15],[side,.82+i*.44,1.4+i*1.12],'glass',{collider:true}));add(box('sloped stair handrail',[.1,.1,10.2],[side,2.45,5.65],'steel',{rotation:[-.366,0,0]}));}
+ for(const side of [.92,5.08]){
+  for(let i=0;i<8;i++)add(box('stair glass safety guard',[.08,.48,1.15],[side,.52+i*.429,1.4+i*1.12],'glass',{collider:true}));
+  add(box('sloped stair handrail',[.1,.1,10.2],[side,2.45,5.65],'steel',{rotation:[-.366,0,0]}));
+ }
  add(box('landing north glass guard',[5,1.1,.08],[1.5,4.08,11.81],'glass',{collider:true}));add(box('landing north top rail',[5,.1,.12],[1.5,4.62,11.81],'steel'));
  add(box('landing east glass guard',[.08,1.1,1.7],[4.06,4.08,10.9],'glass',{collider:true}));add(box('landing east top rail',[.12,.1,1.7],[4.06,4.62,10.9],'steel'));
+ add(cyl('chrome stair newel',[.1,1.35,.1],[5.08,4.08,10.05],'chrome'));
  add(box('mezzanine floor',[14,.22,8],[-7,3.5,10],'wood',{collider:true,walkable:true}));
  for(const [z,d] of [[8,4],[12.9,2.2]]){add(box('mezzanine glass guard',[.08,1.1,d],[-.15,4.08,z],'glass',{collider:true}));add(box('mezzanine top rail',[.12,.1,d],[-.15,4.62,z],'steel'));}
  for(const z of [5.94,14.06]){add(box('mezzanine perimeter glass',[14,1.1,.08],[-7,4.08,z],'glass',{collider:true}));add(box('mezzanine perimeter rail',[14,.1,.12],[-7,4.62,z],'steel'));}
@@ -175,24 +196,49 @@ export function buildRecipe(){
   if(sun){add(box('Sun purple accent',[.76,.025,.035],[x,4.47,8.335],'sunPurple'));add(sphere('Sun mouse',[.13,.06,.18],[x+.56,4.46,8.13],'sunPlastic'));}
   add(box((id==='c64'?'COMMODORE 64':id==='bbc'?'BBC MODEL B':'SUN SPARCSTATION')+' nameplate',[.62,.1,.025],[x,4.34,7.69],'cream'));
   for(let v=-2;v<=2;v++)add(box(id+' base vent slit',[.055,.003,.16],[x+v*.09,4.4865,8.55],'black'));
-  // Low backs remain outside the tabletop volume on the front side of each desk.
+  // Swivel chairs remain outside the tabletop volume on the front side of each desk.
   const chairX=x+.60;
   add(box('office chair seat',[.62,.12,.62],[chairX,4.08,7.85],'charcoal'));
-  add(box('office chair low back',[.62,.32,.1],[chairX,4.27,7.49],'charcoal'));
-  for(const dx of [-.22,.22])for(const dz of [-.22,.22])add(box('office chair leg',[.055,.42,.055],[chairX+dx,3.82,7.85+dz],'steel'));
+  add(box('office chair tall swivel back',[.64,.78,.12],[chairX,4.48,7.49],'charcoal'));
+  add(cyl('office chair chrome column',[.09,.52,.09],[chairX,3.78,7.85],'chrome'));
+  for(let spoke=0;spoke<5;spoke++){const a=spoke*Math.PI*2/5;add(box('office chair caster spoke',[.06,.05,.48],[chairX+Math.sin(a)*.2,3.54,7.85+Math.cos(a)*.2],'chrome',{rotation:[0,a,0]}));add(sphere('office chair caster',[.1,.1,.1],[chairX+Math.sin(a)*.43,3.49,7.85+Math.cos(a)*.43],'black'));}
  }
- // One original rear-wall sculpture replaces the cancelled banks of shelf computers.
- add(box('neon artwork backing',[7.8,2.55,.08],[-7.5,5.65,13.27],'black'));
- add(box('neon artwork cyan diagonal',[.16,1.65,.055],[-9.55,5.75,13.20],'neonCyan',{rotation:[0,0,-.72]}));
- add(box('neon artwork magenta diagonal',[.16,1.9,.055],[-7.45,5.7,13.19],'neonMagenta',{rotation:[0,0,.62]}));
- add(box('neon artwork amber horizon',[3.4,.14,.055],[-6.05,5.05,13.18],'neonAmber'));
- add(torus('neon artwork cyan orbit',[1.35,.11,1.35],[-5.05,5.95,13.15],'neonCyan',[0,0,0]));
- add(sphere('neon artwork amber focus',[.34,.34,.08],[-8.45,6.15,13.14],'neonAmber'));
+ // Black mezzanine feature wall, bookcases and a period-inspired original rainbow fruit emblem.
+ add(box('black retro room feature wall',[10.2,3.2,.08],[-7.5,5.35,13.27],'black'));
+ for(const y of [4.35,5.05,5.75,6.45])add(box('retro library timber shelf',[6.6,.12,.48],[-9.05,y,12.92],'charredWood'));
+ for(const x of [-12.2,-10.55,-8.9,-7.25,-5.75])add(box('retro library upright',[.1,2.35,.5],[x,5.3,12.92],'steel'));
+ for(let shelf=0;shelf<3;shelf++)for(let i=0;i<11;i++){
+  const palette=i%4===0?'rust':i%4===1?'cream':i%4===2?'graffitiCyan':'wood';
+  add(box('retro library book',[.13+(i%3)*.025,.38+(i%4)*.045,.28],[-11.95+i*.48,4.62+shelf*.7,12.62],palette,{rotation:[0,0,(i%3-1)*.035]}));
+ }
+ for(const [x,y,s] of [[-11.55,6.15,.72],[-9.1,6.12,.66],[-6.8,5.43,.58]]){
+  add(box('shelf retro monitor case',[s,.52,.42],[x,y,12.62],'sunPlastic'));
+  add(box('shelf retro dark screen',[s*.72,.31,.025],[x,y+.02,12.38],'screen'));
+ }
+ const rainbow=['graffitiCoral','neonAmber','rugLight','leaf','neonCyan','sunPurple'];
+ for(let i=0;i<rainbow.length;i++)add(box('rainbow computer club fruit band',[1.5-i*.06,.16,.045],[-4.08,6.15-i*.17,13.17],rainbow[i]));
+ add(box('rainbow computer club fruit leaf',[.42,.13,.045],[-3.66,6.72,13.17],'leaf',{rotation:[0,0,-.45]}));
+ for(const [x,y,w] of [[-5.1,6.45,1.1],[-5.0,6.12,1.3],[-4.92,5.79,1.45]])add(box('computer club wall lettering',[w,.09,.045],[x,y,13.16],'cream'));
+ // Framed wall pictures and foreground graffiti echo the reference without copying its text or artwork.
+ for(const [x,z,w,h] of [[-13.4,-7.4,1.5,2.3],[12.8,7.2,1.25,2],[-1.4,17.72,2.4,1.5]]){
+  add(box('black picture frame',[w+.16,h+.16,.07],[x,2.3,z],'black'));
+  add(box('muted warehouse photograph',[w,h,.075],[x,2.3,z+(z>10?-.045:.045)],'graffitiCream'));
+ }
+ for(let i=0;i<12;i++){
+  const z=-7.2+i*.53,y=1.1+(i%4)*.48;
+  add(box('near wall graffiti colour stroke',[.035,.16+(i%3)*.06,1.15],[15.79,y,z],i%3===0?'graffitiCyan':i%3===1?'graffitiCoral':'graffitiCream',{rotation:[(i%2?-.42:.48),0,0]}));
+ }
  // Sparse, faded industrial paint; no neon loops.
  for(const [z,r] of [[-4,.42],[2,-.34],[14,.28]]){add(box('faded graffiti stroke',[.035,.16,2.2],[15.79,3,z],'graffiti',{rotation:[r,0,0]}));add(box('faded graffiti mark',[.035,.12,1.3],[15.78,3.55,z+.3],'rust',{rotation:[-r,0,0]}));}
  // Pendants, task fixtures, hanging vines, and richer shelf-scale objects.
  for(const x of [-9,-3,3,9]){add(box('pendant cord',[.035,1.2,.035],[x,10.95,2],'black'));add(cyl('pendant shade',[.62,.3,.62],[x,10.25,2],'black'));add(sphere('warm pendant bulb',[.22,.22,.22],[x,10.05,2],'amber'));}
  for(const x of [-12,-8,-4])for(let i=0;i<5;i++){add(cyl('trailing vine stem',[.045,.7,.045],[x+i*.08,4.7-i*.45,5.8],'leaf'));add(box('trailing vine leaf',[.28,.04,.48],[x+.18,4.65-i*.45,5.82],'leaf',{rotation:[0,i*.8,.5]}));}
+ for(const [x,z,h] of [[-1,6.55,2.4],[12.8,-7.5,1.8],[-13.6,14.8,2.1]]){
+  add(cyl('tall black houseplant pot',[.68,.72,.68],[x,.36,z],'black'));
+  for(let i=0;i<9;i++){const a=i*2.39996;add(box('broad houseplant leaf',[.32,.06,.95],[x+Math.cos(a)*.34,.85+(i%4)*.28,z+Math.sin(a)*.34],'leaf',{rotation:[0,-a,.35+(i%3)*.18]}));}
+ }
+ // Recessed downlights under the mezzanine create the warm pools seen in the reference.
+ for(const x of [-12,-9,-6,-3]){add(cyl('recessed ceiling trim',[.22,.035,.22],[x,3.37,9.8],'chrome'));add(sphere('recessed warm lamp',[.13,.06,.13],[x,3.34,9.8],'stairGlow'));}
  add(box('display shelf',[5,.12,.55],[11,2.2,16.5],'wood'));add(box('display shelf',[5,.12,.55],[11,1.25,16.5],'wood'));
  for(let i=0;i<8;i++){add(box('shelf book',[.28,.55,.32],[8.8+i*.55,1.58,16.3],i%3===0?'rust':'cream'));add(cyl('small vessel',[.22,.42,.22],[9+i*.62,2.47,16.3],i%2?'ceramic':'steel'));}
  const lights=[
@@ -204,6 +250,8 @@ export function buildRecipe(){
   {name:'computer room east',position:[-4.5,6.1,10],color:0xffbc73,intensity:5,range:6},
   {name:'workbench pool',position:[10,3,15],color:0xffb66d,intensity:4,range:6},
   {name:'arrival practical',position:[-2,3.5,0],color:0xe9c394,intensity:3,range:5}
+  ,{name:'stair tread wash',position:[4.8,2.6,5.6],color:0xffa451,intensity:4,range:5}
+  ,{name:'mezzanine downlights',position:[-8,3.15,9.8],color:0xffb66d,intensity:4,range:7}
  ];
  return {materials,objects,screens,zones:{arrival:[0,1,0],lounge:[-9,1,4],kitchen:[5,1,5],dining:[7,1,-5],retro:[-7.5,4,10],mezzanine:[-7,4,10]},lights};
 }

@@ -1,7 +1,17 @@
 # Burning Horizons changelog
 
 **Author: Agent Control**  
-Reporting period: **26–27 September 2026**. This summary follows repository history; original asset credits and historical commit authors remain intact.
+Reporting period: **26–28 September 2026**. This summary follows repository history; original asset credits and historical commit authors remain intact.
+
+## 28 September 2026
+
+- **Agent Control:** extended Island 3 beneath Building #002 with a rounded terrain plateau, removed its redundant separate path and retained the existing portal-warehouse sign.
+- **Agent Control:** upgraded the portal warehouse with CC0 scanned brick and concrete PBR maps, polished tiled flooring, restrained reflections, rusted black RSJs, warmer local lighting, stair tread lights, chrome details, near-wall graffiti, rugs, plants, pictures, living, dining and kitchen detail.
+- **Agent Control:** rebuilt the mezzanine presentation with swivel chairs, populated bookshelves, detailed retro desks, a black feature wall and an original period-inspired rainbow computer emblem in place of the neon artwork.
+- **Agent Control:** corrected the sloping stair glass so every panel ends below its handrail.
+- **Agent Control:** vendored the MIT-licensed BASIC-M6502-TS interpreter, adapted browser save/load to local storage, and made the mezzanine Commodore 64 a full-screen programmable terminal with login, queued input, `LIST`, `RUN`, `SAVE` and `LOAD`.
+- **Agent Control:** added Esmie from Edinburgh as a faint captioned warehouse voice: a one-minute island-history introduction and non-repeating Edinburgh childhood memories at five-minute intervals while the player remains inside.
+- **Agent Control:** retained Building #001, Building #002 and all existing island gameplay; added focused regression tests and Windows WebGPU visual evidence.
 
 ## 27 September 2026
 

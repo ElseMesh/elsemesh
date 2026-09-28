@@ -89,6 +89,13 @@ them from J. Jimenez et al.'s SMAA reference implementation (MIT).
 
 "Godzilla 2014" (https://skfb.ly/pC9tn) by Steam79 is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/).
 
+## Portal warehouse materials and interactive computer
+
+- `Brick Wall 001` by Dimitrios Savva and Rob Tuytel, from Poly Haven, CC0: https://polyhaven.com/a/brick_wall_001
+- `Concrete Floor` by eye-candy.xyz, from Poly Haven, CC0: https://polyhaven.com/a/concrete_floor
+- Microsoft BASIC 1.1 for 6502 TypeScript port, revision `586d11bba3b3924180a3a5481ce6eccb9ecedf1a`, MIT: https://github.com/fabioc-aloha/BASIC-M6502-TS
+- The browser adapter replaces Node file access with per-browser local storage and requires an explicit ConsoleIO adapter. Original and modified source are retained in `src/vendor/basic-m6502/`.
+
 The included `public/models/godzilla/steam79-walk.glb` is a Blender-prepared, reduced-polygon derivative with a walk rig and animation. The original download is not included.
 
 ## Building 002: Abandoned Warehouse

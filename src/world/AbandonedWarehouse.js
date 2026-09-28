@@ -1,6 +1,6 @@
 // Building #002 — exact author-linked "Abandoned Warehouse" runtime integration.
 // Building #001 (PortalInterior) remains a separate system. Source/provenance: CREDITS.md.
-import { BoxGeometry, BufferAttribute, BufferGeometry, Group, Mesh, Quaternion, Vector3 } from '../engine/index.js';
+import { BufferAttribute, BufferGeometry, Group, Mesh, Vector3 } from '../engine/index.js';
 import { loadGLB, decodeImage } from '../engine/loaders/GLTF.js';
 import { Texture } from '../engine/gpu/Texture.js';
 import { generateMipmaps } from '../engine/gpu/Mipmaps.js';
@@ -92,10 +92,8 @@ export class AbandonedWarehouse {
     // West wall leaves the source main-gate span (z 592..600) open.
     C.addBox(new Vector3(121.9,y+3,590.9),new Vector3(.28,3,1.1),0,{solid:true,tag:'building-002-wall'});
     C.addBox(new Vector3(121.9,y+3,615.35),new Vector3(.28,3,15.35),0,{solid:true,tag:'building-002-wall'});
-    const pathMat=standard({name:'Building 002 access gravel',color:0x4b4a45,roughness:1});pathMat.underwaterLighting='none';
-    const dx=22,dz=16,length=Math.hypot(dx,dz),angle=Math.atan2(dx,dz),path=new Mesh(new BoxGeometry(2.8,.14,length),pathMat);
-    path.position.set(111,y+.05,588);path.rotation.y=angle;path.castShadow=true;this.app.scene.add(path);
-    C.addBox(new Vector3(111,y+.05,588),new Vector3(1.4,.07,length/2),angle,{walkable:true,solid:true,tag:'building-002-access'});
+    // The island heightfield now provides continuous grass between both
+    // warehouses. Building #001's signed portal remains the shared landmark.
   }
   update(){}
 }
