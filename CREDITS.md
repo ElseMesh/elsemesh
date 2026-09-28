@@ -91,6 +91,10 @@ them from J. Jimenez et al.'s SMAA reference implementation (MIT).
 
 The included `public/models/godzilla/steam79-walk.glb` is a Blender-prepared, reduced-polygon derivative with a walk rig and animation. The original download is not included.
 
+## Building 002: Abandoned Warehouse
+
+[Abandoned Warehouse](https://sketchfab.com/3d-models/abandoned-warehouse-698a34300af34095ac6593f348585daa) by Arsen Ismailov is licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). The preserved author-linked source is `warehouseupload2.blend`; the Building 002 pipeline creates a working derivative and runtime GLB while retaining this attribution.
+
 ## Techniques and references
 
 ## Scanned explorer and Loz
