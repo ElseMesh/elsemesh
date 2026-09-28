@@ -3,6 +3,7 @@ import { test } from 'node:test';
 import { ISLAND_FIVE, islandFiveHeight, islandFiveContains } from '../src/world/IslandFiveLayout.js';
 import { createIslandFiveForestData, createIslandFiveCanopyRecords } from '../src/world/IslandFiveSystem.js';
 import { FOURTH } from '../src/world/FourthIslandLayout.js';
+import fs from 'node:fs';
 
 test('Island Five is bounded, separated, forest-only, and deterministic', () => {
   const treesA = createIslandFiveForestData();
@@ -36,4 +37,10 @@ test('Island Five has rolling relief and emits established canopy records', () =
     assert.ok(record.H > 7 && Number.isFinite(record.seed));
     assert.ok(Number.isFinite(record.la) && record.l > 0);
   }
+});
+
+test('Forest Island does not overlay bare cylinders on the mapped canopy trees', async () => {
+  const source = await fs.promises.readFile(new URL('../src/world/IslandFiveSystem.js', import.meta.url), 'utf8');
+  assert.doesNotMatch(source, /new CylinderGeometry/);
+  assert.match(source, /Do not add a second bare cylinder/);
 });

@@ -1,17 +1,8 @@
-import { CylinderGeometry, Group, Mesh } from '../engine/index.js';
-import { createTreeBarkMaterial } from './vegetation/ScannedBark.js';
+import { Group } from '../engine/index.js';
 import { ISLAND_FIVE, islandFiveHeight, islandFiveForestContains } from './IslandFiveLayout.js';
 
 const TREE_COUNT = 180;
 const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5));
-
-const add = (parent, geometry, material, x = 0, y = 0, z = 0) => {
-  const mesh = new Mesh(geometry, material);
-  mesh.position.set(x, y, z);
-  mesh.castShadow = true;
-  parent.add(mesh);
-  return mesh;
-};
 
 export function islandFiveTreeSeed(index) {
   const angle = index * GOLDEN_ANGLE;
@@ -60,22 +51,14 @@ export class IslandFiveSystem {
     this.group = new Group();
     this.group.name = 'Island Five — forest only';
     this.trees = createIslandFiveForestData();
-    this.trunkGeometry = new CylinderGeometry(0.34, 0.46, 5.8, 8);
-    this.trunkMaterial = options.trunkMaterial || createTreeBarkMaterial();
     this.build();
   }
 
   build() {
     for (const tree of this.trees) {
-      const root = new Group();
-      root.name = 'Island Five tree';
-      root.position.set(tree.x, tree.y, tree.z);
-      root.rotation.y = tree.rotation;
-      root.scale.setScalar(tree.scale);
-      add(root, this.trunkGeometry, this.trunkMaterial, 0, 2.9, 0);
-      // The visible crown comes from Vegetation's shared mapped canopy. A short scanned-bark
-      // base remains here for close inspection and collision grounding.
-      this.group.add(root);
+      // Agent Control: Vegetation renders the complete mapped trunk, grown limbs and
+      // crown from this same record. Do not add a second bare cylinder here: it can
+      // protrude through a swaying or LOD crown and read as a freestanding pole.
       this.app?.colliders?.addCylinder(tree.x, tree.z, tree.collision.radius, tree.collision.yMin, tree.collision.yMax, tree.collision);
     }
     this.app?.scene?.add(this.group);

@@ -26,6 +26,7 @@ Island Five is an additive, bounded forest-only module. It exposes an analytic h
 | 3 | Failed because the bounded writer could not create a missing parent directory. | Precreated the approved empty directory. | The task bootstrap must create allowed output directories. |
 | 4 | Created the layout, then blocked a read of `engine/index.js` because the implementation context was incomplete. | Added the engine and material contracts as read-only context. | Include implementation dependencies as well as world-layout dependencies. |
 | 5 | Created four useful files, then denied the configured `tools/island_five` path. | Retained the useful output and recorded the path-policy defect. | Validate nested allowed paths before dispatch; an allowlist entry is not proof that the runtime accepts it. |
+| 6 | Kept a separate scanned-bark cylinder for every tree after the same records were admitted to the shared vegetation renderer. | User evidence showed bare pole artefacts; removed the duplicate visual geometry, retained collision data, and added `Forest Island does not overlay bare cylinders on the mapped canopy trees`. | Assign one renderer as the visual owner of an entity. Collision and placement systems must not add overlapping visible geometry without a visual-gap test. |
 
 Agent Control attempted the bounded implementation and independently enforced its context and path policies. It did not complete its full implement-review-refine-verify parcel. Codex reviewed the partial output, fixed island separation, removed the unintended empty centre by using the declared 180-tree budget, connected the terrain and runtime systems, and ran the project gates.
 
@@ -35,3 +36,4 @@ Retained parcel evidence: `parcel-a8deb5ce-666b-4f9f-aa1d-1a644fb51c33`, `parcel
 
 - The forest uses shared procedural geometry/materials rather than scanned assets.
 - Agent Control did not integrate, commit, push, or deploy. Those operations were completed after Codex review.
+- Runtime screenshot review later exposed duplicate render ownership that structural tests had missed; the new regression now guards the corrected contract.
