@@ -31,8 +31,17 @@ def parse_args():
     parser.add_argument("--source", required=True, type=Path)
     parser.add_argument("--working", required=True, type=Path)
     parser.add_argument("--glb", required=True, type=Path)
+    parser.add_argument(
+        "--max-texture-size",
+        type=int,
+        default=1024,
+        help="maximum width or height for runtime texture copies (default: 1024)",
+    )
     argv = sys.argv[sys.argv.index("--") + 1 :] if "--" in sys.argv else []
-    return parser.parse_args(argv)
+    args = parser.parse_args(argv)
+    if args.max_texture_size < 1:
+        parser.error("--max-texture-size must be a positive integer")
+    return args
 
 
 def digest(path):
@@ -76,7 +85,49 @@ def make_collection(name):
     return collection
 
 
-def preserve_source_and_duplicate_runtime():
+def image_dimensions(image):
+    return int(image.size[0]), int(image.size[1])
+
+
+def scaled_dimensions(width, height, maximum):
+    largest = max(width, height)
+    if largest <= maximum:
+        return width, height
+    scale = maximum / largest
+    return max(1, int(width * scale)), max(1, int(height * scale))
+
+
+def copy_runtime_material(source_material, material_cache, image_cache, maximum):
+    if source_material is None:
+        return None
+    cached = material_cache.get(source_material)
+    if cached is not None:
+        return cached
+
+    runtime_material = source_material.copy()
+    runtime_material.name = f"RUNTIME_{source_material.name}"
+    material_cache[source_material] = runtime_material
+    if runtime_material.node_tree is None:
+        return runtime_material
+
+    for node in runtime_material.node_tree.nodes:
+        source_image = getattr(node, "image", None)
+        if source_image is None:
+            continue
+        runtime_image = image_cache.get(source_image)
+        if runtime_image is None:
+            runtime_image = source_image.copy()
+            runtime_image.name = f"RUNTIME_{source_image.name}"
+            width, height = image_dimensions(source_image)
+            target_width, target_height = scaled_dimensions(width, height, maximum)
+            if (target_width, target_height) != (width, height):
+                runtime_image.scale(target_width, target_height)
+            image_cache[source_image] = runtime_image
+        node.image = runtime_image
+    return runtime_material
+
+
+def preserve_source_and_duplicate_runtime(max_texture_size):
     source_objects = sorted(bpy.context.scene.objects, key=lambda item: item.name)
     pristine = make_collection("SOURCE_PRISTINE")
     runtime = make_collection("RUNTIME_EXPORT")
@@ -87,6 +138,10 @@ def preserve_source_and_duplicate_runtime():
         pristine.objects.link(obj)
         obj.hide_render = True
 
+    source_images = tuple(bpy.data.images)
+    source_texture_sizes = [image_dimensions(image) for image in source_images]
+    material_cache = {}
+    image_cache = {}
     runtime_objects = []
     excluded = []
     for obj in source_objects:
@@ -96,6 +151,10 @@ def preserve_source_and_duplicate_runtime():
         duplicate = obj.copy()
         if obj.data is not None:
             duplicate.data = obj.data.copy()
+            for slot in duplicate.material_slots:
+                slot.material = copy_runtime_material(
+                    slot.material, material_cache, image_cache, max_texture_size
+                )
         duplicate.name = f"RUNTIME_{obj.name}"
         duplicate.hide_render = False
         runtime.objects.link(duplicate)
@@ -113,7 +172,31 @@ def preserve_source_and_duplicate_runtime():
 
     pristine.hide_render = True
     planning.hide_render = True
-    return runtime_objects, sorted(excluded), sorted(PLANNING_ZONES)
+    runtime_texture_sizes = [image_dimensions(image) for image in image_cache.values()]
+    texture_metrics = {
+        "source_texture_count": len(source_images),
+        "source_texture_max_width": max((width for width, _ in source_texture_sizes), default=0),
+        "source_texture_max_height": max((height for _, height in source_texture_sizes), default=0),
+        "source_texture_max_dimension": max(
+            (max(width, height) for width, height in source_texture_sizes), default=0
+        ),
+        "runtime_texture_count": len(runtime_texture_sizes),
+        "runtime_texture_max_width": max(
+            (width for width, _ in runtime_texture_sizes), default=0
+        ),
+        "runtime_texture_max_height": max(
+            (height for _, height in runtime_texture_sizes), default=0
+        ),
+        "runtime_texture_max_dimension": max(
+            (max(width, height) for width, height in runtime_texture_sizes), default=0
+        ),
+    }
+    return (
+        runtime_objects,
+        sorted(excluded),
+        sorted(PLANNING_ZONES),
+        texture_metrics,
+    )
 
 
 def select_only(objects):
@@ -134,7 +217,9 @@ def main():
     bpy.ops.wm.open_mainfile(filepath=os.fspath(source))
     bpy.ops.wm.save_as_mainfile(filepath=os.fspath(working), copy=False, check_existing=False)
 
-    runtime_objects, excluded, zones = preserve_source_and_duplicate_runtime()
+    runtime_objects, excluded, zones, texture_metrics = (
+        preserve_source_and_duplicate_runtime(args.max_texture_size)
+    )
     if set(excluded) != EXCLUDED_OBJECTS:
         missing = sorted(EXCLUDED_OBJECTS.difference(excluded))
         raise RuntimeError(f"expected excluded helper objects not found: {missing}")
@@ -160,6 +245,9 @@ def main():
         "runtime_object_count": len(runtime_objects),
         "excluded_objects": excluded,
         "planning_zones": zones,
+        "max_texture_size": args.max_texture_size,
+        **texture_metrics,
+        "output_byte_size": glb.stat().st_size,
         "animations_exported": False,
         "cameras_exported": False,
         "lights_exported": False,
