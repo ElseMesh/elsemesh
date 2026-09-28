@@ -40,7 +40,7 @@ const portalSurface = (name, lights, origin) => {
   else if (name === 'steel' || name === 'rust' || name === 'black') detail = `let scratch=smoothstep(.94,.985,fract(sin(dot(floor(in.P.xy*vec2f(7.0,45.0)),vec2f(19.19,73.31)))*3157.7)); s.albedo*=1.0-scratch*.28; s.roughness+=scratch*.18;`;
   else if (name === 'wood') detail = `let grain=.5+.5*sin((in.P.x+sin(in.P.z*2.3)*.12)*38.0); s.albedo*=.84+grain*.2; s.roughness=.6+grain*.12;`;
   else if (name === 'charredWood') detail = `let grain=.5+.5*sin((in.P.x+sin(in.P.z*1.7)*.08)*43.0); let char=pow(.5+.5*sin(in.P.x*7.0+sin(in.P.z*3.1)),6.0); s.albedo*=.82+grain*.14-char*.12; s.roughness=.72+grain*.08+char*.08;`;
-  else if (name === 'fabric' || name === 'charcoal') detail = `let weave=.5+.5*sin(in.P.x*95.0)*sin(in.P.z*91.0); s.albedo*=.9+weave*.1; s.roughness=.94+weave*.05;`;
+  else if (name === 'fabric' || name === 'charcoal') detail = `let fuv=select(vec2f(in.P.x,in.P.y),in.P.xz,abs(in.N.y)>.55)/1.15;let fc=textureSample(portalFabricAlbedo,smpAnisoRepeat,fuv);let fNormal=textureSample(portalFabricNormal,smpAnisoRepeat,fuv).xyz*2.0-1.0;let fr=textureSample(portalFabricRoughness,smpAnisoRepeat,fuv).r;s.albedo*=fc.rgb;s.roughness=clamp(fr*.78+.2,.76,.99);s.normal=perturbNormalByMap(in.P,in.N,fuv,fNormal);`;
   else if (name === 'rug' || name === 'rugLight' || name === 'rugStair') detail = `let weave=.5+.5*sin(in.P.x*95.0)*sin(in.P.z*91.0);let warp=.5+.5*cos(in.P.x*8.0+sin(in.P.z*3.0));let motif=.5+.5*cos((in.P.x+in.P.z)*5.0)*cos((in.P.x-in.P.z)*5.0);let edge=smoothstep(.0,.12,abs(sin(in.P.x*1.55))*abs(sin(in.P.z*1.55)));s.albedo*=.74+weave*.08+warp*.06+motif*.08+edge*.04;s.roughness=.94+weave*.05;`;
   return `${detail} var warm=vec3f(0.0); ${fill} s.emissive+=warm;`;
 };
@@ -56,10 +56,10 @@ export class PortalInterior {
     this.group.visible = false;
     app.scene.add(this.group);
     const flatAlbedo=pixelTexture('Portal PBR albedo placeholder',[255,255,255,255],true),flatNormal=pixelTexture('Portal PBR normal placeholder',[128,128,255,255]),flatArm=pixelTexture('Portal PBR ARM placeholder',[255,190,0,255]);
-    this.pbr={brick:{albedo:flatAlbedo,normal:flatNormal,arm:flatArm},floor:{albedo:flatAlbedo,normal:flatNormal,arm:flatArm}};
+    this.pbr={brick:{albedo:flatAlbedo,normal:flatNormal,arm:flatArm},floor:{albedo:flatAlbedo,normal:flatNormal,arm:flatArm},fabric:{albedo:flatAlbedo,normal:flatNormal,roughness:flatArm}};
     this.materials = {};
     for (const [name, spec] of Object.entries(this.recipe.materials)) {
-      const textures=(name==='brick'||name==='brickDark')?{portalBrickAlbedo:this.pbr.brick.albedo,portalBrickNormal:this.pbr.brick.normal,portalBrickArm:this.pbr.brick.arm}:name==='polishedTile'?{portalFloorAlbedo:this.pbr.floor.albedo,portalFloorNormal:this.pbr.floor.normal,portalFloorArm:this.pbr.floor.arm}:{};
+      const textures=(name==='brick'||name==='brickDark')?{portalBrickAlbedo:this.pbr.brick.albedo,portalBrickNormal:this.pbr.brick.normal,portalBrickArm:this.pbr.brick.arm}:name==='polishedTile'?{portalFloorAlbedo:this.pbr.floor.albedo,portalFloorNormal:this.pbr.floor.normal,portalFloorArm:this.pbr.floor.arm}:(name==='fabric'||name==='charcoal')?{portalFabricAlbedo:this.pbr.fabric.albedo,portalFabricNormal:this.pbr.fabric.normal,portalFabricRoughness:this.pbr.fabric.roughness}:{};
       this.materials[name] = standard({
         name: `Portal ${name}`, color: spec.color, roughness: spec.roughness, metalness: spec.metalness,
         emissive: spec.emissive || 0, emissiveIntensity: spec.emissive ? 0.35 : 0,
@@ -94,11 +94,13 @@ export class PortalInterior {
 
   async loadSurfaceTextures(){
     try{
-      const [ba,bn,br,fa,fn,fr]=await Promise.all([
+      const [ba,bn,br,fa,fn,fr,ua,un,ur]=await Promise.all([
         loadPortalTexture('brick_wall_001_diffuse_1k.jpg',true),loadPortalTexture('brick_wall_001_nor_gl_1k.jpg'),loadPortalTexture('brick_wall_001_arm_1k.jpg'),
-        loadPortalTexture('concrete_floor_diff_1k.jpg',true),loadPortalTexture('concrete_floor_nor_gl_1k.jpg'),loadPortalTexture('concrete_floor_arm_1k.jpg')]);
+        loadPortalTexture('concrete_floor_diff_1k.jpg',true),loadPortalTexture('concrete_floor_nor_gl_1k.jpg'),loadPortalTexture('concrete_floor_arm_1k.jpg'),
+        loadPortalTexture('fabric_soft_black_diffuse_512.jpg',true),loadPortalTexture('fabric_soft_black_nor_gl_512.jpg'),loadPortalTexture('fabric_soft_black_roughness_512.jpg')]);
       for(const name of ['brick','brickDark']){const m=this.materials[name];m.bindings.portalBrickAlbedo.texture=ba;m.bindings.portalBrickNormal.texture=bn;m.bindings.portalBrickArm.texture=br;m.needsUpdate=true;}
       const floor=this.materials.polishedTile;floor.bindings.portalFloorAlbedo.texture=fa;floor.bindings.portalFloorNormal.texture=fn;floor.bindings.portalFloorArm.texture=fr;floor.needsUpdate=true;
+      for(const name of ['fabric','charcoal']){const m=this.materials[name];m.bindings.portalFabricAlbedo.texture=ua;m.bindings.portalFabricNormal.texture=un;m.bindings.portalFabricRoughness.texture=ur;m.needsUpdate=true;}
       this.pbrReady=true;
     }catch(error){console.warn('Portal warehouse PBR textures unavailable; using deterministic fallback',error);this.pbrReady=false;}
   }

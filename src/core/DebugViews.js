@@ -39,6 +39,10 @@ export const VIEWS = {
 	tStacks: { p: [ - 240, 8, 300 ], yaw: 0.15, pitch: - 0.05, time: 16.5 },
 	tCove: { p: [ - 160, 2.2, - 30 ], yaw: 1.35, pitch: - 0.08, time: 10.5 },
 	tMorning: { p: [ 18, 3.0, - 60 ], yaw: 0.2, pitch: 0.05, time: 7.2 },
+	// Agent Control: hidden Building #001 evidence cameras. `portal` only reveals
+	// the isolated interior while this explicit review view is active.
+	portalLoft: { p: [ 313, 20, 292 ], yaw: 2.29, pitch: 0.04, time: 17.1, portal: true },
+	portalMezzanine: { p: [ 299, 22.6, 308.2 ], yaw: 1.80, pitch: - 0.04, time: 17.1, portal: true },
 };
 
 export function installDebugViews( app ) {
@@ -56,6 +60,11 @@ export function installDebugViews( app ) {
 
 		const v = VIEWS[ name ];
 		if ( ! v ) return 'unknown view';
+		const portal = app.thirdIsland?.portalInterior;
+		if ( portal ) {
+			portal.group.visible = !! v.portal;
+			for ( const source of portal.localLightSources || [] ) source.enabled = !! v.portal;
+		}
 		if ( v.time !== undefined ) app.settings.timeOfDay = v.time;
 		if ( app.setFreeCam ) app.setFreeCam( true );
 		app.fly.setPose( new Vector3( ...v.p ), v.yaw, v.pitch );

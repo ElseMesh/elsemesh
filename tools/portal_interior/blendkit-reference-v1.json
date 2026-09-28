@@ -1,0 +1,70 @@
+{
+  "schema": "agent-control.portal-interior-blendkit-reference/v1",
+  "author": "Agent Control",
+  "licencePolicy": {
+    "publicRepository": true,
+    "runtimeEligible": ["cc_zero"],
+    "referenceOnly": ["royalty_free"],
+    "reason": "Browser assets in a public repository are directly extractable. BlendKit Royalty Free assets are therefore retained as visual references only."
+  },
+  "sceneReferences": [
+    {
+      "name": "Modern Loft Apartment",
+      "url": "https://www.blendkit.com/asset-gallery-detail/05057669-22df-4e62-a03a-b665524c7135/",
+      "licence": "royalty_free",
+      "decision": "reference_only",
+      "ideas": ["double-height zoning", "open kitchen and dining relationship", "mezzanine sightline"]
+    },
+    {
+      "name": "Industrial Loft",
+      "url": "https://www.blendkit.com/asset-gallery-detail/bcf8e796-e352-4c57-a580-982a8098c103/",
+      "licence": "royalty_free",
+      "decision": "reference_only",
+      "ideas": ["black steel structure", "warm pools of light", "industrial and residential material contrast"]
+    },
+    {
+      "name": "High Ceiling Living Room",
+      "url": "https://www.blendkit.com/asset-gallery-detail/3364445f-7f19-4fe0-8211-cdf2227e4f63/",
+      "licence": "royalty_free",
+      "decision": "reference_only",
+      "ideas": ["double-height furniture scale", "mezzanine edge composition", "layered living zone"]
+    }
+  ],
+  "qualifiedSources": [
+    {
+      "name": "Chaise lounge (Sofa)",
+      "url": "https://www.blendkit.com/asset-gallery-detail/1fa0bc00-505a-40cb-bcc4-19f237e041d4/",
+      "author": "abd3d",
+      "licence": "cc_zero",
+      "sourceSha256": "63e71ddee019df66ae2beddd108a15b7dc259647ecf8f4e57be251f33077fbbb",
+      "sourceBytes": 13625092,
+      "vertices": 7668,
+      "triangles": 14746,
+      "materials": 2,
+      "textures": 7,
+      "decision": "archived_reference_only",
+      "reason": "The silhouette is useful, but seven textures and a 3.1 metre footprint are excessive for a single browser prop."
+    },
+    {
+      "name": "Soft Black Fabric",
+      "url": "https://www.blendkit.com/asset-gallery-detail/aa03d318-d285-48fd-92bc-9b8671d74a4c/",
+      "author": "Share Textures",
+      "licence": "cc_zero",
+      "sourceSha256": "9b7716120bdb89ad3ac896cb99a5081060917bfb107e2895ed010c072b7eb09c",
+      "sourceBytes": 1429254,
+      "decision": "runtime_derived_512",
+      "runtimeFiles": [
+        "fabric_soft_black_diffuse_512.jpg",
+        "fabric_soft_black_nor_gl_512.jpg",
+        "fabric_soft_black_roughness_512.jpg"
+      ],
+      "runtimeBytes": 313441
+    }
+  ],
+  "protectedInvariants": [
+    "building 001 and building 002 remain separate",
+    "portal arrival and exit remain unchanged",
+    "stair and mezzanine collision remain unchanged",
+    "C64 interaction remains unchanged"
+  ]
+}

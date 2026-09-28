@@ -159,7 +159,8 @@ export function buildRecipe(){
  add(box('large dining rug',[6.8,.042,4.25],[7,.035,-5],'rugLight'));
  add(box('dining rug inner field',[6.15,.018,3.62],[7,.065,-5],'rug'));
  add(box('dining tabletop',[5,.16,2],[7,.94,-5],'wood',{collider:true}));for(const x of [5,9])for(const z of [-5.7,-4.3])add(box('table leg',[.13,.86,.13],[x,.47,z],'steel'));
- for(const x of [5,7,9])for(const z of [-6.5,-3.5]){add(box('dining chair seat',[.78,.13,.78],[x,.54,z],'charcoal',{collider:true}));add(box('dining chair back',[.78,.95,.12],[x,1.02,z+(z<-5?.34:-.34)],'charcoal'));for(const dx of [-.28,.28])for(const dz of [-.28,.28])add(box('chair leg',[.07,.5,.07],[x+dx,.26,z+dz],'steel'));}
+ // Keep each backrest on the side away from the table so every chair faces inward.
+ for(const x of [5,7,9])for(const z of [-6.5,-3.5]){add(box('dining chair seat',[.78,.13,.78],[x,.54,z],'charcoal',{collider:true}));add(box('dining chair back',[.78,.95,.12],[x,1.02,z+(z<-5?-.34:.34)],'charcoal'));for(const dx of [-.28,.28])for(const dz of [-.28,.28])add(box('chair leg',[.07,.5,.07],[x+dx,.26,z+dz],'steel'));}
  for(const x of [5.35,7,8.65])for(const z of [-5.58,-4.42]){add(sphere('dining place setting plate',[.48,.045,.34],[x,1.045,z],'ceramic'));add(box('dining place setting cutlery',[.035,.025,.42],[x+.36,1.055,z],'chrome'));add(cyl('dining drinking glass',[.13,.25,.13],[x-.34,1.16,z],'glass'));}
  add(cyl('dining centrepiece vase',[.42,.76,.42],[7,1.38,-5],'glass'));for(let stem=0;stem<9;stem++){const a=stem*2.39996;add(cyl('dining flower stem',[.035,.85,.035],[7+Math.cos(a)*.18,1.9,-5+Math.sin(a)*.18],'leaf',{rotation:[0,0,(stem%3-1)*.18]}));add(sphere('dining flower head',[.22,.18,.22],[7+Math.cos(a)*.42,2.25+(stem%3)*.1,-5+Math.sin(a)*.42],stem%2?'rust':'graffitiCream'));}
  // Proven staircase, landing, mezzanine footprint, and collision boundaries are unchanged.

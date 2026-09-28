@@ -7,9 +7,15 @@
     "mutationBoundary": [
       "src/world/PortalInteriorRecipe.js",
       "src/world/PortalInterior.js",
+      "src/core/DebugViews.js",
+      "src/core/Bench.js",
       "test/portal-warehouse.mjs",
       "docs/PORTAL-WAREHOUSE.md",
       "docs/PORTAL-WAREHOUSE-DETAIL-LEARNING.md",
+      "tools/portal_interior/blendkit-reference-v1.json",
+      "public/textures/portal-warehouse/fabric_soft_black_diffuse_512.jpg",
+      "public/textures/portal-warehouse/fabric_soft_black_nor_gl_512.jpg",
+      "public/textures/portal-warehouse/fabric_soft_black_roughness_512.jpg",
       "README.md",
       "changelog.md"
     ]
@@ -81,6 +87,7 @@
     "production build passes",
     "Windows WebGPU runtime capture shows the new detail without route obstruction",
     "side-by-side low-wide comparison is captured against the supplied reference",
+    "portalLoft and portalMezzanine debug cameras reveal the hidden interior only during explicit evidence capture",
     "industrial concrete floor uses large irregular slabs, damp reflection variation and sparse physical repairs"
   ]
 }

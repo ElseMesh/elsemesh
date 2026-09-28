@@ -181,6 +181,11 @@ export class Bench {
 		}
 
 		const v = VIEWS[ name ];
+		const portal = app.thirdIsland?.portalInterior;
+		if ( portal ) {
+			portal.group.visible = !! v.portal;
+			for ( const source of portal.localLightSources || [] ) source.enabled = !! v.portal;
+		}
 		if ( v.time !== undefined ) app.settings.timeOfDay = v.time;
 		app.setFreeCam( true );
 		app.fly.setPose( new Vector3( ...v.p ), v.yaw, v.pitch );

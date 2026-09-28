@@ -17,6 +17,8 @@ The production recipe in `src/world/PortalInteriorRecipe.js` builds an industria
 
 Merged material batches keep the procedural detail practical for the WebGPU runtime. The original circulation, arrival point, stair footprint, mezzanine footprint and exit remain unchanged.
 
+The fabric and charcoal batches use a 512 px PBR upholstery set derived from BlendKit's CC0 **Soft Black Fabric** by Share Textures. Its untouched 1K source and acquisition metadata are preserved outside the public repository; the three runtime maps total 313,441 bytes. A qualified CC0 chaise was retained as an off-repository design reference because its seven textures and 3.1 m footprint did not justify the browser cost. Royalty Free loft scenes were used only for layout study because assets in this public web repository remain directly extractable. The governed shortlist and hashes are recorded in `tools/portal_interior/blendkit-reference-v1.json`.
+
 ## Commodore 64 terminal
 
 Walk to the Commodore 64 on the mezzanine and press **E**. The terminal opens full screen and suspends world controls. Log in with a local display name, then enter numbered BASIC lines. Useful commands include:
