@@ -40,6 +40,10 @@ After one uninterrupted minute of play, Esmie from Edinburgh gives a faint, 29.6
 
 The user-selected Alba voice (`en_GB-alba-medium.onnx`) was generated through the Sentinel Agent Control speech service. The eight qualified WAV files and a non-secret hash/provenance manifest are bundled under `public/audio/esmie/`, so no speech credential or provider endpoint is exposed to the browser. Playback is deliberately quiet, non-spatial and heard as an internal voice. There is no character, caption, speech bubble, toast or dialogue panel. Audio respects the game mute setting and pauses while the browser tab is hidden.
 
+## Agent Control reference-detail operation
+
+The second reference pass adds arched window transoms, roof plates and rivets, mixed cushions and a sofa throw, floor and task lamps, an ottoman, kitchen backsplash, oven, bottles and pendant lights, dining place settings and flowers, richer woven rugs, desk drawers and media, stereo equipment, speakers, small plants, denser graffiti and mezzanine reading chairs. These additions reuse the existing merged material batches and do not change the protected arrival, stair, mezzanine or C64 interaction routes. See `tools/portal_interior/reference-detail-v1.json` and [the learning ledger](PORTAL-WAREHOUSE-DETAIL-LEARNING.md).
+
 ## Verification
 
 `test/portal-warehouse.mjs` validates the retained circulation zones, reference details, programmable BASIC execution, queued terminal input, Esmie timing/content, the absence of popup code, Sentinel/Alba provenance, WAV structure and the 28–32 second introductory duration. Runtime evidence is captured on a Windows WebGPU browser; the capture camera and accelerated Esmie timer are evidence fixtures and do not alter production timing.

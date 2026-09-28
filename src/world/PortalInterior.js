@@ -40,7 +40,8 @@ const portalSurface = (name, lights, origin) => {
   else if (name === 'steel' || name === 'rust' || name === 'black') detail = `let scratch=smoothstep(.94,.985,fract(sin(dot(floor(in.P.xy*vec2f(7.0,45.0)),vec2f(19.19,73.31)))*3157.7)); s.albedo*=1.0-scratch*.28; s.roughness+=scratch*.18;`;
   else if (name === 'wood') detail = `let grain=.5+.5*sin((in.P.x+sin(in.P.z*2.3)*.12)*38.0); s.albedo*=.84+grain*.2; s.roughness=.6+grain*.12;`;
   else if (name === 'charredWood') detail = `let grain=.5+.5*sin((in.P.x+sin(in.P.z*1.7)*.08)*43.0); let char=pow(.5+.5*sin(in.P.x*7.0+sin(in.P.z*3.1)),6.0); s.albedo*=.82+grain*.14-char*.12; s.roughness=.72+grain*.08+char*.08;`;
-  else if (name === 'fabric' || name === 'charcoal' || name === 'rug' || name === 'rugLight') detail = `let weave=.5+.5*sin(in.P.x*95.0)*sin(in.P.z*91.0); s.albedo*=.9+weave*.1; s.roughness=.94+weave*.05;`;
+  else if (name === 'fabric' || name === 'charcoal') detail = `let weave=.5+.5*sin(in.P.x*95.0)*sin(in.P.z*91.0); s.albedo*=.9+weave*.1; s.roughness=.94+weave*.05;`;
+  else if (name === 'rug' || name === 'rugLight' || name === 'rugStair') detail = `let weave=.5+.5*sin(in.P.x*95.0)*sin(in.P.z*91.0);let warp=.5+.5*cos(in.P.x*8.0+sin(in.P.z*3.0));let motif=.5+.5*cos((in.P.x+in.P.z)*5.0)*cos((in.P.x-in.P.z)*5.0);let edge=smoothstep(.0,.12,abs(sin(in.P.x*1.55))*abs(sin(in.P.z*1.55)));s.albedo*=.74+weave*.08+warp*.06+motif*.08+edge*.04;s.roughness=.94+weave*.05;`;
   return `${detail} var warm=vec3f(0.0); ${fill} s.emissive+=warm;`;
 };
 

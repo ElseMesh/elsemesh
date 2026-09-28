@@ -1,0 +1,73 @@
+{
+  "schema": "agent-control.portal-interior-reference-detail/v1",
+  "id": "portal-warehouse-reference-detail-v1",
+  "governance": {
+    "controller": "Agent Control",
+    "status": "CANDIDATE_PENDING_RUNTIME_VERIFICATION",
+    "mutationBoundary": [
+      "src/world/PortalInteriorRecipe.js",
+      "src/world/PortalInterior.js",
+      "test/portal-warehouse.mjs",
+      "docs/PORTAL-WAREHOUSE.md",
+      "docs/PORTAL-WAREHOUSE-DETAIL-LEARNING.md",
+      "README.md",
+      "changelog.md"
+    ]
+  },
+  "referenceObservations": [
+    "arched factory glazing with fine steel divisions",
+    "black and rusted roof structure with visible junction plates and rivets",
+    "layered lounge upholstery, mixed cushions, throws, lamps and an ottoman",
+    "warm kitchen task lighting, stone backsplash, oven and countertop objects",
+    "dining rug, complete place settings and a flower centrepiece",
+    "reflective tiled floor with several restrained woven rug patterns",
+    "glass and chrome stair structure with illuminated treads",
+    "black mezzanine wall, timber bookcases, retro equipment and swivel seating",
+    "dense plants, framed wall objects and layered near-wall graffiti"
+  ],
+  "expectedObjects": [
+    "arched factory window transom",
+    "roof beam junction plate",
+    "roof junction rivet",
+    "contrasting lounge cushion",
+    "soft sofa throw",
+    "sofa throw woven stripe",
+    "lounge floor lamp shade",
+    "lounge ottoman cushion",
+    "kitchen stone backsplash",
+    "kitchen under cabinet light",
+    "built in oven surround",
+    "kitchen bottle",
+    "kitchen pendant shade",
+    "large dining rug",
+    "dining place setting plate",
+    "dining flower head",
+    "c64 desk drawer pedestal",
+    "bbc desk drawer pedestal",
+    "sun desk drawer pedestal",
+    "retro archive drawer cabinet",
+    "boxed retro software",
+    "retro room stereo receiver",
+    "retro bookshelf speaker",
+    "near wall graffiti overspray",
+    "small terracotta plant pot",
+    "mezzanine leather swivel seat",
+    "mezzanine open book"
+  ],
+  "protectedInvariants": {
+    "arrivalZone": [0, 1, 0],
+    "retroZone": [-7.5, 4, 10],
+    "building001MustRemainSeparate": true,
+    "building002MustRemainSeparate": true,
+    "stairAndMezzanineCollisionMustRemain": true,
+    "c64InteractionMustRemain": true
+  },
+  "verification": [
+    "manifest expected objects exist in the generated recipe",
+    "protected zones remain byte-for-byte equal",
+    "focused portal warehouse test passes",
+    "full game and network tests pass",
+    "production build passes",
+    "Windows WebGPU runtime capture shows the new detail without route obstruction"
+  ]
+}

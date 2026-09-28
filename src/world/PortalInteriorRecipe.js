@@ -52,6 +52,12 @@ export function buildRecipe(){
   add(box('west clear factory glazing',[.06,8.05,3.9],[-15.78,5.32,z],'glass',{collider:true}));
   for(const dz of [-1.9,-.95,0,.95,1.9])add(box('west fine vertical mullion',[.13,8.12,.055],[-15.72,5.32,z+dz],'steel'));
   for(const y of [1.35,2.7,4.05,5.4,6.75,8.1,9.35])add(box('west fine horizontal mullion',[.13,.055,3.92],[-15.72,y,z],'steel'));
+  // Chorded steel transoms turn the tall rectangular panes into the arched
+  // factory-window silhouette visible throughout the supplied references.
+  for(let segment=0;segment<6;segment++){
+   const angle=(segment+.5)*Math.PI/6, radius=1.72;
+   add(box('arched factory window transom',[.14,.13,.92],[-15.69,8.02+Math.sin(angle)*radius,z+Math.cos(angle)*radius],'steel',{rotation:[Math.PI/2-angle,0,0]}));
+  }
  }
  add(box('east brick wall',[.38,12,30],[16,6,3],'brick',{collider:true}));
  for(const z of [-12,18]){
@@ -76,6 +82,11 @@ export function buildRecipe(){
   }
  }
  for(const z of [-8,2,12])add(box('high longitudinal I beam',[31,.38,.3],[0,9.2,z],'steel'));
+ // Rivets and junction plates make the roof structure read at walking distance.
+ for(const x of [-15,-10,-5,0,5,10,15])for(const z of [-8,2,12]){
+  add(box('roof beam junction plate',[.68,.62,.08],[x,9.2,z-.2],'rust'));
+  for(const dx of [-.22,.22])for(const dy of [-.18,.18])add(sphere('roof junction rivet',[.075,.075,.05],[x+dx,9.2+dy,z-.25],'chrome'));
+ }
  // Source-informed black substructure: real I profiles, rusted splice plates and bolt heads.
  for(const x of [-14,-7,0]){
   add(box('mezzanine RSJ web',[.16,3.55,.52],[x,1.77,5.82],'steel'));
@@ -102,6 +113,9 @@ export function buildRecipe(){
  add(box('sectional return base',[1.7,.22,2.5],[-11.05,.4,4.4],'wood',{collider:true}));
  for(const z of [5.25,4.25,3.3])add(sphere('sectional return seat',[1.4,.38,.88],[-11.05,.69,z],'fabric'));
  for(const [x,z,r] of [[-10.35,6.72,-.18],[-8.95,6.7,.12],[-7.55,6.73,-.1],[-11.05,4.75,.18]])add(sphere('loose lounge pillow',[.72,.7,.22],[x,1.2,z],'rugLight',{rotation:[0,r,r]}));
+ for(const [x,z,r,m] of [[-9.65,6.67,.14,'charcoal'],[-8.2,6.68,-.12,'rust'],[-11.06,4.05,.1,'charcoal']])add(sphere('contrasting lounge cushion',[.68,.64,.2],[x,1.22,z],m,{rotation:[0,r,-r]}));
+ add(box('soft sofa throw',[1.55,.045,1.15],[-7.25,.93,6.08],'rugStair',{rotation:[0,.08,-.05]}));
+ for(let fold=0;fold<5;fold++)add(box('sofa throw woven stripe',[1.42,.018,.035],[-7.25,.965,5.66+fold*.2],fold%2?'rugLight':'rust',{rotation:[0,.08,-.05]}));
  for(const x of [-11.45,-6.45])add(box('sectional arm',[.3,.68,1.72],[x,.82,6.3],'fabric'));
  for(const x of [-10.8,-8.1,-6.65])for(const z of [5.65,6.8])add(cyl('short sofa leg',[.07,.32,.07],[x,.2,z],'steel'));
  // Two nesting tables and small lived-in props.
@@ -110,6 +124,8 @@ export function buildRecipe(){
  for(const [x,z,h] of [[-9.95,2.72,.62],[-7.75,2.72,.62],[-8.05,3.78,.62],[-6.55,2.25,.43],[-7.75,3.05,.43]])add(cyl('coffee table leg',[.06,h,.06],[x,h/2,z],'steel'));
  add(box('coffee table book',[.62,.06,.42],[-9.3,.78,3.2],'rust',{rotation:[0,.18,0]}));add(cyl('coffee mug',[.16,.2,.16],[-8.35,.82,3.15],'cream'));add(box('coffee tray',[.7,.035,.45],[-7.15,.56,2.65],'wood'));
  add(box('side table top',[1.1,.1,1.1],[-12.4,.65,4.6],'wood'));add(cyl('side table stem',[.1,.6,.1],[-12.4,.32,4.6],'steel'));
+ add(cyl('lounge floor lamp stem',[.075,2.15,.075],[-12.85,1.08,5.65],'chrome'));add(cyl('lounge floor lamp shade',[.66,.46,.66],[-12.85,2.12,5.65],'black'));add(sphere('lounge floor lamp glow',[.24,.18,.24],[-12.85,1.98,5.65],'amber'));
+ add(box('lounge ottoman base',[1.45,.18,1.05],[-5.9,.38,5.0],'wood'));add(sphere('lounge ottoman cushion',[1.35,.34,.96],[-5.9,.62,5.0],'charcoal'));
  // Branched plants with many thin ellipsoid leaves form irregular silhouettes.
  for(const [x,z,h] of [[-13,7,2.2],[-14,1.5,1.7],[13.5,-7,2],[11,16,1.8]]){
   add(cyl('ceramic plant pot',[.72,.65,.72],[x,.33,z],'ceramic'));
@@ -123,10 +139,19 @@ export function buildRecipe(){
  add(box('sink',[1.25,.06,.65],[5,.96,5],'black'));add(cyl('faucet',[.08,.7,.08],[5,.98,5.45],'steel'));
  for(const x of [2,4,6,8]){add(box('wall cabinet',[1.4,1.65,.55],[x,1.05,8],'wood',{collider:true}));add(box('cabinet inset',[1.22,1.45,.05],[x,1.05,7.7],'cream'));}
  add(box('fridge',[1.3,2.35,.9],[10,1.18,7.5],'steel',{collider:true}));
+ add(box('kitchen stone backsplash',[7.8,1.15,.08],[5.1,2.02,7.66],'concreteDark'));
+ add(box('kitchen under cabinet light',[7.5,.055,.08],[5.1,1.87,7.58],'stairGlow'));
+ add(box('built in oven surround',[1.42,1.52,.08],[8.45,1.1,7.58],'black'));add(box('oven glass door',[1.18,.72,.035],[8.45,.95,7.52],'glass'));add(box('oven chrome handle',[.86,.07,.08],[8.45,1.38,7.46],'chrome'));
+ for(const [x,h,m] of [[3.05,.45,'leaf'],[3.42,.58,'rust'],[3.78,.38,'cream'],[6.72,.52,'leaf'],[7.02,.4,'amber']]){add(cyl('kitchen bottle',[.14,h,.14],[x,1.02+h/2,5.1],m));add(cyl('kitchen bottle neck',[.06,.12,.06],[x,1.08+h,5.1],m));}
+ for(const x of [3.7,5.1,6.5]){add(box('kitchen pendant cord',[.035,1.05,.035],[x,2.95,5],'black'));add(cyl('kitchen pendant shade',[.54,.3,.54],[x,2.35,5],'black'));add(sphere('kitchen pendant warm bulb',[.2,.16,.2],[x,2.22,5],'amber'));}
  for(const x of [3,5,7,9]){add(box('bar stool seat',[.62,.12,.62],[x,.76,3.6],'charcoal'));for(const dx of [-.22,.22])for(const dz of [-.22,.22])add(box('stool leg',[.07,.7,.07],[x+dx,.37,3.6+dz],'steel'));}
  // Dining remains below and forward of the loft.
+ add(box('large dining rug',[6.8,.042,4.25],[7,.035,-5],'rugLight'));
+ add(box('dining rug inner field',[6.15,.018,3.62],[7,.065,-5],'rug'));
  add(box('dining tabletop',[5,.16,2],[7,.94,-5],'wood',{collider:true}));for(const x of [5,9])for(const z of [-5.7,-4.3])add(box('table leg',[.13,.86,.13],[x,.47,z],'steel'));
  for(const x of [5,7,9])for(const z of [-6.5,-3.5]){add(box('dining chair seat',[.78,.13,.78],[x,.54,z],'charcoal',{collider:true}));add(box('dining chair back',[.78,.95,.12],[x,1.02,z+(z<-5?.34:-.34)],'charcoal'));for(const dx of [-.28,.28])for(const dz of [-.28,.28])add(box('chair leg',[.07,.5,.07],[x+dx,.26,z+dz],'steel'));}
+ for(const x of [5.35,7,8.65])for(const z of [-5.58,-4.42]){add(sphere('dining place setting plate',[.48,.045,.34],[x,1.045,z],'ceramic'));add(box('dining place setting cutlery',[.035,.025,.42],[x+.36,1.055,z],'chrome'));add(cyl('dining drinking glass',[.13,.25,.13],[x-.34,1.16,z],'glass'));}
+ add(cyl('dining centrepiece vase',[.42,.76,.42],[7,1.38,-5],'glass'));for(let stem=0;stem<9;stem++){const a=stem*2.39996;add(cyl('dining flower stem',[.035,.85,.035],[7+Math.cos(a)*.18,1.9,-5+Math.sin(a)*.18],'leaf',{rotation:[0,0,(stem%3-1)*.18]}));add(sphere('dining flower head',[.22,.18,.22],[7+Math.cos(a)*.42,2.25+(stem%3)*.1,-5+Math.sin(a)*.42],stem%2?'rust':'graffitiCream'));}
  // Proven staircase, landing, mezzanine footprint, and collision boundaries are unchanged.
  for(let i=0;i<14;i++)add(box('stair tread',[4,.28,.82],[3,.14+i*.25,1.45+i*.65],'concreteDark',{collider:true,walkable:true}));
  for(let i=0;i<14;i++)add(box('stair amber tread light',[3.72,.035,.045],[3,.31+i*.25,1.035+i*.65],'stairGlow'));
@@ -202,6 +227,14 @@ export function buildRecipe(){
   add(box('office chair tall swivel back',[.64,.78,.12],[chairX,4.48,7.49],'charcoal'));
   add(cyl('office chair chrome column',[.09,.52,.09],[chairX,3.78,7.85],'chrome'));
   for(let spoke=0;spoke<5;spoke++){const a=spoke*Math.PI*2/5;add(box('office chair caster spoke',[.06,.05,.48],[chairX+Math.sin(a)*.2,3.54,7.85+Math.cos(a)*.2],'chrome',{rotation:[0,a,0]}));add(sphere('office chair caster',[.1,.1,.1],[chairX+Math.sin(a)*.43,3.49,7.85+Math.cos(a)*.43],'black'));}
+  // Desk-scale clutter makes each station feel used rather than displayed.
+  add(box(id+' desk drawer pedestal',[.48,.58,.7],[x-.76,3.92,9.02],'charredWood'));
+  for(let drawer=0;drawer<3;drawer++){add(box(id+' desk drawer front',[.42,.14,.035],[x-.76,3.75+drawer*.18,8.65],'wood'));add(box(id+' drawer pull',[.16,.025,.035],[x-.76,3.75+drawer*.18,8.62],'chrome'));}
+  add(box(id+' floppy disk',[.19,.012,.19],[x+.62,4.47,8.47],id==='sun'?'sunPurple':'black',{rotation:[0,.2,0]}));
+  add(box(id+' paper notes',[.32,.012,.24],[x-.48,4.47,8.42],'cream',{rotation:[0,-.12,0]}));
+  add(cyl(id+' task lamp stem',[.04,.52,.04],[x+.82,4.67,9.05],'chrome',{rotation:[0,0,-.28]}));
+  add(cyl(id+' task lamp shade',[.28,.18,.28],[x+.9,4.98,8.98],'black',{rotation:[0,0,-.28]}));
+  add(box(id+' coiled monitor cable',[.035,.035,.72],[x+.42,4.38,8.9],'black',{rotation:[0,.35,0]}));
  }
  // Black mezzanine feature wall, bookcases and a period-inspired original rainbow fruit emblem.
  add(box('black retro room feature wall',[10.2,3.2,.08],[-7.5,5.35,13.27],'black'));
@@ -211,10 +244,20 @@ export function buildRecipe(){
   const palette=i%4===0?'rust':i%4===1?'cream':i%4===2?'graffitiCyan':'wood';
   add(box('retro library book',[.13+(i%3)*.025,.38+(i%4)*.045,.28],[-11.95+i*.48,4.62+shelf*.7,12.62],palette,{rotation:[0,0,(i%3-1)*.035]}));
  }
+ for(const x of [-11.9,-10.3,-8.7,-7.1,-5.6]){
+  add(box('retro archive drawer cabinet',[1.25,.72,.48],[x,4.0,12.9],'charredWood'));
+  for(let drawer=0;drawer<2;drawer++){add(box('retro archive drawer',[1.08,.25,.035],[x,3.85+drawer*.28,12.63],'wood'));add(box('retro archive brass pull',[.24,.045,.035],[x,3.85+drawer*.28,12.59],'amber'));}
+ }
  for(const [x,y,s] of [[-11.55,6.15,.72],[-9.1,6.12,.66],[-6.8,5.43,.58]]){
   add(box('shelf retro monitor case',[s,.52,.42],[x,y,12.62],'sunPlastic'));
   add(box('shelf retro dark screen',[s*.72,.31,.025],[x,y+.02,12.38],'screen'));
  }
+ for(const [x,y,w,m] of [[-10.65,5.34,.72,'black'],[-8.15,6.16,.64,'sunPurple'],[-5.82,6.14,.58,'rust']]){
+  add(box('boxed retro software',[w,.42,.24],[x,y,12.62],m));
+  add(box('boxed software label',[w*.72,.18,.025],[x,y,12.48],'cream'));
+ }
+ add(box('retro room stereo receiver',[1.2,.28,.38],[-4.85,4.48,12.7],'black'));for(const x of [-5.22,-4.95,-4.68])add(cyl('stereo silver control',[.09,.035,.09],[x,4.48,12.48],'chrome',{rotation:[Math.PI/2,0,0]}));
+ for(const x of [-12.25,-3.35]){add(box('retro bookshelf speaker',[.62,.9,.42],[x,5.02,12.68],'charredWood'));add(sphere('speaker woofer',[.32,.32,.035],[x,4.88,12.44],'black'));add(sphere('speaker tweeter',[.14,.14,.025],[x,5.24,12.43],'black'));}
  const rainbow=['graffitiCoral','neonAmber','rugLight','leaf','neonCyan','sunPurple'];
  for(let i=0;i<rainbow.length;i++)add(box('rainbow computer club fruit band',[1.5-i*.06,.16,.045],[-4.08,6.15-i*.17,13.17],rainbow[i]));
  add(box('rainbow computer club fruit leaf',[.42,.13,.045],[-3.66,6.72,13.17],'leaf',{rotation:[0,0,-.45]}));
@@ -228,6 +271,12 @@ export function buildRecipe(){
   const z=-7.2+i*.53,y=1.1+(i%4)*.48;
   add(box('near wall graffiti colour stroke',[.035,.16+(i%3)*.06,1.15],[15.79,y,z],i%3===0?'graffitiCyan':i%3===1?'graffitiCoral':'graffitiCream',{rotation:[(i%2?-.42:.48),0,0]}));
  }
+ // A denser, layered mural occupies the near wall, with small overspray dots
+ // and offset strokes rather than one flat decal.
+ for(let i=0;i<18;i++){
+  const z=-7.55+(i%9)*.42,y=.72+Math.floor(i/9)*1.05+(i%3)*.22;
+  add(sphere('near wall graffiti overspray',[.025,.09+(i%4)*.025,.09+(i%5)*.02],[15.75,y,z],i%3===0?'graffitiCyan':i%3===1?'graffitiCoral':'graffitiCream'));
+ }
  // Sparse, faded industrial paint; no neon loops.
  for(const [z,r] of [[-4,.42],[2,-.34],[14,.28]]){add(box('faded graffiti stroke',[.035,.16,2.2],[15.79,3,z],'graffiti',{rotation:[r,0,0]}));add(box('faded graffiti mark',[.035,.12,1.3],[15.78,3.55,z+.3],'rust',{rotation:[-r,0,0]}));}
  // Pendants, task fixtures, hanging vines, and richer shelf-scale objects.
@@ -237,6 +286,20 @@ export function buildRecipe(){
   add(cyl('tall black houseplant pot',[.68,.72,.68],[x,.36,z],'black'));
   for(let i=0;i<9;i++){const a=i*2.39996;add(box('broad houseplant leaf',[.32,.06,.95],[x+Math.cos(a)*.34,.85+(i%4)*.28,z+Math.sin(a)*.34],'leaf',{rotation:[0,-a,.35+(i%3)*.18]}));}
  }
+ // Smaller plants and framed objects soften the concrete kitchen and mezzanine.
+ for(const [x,y,z] of [[1.55,1.08,5.2],[10.7,1.05,6.95],[-4.15,4.5,12.7],[-1.05,4.02,12.9]]){
+  add(cyl('small terracotta plant pot',[.34,.36,.34],[x,y,z],'rust'));
+  for(let i=0;i<7;i++){const a=i*2.39996;add(box('small plant leaf',[.16,.035,.48],[x+Math.cos(a)*.16,y+.35+(i%3)*.12,z+Math.sin(a)*.16],'leaf',{rotation:[0,-a,.45]}));}
+ }
+ // A leather reading corner on the mezzanine matches the pair of low swivel
+ // chairs visible outside the glass computer room in the reference.
+ for(const [x,z,r] of [[-12.1,10.6,.28],[-10.45,10.75,-.18]]){
+  add(sphere('mezzanine leather swivel seat',[.92,.3,.82],[x,3.92,z],'charcoal',{rotation:[0,r,0]}));
+  add(sphere('mezzanine leather swivel back',[.9,.9,.28],[x,4.35,z+.32],'charcoal',{rotation:[-.16,r,0]}));
+  add(cyl('mezzanine chair chrome pedestal',[.11,.46,.11],[x,3.7,z],'chrome'));
+  for(let spoke=0;spoke<4;spoke++){const a=spoke*Math.PI/2;add(box('mezzanine chair foot',[.055,.045,.42],[x+Math.sin(a)*.18,3.5,z+Math.cos(a)*.18],'chrome',{rotation:[0,a,0]}));}
+ }
+ add(box('mezzanine reading side table',[1.05,.11,.72],[-11.25,4.02,9.85],'charredWood'));add(cyl('mezzanine side table stem',[.09,.5,.09],[-11.25,3.75,9.85],'chrome'));add(box('mezzanine open book',[.5,.025,.34],[-11.25,4.1,9.85],'cream',{rotation:[0,.08,0]}));
  // Recessed downlights under the mezzanine create the warm pools seen in the reference.
  for(const x of [-12,-9,-6,-3]){add(cyl('recessed ceiling trim',[.22,.035,.22],[x,3.37,9.8],'chrome'));add(sphere('recessed warm lamp',[.13,.06,.13],[x,3.34,9.8],'stairGlow'));}
  add(box('display shelf',[5,.12,.55],[11,2.2,16.5],'wood'));add(box('display shelf',[5,.12,.55],[11,1.25,16.5],'wood'));
@@ -252,6 +315,9 @@ export function buildRecipe(){
   {name:'arrival practical',position:[-2,3.5,0],color:0xe9c394,intensity:3,range:5}
   ,{name:'stair tread wash',position:[4.8,2.6,5.6],color:0xffa451,intensity:4,range:5}
   ,{name:'mezzanine downlights',position:[-8,3.15,9.8],color:0xffb66d,intensity:4,range:7}
+  ,{name:'lounge floor lamp',position:[-12.85,2,5.65],color:0xffbd79,intensity:3.5,range:4.5}
+  ,{name:'kitchen task strip',position:[5.1,1.9,7.55],color:0xffd19a,intensity:3.5,range:4.8}
+  ,{name:'retro desk task lamps',position:[-8.5,5,9],color:0xffb76f,intensity:3.2,range:5}
  ];
  return {materials,objects,screens,zones:{arrival:[0,1,0],lounge:[-9,1,4],kitchen:[5,1,5],dining:[7,1,-5],retro:[-7.5,4,10],mezzanine:[-7,4,10]},lights};
 }

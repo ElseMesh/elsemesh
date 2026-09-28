@@ -17,9 +17,19 @@ test('vendored Microsoft 6502 BASIC executes an editable program', async () => {
 
 test('portal warehouse retains reference detail without changing circulation zones', () => {
   const recipe=buildRecipe(), names=recipe.objects.map(object=>object.name);
-  for(const expected of ['polished tiled warehouse floor','deep mezzanine front beam','rusted RSJ splice plate','subtle stair runner','stair amber tread light','near wall graffiti colour stroke','tall black houseplant pot','muted warehouse photograph','office chair chrome column','retro library timber shelf','rainbow computer club fruit band']) assert.ok(names.includes(expected),expected);
+  for(const expected of ['polished tiled warehouse floor','deep mezzanine front beam','rusted RSJ splice plate','subtle stair runner','stair amber tread light','near wall graffiti colour stroke','tall black houseplant pot','muted warehouse photograph','office chair chrome column','retro library timber shelf','rainbow computer club fruit band','arched factory window transom','roof junction rivet','soft sofa throw','lounge floor lamp shade','kitchen under cabinet light','built in oven surround','large dining rug','dining place setting plate','dining flower head','c64 desk drawer pedestal','retro archive drawer cabinet','retro room stereo receiver','retro bookshelf speaker','near wall graffiti overspray','mezzanine leather swivel seat']) assert.ok(names.includes(expected),expected);
   assert.deepEqual(recipe.zones.arrival,[0,1,0]);
   assert.deepEqual(recipe.zones.retro,[-7.5,4,10]);
+});
+
+test('Agent Control reference-detail operation is complete and preserves protected zones', async () => {
+  const recipe=buildRecipe(), names=new Set(recipe.objects.map(object=>object.name));
+  const operation=JSON.parse(await readFile(new URL('../tools/portal_interior/reference-detail-v1.json',import.meta.url),'utf8'));
+  assert.equal(operation.schema,'agent-control.portal-interior-reference-detail/v1');
+  assert.equal(operation.governance.controller,'Agent Control');
+  for(const expected of operation.expectedObjects)assert.ok(names.has(expected),expected);
+  assert.deepEqual(recipe.zones.arrival,operation.protectedInvariants.arrivalZone);
+  assert.deepEqual(recipe.zones.retro,operation.protectedInvariants.retroZone);
 });
 
 test('C64 interaction uses a modal terminal and Building 001 sign remains', async () => {
