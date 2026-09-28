@@ -634,6 +634,17 @@ body {
 	transition: opacity 900ms var(--tw-ease);
 }
 
+.tw-location {
+	margin-top: calc(4 * var(--tw-u));
+	font-family: var(--tw-mono);
+	font-size: calc(11 * var(--tw-u));
+	font-weight: 700;
+	letter-spacing: .14em;
+	text-transform: uppercase;
+	color: var(--tw-sun);
+	text-shadow: 0 1px 8px #000;
+}
+
 .tw-root.is-idle .tw-stats,
 .tw-root.is-idle .tw-mark,
 .tw-root.is-idle .tw-brand-name,

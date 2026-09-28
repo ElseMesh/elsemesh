@@ -1939,11 +1939,12 @@ export class UI {
 
 		const brand = h( 'div', 'tw-brand' );
 		brand.innerHTML = `${ brandMark() }<span class="tw-brand-name">BURNING HORIZONS</span>`;
+		this.locationEl = h( 'div', 'tw-location', { role: 'status', 'aria-label': 'Current location' } );
 		this.modeEl = h( 'div', 'tw-mode is-empty', { role: 'status' } );
 		this.modeIco = h( 'span', 'tw-mode-ico' );
 		this.modeText = h( 'span', 'tw-mode-text' );
 		this.modeEl.append( this.modeIco, this.modeText );
-		brand.append( this.modeEl );
+		brand.append( this.locationEl, this.modeEl );
 		tl.append( stats, brand );
 
 		// top-centre: notifications
@@ -2719,6 +2720,15 @@ export class UI {
 		void this.modeEl.offsetWidth;
 		this.modeEl.classList.add( 'is-bump' );
 		this._activity();
+
+	}
+
+	setLocation( label ) {
+
+		label = label == null ? '' : String( label );
+		if ( label === this._location ) return;
+		this._location = label;
+		this.locationEl.textContent = label;
 
 	}
 

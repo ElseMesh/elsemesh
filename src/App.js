@@ -37,6 +37,7 @@ import { MonorailSystem } from './world/MonorailSystem.js';
 import { ThirdIslandSystem } from './world/ThirdIslandSystem.js';
 import { FourthIslandSystem } from './world/FourthIslandSystem.js';
 import { IslandFiveSystem } from './world/IslandFiveSystem.js';
+import { reviewCameraMinimumHeight } from './world/WorldLocation.js';
 
 import { OceanFFT } from './ocean/OceanFFT.js';
 import { WaterSurface } from './ocean/WaterSurface.js';
@@ -685,7 +686,27 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 		this.boatSpray.update( dt );
 		if ( this.kaiju ) this.kaiju.update( dt );
 		this.wake.update( dt );
-		if ( this.freeCam ) this.fly.update( dt );
+		if ( this.freeCam ) {
+
+			this.fly.update( dt );
+			// Named review views are user-facing inspection cameras. Keep them above the
+			// terrain or water so descending cannot expose the underside of the world.
+			if ( this.qs.has( 'view' ) ) {
+
+				const c = this.camera.position;
+				const terrain = this.terrainData.heightAt( c.x, c.z );
+				const collider = this.colliders.groundHeightAt( c.x, c.z, 1000 );
+				const floor = reviewCameraMinimumHeight( terrain, collider, this.cameraWaterHeight ?? 0 );
+				if ( c.y < floor ) {
+
+					c.y = floor;
+					this.fly.velocity.y = Math.max( 0, this.fly.velocity.y );
+
+				}
+
+			}
+
+		}
 		else if ( this.monorail.state !== 'riding' && !this.thirdIsland.active ) this.player.update( dt );
 		if ( ! this.freeCam && !this.thirdIsland.active ) this.monorail.update( dt, this.player, this.input, this.camera, ( message ) => this.ui?.ui.toast( message ) );
 		this.thirdIsland.update( dt );

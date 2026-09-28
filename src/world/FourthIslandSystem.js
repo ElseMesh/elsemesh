@@ -1,4 +1,4 @@
-import { BufferAttribute, BufferGeometry, CylinderGeometry, Group, Mesh, SphereGeometry, TorusGeometry, Vector3 } from '../engine/index.js';
+import { Box3, BufferAttribute, BufferGeometry, CylinderGeometry, Group, Mesh, SphereGeometry, TorusGeometry, Vector3 } from '../engine/index.js';
 import { loadGLB, decodeImage } from '../engine/loaders/GLTF.js';
 import { Texture } from '../engine/gpu/Texture.js';
 import { generateMipmaps } from '../engine/gpu/Mipmaps.js';
@@ -84,7 +84,14 @@ export class FourthIslandSystem {
     this.app=app;this.time=0;this.group=new Group();this.group.name='Cartoon Island — forest villa';app.scene.add(this.group);
     this.bark=createTreeBarkMaterial();this.buildForest();this.wildlife=new TreeWildlife(this.group,this.trees,this.bark);this.addCollision();
     const y=app.terrainData.heightAt(FOURTH.villa.x,FOURTH.villa.z);
-    this.ready=loadVilla().then(model=>{this.model=model;model.position.set(FOURTH.villa.x,y+.08,FOURTH.villa.z);model.rotation.y=FOURTH.villa.yaw;model.scale.setScalar(1.16);app.scene.add(model);return model;}).catch(error=>{this.error=error;console.error('Island Four villa failed to load',error);});
+    this.ready=loadVilla().then(model=>{
+      this.model=model;model.rotation.y=FOURTH.villa.yaw;model.scale.setScalar(1.16);model.updateMatrixWorld(true);
+      // Agent Control: the source origin is above its visible base. Ground the measured geometry
+      // bound rather than assuming y=0 is the cabin floor, which previously left it floating.
+      const bounds=new Box3().setFromObject(model), base=bounds.min.y;
+      model.position.set(FOURTH.villa.x,y+.08-base,FOURTH.villa.z);model.updateMatrixWorld(true);
+      model.userData.grounding={measuredBase:base,targetY:y+.08};app.scene.add(model);return model;
+    }).catch(error=>{this.error=error;console.error('Cartoon Island villa failed to load',error);});
   }
   buildForest() {
     const terrain=this.app.terrainData, colliders=this.app.colliders;

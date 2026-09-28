@@ -23,6 +23,9 @@ test('Island Four is the declared Cartoon Island biome', async () => {
   assert.match(source, /Cartoon banana tree/);
   assert.match(source, /new TreeWildlife/);
   assert.match(source, /TorusGeometry\(\.16,.045/);
+  assert.match(source, /new Box3\(\)\.setFromObject\(model\)/);
+  assert.match(source, /y\+\.08-base/);
+  assert.match(source, /measuredBase:base,targetY:y\+\.08/);
 });
 
 test('the qualified runtime asset matches the recorded hash and budget', async () => {
