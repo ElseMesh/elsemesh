@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rebroad.github.io/tidewater/schemas/world-source.schema.json",
+  "title": "Tidewater World Source",
+  "description": "Shared authoring document exchanged by the in-game editor and Blender tools. This is unsigned source data, not a publishable server manifest.",
+  "type": "object",
+  "required": ["protocol", "worldId", "title", "coordinateSystem", "styleGuide", "rules", "objects", "portals", "updatedAt"],
+  "properties": {
+    "protocol": {"const": "tidewater.world-source/1"},
+    "worldId": {"type": "string", "pattern": "^tw-world:[\\w.-]{1,128}$"},
+    "title": {"type": "string", "minLength": 1, "maxLength": 160},
+    "coordinateSystem": {"const": "right-handed-y-up-meters"},
+    "styleGuide": {"type": "string", "maxLength": 10000},
+    "rules": {"type": "object", "required": ["gravity", "avatarComplexity", "physicsProfile"], "properties": {"gravity": {"type": "number", "minimum": 0.2, "maximum": 2}, "avatarComplexity": {"type": "integer", "minimum": 1, "maximum": 100000}, "physicsProfile": {"type": "string", "maxLength": 64}}, "additionalProperties": true},
+    "objects": {"type": "array", "maxItems": 10000, "items": {"$ref": "#/$defs/object"}},
+    "portals": {"type": "array", "maxItems": 1024, "items": {"$ref": "#/$defs/portal"}},
+    "updatedAt": {"type": "string", "format": "date-time"}
+  },
+  "$defs": {
+    "vector3": {"type": "array", "prefixItems": [{"type": "number"}, {"type": "number"}, {"type": "number"}], "minItems": 3, "maxItems": 3},
+    "transform": {"type": "object", "required": ["position", "yaw"], "properties": {"position": {"$ref": "#/$defs/vector3"}, "yaw": {"type": "number"}}, "additionalProperties": true},
+    "object": {"type": "object", "required": ["id", "kind", "label", "assetId", "transform", "scale", "collision"], "properties": {"id": {"type": "string", "pattern": "^tw-object:[\\w.-]{1,128}$"}, "kind": {"const": "asset-instance"}, "label": {"type": "string", "maxLength": 160}, "assetId": {"type": ["string", "null"], "pattern": "^sha256:[0-9a-f]{64}$"}, "transform": {"$ref": "#/$defs/transform"}, "scale": {"$ref": "#/$defs/vector3"}, "collision": {"type": "object"}}, "additionalProperties": true},
+    "portal": {"type": "object", "required": ["id", "destinationWorldId", "destinationPeerId", "entry", "exit", "openView", "enabled", "visual"], "properties": {"id": {"type": "string", "pattern": "^tw-portal:[\\w.-]{1,128}$"}, "destinationWorldId": {"type": "string", "pattern": "^tw-world:[\\w.-]{1,128}$"}, "destinationPeerId": {"type": "string", "minLength": 1}, "entry": {"$ref": "#/$defs/transform"}, "exit": {"$ref": "#/$defs/transform"}, "openView": {"type": "boolean"}, "enabled": {"type": "boolean"}, "visual": {"type": "string"}}, "additionalProperties": true}
+  },
+  "additionalProperties": true
+}
