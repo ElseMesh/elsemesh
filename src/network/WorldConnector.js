@@ -25,6 +25,7 @@ export class WorldConnector {
 		this.chunkBytes = chunkBytes;
 		this.manifest = null;
 		this.socket = null;
+		this.webTransport = null;
 		this.socketPromise = null;
 		this.pending = new Map();
 	}
@@ -104,10 +105,42 @@ export class WorldConnector {
 	}
 
 	async #connection() {
-		if ( this.socket?.readyState === WebSocket.OPEN ) return this.socket;
+		if ( this.webTransport?.state === 'connected' ) return { kind: 'webtransport', session: this.webTransport };
+		if ( this.socket?.readyState === WebSocket.OPEN ) return { kind: 'websocket', socket: this.socket };
 		if ( this.socketPromise ) return this.socketPromise;
-		this.socketPromise = new Promise( ( resolve, reject ) => {
-			const url = this.#httpBaseURL();
+		const promise = ( async () => {
+			const base = this.#httpBaseURL();
+			if ( base.protocol === 'https:' && typeof globalThis.WebTransport === 'function' ) {
+				try { return await this.#openWebTransport( base ); }
+				catch ( error ) {
+					this.webTransport?.close();
+					this.webTransport = null;
+					console.info( 'WebTransport unavailable; using the WebSocket gateway.', error );
+				}
+			}
+			return { kind: 'websocket', socket: await this.#openWebSocket( base ) };
+		} )();
+		this.socketPromise = promise;
+		try { return await promise; }
+		finally { if ( this.socketPromise === promise ) this.socketPromise = null; }
+	}
+
+	async #openWebTransport( base ) {
+		const url = new URL( base );
+		url.pathname = '/gateway-webtransport';
+		const session = this.webTransport = new globalThis.WebTransport( url.href );
+		session.closed.then( () => { if ( this.webTransport === session ) this.webTransport = null; } ).catch( () => { if ( this.webTransport === session ) this.webTransport = null; } );
+		await withTimeout( session.ready, 8000, 'WebTransport connection timed out' );
+		const stream = await session.createBidirectionalStream();
+		await writeJSONStream( stream.writable, { type: 'connect', worldId: this.worldId, targetPeerId: this.nodeId } );
+		const response = await readJSONStream( stream.readable );
+		invariant( response.type === 'connected' && response.worldId === this.worldId, response.error || 'WebTransport world connection failed' );
+		return { kind: 'webtransport', session };
+	}
+
+	#openWebSocket( base ) {
+		return new Promise( ( resolve, reject ) => {
+			const url = new URL( base );
 			url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
 			url.pathname = '/gateway';
 			const socket = this.socket = new WebSocket( url );
@@ -139,14 +172,11 @@ export class WorldConnector {
 			socket.addEventListener( 'close', () => {
 				clearTimeout( timeout );
 				this.socket = null;
-				this.socketPromise = null;
 				const error = new Error( connected ? 'World gateway connection closed' : 'World gateway closed before connecting' );
 				if ( ! connected ) reject( error );
 				failPending( error );
 			}, { once: true } );
 		} );
-		try { return await this.socketPromise; }
-		catch ( error ) { this.socketPromise = null; throw error; }
 	}
 
 	#httpBaseURL() {
@@ -162,9 +192,11 @@ export class WorldConnector {
 	}
 
 	async #request( message, { signal } = {} ) {
-		const socket = await this.#connection();
+		const connection = await this.#connection();
 		if ( signal?.aborted ) throw signal.reason || new DOMException( 'Aborted', 'AbortError' );
 		const requestId = globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`;
+		if ( connection.kind === 'webtransport' ) return requestWebTransport( connection.session, { ...message, requestId }, signal );
+		const socket = connection.socket;
 		return new Promise( ( resolve, reject ) => {
 			const cleanup = () => { clearTimeout( timeout ); signal?.removeEventListener( 'abort', abort ); };
 			const timeout = setTimeout( () => { this.pending.delete( requestId ); cleanup(); reject( new Error( 'World request timed out' ) ); }, 30000 );
@@ -178,8 +210,54 @@ export class WorldConnector {
 
 	close() {
 		this.socket?.close();
+		this.webTransport?.close();
 		this.socket = null;
+		this.webTransport = null;
 	}
+}
+
+async function requestWebTransport( session, message, signal ) {
+	if ( signal?.aborted ) throw signal.reason || new DOMException( 'Aborted', 'AbortError' );
+	const stream = await session.createBidirectionalStream();
+	const abort = () => { stream.writable.abort( signal.reason ).catch( () => {} ); stream.readable.cancel( signal.reason ).catch( () => {} ); };
+	signal?.addEventListener( 'abort', abort, { once: true } );
+	try {
+		await writeJSONStream( stream.writable, message );
+		const response = await withTimeout( readJSONStream( stream.readable ), 30000, 'World request timed out' );
+		if ( response.type === 'error' ) throw new Error( response.error || response.code || 'World request failed' );
+		invariant( response.requestId === message.requestId, 'World response does not match its request' );
+		return response;
+	} finally { signal?.removeEventListener( 'abort', abort ); }
+}
+
+async function writeJSONStream( writable, value ) {
+	const writer = writable.getWriter();
+	try { await writer.write( new TextEncoder().encode( JSON.stringify( value ) ) ); }
+	finally { await writer.close(); writer.releaseLock(); }
+}
+
+async function readJSONStream( readable ) {
+	const reader = readable.getReader();
+	const chunks = [];
+	let length = 0;
+	try {
+		for (;;) {
+			const { value, done } = await reader.read();
+			if ( done ) break;
+			length += value.byteLength;
+			invariant( length <= 384 * 1024, 'World gateway response exceeds the size limit' );
+			chunks.push( value );
+		}
+	} finally { reader.releaseLock(); }
+	const bytes = new Uint8Array( length );
+	let offset = 0;
+	for ( const chunk of chunks ) { bytes.set( chunk, offset ); offset += chunk.byteLength; }
+	return JSON.parse( new TextDecoder().decode( bytes ) );
+}
+
+function withTimeout( promise, milliseconds, message ) {
+	let timeout;
+	return Promise.race( [ promise, new Promise( ( _, reject ) => { timeout = setTimeout( () => reject( new Error( message ) ), milliseconds ); } ) ] ).finally( () => clearTimeout( timeout ) );
 }
 
 async function verifySignedDocument( document, protocol ) {

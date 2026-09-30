@@ -29,6 +29,8 @@ import (
 	"github.com/libp2p/go-libp2p/core/protocol"
 	"github.com/libp2p/go-libp2p/p2p/discovery/routing"
 	ma "github.com/multiformats/go-multiaddr"
+	"github.com/quic-go/quic-go/http3"
+	"github.com/quic-go/webtransport-go"
 )
 
 const worldProtocol protocol.ID = "/tidewater/world/1.0.0"
@@ -72,6 +74,9 @@ func run() error {
 	worldName := flag.String("world-name", "My ThruHold", "create a local starter world when none is supplied")
 	listenPort := flag.Int("p2p-port", 42901, "libp2p TCP and QUIC listen port")
 	httpAddress := flag.String("http", "127.0.0.1:5200", "HTTP/WebSocket gateway listen address; place behind TLS for public browser access")
+	webTransportAddress := flag.String("webtransport", "", "optional WebTransport HTTP/3 UDP listen address, for example :5201")
+	webTransportCert := flag.String("webtransport-tls-cert", "", "TLS certificate for the optional WebTransport listener")
+	webTransportKey := flag.String("webtransport-tls-key", "", "TLS private key for the optional WebTransport listener")
 	webRoot := flag.String("web-root", "", "optional built ElseMesh web client directory")
 	dhtMode := flag.String("dht-mode", "auto", "DHT mode: auto, client, or server")
 	serveRelay := flag.Bool("relay-service", false, "allow this node to provide a bounded libp2p circuit relay")
@@ -94,6 +99,9 @@ func run() error {
 	}
 	if *dhtMode != "auto" && *dhtMode != "client" && *dhtMode != "server" {
 		return errors.New("dht-mode must be auto, client, or server")
+	}
+	if (*webTransportAddress == "" && (*webTransportCert != "" || *webTransportKey != "")) || (*webTransportAddress != "" && (*webTransportCert == "" || *webTransportKey == "")) {
+		return errors.New("--webtransport requires both --webtransport-tls-cert and --webtransport-tls-key")
 	}
 	if err := os.MkdirAll(*dataDir, 0700); err != nil {
 		return err
@@ -198,12 +206,25 @@ func run() error {
 	mux.HandleFunc("/api/world/manifest", d.handleManifest)
 	mux.HandleFunc("/api/assets/", d.handleAsset)
 	mux.HandleFunc("/gateway", d.handleBrowserGateway)
+	var wtServer *webtransport.Server
+	if *webTransportAddress != "" {
+		wtServer = &webtransport.Server{H3: http3.Server{Addr: *webTransportAddress, Handler: securityHeaders(mux)}}
+		mux.HandleFunc("/gateway-webtransport", func(w http.ResponseWriter, r *http.Request) {
+			d.handleBrowserWebTransport(w, r, wtServer)
+		})
+	}
 	if d.webRoot != "" {
 		mux.Handle("/", http.FileServer(http.Dir(d.webRoot)))
 	}
 	server := &http.Server{Addr: *httpAddress, Handler: securityHeaders(mux), ReadHeaderTimeout: 5 * time.Second, IdleTimeout: 90 * time.Second}
 	serverErr := make(chan error, 1)
 	go func() { serverErr <- server.ListenAndServe() }()
+	var webTransportErr chan error
+	if wtServer != nil {
+		webTransportErr = make(chan error, 1)
+		go func() { webTransportErr <- wtServer.ListenAndServeTLS(*webTransportCert, *webTransportKey) }()
+		log.Printf("worldd WebTransport HTTP/3 UDP listen=%s", *webTransportAddress)
+	}
 	log.Printf("worldd node=%s world=%s http=%s", localID, world.WorldID, *httpAddress)
 	for _, addr := range p2pHost.Addrs() {
 		log.Printf("p2p address %s/p2p/%s", addr, p2pHost.ID())
@@ -212,8 +233,23 @@ func run() error {
 	case <-ctx.Done():
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
 		defer cancel()
-		return server.Shutdown(shutdownCtx)
+		httpErr := server.Shutdown(shutdownCtx)
+		if wtServer != nil {
+			if wtErr := wtServer.Close(); httpErr == nil {
+				httpErr = wtErr
+			}
+		}
+		return httpErr
 	case err := <-serverErr:
+		if wtServer != nil {
+			_ = wtServer.Close()
+		}
+		if errors.Is(err, http.ErrServerClosed) {
+			return nil
+		}
+		return err
+	case err := <-webTransportErr:
+		_ = server.Close()
 		if errors.Is(err, http.ErrServerClosed) {
 			return nil
 		}
