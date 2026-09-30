@@ -4,7 +4,21 @@
 
 Worlds are authored in Blender and through a separate AI editor service. Tidewater will not ship an in-game world editor in this direction. Blender is the visual authoring tool; `tidewater.world-source/1` JSON is the portable, reviewable interchange document; the AI service will propose edits to that document and its referenced assets.
 
-A Blender project is a working scene, not the canonical network publication. Keep the JSON source and asset files under version control. Server runtime manifests are separately validated and owner-signed; never treat an AI proposal or `.blend` file as an authorization to publish.
+A Blender project is a working scene, not the canonical network publication. Keep the editable source, export recipe, and reproducible packaged world assets under version control. The procedural island follows the same rule: it is a built-in example world whose source and exported package live in this repository, rather than a permanent scene layer. A selected hosted world replaces the currently active world content. Server runtime manifests are separately validated and owner-signed; never treat an AI proposal or `.blend` file as an authorization to publish.
+
+## Replaceable world content and packaging
+
+The game runtime should select a world provider by world ID. The procedural island is the default/demo provider; a packaged or remotely hosted world is another provider and occupies the same world-content slot. Shared engine services (renderer, camera, input, audio, and world-transition code) are not island content. Loading a different world must unload the island content instead of drawing it behind or around the selected world.
+
+World content has three related forms, with distinct jobs:
+
+1. **Editable source in Git:** generator code and parameters for procedural content, plus Blender `.blend` files and `tidewater.world-source/1` documents where applicable. This is the human-readable, reviewable source of truth.
+2. **Built runtime package in Git:** deterministic export output for the example island, including its runtime manifest and content-addressed asset files. Committing the package makes the exact demo world available to reproduce and lets a node seed its content store without rebuilding from source.
+3. **Served content in a node store:** the same immutable package assets copied or imported into `worldd` storage and referenced by an owner-signed runtime manifest. Nodes serve those bytes to clients and permitted neighbor caches. The repository is not itself the live content server.
+
+The export pipeline should turn the island generator's output into ordinary runtime assets and metadata, then use the same validation, hashing, manifest conversion, and signing pipeline as Blender-authored worlds. Prefer stable IDs and deterministic output so a source change produces a reviewable package diff. Large binary assets may be stored with Git LFS if repository size warrants it, while their hashes and package index remain versioned in Git. A world node can import the checked-in package into its local content store and sign/publish it with that node's world identity; private signing keys must never be committed.
+
+The initial runtime package should support static meshes, materials/textures, transforms, collision intent, world rules, and portal records. Dynamic island systems (for example water, weather, wildlife, fishing simulation, and boat behavior) need explicit runtime component definitions or a documented Tidewater extension; they cannot be assumed to survive a static mesh export. The procedural island remains fully playable as the example provider until equivalent runtime behavior is represented in the package format.
 
 ## Shared source format
 

@@ -22,7 +22,7 @@ The current connector and daemon provide manifest/chunk transport foundations. R
 
 ## Source, manifest, policy
 
-Authoring source is `tidewater.world-source/1` (see [world authoring](world-authoring.md)). Runtime manifests use `tidewater.world/1`, are signed by the owner identity, and contain immutable asset references, portals, rules, and host grants. The daemon rejects invalid signatures, IDs, bounds, priorities, and grants. The local procedural JS world and GLB/glTF asset workflow remain supported; Blender is an authoring/interchange tool, not a replacement runtime format.
+Authoring source is `tidewater.world-source/1` (see [world authoring](world-authoring.md)). Runtime manifests use `tidewater.world/1`, are signed by the owner identity, and contain immutable asset references, portals, rules, and host grants. The daemon rejects invalid signatures, IDs, bounds, priorities, and grants. Worlds are replaceable providers: the procedural island is the built-in example world, and a selected hosted world takes its place as active content. Island source and its reproducible runtime package belong in this Git repository; the package is imported into a node's content store for serving. Blender is an authoring/interchange tool, not a replacement runtime format. Dynamic procedural systems require explicit runtime component support and are not represented by static GLB assets alone.
 
 Account login is optional and distinct from world identity. Google sign-in may later map a verified account to per-world roles, but identities and account preferences must not silently become a global lockout. Authentication, role APIs, and login UI are not implemented by the current daemon.
 
