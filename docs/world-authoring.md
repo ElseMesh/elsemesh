@@ -60,7 +60,7 @@ Evaluate on held-out worlds and measure schema validity, correct IDs/links, rule
 
 ## Implementation boundary
 
-The current repository contains the source-format helper, Blender interchange script, and the federated world daemon/client foundation. The AI editor service, isolated Blender worker, preview/review UI, GLB candidate pipeline, portal rendering/handoff, and manifest publishing workflow remain future implementation work. This document describes intended boundaries; it does not claim those services are running.
+The current repository contains the source-format helper, Blender interchange script, linked-world daemon/client foundation, and a first browser loader for static GLB instances in a signed hosted world. That loader can replace the procedural example scene but does not yet load dynamic Tidewater components or implement GLB collision and portal handoff. The deterministic island export/package pipeline, AI editor service, isolated Blender worker, preview/review UI, GLB candidate pipeline, and complete manifest publishing workflow remain future implementation work. This document describes intended boundaries; it does not claim those services are running.
 
 ## Proposed service contract
 

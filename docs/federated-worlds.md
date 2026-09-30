@@ -1,8 +1,8 @@
-# Federated Tidewater worlds
+# Linked Tidewater worlds
 
 ## Goal and trust model
 
-Each world is hosted by an independently operated Go daemon on Linux or Android/Termux. A world has a stable `tw-world:` identifier, an owner identity, a signed versioned manifest, and one current authority epoch. Nodes have libp2p PeerIDs. Browser visitors connect to the selected node's HTTPS gateway; the gateway connects to world peers over libp2p. No central service is required for an already-known peer to host its world.
+Each world is hosted by an independently operated Go daemon on Linux or Android/Termux. Worlds can link to one another through portals while remaining independently hosted and governed; networking literature often calls this federation, but the player-facing concept is simply linked worlds. A world has a stable `tw-world:` identifier, an owner identity, a signed versioned manifest, and one current authority epoch. Nodes have libp2p PeerIDs. Browser visitors connect to the selected node's HTTPS gateway; the gateway connects to world peers over libp2p. No central service is required for an already-known peer to host its world.
 
 The daemon is a transport and content service. The world owner controls the manifest, world rules, and grants. A grant independently enables `content-cache` and/or bounded `failover-authority`; caching never grants write or authority rights. An owner-signed failover window permits a delegate to issue a temporary higher-epoch authority lease when its window opens. Runtime conflict recovery and shared simulation authority still need implementation before this is suitable for concurrent writes.
 
@@ -18,7 +18,7 @@ A browser link should identify the world and its gateway, for example `https://w
 
 A portal is a signed-manifest record containing destination world/node, entry/exit transforms, and `openView`. The intended visitor flow is to resolve the destination and prefetch its manifest and portal-preview assets before crossing. Asset transfer is content-addressed and ordered `portal-preview`, `visible`, `nearby`, then `background`; hashes are checked before use. Neighbor cache grants allow replicas to serve immutable bytes, not to change the owner's manifest.
 
-The current connector and daemon provide manifest/chunk transport foundations. Rendering another world through an open doorway, seamless coordinate handoff, player/session transfer, and full retry/failover behavior are not yet implemented.
+The current connector and daemon provide signed manifest/chunk transport foundations. A browser URL with `worldId` and optional `gateway`/`nodeId` selects a linked world; the client verifies the manifest and asset hashes, loads static GLB instances, and replaces the procedural example scene. This first renderer supports embedded base-color textures and static triangle meshes. It does not yet provide GLB collision, dynamic world components, portal preview rendering, seamless coordinate handoff, player/session transfer, view-driven incremental loading, or full retry/failover behavior.
 
 ## Source, manifest, policy
 
@@ -28,7 +28,7 @@ Account login is optional and distinct from world identity. Google sign-in may l
 
 ## Current implementation and operation
 
-The `server/worldd` Go program persists a node identity, serves a signed local starter manifest, accepts an owner-signed manifest, exposes a browser gateway and content-addressed asset endpoint, and supports optional discovery/relay configuration. `src/network/WorldConnector.js` verifies signed documents and content hashes and fetches prioritized chunks. Author a Blender source document, import its GLB assets, convert it to an unsigned runtime manifest, then sign it using the same persistent node identity:
+The `server/worldd` Go program persists a node identity, serves a signed local starter manifest, accepts an owner-signed manifest, exposes a browser gateway and content-addressed asset endpoint, and supports optional discovery/relay configuration. `src/network/WorldConnector.js` verifies signed documents and content hashes and fetches prioritized chunks; `src/network/WorldPackage.js` builds the currently supported static GLB instances. Author a Blender source document, import its GLB assets, convert it to an unsigned runtime manifest, then sign it using the same persistent node identity:
 
 ```sh
 worldd --data ./world-data --print-node-id

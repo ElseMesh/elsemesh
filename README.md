@@ -154,6 +154,6 @@ The code is released under the MIT license; see [LICENSE](LICENSE). Third-party 
 Freesound, CC0 scans from Poly Haven, MIT characters from Microsoft Rocketbox, OFL / Apache fonts) and
 technique references are listed in [CREDITS.md](CREDITS.md).
 
-## Federated worlds and authoring
+## Linked worlds and authoring
 
 Tidewater's federated-world and authoring design is documented in [docs/federated-worlds.md](docs/federated-worlds.md) and [docs/world-authoring.md](docs/world-authoring.md). The shared `tidewater.world-source/1` format is exchanged between Blender and future authoring tools; the planned AI editor will work through reviewed source patches and isolated Blender operations. See the Go node prototype under `server/worldd`.

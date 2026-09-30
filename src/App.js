@@ -65,6 +65,9 @@ import { WakeSim } from './ocean/WakeSim.js';
 import { Vegetation } from './world/Vegetation.js';
 import { SoundScape } from './audio/SoundScape.js';
 import { updateCameraVelocity, useStaticVelocity } from './post/CameraVelocity.js';
+import { Group } from './engine/scene/Group.js';
+import { WorldConnector, worldLinkFromLocation } from './network/WorldConnector.js';
+import { loadWorldPackage } from './network/WorldPackage.js';
 
 const _up = new Vector3( 0, 1, 0 );
 
@@ -146,6 +149,8 @@ export class App {
 		if ( this.desktopAdaptiveScale ) this.shadows.enabled = false;
 
 		this.environment = new Environment( renderer, scene, this.sky );
+		// Keep renderer-owned atmosphere/environment roots separate from replaceable world content.
+		this._sharedSceneRoots = new Set( scene.children );
 
 		// ---------------------------------------------------------------- island
 		await progress( 0.06, 'Shaping the island…' );
@@ -383,6 +388,27 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 		this.profiler.track( 'sky view', this.atmosphere.skyViewKernel );
 
 		this.updateSun();
+		const worldLink = worldLinkFromLocation();
+		if ( worldLink ) {
+
+			await progress( 0.33, 'Connecting to world…' );
+			this.proceduralWorldRoot = new Group();
+			this.proceduralWorldRoot.name = 'procedural-example-world';
+			for ( const child of scene.children.slice() ) if ( ! this._sharedSceneRoots.has( child ) ) this.proceduralWorldRoot.add( child );
+			scene.add( this.proceduralWorldRoot );
+			const connector = this.worldConnector = new WorldConnector( worldLink );
+			await connector.getManifest();
+			this.linkedWorldRoot = await loadWorldPackage( connector );
+			this.linkedWorldRoot.name = `hosted-world:${worldLink.worldId}`;
+			scene.add( this.linkedWorldRoot );
+			this.proceduralWorldRoot.visible = false;
+			this.remoteWorldActive = true;
+			this.refraction.enabled = false;
+			this.camera.position.set( 0, 3, 8 );
+			this.fly.setPose( this.camera.position.clone(), Math.PI, - 0.1 );
+			this.fly.velocity.set( 0, 0, 0 );
+
+		}
 		installDebugViews( this );
 		window.__app = this;
 		this.gpu = GPU; // console / test access
@@ -656,7 +682,7 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 		if ( s.timeSpeed !== 0 ) s.timeOfDay = ( s.timeOfDay + dt * s.timeSpeed + 24 ) % 24;
 
 		// ---- player / boat (boat physics first so the cameras follow this frame's pose)
-		if ( this.input.hit( 'KeyF' ) ) this.setFreeCam( ! this.freeCam );
+		if ( ! this.remoteWorldActive && this.input.hit( 'KeyF' ) ) this.setFreeCam( ! this.freeCam );
 		if ( this.input.hit( 'KeyT' ) ) this.toggleTime();
 		if ( this.input.hit( 'KeyL' ) ) {
 
@@ -671,24 +697,39 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 			if ( this.ui ) this.ui.ui.toast( this.audio.muted ? 'Sound off' : 'Sound on' );
 
 		}
-		this.boatCtl.update( dt );
-		this.boatSpray.update( dt );
-		this.wake.update( dt );
-		if ( this.freeCam ) this.fly.update( dt );
-		else this.player.update( dt );
-		this.game.update( dt );
+		if ( this.remoteWorldActive ) this.fly.update( dt );
+		else {
+
+			this.boatCtl.update( dt );
+			this.boatSpray.update( dt );
+			this.wake.update( dt );
+			if ( this.freeCam ) this.fly.update( dt );
+			else this.player.update( dt );
+			this.game.update( dt );
+
+		}
 		this.updateSun();
 
 		this.atmosphere.update( dt, this.camera.position.y );
 		this.applyAtmosphereReadback();
 
-		// ---- water simulation
-		this.fft.update( dt );
-		this.seaDetail.update( dt );
-		this.query.setCamera( this.camera.position.x, this.camera.position.z );
-		this.boatCtl.queueQueries();
-		this.query.update();
-		if ( this.query.cpuValid ) {
+		if ( this.remoteWorldActive ) {
+
+			this.cameraWaterHeight = 0;
+			G.cameraUnderwater.value = 0;
+			G.cameraWaterHeight.value = 0;
+			if ( this.clouds ) this.clouds.update( dt, this.camera );
+			this.environment.update( dt );
+
+		} else {
+
+			// ---- water simulation
+			this.fft.update( dt );
+			this.seaDetail.update( dt );
+			this.query.setCamera( this.camera.position.x, this.camera.position.z );
+			this.boatCtl.queueQueries();
+			this.query.update();
+			if ( this.query.cpuValid ) {
 
 			const h0 = this.query.cpu[ 0 ];
 			const h = Number.isFinite( h0 ) ? h0 : ( this.cameraWaterHeight ?? 0 );
@@ -696,7 +737,7 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 			G.cameraWaterHeight.value = h;
 			this.cameraWaterHeight = h;
 
-		}
+			}
 
 		if ( this.caustics ) this.caustics.update();
 		// drawn while any part of the view can be under water (the specks above the surface are dropped)
@@ -721,6 +762,8 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 		this.boat.update( dt );
 		this.wildlife.update( dt, this.camera, this.freeCam ? null : this.player );
 		this.localLights.update( this.camera, dt );
+
+		}
 
 		// ---- render
 		G.exposure.value = s.exposure;
@@ -768,7 +811,7 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 
 	updateAudio( dt ) {
 
-		if ( ! this.audio || ! this.audio.enabled ) return;
+		if ( this.remoteWorldActive || ! this.audio || ! this.audio.enabled ) return;
 		const cam = this.camera;
 		const p = cam.position;
 		const f = this._af || ( this._af = { fwd: new Vector3(), up: new Vector3() } );

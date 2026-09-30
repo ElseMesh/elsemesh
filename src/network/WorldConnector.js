@@ -4,7 +4,7 @@ const PRIORITY_ORDER = Object.freeze( [ 'portal-preview', 'visible', 'nearby', '
 
 function invariant( value, message ) { if ( ! value ) throw new Error( message ); }
 
-export function federationLink( location = globalThis.location ) {
+export function worldLinkFromLocation( location = globalThis.location ) {
 	const params = new URLSearchParams( location.search );
 	const worldId = params.get( 'worldId' );
 	if ( ! worldId ) return null;
