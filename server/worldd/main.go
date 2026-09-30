@@ -16,6 +16,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -559,6 +560,14 @@ func (d *daemon) handleBrowserGateway(w http.ResponseWriter, r *http.Request) {
 	if err := conn.WriteJSON(map[string]any{"type": "connected", "nodeId": d.host.ID().String(), "targetPeerId": first.TargetPeerID, "worldId": first.WorldID, "manifestProtocol": manifestProtocol}); err != nil {
 		return
 	}
+	requestCtx, cancelRequests := context.WithCancel(r.Context())
+	var requestGroup sync.WaitGroup
+	var writeMu sync.Mutex
+	requestSlots := make(chan struct{}, 3)
+	defer func() {
+		cancelRequests()
+		requestGroup.Wait()
+	}()
 	for {
 		var message gatewayMessage
 		if err := conn.ReadJSON(&message); err != nil {
@@ -566,13 +575,23 @@ func (d *daemon) handleBrowserGateway(w http.ResponseWriter, r *http.Request) {
 		}
 		message.WorldID = first.WorldID
 		message.TargetPeerID = first.TargetPeerID
-		response, err := d.gatewayRequest(r.Context(), message)
-		if err != nil {
-			response = peerResponse{Type: "error", WorldID: first.WorldID, RequestID: message.RequestID, Error: err.Error()}
-		}
-		if err := conn.WriteJSON(response); err != nil {
-			return
-		}
+		requestSlots <- struct{}{}
+		requestGroup.Add(1)
+		go func(message gatewayMessage) {
+			defer requestGroup.Done()
+			defer func() { <-requestSlots }()
+			response, err := d.gatewayRequest(requestCtx, message)
+			if err != nil {
+				response = peerResponse{Type: "error", WorldID: first.WorldID, RequestID: message.RequestID, Error: err.Error()}
+			}
+			writeMu.Lock()
+			writeErr := conn.WriteJSON(response)
+			writeMu.Unlock()
+			if writeErr != nil {
+				cancelRequests()
+				_ = conn.Close()
+			}
+		}(message)
 	}
 }
 

@@ -24,7 +24,7 @@ The initial runtime package should support static meshes, materials/textures, tr
 
 The normative JSON Schema is [`schemas/world-source.schema.json`](schemas/world-source.schema.json). The browser-side structural checks are in `src/network/WorldSource.js`; Blender import/export is provided by [`../tools/blender/world_source.py`](../tools/blender/world_source.py).
 
-The format uses right-handed, Y-up coordinates in meters. It records stable IDs, asset hashes, transforms, collision intent, world rules, style guidance, and portal endpoints. Objects refer to content by SHA-256 ID; don't rely on a machine-specific filesystem path. Portals identify the destination ThruHold and node, local entry and destination exit transforms, and whether the opening should show a remote preview.
+The format uses right-handed, Y-up coordinates in meters. It records stable IDs, asset hashes, transforms, collision intent, world rules, style guidance, and portal endpoints. Objects refer to content by SHA-256 ID; don't rely on a machine-specific filesystem path. Assign each asset a streaming priority: `portal-preview` for content needed to preview a connected world, `visible` for the first usable scene, `nearby` for close supporting content, or `background` for the remaining world. The browser loads these tiers in order, with bounded concurrency within each tier. Portals identify the destination ThruHold and node, local entry and destination exit transforms, and whether the opening should show a remote preview.
 
 Example exchange:
 
@@ -60,7 +60,7 @@ Evaluate on held-out worlds and measure schema validity, correct IDs/links, rule
 
 ## Implementation boundary
 
-The current repository contains the source-format helper, Blender interchange script, ElseMesh node/client foundation, and a first browser loader for static GLB instances in a signed hosted ThruHold. That loader can replace the procedural example scene but does not yet load dynamic world components or implement GLB collision and portal handoff. The deterministic island export/package pipeline, AI editor service, isolated Blender worker, preview/review UI, GLB candidate pipeline, and complete manifest publishing workflow remain future implementation work. This document describes intended boundaries; it does not claim those services are running.
+The current repository contains the source-format helper, Blender interchange script, ElseMesh node/client foundation, and a browser loader for static GLB instances in a signed hosted ThruHold. That loader can replace the procedural example scene, stream authored priority tiers, and hand off the camera through configured portals. It does not yet load dynamic world components, implement GLB collision, or render the remote preview through an open portal. Streaming uses authored tiers and portal distance, not per-object visibility. The deterministic island export/package pipeline, AI editor service, isolated Blender worker, preview/review UI, GLB candidate pipeline, and complete manifest publishing workflow remain future implementation work. This document describes intended boundaries; it does not claim those services are running.
 
 ## Proposed service contract
 

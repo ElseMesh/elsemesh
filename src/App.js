@@ -67,7 +67,7 @@ import { SoundScape } from './audio/SoundScape.js';
 import { updateCameraVelocity, useStaticVelocity } from './post/CameraVelocity.js';
 import { Group } from './engine/scene/Group.js';
 import { WorldConnector, worldLinkFromLocation } from './network/WorldConnector.js';
-import { loadWorldPackage } from './network/WorldPackage.js';
+import { appendWorldPackageAssets, loadWorldPackage } from './network/WorldPackage.js';
 import { crossedPortalPlane, rotatePortalVelocity } from './network/PortalHandoff.js';
 
 const _up = new Vector3( 0, 1, 0 );
@@ -94,6 +94,7 @@ export class App {
 		this._scaleAboveTarget = 0;
 		this.remoteWorlds = new Map();
 		this.portalPreparations = new Map();
+		this.worldBackgroundLoads = new Map();
 		this.portalPreviousPosition = null;
 		this.settings = {
 			timeOfDay: 16.2,
@@ -402,10 +403,12 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 			scene.add( this.proceduralWorldRoot );
 			const connector = this.worldConnector = new WorldConnector( worldLink );
 			await connector.getManifest();
-			this.linkedWorldRoot = await loadWorldPackage( connector );
+			const visibleAssets = await connector.preload( { through: 'visible' } );
+			this.linkedWorldRoot = await loadWorldPackage( connector, { assets: visibleAssets } );
 			this.linkedWorldRoot.name = `hosted-world:${worldLink.worldId}`;
 			scene.add( this.linkedWorldRoot );
 			this.remoteWorlds.set( worldLink.worldId, { connector, root: this.linkedWorldRoot } );
+			this.streamWorldRemainder( connector, this.linkedWorldRoot );
 			this.proceduralWorldRoot.visible = false;
 			this.remoteWorldActive = true;
 			this.refraction.enabled = false;
@@ -677,6 +680,20 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 
 	}
 
+	streamWorldRemainder( connector, root ) {
+
+		this.worldBackgroundLoads.get( connector.worldId )?.abort();
+		const controller = new AbortController();
+		this.worldBackgroundLoads.set( connector.worldId, controller );
+		connector.preload( { after: 'visible', signal: controller.signal } ).then( ( assets ) => {
+			if ( controller.signal.aborted || this.linkedWorldRoot !== root ) return;
+			return appendWorldPackageAssets( connector, root, assets, { signal: controller.signal } );
+		} ).catch( ( error ) => {
+			if ( ! controller.signal.aborted ) console.warn( `Background world asset load failed for ${connector.worldId}`, error );
+		} );
+
+	}
+
 	updateWorldPortals() {
 
 		const connector = this.worldConnector;
@@ -745,11 +762,14 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 		const sourceConnector = this.worldConnector;
 		const destinationConnector = preparation.connector;
 		const destinationRoot = preparation.root;
+		this.worldBackgroundLoads.get( sourceConnector.worldId )?.abort();
+		this.worldBackgroundLoads.delete( sourceConnector.worldId );
 		this.scene.remove( this.linkedWorldRoot );
 		this.linkedWorldRoot = destinationRoot;
 		this.scene.add( destinationRoot );
 		this.worldConnector = destinationConnector;
 		this.remoteWorlds.set( destinationConnector.worldId, { connector: destinationConnector, root: destinationRoot } );
+		this.streamWorldRemainder( destinationConnector, destinationRoot );
 
 		const exit = portal.exit;
 		const velocity = rotatePortalVelocity( this.fly.velocity, portal.entry.yaw, exit.yaw );

@@ -25,19 +25,28 @@ export async function loadWorldPackage( connector, { signal, assets: preloadedAs
 	const assets = preloadedAssets || await connector.preload();
 	const root = new Group();
 	root.name = `world:${connector.worldId}`;
-	const parsed = new Map();
+	root.userData.worldPackage = { parsed: new Map(), loadedObjects: new Set() };
+	await appendWorldPackageAssets( connector, root, assets, { signal } );
+	return root;
+
+}
+
+export async function appendWorldPackageAssets( connector, root, assets, { signal } = {} ) {
+
+	const state = root.userData.worldPackage || ( root.userData.worldPackage = { parsed: new Map(), loadedObjects: new Set() } );
 	const objectRecords = connector.manifest.objects || [];
 
 	for ( const object of objectRecords ) {
 
 		if ( signal?.aborted ) throw signal.reason || new DOMException( 'Aborted', 'AbortError' );
+		if ( state.loadedObjects.has( object.id ) ) continue;
 		if ( object.kind !== 'asset-instance' ) throw new Error( `Unsupported world object kind: ${object.kind}` );
 		const bytes = assets.get( object.assetId );
-		if ( ! bytes ) throw new Error( `World object ${object.id} references an asset that was not downloaded` );
-		let gltf = parsed.get( object.assetId );
+		if ( ! bytes ) continue;
+		let gltf = state.parsed.get( object.assetId );
 		if ( ! gltf ) {
 			gltf = await buildGLTF( parseGLB( bytes ) );
-			parsed.set( object.assetId, gltf );
+			state.parsed.set( object.assetId, gltf );
 		}
 		const instance = cloneScene( gltf );
 		instance.name = object.label || object.id;
@@ -47,9 +56,9 @@ export async function loadWorldPackage( connector, { signal, assets: preloadedAs
 		instance.rotation.y = t.yaw || 0;
 		instance.scale.set( ...( object.scale || [ 1, 1, 1 ] ) );
 		root.add( instance );
+		state.loadedObjects.add( object.id );
 
 	}
-
 	return root;
 
 }

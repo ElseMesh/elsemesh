@@ -24,6 +24,7 @@ export class WorldConnector {
 		this.gateway = gateway;
 		this.chunkBytes = chunkBytes;
 		this.manifest = null;
+		this.assets = new Map();
 		this.socket = null;
 		this.webTransport = null;
 		this.socketPromise = null;
@@ -61,9 +62,11 @@ export class WorldConnector {
 
 	async getAsset( assetId, { signal } = {} ) {
 		invariant( this.manifest, 'Load and verify the world manifest first' );
+		if ( signal?.aborted ) throw signal.reason || new DOMException( 'Aborted', 'AbortError' );
 		const asset = this.manifest.assets.find( ( entry ) => entry.id === assetId );
 		invariant( asset && /^sha256:[0-9a-f]{64}$/.test( asset.id ), 'Asset is not declared by this world' );
 		invariant( Number.isSafeInteger( asset.bytes ) && asset.bytes >= 0 && asset.bytes <= MAX_ASSET_BYTES, 'Asset size is outside the supported range' );
+		if ( this.assets.has( assetId ) ) return this.assets.get( assetId );
 		const parts = [];
 		for ( let offset = 0; offset < asset.bytes; offset += this.chunkBytes ) {
 			if ( signal?.aborted ) throw signal.reason || new DOMException( 'Aborted', 'AbortError' );
@@ -77,20 +80,38 @@ export class WorldConnector {
 		const bytes = concatenate( parts, asset.bytes );
 		const digest = hex( await crypto.subtle.digest( 'SHA-256', bytes ) );
 		invariant( `sha256:${digest}` === assetId, 'Downloaded asset failed its content hash check' );
+		this.assets.set( assetId, bytes );
 		return bytes;
 	}
 
-	async preload( priorities = PRIORITY_ORDER ) {
+	async preload( { priorities = PRIORITY_ORDER, through = 'background', after = null, signal, concurrency = 3 } = {} ) {
 		invariant( this.manifest, 'Load and verify the world manifest first' );
 		const ranks = new Map( priorities.map( ( priority, index ) => [ priority, index ] ) );
-		const queue = this.manifest.assets.slice().sort( ( a, b ) => ( ranks.get( a.priority ) ?? 999 ) - ( ranks.get( b.priority ) ?? 999 ) );
+		invariant( Number.isInteger( concurrency ) && concurrency > 0 && concurrency <= 8, 'Invalid asset concurrency' );
+		const endRank = ranks.get( through );
+		const startRank = after === null ? 0 : ranks.get( after ) + 1;
+		invariant( endRank !== undefined && startRank !== undefined && startRank <= endRank + 1, 'Invalid asset priority range' );
+		const queue = this.manifest.assets.map( ( asset, index ) => ( { asset, index, rank: ranks.get( asset.priority ) ?? 999 } ) )
+			.filter( ( entry ) => entry.rank >= startRank && entry.rank <= endRank )
+			.sort( ( a, b ) => a.rank - b.rank || a.index - b.index );
 		const loaded = new Map();
-		for ( const asset of queue ) loaded.set( asset.id, await this.getAsset( asset.id ) );
+		for ( let start = 0; start < queue.length; ) {
+			const rank = queue[ start ].rank;
+			let end = start;
+			while ( end < queue.length && queue[ end ].rank === rank ) end ++;
+			const group = queue.slice( start, end );
+			for ( let offset = 0; offset < group.length; offset += concurrency ) {
+				if ( signal?.aborted ) throw signal.reason || new DOMException( 'Aborted', 'AbortError' );
+				const batch = group.slice( offset, offset + concurrency );
+				const results = await Promise.all( batch.map( ( { asset } ) => this.getAsset( asset.id, { signal } ) ) );
+				for ( let i = 0; i < batch.length; i ++ ) loaded.set( batch[ i ].asset.id, results[ i ] );
+			}
+			start = end;
+		}
 		return loaded;
 	}
 
-	// Called as soon as an open portal enters view. The destination's portal-preview
-	// content is loaded before the player crosses; visible/nearby detail can follow.
+	// Load the destination's portal-preview and visible tiers before allowing a handoff.
 	async preparePortal( portal ) {
 		invariant( portal && portal.enabled && portal.destinationWorldId && portal.destinationPeerId, 'Portal has no active destination' );
 		const destination = new WorldConnector( {
@@ -100,8 +121,8 @@ export class WorldConnector {
 			chunkBytes: this.chunkBytes,
 		} );
 		await destination.getManifest();
-		const preview = await destination.preload( [ 'portal-preview', 'visible' ] );
-		return { connector: destination, manifest: destination.manifest, assets: preview };
+		const assets = await destination.preload( { through: 'visible' } );
+		return { connector: destination, manifest: destination.manifest, assets };
 	}
 
 	async #connection() {
