@@ -19,10 +19,10 @@ const COMPONENTS = Object.freeze( {
 	COLOR_0: [ 'color', 3 ],
 } );
 
-export async function loadWorldPackage( connector, { signal } = {} ) {
+export async function loadWorldPackage( connector, { signal, assets: preloadedAssets } = {} ) {
 
 	if ( ! connector.manifest ) throw new Error( 'Load and verify a world manifest first' );
-	const assets = await connector.preload();
+	const assets = preloadedAssets || await connector.preload();
 	const root = new Group();
 	root.name = `world:${connector.worldId}`;
 	const parsed = new Map();

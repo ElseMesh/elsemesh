@@ -68,6 +68,7 @@ import { updateCameraVelocity, useStaticVelocity } from './post/CameraVelocity.j
 import { Group } from './engine/scene/Group.js';
 import { WorldConnector, worldLinkFromLocation } from './network/WorldConnector.js';
 import { loadWorldPackage } from './network/WorldPackage.js';
+import { crossedPortalPlane, rotatePortalVelocity } from './network/PortalHandoff.js';
 
 const _up = new Vector3( 0, 1, 0 );
 
@@ -91,6 +92,9 @@ export class App {
 		this.autoScale = this.desktopAdaptiveScale && ! this.qs.has( 'scale' );
 		this._scaleBelowTarget = 0;
 		this._scaleAboveTarget = 0;
+		this.remoteWorlds = new Map();
+		this.portalPreparations = new Map();
+		this.portalPreviousPosition = null;
 		this.settings = {
 			timeOfDay: 16.2,
 			sunAzimuth: 0, // degrees: turns the sun's daily path about the vertical
@@ -401,12 +405,14 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 			this.linkedWorldRoot = await loadWorldPackage( connector );
 			this.linkedWorldRoot.name = `hosted-world:${worldLink.worldId}`;
 			scene.add( this.linkedWorldRoot );
+			this.remoteWorlds.set( worldLink.worldId, { connector, root: this.linkedWorldRoot } );
 			this.proceduralWorldRoot.visible = false;
 			this.remoteWorldActive = true;
 			this.refraction.enabled = false;
 			this.camera.position.set( 0, 3, 8 );
 			this.fly.setPose( this.camera.position.clone(), Math.PI, - 0.1 );
 			this.fly.velocity.set( 0, 0, 0 );
+			this.portalPreviousPosition = this.camera.position.clone();
 
 		}
 		installDebugViews( this );
@@ -671,6 +677,98 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 
 	}
 
+	updateWorldPortals() {
+
+		const connector = this.worldConnector;
+		if ( ! this.remoteWorldActive || ! connector?.manifest?.portals ) return;
+		const current = this.camera.position;
+		if ( ! this.portalPreviousPosition ) this.portalPreviousPosition = current.clone();
+		const previous = this.portalPreviousPosition.clone();
+		this.portalPreviousPosition.copy( current );
+		const candidates = connector.manifest.portals.filter( ( portal ) => portal.enabled && portal.entry?.position?.length === 3 && portal.exit?.position?.length === 3 )
+			.map( ( portal ) => {
+				const entry = portal.entry.position;
+				const dx = current.x - entry[ 0 ], dy = current.y - entry[ 1 ], dz = current.z - entry[ 2 ];
+				return { portal, distanceSq: dx * dx + dy * dy + dz * dz, crossed: crossedPortalPlane( previous, current, portal ) };
+			} );
+		const crossed = candidates.filter( ( candidate ) => candidate.crossed ).sort( ( a, b ) => a.distanceSq - b.distanceSq )[ 0 ];
+		const target = crossed || candidates.filter( ( candidate ) => candidate.distanceSq <= 32 * 32 ).sort( ( a, b ) => a.distanceSq - b.distanceSq )[ 0 ];
+		if ( ! target ) return;
+
+		const { portal } = target;
+		let preparation = this.portalPreparations.get( portal.id );
+		const attempt = preparation?.attempt || 0;
+		if ( preparation?.status === 'failed' && Date.now() >= preparation.retryAt ) {
+			this.portalPreparations.delete( portal.id );
+			preparation = null;
+		}
+		if ( ! preparation && this.remoteWorlds.has( portal.destinationWorldId ) ) {
+			const cached = this.remoteWorlds.get( portal.destinationWorldId );
+			preparation = { status: 'ready', connector: cached.connector, root: cached.root };
+			this.portalPreparations.set( portal.id, preparation );
+		}
+		if ( ! preparation ) {
+			preparation = { status: 'loading', noticeShown: false, attempt };
+			this.portalPreparations.set( portal.id, preparation );
+			connector.preparePortal( portal ).then( async ( prepared ) => {
+				const root = await loadWorldPackage( prepared.connector, { assets: prepared.assets } );
+				root.name = `hosted-world:${portal.destinationWorldId}`;
+				Object.assign( preparation, { status: 'ready', connector: prepared.connector, root } );
+				this.remoteWorlds.set( portal.destinationWorldId, { connector: prepared.connector, root } );
+			} ).catch( ( error ) => {
+				preparation.retryAt = Date.now() + Math.min( 60000, 2500 * 2 ** preparation.attempt );
+				Object.assign( preparation, { status: 'failed', error, attempt: preparation.attempt + 1 } );
+				console.warn( `Could not prepare portal ${portal.id}`, error );
+			} );
+		}
+
+		if ( ! crossed ) return;
+		if ( preparation.status === 'ready' ) {
+			this.enterWorldPortal( portal, preparation );
+			return;
+		}
+
+		// Never expose an empty destination: hold the camera on the entry side until its
+		// signed manifest and prioritized destination assets are ready.
+		this.camera.position.copy( previous );
+		this.portalPreviousPosition.copy( previous );
+		this.fly.velocity.set( 0, 0, 0 );
+		if ( ! preparation.noticeShown ) {
+			preparation.noticeShown = true;
+			this.ui?.ui?.toast( preparation.status === 'failed' ? 'This portal could not load its destination' : 'Preparing the world beyond this portal…', 3500 );
+		}
+
+	}
+
+	enterWorldPortal( portal, preparation ) {
+
+		const sourceConnector = this.worldConnector;
+		const destinationConnector = preparation.connector;
+		const destinationRoot = preparation.root;
+		this.scene.remove( this.linkedWorldRoot );
+		this.linkedWorldRoot = destinationRoot;
+		this.scene.add( destinationRoot );
+		this.worldConnector = destinationConnector;
+		this.remoteWorlds.set( destinationConnector.worldId, { connector: destinationConnector, root: destinationRoot } );
+
+		const exit = portal.exit;
+		const velocity = rotatePortalVelocity( this.fly.velocity, portal.entry.yaw, exit.yaw );
+		this.fly.velocity.x = velocity.x;
+		this.fly.velocity.z = velocity.z;
+		this.fly.setPose( new Vector3( ...exit.position ), exit.yaw, this.fly.pitch );
+		this.portalPreviousPosition.copy( this.camera.position );
+		this.portalPreparations.clear();
+		sourceConnector.close();
+
+		const url = new URL( location.href );
+		url.searchParams.set( 'worldId', destinationConnector.worldId );
+		url.searchParams.set( 'nodeId', portal.destinationPeerId );
+		history.replaceState( null, '', url );
+		document.title = `${destinationConnector.manifest.title} · ElseMesh`;
+		this.ui?.ui?.toast( `Entered ${destinationConnector.manifest.title}`, 2600 );
+
+	}
+
 	_frame( dt ) {
 
 		GPU.beginFrame();
@@ -697,7 +795,10 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 			if ( this.ui ) this.ui.ui.toast( this.audio.muted ? 'Sound off' : 'Sound on' );
 
 		}
-		if ( this.remoteWorldActive ) this.fly.update( dt );
+		if ( this.remoteWorldActive ) {
+			this.fly.update( dt );
+			this.updateWorldPortals();
+		}
 		else {
 
 			this.boatCtl.update( dt );
