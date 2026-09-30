@@ -1,4 +1,4 @@
-# Thruhold
+# ElseMesh
 
 An island fishing game for the browser. Cast from the pier, the beach or your own boat, fight the fish,
 sell your catch to Joe at the fish stand, and spend it on better gear at Marta's chandlery. Around it is a
@@ -154,6 +154,6 @@ The code is released under the MIT license; see [LICENSE](LICENSE). Third-party 
 Freesound, CC0 scans from Poly Haven, MIT characters from Microsoft Rocketbox, OFL / Apache fonts) and
 technique references are listed in [CREDITS.md](CREDITS.md).
 
-## Thruholds and authoring
+## ThruHolds and authoring
 
-Thruhold's world network and authoring design is documented in [docs/thruholds.md](docs/thruholds.md) and [docs/world-authoring.md](docs/world-authoring.md). Each Thruhold is an independently hosted world that can connect to others through portals. The existing `tidewater.world-source/1` format remains the current wire identifier for compatibility; the planned AI editor will work through reviewed source patches and isolated Blender operations. See the Go node prototype under `server/worldd`.
+ElseMesh's ThruHold network and authoring design is documented in [docs/thruholds.md](docs/thruholds.md) and [docs/world-authoring.md](docs/world-authoring.md). Each ThruHold is an independently owned and hosted world that can connect to others through portals. The existing `tidewater.world-source/1` format remains the current wire identifier for compatibility; the planned AI editor will work through reviewed source patches and isolated Blender operations. See the Go node prototype under `server/worldd`.

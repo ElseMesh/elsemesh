@@ -1,6 +1,6 @@
 import { icon, brandMark } from './icons.js';
 
-// Thruhold UI: settings panel (tabs → folders → controls), HUD, help,
+// ElseMesh UI: settings panel (tabs → folders → controls), HUD, help,
 // photo mode, start overlay and loader. Plain DOM, no dependencies.
 // All styling lives in ui.css (class prefix `tw-`).
 
@@ -1938,7 +1938,7 @@ export class UI {
 		this.sparkEl = stats.querySelector( '.tw-spark' );
 
 		const brand = h( 'div', 'tw-brand' );
-		brand.innerHTML = `${ brandMark() }<span class="tw-brand-name">THRUHOLD</span>`;
+		brand.innerHTML = `${ brandMark() }<span class="tw-brand-name">ELSEMESH</span>`;
 		this.modeEl = h( 'div', 'tw-mode is-empty', { role: 'status' } );
 		this.modeIco = h( 'span', 'tw-mode-ico' );
 		this.modeText = h( 'span', 'tw-mode-text' );
@@ -2189,7 +2189,7 @@ export class UI {
 		el.innerHTML = `
 			<div class="tw-start-inner">
 				${ brandMark( 'tw-start-mark' ) }
-				<div class="tw-start-title">THRUHOLD</div>
+				<div class="tw-start-title">ELSEMESH</div>
 				<button type="button" class="tw-start-cta"><span class="tw-start-pulse" aria-hidden="true"></span>${ icon( 'mouse' ) }<span>Tap or click to explore</span></button>
 				<div class="tw-start-touch-hint">Left stick moves · right stick looks · tap action prompts</div>
 				<div class="tw-start-keys">

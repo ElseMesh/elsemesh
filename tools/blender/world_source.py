@@ -1,8 +1,8 @@
-"""Import/export Thruhold world-source JSON from Blender.
+"""Import/export ElseMesh ThruHold source JSON from Blender.
 
 Run: blender --background scene.blend --python tools/blender/world_source.py -- import world.json
      blender --background scene.blend --python tools/blender/world_source.py -- export world.json
-The source document is retained in a Blender text block named ThruholdWorldSource.
+The source document is retained in a Blender text block named ElseMeshThruHoldSource.
 """
 import json
 import math
@@ -11,7 +11,8 @@ import sys
 import bpy
 
 PROTOCOL = "tidewater.world-source/1"
-TEXT_NAME = "ThruholdWorldSource"
+TEXT_NAME = "ElseMeshThruHoldSource"
+PREVIOUS_TEXT_NAME = "ThruholdWorldSource"
 LEGACY_TEXT_NAME = "TidewaterWorldSource"
 
 
@@ -24,7 +25,7 @@ def args():
 
 def validate(source):
     if source.get("protocol") != PROTOCOL:
-        raise ValueError("unsupported Thruhold source protocol")
+        raise ValueError("unsupported ThruHold source protocol")
     if not str(source.get("worldId", "")).startswith("tw-world:"):
         raise ValueError("missing worldId")
     if not isinstance(source.get("objects"), list) or not isinstance(source.get("portals"), list):
@@ -33,7 +34,7 @@ def validate(source):
 
 
 def to_blender(p):
-    # Thruhold right-handed Y-up -> Blender right-handed Z-up.
+    # ElseMesh right-handed Y-up -> Blender right-handed Z-up.
     return (p[0], -p[2], p[1])
 
 
@@ -47,9 +48,9 @@ def metadata_items(source):
 
 def import_source(path):
     source = validate(json.loads(path.read_text(encoding="utf-8")))
-    collection = bpy.data.collections.get("Thruhold World Source") or bpy.data.collections.get("Tidewater World Source")
+    collection = bpy.data.collections.get("ElseMesh ThruHold Source") or bpy.data.collections.get("Thruhold World Source") or bpy.data.collections.get("Tidewater World Source")
     if collection is None:
-        collection = bpy.data.collections.new("Thruhold World Source")
+        collection = bpy.data.collections.new("ElseMesh ThruHold Source")
         bpy.context.scene.collection.children.link(collection)
     for obj in list(collection.objects):
         bpy.data.objects.remove(obj, do_unlink=True)
@@ -64,7 +65,7 @@ def import_source(path):
         if kind == "object":
             empty.scale = item.get("scale", (1, 1, 1))
             empty.rotation_euler[2] = float(item["transform"].get("yaw", 0))
-    text = bpy.data.texts.get(TEXT_NAME) or bpy.data.texts.get(LEGACY_TEXT_NAME) or bpy.data.texts.new(TEXT_NAME)
+    text = bpy.data.texts.get(TEXT_NAME) or bpy.data.texts.get(PREVIOUS_TEXT_NAME) or bpy.data.texts.get(LEGACY_TEXT_NAME) or bpy.data.texts.new(TEXT_NAME)
     text.clear()
     text.write(json.dumps(source, indent=2) + "\n")
     bpy.context.scene["thruhold_world_id"] = source["worldId"]
@@ -72,9 +73,9 @@ def import_source(path):
 
 
 def export_source(path):
-    text = bpy.data.texts.get(TEXT_NAME) or bpy.data.texts.get(LEGACY_TEXT_NAME)
+    text = bpy.data.texts.get(TEXT_NAME) or bpy.data.texts.get(PREVIOUS_TEXT_NAME) or bpy.data.texts.get(LEGACY_TEXT_NAME)
     if text is None:
-        raise ValueError("ThruholdWorldSource text block is missing; import a source file first")
+        raise ValueError("ElseMeshThruHoldSource text block is missing; import a source file first")
     source = validate(json.loads(text.as_string()))
     objects, portals = [], []
     for obj in bpy.data.objects:

@@ -1,8 +1,8 @@
-# Thruhold worlds
+# ThruHolds on ElseMesh
 
 ## Goal and trust model
 
-Each Thruhold is a world hosted by an independently operated Go daemon on Linux or Android/Termux. Thruholds connect to one another through portals while remaining independently hosted and governed. Each has a stable `tw-world:` identifier, an owner identity, a signed versioned manifest, and one current authority epoch. Nodes have libp2p PeerIDs. Browser visitors connect to the selected node's HTTPS gateway; the gateway connects to world peers over libp2p. No central service is required for an already-known peer to host a Thruhold.
+Each ThruHold is a world hosted by an independently operated ElseMesh node on Linux or Android/Termux. ThruHolds connect to one another through portals while remaining independently hosted and governed. Each has a stable `tw-world:` identifier, an owner identity, a signed versioned manifest, and one current authority epoch. Nodes have libp2p PeerIDs. Browser visitors connect to the selected node's HTTPS gateway; the gateway connects to world peers over libp2p. No central service is required for an already-known peer to host a ThruHold.
 
 The daemon is a transport and content service. The world owner controls the manifest, world rules, and grants. A grant independently enables `content-cache` and/or bounded `failover-authority`; caching never grants write or authority rights. An owner-signed failover window permits a delegate to issue a temporary higher-epoch authority lease when its window opens. Runtime conflict recovery and shared simulation authority still need implementation before this is suitable for concurrent writes.
 
@@ -12,13 +12,13 @@ Node-to-node connections use libp2p TCP/QUIC, DHT discovery on the existing Tide
 
 A browser link should identify the world and its gateway, for example `https://world-host.example/?worldId=tw-world:...&gateway=wss://world-host.example/gateway`. Invite links can also include a node PeerID/address. Unknown worlds are looked up by world ID through configured discovery; do not trust an unsigned URL as proof of ownership.
 
-`thruhold.org` can optionally provide a public bootstrap directory and human-friendly links. It is not required for hosting, world authority, or access to a known node. Community relays are optional and should be operator opt-in, bounded, and observable.
+An optional ElseMesh directory can provide bootstrap discovery and human-friendly links. It is not required for hosting, world authority, or access to a known node. Community relays are optional and should be operator opt-in, bounded, and observable.
 
 ## Portals and streaming
 
 A portal is a signed-manifest record containing destination world/node, entry/exit transforms, and `openView`. The intended visitor flow is to resolve the destination and prefetch its manifest and portal-preview assets before crossing. Asset transfer is content-addressed and ordered `portal-preview`, `visible`, `nearby`, then `background`; hashes are checked before use. Neighbor cache grants allow replicas to serve immutable bytes, not to change the owner's manifest.
 
-The current connector and daemon provide signed manifest/chunk transport foundations. A browser URL with `worldId` and optional `gateway`/`nodeId` selects a Thruhold; the client verifies the manifest and asset hashes, loads static GLB instances, and replaces the procedural example scene. This first renderer supports embedded base-color textures and static triangle meshes. It does not yet provide GLB collision, dynamic world components, portal preview rendering, seamless coordinate handoff, player/session transfer, view-driven incremental loading, or full retry/failover behavior.
+The current connector and daemon provide signed manifest/chunk transport foundations. A browser URL with `worldId` and optional `gateway`/`nodeId` selects a ThruHold; the client verifies the manifest and asset hashes, loads static GLB instances, and replaces the procedural example scene. This first renderer supports embedded base-color textures and static triangle meshes. It does not yet provide GLB collision, dynamic world components, portal preview rendering, seamless coordinate handoff, player/session transfer, view-driven incremental loading, or full retry/failover behavior.
 
 ## Source, manifest, policy
 
@@ -42,4 +42,4 @@ worldd --data ./world-data --manifest ./world-data/world.signed.json
 
 Build/test from the repo's `server` directory with Go 1.24.6 or newer. For Linux use `go build -o worldd ./worldd`; for Android arm64/Termux use `GOOS=android GOARCH=arm64 go build -ldflags=-checklinkname=0 -o worldd ./worldd`. The linker flag is required by the current libp2p Android network-interface dependency (`wlynxg/anet`), which uses Go linkname to work around Android netlink restrictions; keep it scoped to the Android build. For public browsers, serve the web app and gateway through HTTPS/WSS. The daemon's default HTTP bind is loopback. Bootstrap peers must speak the legacy Tidewater DHT protocol prefix; generic public IPFS bootstrap peers are not compatible.
 
-See `server/worldd` for the current code. This is an evolving prototype. It does not yet provide a production bootstrap directory, Google authentication, full owner policy engine, live cross-world rendering/handoff, robust multi-writer simulation, or a deployed service at thruhold.org.
+See `server/worldd` for the current code. This is an evolving prototype. It does not yet provide a production bootstrap directory, Google authentication, full owner policy engine, live cross-world rendering/handoff, or robust multi-writer simulation.

@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://rebroad.github.io/tidewater/schemas/world-source.schema.json",
-  "title": "Thruhold World Source",
+  "title": "ElseMesh ThruHold World Source",
   "description": "Shared authoring document exchanged by the AI editor service and Blender tools. This is unsigned source data, not a publishable server manifest.",
   "type": "object",
   "required": [

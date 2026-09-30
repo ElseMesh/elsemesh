@@ -1,8 +1,8 @@
-# Thruhold world authoring and AI editor direction
+# ElseMesh ThruHold authoring and AI editor direction
 
 ## Product direction
 
-Worlds are authored in Blender and through a separate AI editor service. Thruhold will not ship an in-game world editor in this direction. Blender is the visual authoring tool; the existing `tidewater.world-source/1` JSON identifier is retained for compatibility; the AI service will propose edits to that document and its referenced assets.
+ThruHolds are authored in Blender and through a separate AI editor service. ElseMesh will not ship an in-game world editor in this direction. Blender is the visual authoring tool; the existing `tidewater.world-source/1` JSON identifier is retained for compatibility; the AI service will propose edits to that document and its referenced assets.
 
 A Blender project is a working scene, not the canonical network publication. Keep the editable source, export recipe, and reproducible packaged world assets under version control. The procedural island follows the same rule: it is a built-in example world whose source and exported package live in this repository, rather than a permanent scene layer. A selected hosted world replaces the currently active world content. Server runtime manifests are separately validated and owner-signed; never treat an AI proposal or `.blend` file as an authorization to publish.
 
@@ -18,13 +18,13 @@ World content has three related forms, with distinct jobs:
 
 The export pipeline should turn the island generator's output into ordinary runtime assets and metadata, then use the same validation, hashing, manifest conversion, and signing pipeline as Blender-authored worlds. Prefer stable IDs and deterministic output so a source change produces a reviewable package diff. Large binary assets may be stored with Git LFS if repository size warrants it, while their hashes and package index remain versioned in Git. A world node can import the checked-in package into its local content store and sign/publish it with that node's world identity; private signing keys must never be committed.
 
-The initial runtime package should support static meshes, materials/textures, transforms, collision intent, world rules, and portal records. Dynamic island systems (for example water, weather, wildlife, fishing simulation, and boat behavior) need explicit runtime component definitions or a documented Thruhold extension; they cannot be assumed to survive a static mesh export. The procedural island remains fully playable as the example provider until equivalent runtime behavior is represented in the package format.
+The initial runtime package should support static meshes, materials/textures, transforms, collision intent, world rules, and portal records. Dynamic island systems (for example water, weather, wildlife, fishing simulation, and boat behavior) need explicit runtime component definitions or a documented ElseMesh extension; they cannot be assumed to survive a static mesh export. The procedural island remains fully playable as the example ThruHold until equivalent runtime behavior is represented in the package format.
 
 ## Shared source format
 
 The normative JSON Schema is [`schemas/world-source.schema.json`](schemas/world-source.schema.json). The browser-side structural checks are in `src/network/WorldSource.js`; Blender import/export is provided by [`../tools/blender/world_source.py`](../tools/blender/world_source.py).
 
-The format uses right-handed, Y-up coordinates in meters. It records stable IDs, asset hashes, transforms, collision intent, world rules, style guidance, and portal endpoints. Objects refer to content by SHA-256 ID; don't rely on a machine-specific filesystem path. Portals identify the destination world and node, local entry and destination exit transforms, and whether the opening should show a remote preview.
+The format uses right-handed, Y-up coordinates in meters. It records stable IDs, asset hashes, transforms, collision intent, world rules, style guidance, and portal endpoints. Objects refer to content by SHA-256 ID; don't rely on a machine-specific filesystem path. Portals identify the destination ThruHold and node, local entry and destination exit transforms, and whether the opening should show a remote preview.
 
 Example exchange:
 
@@ -60,7 +60,7 @@ Evaluate on held-out worlds and measure schema validity, correct IDs/links, rule
 
 ## Implementation boundary
 
-The current repository contains the source-format helper, Blender interchange script, Thruhold daemon/client foundation, and a first browser loader for static GLB instances in a signed hosted world. That loader can replace the procedural example scene but does not yet load dynamic world components or implement GLB collision and portal handoff. The deterministic island export/package pipeline, AI editor service, isolated Blender worker, preview/review UI, GLB candidate pipeline, and complete manifest publishing workflow remain future implementation work. This document describes intended boundaries; it does not claim those services are running.
+The current repository contains the source-format helper, Blender interchange script, ElseMesh node/client foundation, and a first browser loader for static GLB instances in a signed hosted ThruHold. That loader can replace the procedural example scene but does not yet load dynamic world components or implement GLB collision and portal handoff. The deterministic island export/package pipeline, AI editor service, isolated Blender worker, preview/review UI, GLB candidate pipeline, and complete manifest publishing workflow remain future implementation work. This document describes intended boundaries; it does not claim those services are running.
 
 ## Proposed service contract
 

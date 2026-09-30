@@ -3,7 +3,7 @@ import { UI } from './UI.js';
 import { G } from '../core/Globals.js';
 import { GroundBounce } from '../materials/GroundBounce.js';
 
-// Binds the Thruhold UI (panel + HUD) to the running app.
+// Binds the ElseMesh UI (panel + HUD) to the running app.
 const SEA = {
 	Calm: { wind: 3.5, fetch: 40, chop: 0.75, swell: 0.28, surf: 0.18, period: 11, whitecaps: 0.2 },
 	Breezy: { wind: 7, fetch: 120, chop: 0.9, swell: 0.48, surf: 0.34, period: 9, whitecaps: 0.5 },
