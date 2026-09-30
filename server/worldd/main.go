@@ -69,10 +69,10 @@ func run() error {
 	manifestOut := flag.String("manifest-out", "", "output path for --sign-manifest (must not already exist)")
 	importAssetPath := flag.String("import-asset", "", "import one asset into the content-addressed store, print its sha256 ID, then exit")
 	printNodeID := flag.Bool("print-node-id", false, "print this data directory's persistent node PeerID, then exit")
-	worldName := flag.String("world-name", "Tidewater", "create a local starter manifest when none is supplied")
+	worldName := flag.String("world-name", "Thruhold", "create a local starter manifest when none is supplied")
 	listenPort := flag.Int("p2p-port", 42901, "libp2p TCP and QUIC listen port")
 	httpAddress := flag.String("http", "127.0.0.1:5200", "HTTP/WebSocket gateway listen address; place behind TLS for public browser access")
-	webRoot := flag.String("web-root", "", "optional built Tidewater web client directory")
+	webRoot := flag.String("web-root", "", "optional built Thruhold web client directory")
 	dhtMode := flag.String("dht-mode", "auto", "DHT mode: auto, client, or server")
 	serveRelay := flag.Bool("relay-service", false, "allow this node to provide a bounded libp2p circuit relay")
 	var bootstrap stringFlags
