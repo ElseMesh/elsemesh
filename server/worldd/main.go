@@ -65,6 +65,10 @@ func run() error {
 	defaultData := filepath.Join(configDir, "tidewater", "worldd")
 	dataDir := flag.String("data", defaultData, "private daemon data directory")
 	manifestPath := flag.String("manifest", "", "owner-signed world manifest JSON")
+	signManifestPath := flag.String("sign-manifest", "", "validate and owner-sign an unsigned runtime world manifest, then exit")
+	manifestOut := flag.String("manifest-out", "", "output path for --sign-manifest (must not already exist)")
+	importAssetPath := flag.String("import-asset", "", "import one asset into the content-addressed store, print its sha256 ID, then exit")
+	printNodeID := flag.Bool("print-node-id", false, "print this data directory's persistent node PeerID, then exit")
 	worldName := flag.String("world-name", "Tidewater", "create a local starter manifest when none is supplied")
 	listenPort := flag.Int("p2p-port", 42901, "libp2p TCP and QUIC listen port")
 	httpAddress := flag.String("http", "127.0.0.1:5200", "HTTP/WebSocket gateway listen address; place behind TLS for public browser access")
@@ -76,6 +80,15 @@ func run() error {
 	flag.Var(&bootstrap, "bootstrap", "bootstrap peer multiaddr (repeatable)")
 	flag.Var(&relays, "relay", "static relay peer multiaddr (repeatable)")
 	flag.Parse()
+	operationCount := 0
+	for _, requested := range []bool{*printNodeID, *importAssetPath != "", *signManifestPath != ""} {
+		if requested {
+			operationCount++
+		}
+	}
+	if operationCount > 1 || (*manifestOut != "" && *signManifestPath == "") {
+		return errors.New("use only one of --print-node-id, --import-asset, or --sign-manifest; --manifest-out requires --sign-manifest")
+	}
 	if *listenPort < 1 || *listenPort > 65535 {
 		return errors.New("p2p-port must be between 1 and 65535")
 	}
@@ -88,6 +101,28 @@ func run() error {
 	key, err := loadIdentity(filepath.Join(*dataDir, "node.key"))
 	if err != nil {
 		return err
+	}
+	localID, err := peer.IDFromPublicKey(key.GetPublic())
+	if err != nil {
+		return err
+	}
+	if *printNodeID {
+		fmt.Println(localID.String())
+		return nil
+	}
+	if *importAssetPath != "" {
+		id, importErr := importAsset(*importAssetPath, filepath.Join(*dataDir, "assets"))
+		if importErr != nil {
+			return importErr
+		}
+		fmt.Println(id)
+		return nil
+	}
+	if *signManifestPath != "" {
+		if *manifestOut == "" {
+			return errors.New("--manifest-out is required with --sign-manifest")
+		}
+		return signManifestFile(*signManifestPath, *manifestOut, localID.String(), key, time.Now())
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
@@ -133,18 +168,18 @@ func run() error {
 		log.Printf("DHT bootstrap pending: %v", err)
 	}
 
-	localID := p2pHost.ID().String()
-	manifest, err := loadWorldManifest(*manifestPath, *dataDir, *worldName, localID, key)
+	localPeerID := p2pHost.ID().String()
+	manifest, err := loadWorldManifest(*manifestPath, *dataDir, *worldName, localPeerID, key)
 	if err != nil {
 		return err
 	}
-	world, err := decodeManifest(manifest, localID, time.Now())
+	world, err := decodeManifest(manifest, localPeerID, time.Now())
 	if err != nil {
 		return fmt.Errorf("world manifest: %w", err)
 	}
 	d := &daemon{ctx: ctx, host: p2pHost, dht: router, discovery: routing.NewRoutingDiscovery(router), manifest: manifest, world: world, key: key, assetsDir: filepath.Join(*dataDir, "assets"), webRoot: *webRoot}
-	if world.OwnerPeerID != localID {
-		if lease, leaseErr := activateFailover(world, localID, key, time.Now()); leaseErr == nil {
+	if world.OwnerPeerID != localPeerID {
+		if lease, leaseErr := activateFailover(world, localPeerID, key, time.Now()); leaseErr == nil {
 			d.authority = &lease
 			log.Printf("temporary failover authority active for %s at epoch %d", world.WorldID, world.AuthorityEpoch+1)
 		}
@@ -458,7 +493,7 @@ type peerResponse struct {
 	Document       *signedDocument `json:"document,omitempty"`
 	AuthorityLease *signedDocument `json:"authorityLease,omitempty"`
 	AssetID        string          `json:"assetId,omitempty"`
-	Offset         int64           `json:"offset,omitempty"`
+	Offset         int64           `json:"offset"`
 	Total          int64           `json:"total,omitempty"`
 	Chunk          string          `json:"chunk,omitempty"`
 	Error          string          `json:"error,omitempty"`

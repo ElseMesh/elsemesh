@@ -28,7 +28,17 @@ Account login is optional and distinct from world identity. Google sign-in may l
 
 ## Current implementation and operation
 
-The `server/worldd` Go program persists a node identity, serves a signed local starter manifest, accepts an owner-signed manifest, exposes a browser gateway and content-addressed asset endpoint, and supports optional discovery/relay configuration. `src/network/WorldConnector.js` verifies signed documents and content hashes and fetches prioritized chunks. A manifest must be created and signed by the owning identity before other nodes can host it; neighbor permission configuration UX is still pending.
+The `server/worldd` Go program persists a node identity, serves a signed local starter manifest, accepts an owner-signed manifest, exposes a browser gateway and content-addressed asset endpoint, and supports optional discovery/relay configuration. `src/network/WorldConnector.js` verifies signed documents and content hashes and fetches prioritized chunks. Author a Blender source document, import its GLB assets, convert it to an unsigned runtime manifest, then sign it using the same persistent node identity:
+
+```sh
+worldd --data ./world-data --print-node-id
+worldd --data ./world-data --import-asset ./assets/boat.glb
+node tools/world-source-to-manifest.mjs --source ./island.world-source.json --owner <PeerID> --assets ./world-data/assets --out ./world-data/unsigned.json
+worldd --data ./world-data --sign-manifest ./world-data/unsigned.json --manifest-out ./world-data/world.signed.json
+worldd --data ./world-data --manifest ./world-data/world.signed.json
+```
+
+`--import-asset` prints the content hash to assign to a source object. Signing validates the runtime document and never overwrites an existing signature file. Review and edit owner grants in the unsigned manifest before signing when delegating a cache or failover role. A manifest must be signed by the owning identity before other nodes can host it; neighbor permission configuration UX is still pending.
 
 Build/test from the repo's `server` directory with Go 1.24.6 or newer. For Linux use `go build -o worldd ./worldd`; for Android arm64/Termux use `GOOS=android GOARCH=arm64 go build -ldflags=-checklinkname=0 -o worldd ./worldd`. The linker flag is required by the current libp2p Android network-interface dependency (`wlynxg/anet`), which uses Go linkname to work around Android netlink restrictions; keep it scoped to the Android build. For public browsers, serve the web app and gateway through HTTPS/WSS. The daemon's default HTTP bind is loopback. Bootstrap peers must speak the Tidewater DHT protocol prefix; generic public IPFS bootstrap peers are not compatible.
 

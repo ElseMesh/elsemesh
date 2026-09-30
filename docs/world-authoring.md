@@ -21,6 +21,8 @@ blender --background island.blend --python tools/blender/world_source.py -- expo
 
 The helper creates editable metadata empties in a dedicated collection and keeps the full JSON in a Blender text block. Mesh assets remain normal Blender objects/files and should be exported to GLB/glTF and content-addressed separately. Review source diffs after export; Blender saves are not automatically trusted or published.
 
+To produce a runtime document, import each GLB into the node's content store with `worldd --import-asset`, set the resulting ID on the matching source object, then run `tools/world-source-to-manifest.mjs`. Finally, use `worldd --sign-manifest` with the world's persistent owner identity. Runtime signing keys stay on the owner node; the AI service must only return unsigned proposals.
+
 ## AI editor service
 
 The service is a planned, separate authoring product, not part of the world daemon's authority path. Its first implementation should be a tool-using assistant rather than model fine-tuning: provide a bounded Blender workspace and explicit operations through `bpy`, alongside schema-aware JSON edits. This yields inspectable actions and avoids training a model to emit opaque scene files.

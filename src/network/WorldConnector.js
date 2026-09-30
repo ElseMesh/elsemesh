@@ -49,7 +49,7 @@ export class WorldConnector {
 	}
 
 	async #discoverProvider() {
-		const url = new URL( '/api/lookup', this.gateway );
+		const url = new URL( '/api/lookup', this.#httpBaseURL() );
 		url.searchParams.set( 'worldId', this.worldId );
 		const response = await fetch( url, { credentials: 'omit', cache: 'no-store' } );
 		if ( ! response.ok ) throw new Error( `World lookup failed (${response.status})` );
@@ -68,7 +68,7 @@ export class WorldConnector {
 			if ( signal?.aborted ) throw signal.reason || new DOMException( 'Aborted', 'AbortError' );
 			const length = Math.min( this.chunkBytes, asset.bytes - offset );
 			const reply = await this.#request( { type: 'asset.get', assetId, offset, length }, { signal } );
-			invariant( reply.type === 'asset.chunk' && reply.assetId === assetId && reply.offset === offset && reply.total === asset.bytes, 'Invalid asset chunk response' );
+			invariant( reply.type === 'asset.chunk' && reply.assetId === assetId && reply.offset === offset && reply.total === asset.bytes, `Invalid asset chunk response: ${JSON.stringify( { type: reply.type, assetId: reply.assetId, offset: reply.offset, total: reply.total } )}` );
 			const bytes = decodeBase64( reply.chunk );
 			invariant( bytes.byteLength === length, 'Asset chunk has an unexpected length' );
 			parts.push( bytes );
@@ -107,11 +107,9 @@ export class WorldConnector {
 		if ( this.socket?.readyState === WebSocket.OPEN ) return this.socket;
 		if ( this.socketPromise ) return this.socketPromise;
 		this.socketPromise = new Promise( ( resolve, reject ) => {
-			const url = new URL( this.gateway );
-			url.protocol = url.protocol === 'https:' ? 'wss:' : url.protocol === 'http:' ? 'ws:' : url.protocol;
-			invariant( url.protocol === 'wss:' || url.protocol === 'ws:', 'Gateway must use HTTP(S) or WebSocket(S)' );
-			url.pathname = `${url.pathname.replace( /\/$/, '' )}/gateway`;
-			url.search = '';
+			const url = this.#httpBaseURL();
+			url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
+			url.pathname = '/gateway';
 			const socket = this.socket = new WebSocket( url );
 			let connected = false;
 			const timeout = setTimeout( () => { socket.close(); reject( new Error( 'World gateway connection timed out' ) ); }, 20000 );
@@ -149,6 +147,18 @@ export class WorldConnector {
 		} );
 		try { return await this.socketPromise; }
 		catch ( error ) { this.socketPromise = null; throw error; }
+	}
+
+	#httpBaseURL() {
+		const url = new URL( this.gateway, globalThis.location?.href );
+		if ( url.protocol === 'wss:' ) url.protocol = 'https:';
+		else if ( url.protocol === 'ws:' ) url.protocol = 'http:';
+		invariant( url.protocol === 'https:' || url.protocol === 'http:', 'Gateway must use HTTP(S) or WebSocket(S)' );
+		if ( globalThis.location?.protocol === 'https:' && url.protocol !== 'https:' ) throw new Error( 'Secure pages require an HTTPS/WSS world gateway' );
+		url.pathname = '/';
+		url.search = '';
+		url.hash = '';
+		return url;
 	}
 
 	async #request( message, { signal } = {} ) {

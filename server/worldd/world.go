@@ -39,6 +39,19 @@ type assetRef struct {
 	Path     string `json:"path,omitempty"`
 }
 
+type worldObject struct {
+	ID        string    `json:"id"`
+	Kind      string    `json:"kind"`
+	Label     string    `json:"label"`
+	AssetID   string    `json:"assetId"`
+	Transform transform `json:"transform"`
+	Scale     vector3   `json:"scale"`
+	Collision struct {
+		Shape   string `json:"shape"`
+		Enabled bool   `json:"enabled"`
+	} `json:"collision"`
+}
+
 type portal struct {
 	ID          string    `json:"id"`
 	Destination string    `json:"destinationWorldId"`
@@ -77,6 +90,7 @@ type worldManifest struct {
 	Title           string         `json:"title"`
 	Rules           worldRules     `json:"rules"`
 	Assets          []assetRef     `json:"assets"`
+	Objects         []worldObject  `json:"objects"`
 	Portals         []portal       `json:"portals"`
 	Hosts           []hostingGrant `json:"hosts,omitempty"`
 	UpdatedAt       int64          `json:"updatedAt"`
@@ -95,34 +109,44 @@ func validateManifest(manifest worldManifest, localPeerID string, now time.Time)
 	if manifest.Rules.AvatarComplexity == 0 || manifest.Rules.AvatarComplexity > 100000 || len(manifest.Rules.PhysicsProfile) > 64 || len(manifest.Rules.StyleGuide) > 512 {
 		return errors.New("invalid world rules")
 	}
-	if len(manifest.Assets) > 10000 || len(manifest.Portals) > 1024 || len(manifest.Hosts) > 256 {
+	if len(manifest.Assets) > 10000 || len(manifest.Objects) > 10000 || len(manifest.Portals) > 1024 || len(manifest.Hosts) > 256 {
 		return errors.New("manifest contains too many entries")
 	}
 	permitted := manifest.OwnerPeerID == localPeerID
-	if manifest.AuthorityPeerID == "" || manifest.AuthorityEpoch == 0 {
+	if manifest.AuthorityPeerID == "" || manifest.AuthorityEpoch == 0 || manifest.AuthorityPeerID != manifest.OwnerPeerID {
 		return errors.New("world authority is missing an epoch")
+	}
+	if _, err := peer.Decode(manifest.OwnerPeerID); err != nil {
+		return errors.New("invalid owner peer identity")
 	}
 	if _, err := peer.Decode(manifest.AuthorityPeerID); err != nil {
 		return errors.New("invalid authority peer identity")
 	}
+	seenHosts := make(map[string]bool, len(manifest.Hosts))
 	for _, grant := range manifest.Hosts {
-		if grant.PeerID != localPeerID || grant.ExpiresAt <= now.Unix() || grant.Epoch == 0 {
-			continue
+		if _, err := peer.Decode(grant.PeerID); err != nil || seenHosts[grant.PeerID] || grant.Epoch == 0 || grant.ExpiresAt <= 0 {
+			return errors.New("invalid or duplicate hosting grant")
 		}
+		seenHosts[grant.PeerID] = true
 		seenScopes := make(map[string]bool, len(grant.Scopes))
 		for _, scope := range grant.Scopes {
 			if (scope != "content-cache" && scope != "failover-authority") || seenScopes[scope] {
 				return errors.New("invalid hosting grant scope")
 			}
 			seenScopes[scope] = true
-			permitted = true
+		}
+		if len(seenScopes) == 0 {
+			return errors.New("hosting grant has no scopes")
 		}
 		if seenScopes["failover-authority"] {
-			if grant.FailoverAfter <= 0 || grant.FailoverSeconds < 1 || grant.FailoverSeconds > 3600 || grant.FailoverAfter+grant.FailoverSeconds > grant.ExpiresAt {
+			if grant.FailoverAfter <= 0 || grant.FailoverSeconds < 1 || grant.FailoverSeconds > 3600 || grant.FailoverAfter > grant.ExpiresAt-grant.FailoverSeconds {
 				return errors.New("invalid failover grant window")
 			}
 		} else if grant.FailoverAfter != 0 || grant.FailoverSeconds != 0 {
 			return errors.New("failover window without failover permission")
+		}
+		if grant.PeerID == localPeerID && grant.ExpiresAt > now.Unix() {
+			permitted = true
 		}
 	}
 	if !permitted {
@@ -138,10 +162,36 @@ func validateManifest(manifest worldManifest, localPeerID string, now time.Time)
 		}
 		seenAssets[asset.ID] = true
 	}
+	seenObjects := make(map[string]bool, len(manifest.Objects))
+	for _, object := range manifest.Objects {
+		if len(object.ID) == 0 || len(object.ID) > 128 || seenObjects[object.ID] || object.Kind != "asset-instance" || len(object.Label) > 160 || !assetIDPattern.MatchString(object.AssetID) || !seenAssets[object.AssetID] {
+			return fmt.Errorf("invalid or duplicate world object %q", object.ID)
+		}
+		for _, coordinate := range object.Transform.Position {
+			if math.IsNaN(coordinate) || math.IsInf(coordinate, 0) || math.Abs(coordinate) > 1e6 {
+				return errors.New("object coordinate out of bounds")
+			}
+		}
+		if math.IsNaN(object.Transform.Yaw) || math.IsInf(object.Transform.Yaw, 0) || math.Abs(object.Transform.Yaw) > 360 {
+			return errors.New("object yaw out of bounds")
+		}
+		for _, scale := range object.Scale {
+			if math.IsNaN(scale) || math.IsInf(scale, 0) || scale <= 0 || scale > 1000 {
+				return errors.New("object scale out of bounds")
+			}
+		}
+		if object.Collision.Shape != "box" && object.Collision.Shape != "none" {
+			return errors.New("unsupported object collision shape")
+		}
+		seenObjects[object.ID] = true
+	}
 	seenPortals := make(map[string]bool, len(manifest.Portals))
 	for _, p := range manifest.Portals {
-		if len(p.ID) == 0 || len(p.ID) > 128 || seenPortals[p.ID] || !worldIDPattern.MatchString(p.Destination) || p.PeerID == "" || len(p.PeerID) > 256 {
+		if len(p.ID) == 0 || len(p.ID) > 128 || seenPortals[p.ID] || seenObjects[p.ID] || !worldIDPattern.MatchString(p.Destination) || p.PeerID == "" || len(p.PeerID) > 256 {
 			return fmt.Errorf("invalid portal %q", p.ID)
+		}
+		if _, err := peer.Decode(p.PeerID); err != nil {
+			return fmt.Errorf("invalid destination peer for portal %q", p.ID)
 		}
 		for _, t := range []transform{p.Entry, p.Exit} {
 			for _, coordinate := range t.Position {
@@ -205,7 +255,7 @@ func validateAuthorityLease(document signedDocument, manifest worldManifest, now
 	if err := json.Unmarshal(document.Payload, &lease); err != nil {
 		return lease, err
 	}
-	if lease.WorldID != manifest.WorldID || lease.AuthorityPeerID != document.Signer || lease.Epoch <= manifest.AuthorityEpoch || now.Unix() < lease.NotBefore || now.Unix() >= lease.ExpiresAt {
+	if lease.WorldID != manifest.WorldID || lease.AuthorityPeerID != document.Signer || lease.Epoch != manifest.AuthorityEpoch+1 || now.Unix() < lease.NotBefore || now.Unix() >= lease.ExpiresAt {
 		return lease, errors.New("authority lease is not currently valid")
 	}
 	for _, grant := range manifest.Hosts {
