@@ -68,6 +68,8 @@ const vegetationComponent = { id: 'tw-component:portable-vegetation', type: 'tid
 const placementAsset = [ { id: placementAssetId, kind: 'vegetation-placement/1', priority: 'portal-preview' } ];
 assert.doesNotThrow( () => validateWorldComponents( [ vegetationComponent ], { requiredFeatures: [ vegetationComponent.type ] }, new Set(), placementAsset ), 'browser accepts a declared JSON placement asset available for portal preview' );
 assert.throws( () => validateWorldComponents( [ vegetationComponent ], { requiredFeatures: [ vegetationComponent.type ] }, new Set(), [] ), /placement asset reference/, 'browser rejects a component that points at undeclared placement data' );
+assert.throws( () => validateWorldComponents( [ { ...vegetationComponent, extra: true } ], { requiredFeatures: [ vegetationComponent.type ] }, new Set(), placementAsset ), /Unsupported or invalid world component/, 'browser rejects unknown fields on signed vegetation components' );
+assert.throws( () => validateWorldSource( { ...source, rules: { ...source.rules, requiredFeatures: [ vegetationComponent.type ] }, components: [ { ...vegetationComponent, extra: true } ] } ), /Invalid or duplicate world component/, 'authoring rejects unknown fields on vegetation components' );
 const directoryLink = worldLinkFromLocation( { search: '?worldId=tw-world:coast&directory=https%3A%2F%2Fthruhold.org', origin: 'https://rebroad.github.io' } );
 assert.equal( directoryLink.directory, 'https://thruhold.org', 'browser link can opt into the community directory' );
 assert.throws( () => new WorldConnector( { worldId: 'tw-world:coast', directory: 'http://thruhold.org' } ), 'directory endpoints must use HTTPS' );

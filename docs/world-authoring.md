@@ -30,6 +30,8 @@ The portable vegetation placement asset is a binary format. Its fixed field orde
 
 The example-island water component is documented in [`schemas/island-ocean.md`](schemas/island-ocean.md). It is deliberately scoped to the reference island's water profile.
 
+Runtime component records are closed, versioned contracts. Authoring validation, owner signing, Go node decoding, and browser validation reject fields that are not declared for that component version; introduce new data under a new protocol version rather than relying on unknown fields being ignored.
+
 For view-driven streaming, an object may declare `streamingBounds: { center: [x, y, z], radius }` in asset-local meters and an object-level `priority`. The radius is scaled with the instance; the center is transformed by its signed yaw or quaternion. The browser requests bounded objects intersecting the active view, plus objects within its nearby buffer, and appends only those instances. Objects without bounds keep legacy eager-loading behavior. Portal preview remains a separate prefetch stage so destination content can arrive before a crossing.
 
 Example exchange:

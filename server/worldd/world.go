@@ -103,6 +103,27 @@ type worldComponent struct {
 	PlacementAssetID string `json:"placementAssetId,omitempty"`
 }
 
+func (component *worldComponent) UnmarshalJSON(data []byte) error {
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(data, &fields); err != nil {
+		return err
+	}
+	for key := range fields {
+		switch key {
+		case "id", "type", "seed", "priority", "placementAssetId":
+		default:
+			return fmt.Errorf("unknown field %q in world component", key)
+		}
+	}
+	type plain worldComponent
+	var decoded plain
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		return err
+	}
+	*component = worldComponent(decoded)
+	return nil
+}
+
 type hostingGrant struct {
 	PeerID          string   `json:"peerId"`
 	Scopes          []string `json:"scopes"`

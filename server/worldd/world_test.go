@@ -196,6 +196,14 @@ func TestWorldManifestValidatesProceduralComponents(t *testing.T) {
 	}
 }
 
+func TestWorldComponentRejectsUnknownFields(t *testing.T) {
+	var component worldComponent
+	err := json.Unmarshal([]byte(`{"id":"tw-component:vegetation","type":"tidewater.procedural-island-vegetation/1","seed":7,"extra":true}`), &component)
+	if err == nil || !strings.Contains(err.Error(), `unknown field "extra"`) {
+		t.Fatalf("unknown component field should be rejected, got %v", err)
+	}
+}
+
 func TestWorldManifestValidatesDeterministicMovementRules(t *testing.T) {
 	key, _, err := crypto.GenerateEd25519Key(rand.Reader)
 	if err != nil {
