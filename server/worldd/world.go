@@ -104,6 +104,7 @@ type worldComponent struct {
 	PlacementAssetID string    `json:"placementAssetId,omitempty"`
 	Center           []float64 `json:"center,omitempty"`
 	Extent           float64   `json:"extent,omitempty"`
+	Profile          string    `json:"profile,omitempty"`
 }
 
 func (component *worldComponent) UnmarshalJSON(data []byte) error {
@@ -123,7 +124,7 @@ func (component *worldComponent) UnmarshalJSON(data []byte) error {
 		allowed["placementAssetId"] = true
 	case "tidewater.island-ocean/1":
 	case "tidewater.water-body/1":
-		allowed["center"], allowed["extent"] = true, true
+		allowed["center"], allowed["extent"], allowed["profile"] = true, true, true
 	default:
 		return fmt.Errorf("unsupported world component type %q", typeName)
 	}
@@ -427,7 +428,7 @@ func validateManifest(manifest worldManifest, localPeerID string, now time.Time)
 		vegetation := component.Type == "tidewater.procedural-island-vegetation/1" && component.Seed == 7
 		staticVegetation := component.Type == "tidewater.static-vegetation/1" && component.Seed == 0 && component.PlacementAssetID != ""
 		islandOcean := component.Type == "tidewater.island-ocean/1" && component.Seed == 0 && component.PlacementAssetID == ""
-		waterBody := component.Type == "tidewater.water-body/1" && component.Seed == 0 && component.PlacementAssetID == "" && len(component.Center) == 2 && component.Extent >= 8 && component.Extent <= 100000
+		waterBody := component.Type == "tidewater.water-body/1" && component.Seed == 0 && component.PlacementAssetID == "" && len(component.Center) == 2 && component.Extent >= 8 && component.Extent <= 100000 && (component.Profile == "" || component.Profile == "deep-ocean" || component.Profile == "calm-lagoon" || component.Profile == "storm")
 		if waterBody {
 			waterBodyCount++
 			for _, coordinate := range component.Center {

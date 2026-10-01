@@ -35,6 +35,7 @@ import { Whale } from './world/marine/Whale.js';
 import { OceanFFT } from './ocean/OceanFFT.js';
 import { WaterSurface } from './ocean/WaterSurface.js';
 import { WaterMaterial } from './ocean/WaterMaterial.js';
+import { applyWaterBodyProfile } from './ocean/WaterProfiles.js';
 import { createFoamTexture } from './ocean/FoamTexture.js';
 import { ShoreWaves } from './ocean/ShoreWaves.js';
 import { ShoreSim } from './ocean/ShoreSim.js';
@@ -732,6 +733,7 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 					center: { x: component.center[ 0 ] - extent, z: component.center[ 1 ] - extent, size: extent * 2 },
 				} );
 				const surface = new WaterSurface( { fft: this.fft, cdlod: lod, foamTexture: this.foamTexture, seaLevel: connector.manifest.rules.seaLevel } );
+				applyWaterBodyProfile( surface, component.profile );
 				const material = new WaterMaterial( {
 					surface, sky: this.sky, sceneCopy: this.sceneRenderer.opaqueCopy, sceneDepthHalf: this.sceneRenderer.opaqueDepthHalf.texture,
 				} );

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { ShaderModule } from '../src/engine/gpu/Shader.js';
 import { WaterMaterial } from '../src/ocean/WaterMaterial.js';
 import { WaterSurface } from '../src/ocean/WaterSurface.js';
+import { applyWaterBodyProfile, WATER_BODY_PROFILES } from '../src/ocean/WaterProfiles.js';
 
 function makeSurface( seaLevel = null ) {
 	const fft = { cascades: 1, sizes: [ 64 ], module: new ShaderModule( { name: 'testOcean' } ) };
@@ -26,5 +27,11 @@ const legacySurface = makeSurface();
 assert.match( legacySurface.module.code, /var y = frame\.seaLevel \+ total\.y;/, 'legacy island water continues using its unchanged frame sea level' );
 const legacyMaterial = makeMaterial( legacySurface );
 assert.match( legacyMaterial.output, /_waterSSR\( posV, Rv, pos\.y, Rraw\.y, frame\.seaLevel \)/, 'legacy island reflections continue using the frame level' );
+
+const profiledSurface = makeSurface( 0 );
+applyWaterBodyProfile( profiledSurface, 'calm-lagoon' );
+assert.equal( profiledSurface.amplitude.value, WATER_BODY_PROFILES[ 'calm-lagoon' ].amplitude, 'named lagoon profile adjusts displacement amplitude' );
+assert.ok( profiledSurface.slopeScale.value < 1, 'calm lagoon profile reduces unresolved wave slope' );
+assert.throws( () => applyWaterBodyProfile( profiledSurface, 'unknown' ), /Unsupported water-body material profile/, 'renderer rejects an unknown profile instead of silently changing style' );
 
 console.log( 'ok   hosted water uses its destination sea level; legacy island water keeps frame sea level' );

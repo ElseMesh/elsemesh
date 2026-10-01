@@ -345,6 +345,7 @@
             "type": { "const": "tidewater.water-body/1" },
             "center": { "type": "array", "items": { "type": "number", "minimum": -1000000, "maximum": 1000000 }, "minItems": 2, "maxItems": 2, "description": "Horizontal world-space [x,z] center in meters." },
             "extent": { "type": "number", "minimum": 8, "maximum": 100000, "description": "Half-width and half-depth of a square deep-water body, in meters." },
+            "profile": { "enum": ["deep-ocean", "calm-lagoon", "storm"], "description": "Optional named rendering profile; omission selects deep-ocean." },
             "priority": { "enum": ["portal-preview", "visible", "nearby", "background"] }
           },
           "additionalProperties": false

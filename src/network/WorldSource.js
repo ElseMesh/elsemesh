@@ -72,7 +72,7 @@ export function validateWorldSource( source ) {
 		const staticVegetation = component?.type === 'tidewater.static-vegetation/1' && /^sha256:[0-9a-f]{64}$/.test( component.placementAssetId || '' );
 		const islandOcean = component?.type === 'tidewater.island-ocean/1';
 		const waterBody = component?.type === 'tidewater.water-body/1' && validWaterBody( component );
-		const allowedKeys = vegetation ? [ 'id', 'type', 'seed', 'priority', 'placementAssetId' ] : staticVegetation ? [ 'id', 'type', 'priority', 'placementAssetId' ] : islandOcean ? [ 'id', 'type', 'priority' ] : waterBody ? [ 'id', 'type', 'priority', 'center', 'extent' ] : [];
+		const allowedKeys = vegetation ? [ 'id', 'type', 'seed', 'priority', 'placementAssetId' ] : staticVegetation ? [ 'id', 'type', 'priority', 'placementAssetId' ] : islandOcean ? [ 'id', 'type', 'priority' ] : waterBody ? [ 'id', 'type', 'priority', 'center', 'extent', 'profile' ] : [];
 		if ( ! component || typeof component.id !== 'string' || ! /^tw-component:[\w.-]{1,128}$/.test( component.id ) || ids.has( component.id ) || ( ! vegetation && ! staticVegetation && ! islandOcean && ! waterBody ) || component.priority !== undefined && ! [ 'portal-preview', 'visible', 'nearby', 'background' ].includes( component.priority ) || Object.keys( component ).some( ( key ) => ! allowedKeys.includes( key ) ) ) throw new Error( 'Invalid or duplicate world component' );
 		if ( islandOcean && ++ islandOceanCount > 1 ) throw new Error( 'A world may declare only one island ocean component' );
 		if ( waterBody && ++ waterBodyCount > 1 ) throw new Error( 'A world may declare only one water body component' );
@@ -85,7 +85,7 @@ export function validateWorldSource( source ) {
 }
 
 function validWaterBody( component ) {
-	return Array.isArray( component.center ) && component.center.length === 2 && component.center.every( ( n ) => Number.isFinite( n ) && Math.abs( n ) + component.extent <= 1e6 ) && Number.isFinite( component.extent ) && component.extent >= 8 && component.extent <= 100000;
+	return ( component.profile === undefined || [ 'deep-ocean', 'calm-lagoon', 'storm' ].includes( component.profile ) ) && Array.isArray( component.center ) && component.center.length === 2 && component.center.every( ( n ) => Number.isFinite( n ) && Math.abs( n ) + component.extent <= 1e6 ) && Number.isFinite( component.extent ) && component.extent >= 8 && component.extent <= 100000;
 }
 
 function validVector( value ) {

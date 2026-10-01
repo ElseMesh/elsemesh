@@ -331,7 +331,7 @@ func TestWorldManifestValidatesPortableWaterBody(t *testing.T) {
 	manifest.WorldID = "tw-world:portable-water"
 	manifest.Rules.SeaLevel = &seaLevel
 	manifest.Rules.RequiredFeatures = []string{"tidewater.water-body/1"}
-	manifest.Components = []worldComponent{{ID: "tw-component:water", Type: "tidewater.water-body/1", Center: []float64{-20, 45}, Extent: 256}}
+	manifest.Components = []worldComponent{{ID: "tw-component:water", Type: "tidewater.water-body/1", Center: []float64{-20, 45}, Extent: 256, Profile: "storm"}}
 	if err := validateManifest(manifest, ownerID.String(), time.Now()); err != nil {
 		t.Fatalf("valid terrain-independent water body rejected: %v", err)
 	}
@@ -343,9 +343,14 @@ func TestWorldManifestValidatesPortableWaterBody(t *testing.T) {
 		t.Fatalf("signed portable water component failed daemon JSON decode: %v", err)
 	}
 	var unknownField []worldComponent
-	if err := json.Unmarshal([]byte(`[{"id":"tw-component:water","type":"tidewater.water-body/1","center":[0,0],"extent":256,"profile":"custom"}]`), &unknownField); err == nil {
+	if err := json.Unmarshal([]byte(`[{"id":"tw-component:water","type":"tidewater.water-body/1","center":[0,0],"extent":256,"extra":true}]`), &unknownField); err == nil {
+		t.Fatal("unknown portable water component field accepted")
+	}
+	manifest.Components[0].Profile = "custom"
+	if err := validateManifest(manifest, ownerID.String(), time.Now()); err == nil {
 		t.Fatal("unknown portable water component profile accepted")
 	}
+	manifest.Components[0].Profile = "storm"
 	manifest.Rules.SeaLevel = nil
 	if err := validateManifest(manifest, ownerID.String(), time.Now()); err == nil {
 		t.Fatal("water body without a declared sea level accepted")
