@@ -20,6 +20,7 @@ const (
 	maxManifestBytes  = 1 << 20
 	maxAssetBytes     = 2 << 30
 	maxSafeJSInteger  = uint64(9007199254740991)
+	maxCollisionBoxes = 2048
 )
 
 var (
@@ -60,15 +61,24 @@ type worldObject struct {
 	Transform       transform        `json:"transform"`
 	Scale           vector3          `json:"scale"`
 	Collision       struct {
-		Shape       string  `json:"shape"`
-		Enabled     bool    `json:"enabled"`
-		Center      vector3 `json:"center"`
-		HalfExtents vector3 `json:"halfExtents"`
-		Columns     uint32  `json:"columns"`
-		Rows        uint32  `json:"rows"`
-		Walkable    bool    `json:"walkable"`
-		Solid       bool    `json:"solid"`
+		Shape       string         `json:"shape"`
+		Enabled     bool           `json:"enabled"`
+		Center      vector3        `json:"center"`
+		HalfExtents vector3        `json:"halfExtents"`
+		Boxes       []collisionBox `json:"boxes,omitempty"`
+		Columns     uint32         `json:"columns"`
+		Rows        uint32         `json:"rows"`
+		Walkable    bool           `json:"walkable"`
+		Solid       bool           `json:"solid"`
 	} `json:"collision"`
+}
+
+type collisionBox struct {
+	Center      vector3 `json:"center"`
+	HalfExtents vector3 `json:"halfExtents"`
+	Yaw         float64 `json:"yaw"`
+	Walkable    bool    `json:"walkable"`
+	Solid       bool    `json:"solid"`
 }
 
 type portal struct {
@@ -254,7 +264,7 @@ func validateManifest(manifest worldManifest, localPeerID string, now time.Time)
 				return errors.New("object scale out of bounds")
 			}
 		}
-		if object.Collision.Shape != "box" && object.Collision.Shape != "heightfield" && object.Collision.Shape != "none" {
+		if object.Collision.Shape != "box" && object.Collision.Shape != "compound" && object.Collision.Shape != "heightfield" && object.Collision.Shape != "none" {
 			return errors.New("unsupported object collision shape")
 		}
 		if object.Collision.Enabled {
@@ -274,8 +284,27 @@ func validateManifest(manifest worldManifest, localPeerID string, now time.Time)
 				if object.Collision.Columns < 2 || object.Collision.Rows < 2 || object.Collision.Columns > 4097 || object.Collision.Rows > 4097 || uint64(object.Collision.Columns)*uint64(object.Collision.Rows) > 4194304 || !object.Collision.Walkable || !object.Collision.Solid {
 					return errors.New("invalid object heightfield dimensions or flags")
 				}
+			case "compound":
+				if len(object.Collision.Boxes) == 0 || len(object.Collision.Boxes) > maxCollisionBoxes {
+					return errors.New("invalid compound collision box count")
+				}
+				for _, box := range object.Collision.Boxes {
+					for _, extent := range box.HalfExtents {
+						if math.IsNaN(extent) || math.IsInf(extent, 0) || extent <= 0 || extent > 1000 {
+							return errors.New("compound collision half extents out of bounds")
+						}
+					}
+					for _, coordinate := range box.Center {
+						if math.IsNaN(coordinate) || math.IsInf(coordinate, 0) || math.Abs(coordinate) > 1e6 {
+							return errors.New("compound collision center out of bounds")
+						}
+					}
+					if math.IsNaN(box.Yaw) || math.IsInf(box.Yaw, 0) || math.Abs(box.Yaw) > 360 {
+						return errors.New("compound collision yaw out of bounds")
+					}
+				}
 			default:
-				return errors.New("enabled object collision must use box or heightfield shape")
+				return errors.New("enabled object collision must use box, compound, or heightfield shape")
 			}
 		}
 		seenObjects[object.ID] = true

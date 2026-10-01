@@ -14,7 +14,7 @@ const source = {
 	rules: { gravity: 1, avatarComplexity: 1000, physicsProfile: 'tidewater-default' }, objects: [ object ], portals: [], updatedAt: '2026-10-01T00:00:00Z',
 };
 assert.doesNotThrow( () => validateWorldSource( source ), 'enabled box collision with bounded dimensions is valid' );
-assert.throws( () => validateWorldSource( { ...source, objects: [ { ...object, collision: { ...collision, halfExtents: [ 1, 0, 3 ] } } ] } ), /bounded box or heightfield data/, 'zero collision extents are rejected' );
+assert.throws( () => validateWorldSource( { ...source, objects: [ { ...object, collision: { ...collision, halfExtents: [ 1, 0, 3 ] } } ] } ), /bounded box, compound, or heightfield data/, 'zero collision extents are rejected' );
 
 const root = { children: [ { userData: { worldObjectId: object.id } } ], userData: { worldPackage: {
 	connector: { manifest: { objects: [ object ] } }, loadedObjects: new Set( [ object.id ] ),
@@ -31,6 +31,29 @@ registerWorldPackageCollisions( root, colliders );
 assert.equal( colliders.boxes.length, 1, 'streaming registration is idempotent' );
 unregisterWorldPackageCollisions( root, colliders );
 assert.equal( colliders.boxes.length, 0, 'world handoff removes old-world colliders' );
+
+const compoundObject = {
+	...object,
+	id: 'tw-object:compound-platform',
+	collision: { shape: 'compound', enabled: true, boxes: [
+		{ center: [ 1, 1, 1 ], halfExtents: [ 1, 2, 3 ], yaw: 0.25, walkable: true, solid: true },
+		{ center: [ - 1, 0, 0 ], halfExtents: [ 0.5, 1, 0.5 ], yaw: 0, walkable: false, solid: true },
+	] },
+};
+assert.doesNotThrow( () => validateWorldSource( { ...source, objects: [ compoundObject ] } ), 'bounded compound collision is valid' );
+assert.throws( () => validateWorldSource( { ...source, objects: [ { ...compoundObject, collision: { ...compoundObject.collision, boxes: [] } } ] } ), /bounded box, compound, or heightfield data/, 'empty compound collision is rejected' );
+const compoundRoot = { children: [ { userData: { worldObjectId: compoundObject.id } } ], userData: { worldPackage: {
+	connector: { manifest: { objects: [ compoundObject ] } }, loadedObjects: new Set( [ compoundObject.id ] ),
+} } };
+const compoundColliders = new Colliders();
+registerWorldPackageCollisions( compoundRoot, compoundColliders );
+assert.equal( compoundColliders.boxes.length, 2, 'compound package registers each box' );
+assert.ok( Math.abs( compoundColliders.boxes[ 0 ].center.x - 14 ) < 1e-9 && Math.abs( compoundColliders.boxes[ 0 ].center.z - 28 ) < 1e-9, 'compound box centers follow object scale, yaw, and translation' );
+assert.ok( Math.abs( compoundColliders.boxes[ 0 ].rotY - ( Math.PI / 2 + 0.25 ) ) < 1e-9, 'compound box yaw composes with object yaw' );
+assert.equal( compoundColliders.boxes[ 0 ].walkable, true );
+assert.equal( compoundColliders.boxes[ 1 ].walkable, false );
+unregisterWorldPackageCollisions( compoundRoot, compoundColliders );
+assert.equal( compoundColliders.boxes.length, 0, 'compound colliders are all removed during world handoff' );
 
 const heights = new Float32Array( [
 	0, 0, 0, 1, 1, 0, 2, 2, 0,

@@ -86,6 +86,21 @@ def validate_source(source):
                 vector(collision.get("halfExtents"), "collision half extents")
                 if any(x <= 0 or x > 1000 for x in collision["halfExtents"]):
                     raise ValueError("collision half extents are outside the supported range")
+            elif shape == "compound":
+                boxes = collision.get("boxes")
+                if not isinstance(boxes, list) or not 1 <= len(boxes) <= 2048:
+                    raise ValueError("compound collision requires 1 to 2048 boxes")
+                for box in boxes:
+                    if not isinstance(box, dict):
+                        raise ValueError("compound collision box must be an object")
+                    vector(box.get("center"), "compound collision center")
+                    vector(box.get("halfExtents"), "compound collision half extents")
+                    if any(x <= 0 or x > 1000 for x in box["halfExtents"]):
+                        raise ValueError("compound collision half extents are outside the supported range")
+                    if not finite_number(box.get("yaw")) or abs(box["yaw"]) > 360:
+                        raise ValueError("compound collision yaw is outside the supported range")
+                    if not isinstance(box.get("walkable"), bool) or not isinstance(box.get("solid"), bool):
+                        raise ValueError("compound collision requires walkable and solid flags")
             elif shape == "heightfield":
                 if collision.get("walkable") is not True or collision.get("solid") is not True:
                     raise ValueError("heightfield collision must be walkable and solid")

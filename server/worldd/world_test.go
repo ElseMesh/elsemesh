@@ -286,6 +286,19 @@ func TestWorldManifestValidatesEnabledObjectCollisionBounds(t *testing.T) {
 	if err := validateManifest(manifest, ownerID.String(), time.Now()); err == nil {
 		t.Fatal("oversized heightfield collision accepted")
 	}
+	manifest.Objects[0].Collision.Shape = "compound"
+	manifest.Objects[0].Collision.Boxes = []collisionBox{{Center: vector3{1, 2, 3}, HalfExtents: vector3{1, 0.5, 2}, Yaw: 0.4, Walkable: true, Solid: true}}
+	if err := validateManifest(manifest, ownerID.String(), time.Now()); err != nil {
+		t.Fatalf("valid compound collision rejected: %v", err)
+	}
+	manifest.Objects[0].Collision.Boxes[0].Yaw = 361
+	if err := validateManifest(manifest, ownerID.String(), time.Now()); err == nil {
+		t.Fatal("out-of-range compound collider yaw accepted")
+	}
+	manifest.Objects[0].Collision.Boxes = make([]collisionBox, maxCollisionBoxes+1)
+	if err := validateManifest(manifest, ownerID.String(), time.Now()); err == nil {
+		t.Fatal("excessive compound collision boxes accepted")
+	}
 }
 
 func TestTemporaryFailoverAuthorityRequiresOwnerWindow(t *testing.T) {

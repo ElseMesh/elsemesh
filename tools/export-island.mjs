@@ -97,7 +97,7 @@ const source = {
 		streamingBounds: villageBounds,
 		transform: { position: [ 0, 0, 0 ], yaw: 0 },
 		scale: [ 1, 1, 1 ],
-		collision: { shape: 'none', enabled: false },
+		collision: { shape: 'compound', enabled: true, boxes: generated.villageColliders },
 	}, ...debris.map( ( instance, index ) => {
 		const assetName = SCAN_ASSETS[ instance.asset ];
 		const rotation = new Quaternion().setFromEuler( new Euler( instance.roll || 0, instance.yaw, instance.pitch || 0, 'YXZ' ) ).toArray();
@@ -131,6 +131,13 @@ function buildIslandProceduralContent( terrainData ) {
 	const colliders = new Colliders();
 	const village = new PackageVillage( { scene, terrain: terrainData, colliders } );
 	const rocks = new Rocks( { scene, terrain: terrainData, village, colliders, castShadow: false, sunShadow: false } );
+	const villageColliders = colliders.boxes.map( ( box ) => ( {
+		center: box.center.toArray(),
+		halfExtents: box.half.toArray(),
+		yaw: box.rotY,
+		walkable: box.walkable,
+		solid: box.solid,
+	} ) );
 	const B = new Builder();
 	const placer = new DebrisPlacer( { B, inst: new InstancedProps( B ), terrain: terrainData, village, rocks, colliders } ).run();
 	const batches = Object.entries( village.B.batches )
@@ -140,6 +147,7 @@ function buildIslandProceduralContent( terrainData ) {
 	return {
 		villageBatches: batches,
 		villageTriangles: batches.reduce( ( total, { batch } ) => total + batch.triangles, 0 ),
+		villageColliders,
 		debris: placer.scanned,
 	};
 }

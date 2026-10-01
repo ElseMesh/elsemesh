@@ -11,7 +11,7 @@ npm run export:island
 The package contains:
 
 - A 512 by 512 terrain GLB with normals, vertex colors, and a matching heightfield collision declaration.
-- Deterministic static village, pier, boardwalk, harbor, and prop geometry exported from the same CPU-side builders as the game. Its GLB preserves the authored per-vertex tints and material batches; the game's GPU-baked tile textures, moving sign/lantern details, and GPU-only fish props are not included yet.
+- Deterministic static village, pier, boardwalk, harbor, and prop geometry exported from the same CPU-side builders as the game, with 394 authored walkable and solid box colliders. Its GLB preserves the authored per-vertex tints and material batches; the game's GPU-baked tile textures, moving sign/lantern details, and GPU-only fish props are not included yet.
 - The four CC0 scanned debris assets already used by the procedural scene: dead quiver trunk, two branches, and lambis shell. The exporter keeps their LOD1 geometry and embeds each albedo map in a single-mesh GLB.
 - Deterministically placed debris instances from the existing `DebrisPlacer`, including full collision-free quaternion transforms. Placement uses the fixed terrain, village pads/colliders, pier, and rocks. Vegetation, water, the boat, wildlife, fishing behavior, and other dynamic runtime components are not packaged yet.
 

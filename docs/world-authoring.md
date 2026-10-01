@@ -74,6 +74,8 @@ blender working-copy.blend --background --python tools/blender/world_actions.py 
   --out-source candidate.world-source.json --out-blend candidate.blend
 ```
 
+Enabled collision supports one box, a compound of up to 2048 asset-local boxes, or a regular-grid heightfield. Each compound box stores its local center, positive half extents, yaw, and walkable/solid flags; the loader applies the parent instance transform and removes every box during world handoff.
+
 ## AI editor service
 
 The service is a planned, separate authoring product, not part of the world daemon's authority path. Its first implementation should be a tool-using assistant rather than model fine-tuning: provide a bounded Blender workspace and explicit operations through `bpy`, alongside schema-aware JSON edits. This yields inspectable actions and avoids training a model to emit opaque scene files.

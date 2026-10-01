@@ -113,6 +113,25 @@ export function registerWorldPackageCollisions( root, colliders ) {
 			state.activeColliders.set( object.id, { shape: 'heightfield', collider: field } );
 			continue;
 		}
+		if ( collision.shape === 'compound' ) {
+			if ( ! Array.isArray( collision.boxes ) || collision.boxes.length === 0 || collision.boxes.length > 2048 || ! collision.boxes.every( ( item ) => item && Array.isArray( item.center ) && item.center.length === 3 && item.center.every( ( value ) => Number.isFinite( value ) && Math.abs( value ) <= 1e6 ) && Array.isArray( item.halfExtents ) && item.halfExtents.length === 3 && item.halfExtents.every( ( value ) => Number.isFinite( value ) && value > 0 && value <= 1000 ) && Number.isFinite( item.yaw ) && Math.abs( item.yaw ) <= 360 && typeof item.walkable === 'boolean' && typeof item.solid === 'boolean' ) ) throw new Error( `World object ${object.id} has invalid compound collision boxes` );
+			const scale = object.scale || [ 1, 1, 1 ];
+			const yaw = object.transform?.yaw || 0;
+			const cos = Math.cos( yaw ), sin = Math.sin( yaw );
+			const boxes = [];
+			for ( const item of collision.boxes ) {
+				const localX = item.center[ 0 ] * scale[ 0 ], localY = item.center[ 1 ] * scale[ 1 ], localZ = item.center[ 2 ] * scale[ 2 ];
+				const center = new Vector3(
+					object.transform.position[ 0 ] + localX * cos + localZ * sin,
+					object.transform.position[ 1 ] + localY,
+					object.transform.position[ 2 ] - localX * sin + localZ * cos,
+				);
+				const half = new Vector3( item.halfExtents[ 0 ] * scale[ 0 ], item.halfExtents[ 1 ] * scale[ 1 ], item.halfExtents[ 2 ] * scale[ 2 ] );
+				boxes.push( colliders.addBox( center, half, yaw + item.yaw, { walkable: item.walkable, solid: item.solid, tag: `world:${object.id}` } ) );
+			}
+			state.activeColliders.set( object.id, { shape: 'compound', collider: boxes } );
+			continue;
+		}
 		if ( collision.shape !== 'box' || ! Array.isArray( collision.center ) || collision.center.length !== 3 || ! collision.center.every( Number.isFinite ) || ! Array.isArray( collision.halfExtents ) || collision.halfExtents.length !== 3 || ! collision.halfExtents.every( ( value ) => Number.isFinite( value ) && value > 0 ) ) throw new Error( `World object ${object.id} has invalid collision bounds` );
 		const scale = object.scale || [ 1, 1, 1 ];
 		const yaw = object.transform?.yaw || 0;
@@ -134,6 +153,7 @@ export function unregisterWorldPackageCollisions( root, colliders ) {
 	if ( ! active || ! colliders ) return;
 	for ( const { shape, collider } of active.values() ) {
 		if ( shape === 'heightfield' ) colliders.removeHeightfield( collider );
+		else if ( shape === 'compound' ) for ( const box of collider || [] ) colliders.removeBox( box );
 		else colliders.removeBox( collider );
 	}
 	active.clear();

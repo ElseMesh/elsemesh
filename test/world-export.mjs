@@ -62,6 +62,8 @@ try {
 	assert.ok( villageGLB.meshes[ 0 ].length >= 8, 'village export preserves its separate authored material batches' );
 	assert.ok( villageGLB.meshes[ 0 ].reduce( ( count, primitive ) => count + primitive.indices.length, 0 ) > 300000, 'village export includes the complete deterministic structural geometry' );
 	assert.ok( villageGLB.meshes[ 0 ].every( ( primitive ) => primitive.attributes.COLOR_0 ), 'village export carries authored per-vertex tint' );
+	assert.equal( villageObject.collision.shape, 'compound', 'village source includes the runtime builder collision layout' );
+	assert.equal( villageObject.collision.boxes.length, 394, 'village collision layout matches its deterministic walkable and solid boxes' );
 	const scannedObjects = source.objects.filter( ( object ) => object.id.startsWith( 'tw-object:scanned-debris-' ) );
 	assert.equal( scannedObjects.length, 139, 'export contains the seeded scanned debris placements from the runtime placer' );
 	assert.ok( source.objects.every( ( object ) => object.streamingBounds && Number.isFinite( object.streamingBounds.radius ) && object.streamingBounds.radius > 0 ), 'exported island objects include local streaming bounds' );
@@ -93,6 +95,12 @@ try {
 	let villageRuntimeMeshes = 0;
 	villageRoot.traverse( ( object ) => { if ( object.isMesh ) { villageRuntimeMeshes ++; assert.equal( object.material.vertexColors, true, 'village GLB keeps authored tint in hosted rendering' ); } } );
 	assert.equal( villageRuntimeMeshes, villageGLB.meshes[ 0 ].length, 'hosted package loader creates each village material batch' );
+	const villageColliders = new Colliders();
+	registerWorldPackageCollisions( villageRoot, villageColliders );
+	assert.equal( villageColliders.boxes.length, villageObject.collision.boxes.length, 'hosted village registers every authored collider' );
+	assert.ok( villageColliders.boxes.some( ( box ) => box.walkable ) && villageColliders.boxes.some( ( box ) => ! box.walkable && box.solid ), 'hosted village retains both walkable surfaces and solid obstacles' );
+	unregisterWorldPackageCollisions( villageRoot, villageColliders );
+	assert.equal( villageColliders.boxes.length, 0, 'hosted village removes all colliders on world handoff' );
 	const deferredObject = { ...source.objects[ 0 ], id: 'tw-object:deferred-copy', label: 'Deferred copy', transform: { position: [ 20, 0, 20 ], yaw: 0 }, collision: { shape: 'none', enabled: false } };
 	const filteredConnector = { worldId: source.worldId, manifest: { assets: [ { id: source.objects[ 0 ].assetId, priority: 'visible' } ], objects: [ source.objects[ 0 ], deferredObject ] } };
 	const filteredRoot = await loadWorldPackage( filteredConnector, { assets: new Map( [ [ source.objects[ 0 ].assetId, payload ] ] ), objectIDs: new Set( [ source.objects[ 0 ].id ] ) } );
