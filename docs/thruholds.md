@@ -32,6 +32,8 @@ Account login is optional and distinct from world identity. Google sign-in may l
 
 The `server/worldd` Go program persists a node identity, serves a signed local starter manifest, accepts an owner-signed manifest, exposes browser gateways and content-addressed assets, and supports optional discovery/relay configuration. The default browser gateway is WebSocket. To enable WebTransport, provide a separate HTTP/3 UDP listener and certificate/key; make the browser's HTTPS host/port route to that listener over UDP while TCP HTTPS/WSS continues to route to the web server or reverse proxy. For example, a public `:443/udp` forwarding rule can target `worldd --webtransport :5201`; the certificate must cover the public host. The client tries WebTransport at `/gateway-webtransport` on the configured HTTPS origin, then falls back to `/gateway` over WSS. `src/network/WorldConnector.js` verifies signed documents and content hashes and fetches prioritized chunks; `src/network/WorldPackage.js` builds the currently supported static GLB instances. Author a Blender source document, import its GLB assets, convert it to an unsigned runtime manifest, then sign it using the same persistent node identity:
 
+Build Linux and Termux binaries from the repository's external build checkout with `tools/build-server.sh all`. It produces `server/bin/{worldd,directoryd}-linux-amd64`, `-linux-arm64`, and `-android-arm64`. The Android target is a native Go Android executable for 64-bit Termux; only that target uses `-checklinkname=0`, required by its Android interface-network dependency. Linux builds do not disable linker checks. For a single target, pass `linux-amd64`, `linux-arm64`, or `android-arm64`.
+
 ```sh
 worldd --data ./world-data --print-node-id
 worldd --data ./world-data --import-asset ./assets/boat.glb
@@ -49,6 +51,17 @@ directoryd --http 127.0.0.1:5202 --data ./directory-data
 ```
 
 On Android/Termux, add explicit reachable libp2p addresses when interface discovery is restricted, for example `--announce-address /ip4/192.168.1.42/tcp/42901 --announce-address /ip4/192.168.1.42/udp/42901/quic-v1` for a LAN peer.
+
+Transfer `server/bin/worldd-android-arm64` to the device, then inside Termux install it (keep identity keys and world data in Termux-private storage, not shared storage):
+
+```sh
+cp "$HOME/worldd-android-arm64" "$PREFIX/bin/worldd"
+chmod 700 "$PREFIX/bin/worldd"
+mkdir -p "$HOME/.local/share/elsemesh/world"
+worldd --data "$HOME/.local/share/elsemesh/world" --print-node-id
+```
+
+Then start it with the signed manifest and reachable announce addresses shown above. Termux background execution and network reachability remain device/operator responsibilities; Android may suspend processes that are not kept alive by the user's service setup.
 
 Run `directoryd` behind HTTPS and rate limiting; its default listener is loopback. The directory stores announcements for up to 24 hours, while `worldd` refreshes every 12 hours. The node must be owner-authorized, and the world manifest must set `discoverable: true`. Browser links can select this directory without relying on the page's own host: `https://rebroad.github.io/tidewater/?worldId=tw-world:...&directory=https%3A%2F%2Fthruhold.org`. This repository supplies the directory service; registering or operating the `thruhold.org` domain is a separate deployment step.
 
