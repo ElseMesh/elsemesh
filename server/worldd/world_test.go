@@ -195,6 +195,35 @@ func TestWorldManifestValidatesQuaternionAssetTransforms(t *testing.T) {
 	}
 }
 
+func TestWorldManifestValidatesStreamingBounds(t *testing.T) {
+	key, _, err := crypto.GenerateEd25519Key(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ownerID, err := peer.IDFromPublicKey(key.GetPublic())
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifest := newStarterManifest("Streaming bounds", ownerID.String())
+	manifest.WorldID = "tw-world:streaming-bounds"
+	assetID := "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+	manifest.Assets = []assetRef{{ID: assetID, Bytes: 1, Kind: "glb", Priority: "background"}}
+	manifest.Objects = []worldObject{{ID: "tw-object:bounded", Kind: "asset-instance", Label: "Bounded", AssetID: assetID, Transform: transform{}, Scale: vector3{1, 1, 1}, Priority: "background", StreamingBounds: &streamingBounds{Center: vector3{1, 2, 3}, Radius: 2}}}
+	manifest.Objects[0].Collision.Shape = "none"
+	if err := validateManifest(manifest, ownerID.String(), time.Now()); err != nil {
+		t.Fatalf("valid streaming bounds rejected: %v", err)
+	}
+	manifest.Objects[0].StreamingBounds.Radius = 0
+	if err := validateManifest(manifest, ownerID.String(), time.Now()); err == nil {
+		t.Fatal("zero-radius streaming bounds accepted")
+	}
+	manifest.Objects[0].StreamingBounds.Radius = 2
+	manifest.Objects[0].Priority = "urgent"
+	if err := validateManifest(manifest, ownerID.String(), time.Now()); err == nil {
+		t.Fatal("unknown object streaming priority accepted")
+	}
+}
+
 func TestWorldManifestValidatesEnabledObjectCollisionBounds(t *testing.T) {
 	key, _, err := crypto.GenerateEd25519Key(rand.Reader)
 	if err != nil {

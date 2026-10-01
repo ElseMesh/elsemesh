@@ -68,6 +68,7 @@ import { updateCameraVelocity, useStaticVelocity } from './post/CameraVelocity.j
 import { Group } from './engine/scene/Group.js';
 import { WorldConnector, worldLinkFromLocation } from './network/WorldConnector.js';
 import { appendWorldPackageAssets, cloneWorldPackageAssets, loadWorldPackage, registerWorldPackageCollisions, unregisterWorldPackageCollisions } from './network/WorldPackage.js';
+import { selectWorldObjectsForView } from './network/WorldStreaming.js';
 import { alignPortalPreview, crossedPortalPlane, rotatePortalVelocity } from './network/PortalHandoff.js';
 
 const _up = new Vector3( 0, 1, 0 );
@@ -97,6 +98,7 @@ export class App {
 		this.portalPreviewId = null;
 		this.portalPreviewRoot = null;
 		this.worldBackgroundLoads = new Map();
+		this.worldStreamState = new Map();
 		this.portalPreviousPosition = null;
 		this.settings = {
 			timeOfDay: 16.2,
@@ -406,8 +408,13 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 			const connector = this.worldConnector = new WorldConnector( worldLink );
 			await connector.getManifest();
 			this.player.setWorldRules( connector.manifest.rules );
-			const visibleAssets = await connector.preload( { through: 'visible' } );
-			this.linkedWorldRoot = await loadWorldPackage( connector, { assets: visibleAssets } );
+			this.camera.position.set( 0, 3, 8 );
+			this.player.setHostedWorldPose( this.camera.position, Math.PI, - 0.1 );
+			const initialObjects = selectWorldObjectsForView( connector.manifest, this.camera );
+			const initialObjectIDs = new Set( initialObjects.map( ( object ) => object.id ) );
+			const initialAssetIDs = new Set( initialObjects.map( ( object ) => object.assetId ) );
+			const visibleAssets = await connector.preload( { through: 'background', assetIDs: initialAssetIDs } );
+			this.linkedWorldRoot = await loadWorldPackage( connector, { assets: visibleAssets, objectIDs: initialObjectIDs } );
 			registerWorldPackageCollisions( this.linkedWorldRoot, this.colliders );
 			this.linkedWorldRoot.name = `hosted-world:${worldLink.worldId}`;
 			scene.add( this.linkedWorldRoot );
@@ -416,8 +423,6 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 			this.proceduralWorldRoot.visible = false;
 			this.remoteWorldActive = true;
 			this.refraction.enabled = false;
-			this.camera.position.set( 0, 3, 8 );
-			this.player.setHostedWorldPose( this.camera.position, Math.PI, - 0.1 );
 			this.portalPreviousPosition = this.camera.position.clone();
 
 		}
@@ -688,12 +693,28 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 		this.worldBackgroundLoads.get( connector.worldId )?.abort();
 		const controller = new AbortController();
 		this.worldBackgroundLoads.set( connector.worldId, controller );
-		connector.preload( { after: 'visible', signal: controller.signal } ).then( ( assets ) => {
-			if ( controller.signal.aborted || this.linkedWorldRoot !== root ) return;
-			return appendWorldPackageAssets( connector, root, assets, { signal: controller.signal } ).then( () => registerWorldPackageCollisions( root, this.colliders ) );
+		this.worldStreamState.set( connector.worldId, { connector, root, controller, lastUpdate: 0, loading: false } );
+
+	}
+
+	updateWorldStreaming() {
+
+		const connector = this.worldConnector, root = this.linkedWorldRoot;
+		const state = connector && this.worldStreamState.get( connector.worldId );
+		if ( ! this.remoteWorldActive || ! state || state.root !== root || state.controller.signal.aborted || state.loading || performance.now() - state.lastUpdate < 400 ) return;
+		state.lastUpdate = performance.now();
+		const loaded = root.userData.worldPackage?.loadedObjects || new Set();
+		const objects = selectWorldObjectsForView( connector.manifest, this.camera ).filter( ( object ) => ! loaded.has( object.id ) );
+		if ( objects.length === 0 ) return;
+		const objectIDs = new Set( objects.map( ( object ) => object.id ) );
+		const assetIDs = new Set( objects.map( ( object ) => object.assetId ) );
+		state.loading = true;
+		connector.preload( { assetIDs, signal: state.controller.signal, concurrency: 2 } ).then( ( assets ) => {
+			if ( state.controller.signal.aborted || this.linkedWorldRoot !== root ) return;
+			return appendWorldPackageAssets( connector, root, assets, { signal: state.controller.signal, objectIDs } ).then( () => registerWorldPackageCollisions( root, this.colliders ) );
 		} ).catch( ( error ) => {
-			if ( ! controller.signal.aborted ) console.warn( `Background world asset load failed for ${connector.worldId}`, error );
-		} );
+			if ( ! state.controller.signal.aborted ) console.warn( `View-driven world asset load failed for ${connector.worldId}`, error );
+		} ).finally( () => { state.loading = false; } );
 
 	}
 
@@ -862,6 +883,7 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 		if ( this.remoteWorldActive ) {
 			this.player.updateHostedWorld( dt );
 			this.updateWorldPortals();
+			this.updateWorldStreaming();
 		}
 		else {
 

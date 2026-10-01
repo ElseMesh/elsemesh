@@ -37,6 +37,11 @@ type transform struct {
 	Rotation *vector4 `json:"rotation,omitempty"`
 }
 
+type streamingBounds struct {
+	Center vector3 `json:"center"`
+	Radius float64 `json:"radius"`
+}
+
 type assetRef struct {
 	ID       string `json:"id"`
 	Bytes    int64  `json:"bytes"`
@@ -46,13 +51,15 @@ type assetRef struct {
 }
 
 type worldObject struct {
-	ID        string    `json:"id"`
-	Kind      string    `json:"kind"`
-	Label     string    `json:"label"`
-	AssetID   string    `json:"assetId"`
-	Transform transform `json:"transform"`
-	Scale     vector3   `json:"scale"`
-	Collision struct {
+	ID              string           `json:"id"`
+	Kind            string           `json:"kind"`
+	Label           string           `json:"label"`
+	AssetID         string           `json:"assetId"`
+	Priority        string           `json:"priority,omitempty"`
+	StreamingBounds *streamingBounds `json:"streamingBounds,omitempty"`
+	Transform       transform        `json:"transform"`
+	Scale           vector3          `json:"scale"`
+	Collision       struct {
 		Shape       string  `json:"shape"`
 		Enabled     bool    `json:"enabled"`
 		Center      vector3 `json:"center"`
@@ -227,6 +234,19 @@ func validateManifest(manifest worldManifest, localPeerID string, now time.Time)
 		if object.Transform.Rotation != nil {
 			if object.Collision.Enabled || !validUnitQuaternion(object.Transform.Rotation) {
 				return errors.New("object quaternion must be normalized and collision-free")
+			}
+		}
+		if object.Priority != "" && object.Priority != "portal-preview" && object.Priority != "visible" && object.Priority != "nearby" && object.Priority != "background" {
+			return errors.New("invalid object streaming priority")
+		}
+		if bounds := object.StreamingBounds; bounds != nil {
+			if math.IsNaN(bounds.Radius) || math.IsInf(bounds.Radius, 0) || bounds.Radius <= 0 || bounds.Radius > 10000 {
+				return errors.New("object streaming bounds radius out of bounds")
+			}
+			for _, coordinate := range bounds.Center {
+				if math.IsNaN(coordinate) || math.IsInf(coordinate, 0) || math.Abs(coordinate) > 10000 {
+					return errors.New("object streaming bounds center out of bounds")
+				}
 			}
 		}
 		for _, scale := range object.Scale {

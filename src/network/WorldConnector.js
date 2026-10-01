@@ -152,15 +152,16 @@ export class WorldConnector {
 		return bytes;
 	}
 
-	async preload( { priorities = PRIORITY_ORDER, through = 'background', after = null, signal, concurrency = 3 } = {} ) {
+	async preload( { priorities = PRIORITY_ORDER, through = 'background', after = null, assetIDs, signal, concurrency = 3 } = {} ) {
 		invariant( this.manifest, 'Load and verify the world manifest first' );
 		const ranks = new Map( priorities.map( ( priority, index ) => [ priority, index ] ) );
 		invariant( Number.isInteger( concurrency ) && concurrency > 0 && concurrency <= 8, 'Invalid asset concurrency' );
 		const endRank = ranks.get( through );
 		const startRank = after === null ? 0 : ranks.get( after ) + 1;
 		invariant( endRank !== undefined && startRank !== undefined && startRank <= endRank + 1, 'Invalid asset priority range' );
+		const selected = assetIDs ? new Set( assetIDs ) : null;
 		const queue = this.manifest.assets.map( ( asset, index ) => ( { asset, index, rank: ranks.get( asset.priority ) ?? 999 } ) )
-			.filter( ( entry ) => entry.rank >= startRank && entry.rank <= endRank )
+			.filter( ( entry ) => entry.rank >= startRank && entry.rank <= endRank && ( selected === null || selected.has( entry.asset.id ) ) )
 			.sort( ( a, b ) => a.rank - b.rank || a.index - b.index );
 		const loaded = new Map();
 		for ( let start = 0; start < queue.length; ) {
@@ -312,6 +313,11 @@ export class WorldConnector {
 function validateWorldObjects( objects ) {
 	invariant( Array.isArray( objects ) && objects.length <= 10000, 'World manifest has an invalid object list' );
 	for ( const object of objects ) {
+		invariant( object?.priority === undefined || [ 'portal-preview', 'visible', 'nearby', 'background' ].includes( object.priority ), `World object ${object.id || '(unknown)'} has an invalid streaming priority` );
+		if ( object?.streamingBounds !== undefined ) {
+			const bounds = object.streamingBounds;
+			invariant( bounds && validVector( bounds.center ) && bounds.center.every( ( value ) => Math.abs( value ) <= 10000 ) && Number.isFinite( bounds.radius ) && bounds.radius > 0 && bounds.radius <= 10000, `World object ${object.id || '(unknown)'} has invalid streaming bounds` );
+		}
 		if ( object?.transform?.rotation !== undefined ) {
 			const rotation = object.transform.rotation;
 			invariant( Array.isArray( rotation ) && rotation.length === 4 && rotation.every( Number.isFinite ) && Math.abs( Math.hypot( ...rotation ) - 1 ) <= 1e-4 && object.collision?.enabled !== true, `World object ${object.id || '(unknown)'} has an invalid quaternion transform` );

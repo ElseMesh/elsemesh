@@ -21,27 +21,29 @@ const COMPONENTS = Object.freeze( {
 	COLOR_0: [ 'color', 3 ],
 } );
 
-export async function loadWorldPackage( connector, { signal, assets: preloadedAssets } = {} ) {
+export async function loadWorldPackage( connector, { signal, assets: preloadedAssets, objectIDs } = {} ) {
 
 	if ( ! connector.manifest ) throw new Error( 'Load and verify a world manifest first' );
 	const assets = preloadedAssets || await connector.preload();
 	const root = new Group();
 	root.name = `world:${connector.worldId}`;
 	root.userData.worldPackage = { parsed: new Map(), loadedObjects: new Set(), connector };
-	await appendWorldPackageAssets( connector, root, assets, { signal } );
+	await appendWorldPackageAssets( connector, root, assets, { signal, objectIDs } );
 	return root;
 
 }
 
-export async function appendWorldPackageAssets( connector, root, assets, { signal } = {} ) {
+export async function appendWorldPackageAssets( connector, root, assets, { signal, objectIDs } = {} ) {
 
 	const state = root.userData.worldPackage || ( root.userData.worldPackage = { parsed: new Map(), loadedObjects: new Set() } );
 	const objectRecords = connector.manifest.objects || [];
+	const selectedObjects = objectIDs ? new Set( objectIDs ) : null;
 
 	for ( const object of objectRecords ) {
 
 		if ( signal?.aborted ) throw signal.reason || new DOMException( 'Aborted', 'AbortError' );
 		if ( state.loadedObjects.has( object.id ) ) continue;
+		if ( selectedObjects && ! selectedObjects.has( object.id ) ) continue;
 		if ( object.kind !== 'asset-instance' ) throw new Error( `Unsupported world object kind: ${object.kind}` );
 		const bytes = assets.get( object.assetId );
 		if ( ! bytes ) continue;

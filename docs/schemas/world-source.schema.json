@@ -206,6 +206,21 @@
         "scale": {
           "$ref": "#/$defs/vector3"
         },
+        "streamingBounds": {
+          "type": "object",
+          "description": "Optional object-local bounding sphere used for view- and distance-driven asset requests.",
+          "required": ["center", "radius"],
+          "properties": {
+            "center": {
+              "type": "array",
+              "minItems": 3,
+              "maxItems": 3,
+              "items": { "type": "number", "minimum": -10000, "maximum": 10000 }
+            },
+            "radius": { "type": "number", "exclusiveMinimum": 0, "maximum": 10000 }
+          },
+          "additionalProperties": false
+        },
         "collision": {
           "type": "object",
           "required": ["shape", "enabled"],

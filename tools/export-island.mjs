@@ -42,12 +42,14 @@ const assetId = `sha256:${createHash( 'sha256' ).update( glb ).digest( 'hex' )}`
 const staticAssets = new Map( [ [ assetId, glb ] ] );
 const debris = buildScannedDebrisInstances( terrain );
 const debrisAssetIDs = new Map();
+const debrisAssetBounds = new Map();
 for ( const assetName of SCAN_ASSETS ) {
 	const originalGLB = await readFile( path.join( REPO, 'public', 'models', 'debris', `${assetName}.glb` ) );
 	const albedo = await readFile( path.join( REPO, 'public', 'models', 'debris', `${assetName}_albedo.jpg` ) );
 	const packagedGLB = exportScannedLOD( originalGLB, albedo, assetName );
 	const packagedID = `sha256:${createHash( 'sha256' ).update( packagedGLB ).digest( 'hex' )}`;
 	debrisAssetIDs.set( assetName, packagedID );
+	debrisAssetBounds.set( assetName, boundsForGLB( packagedGLB ) );
 	staticAssets.set( packagedID, packagedGLB );
 }
 const assetsPath = path.join( output, 'assets' );
@@ -77,6 +79,7 @@ const source = {
 		label: 'Procedural island terrain',
 		assetId,
 		priority: 'visible',
+		streamingBounds: { center: [ 0, 0, 0 ], radius: 500 },
 		transform: { position: [ 0, 0, 0 ], yaw: 0 },
 		scale: [ 1, 1, 1 ],
 		collision: { shape: 'heightfield', enabled: true, columns: 513, rows: 513, walkable: true, solid: true },
@@ -89,6 +92,7 @@ const source = {
 			label: assetName.replaceAll( '_', ' ' ),
 			assetId: debrisAssetIDs.get( assetName ),
 			priority: 'visible',
+			streamingBounds: debrisAssetBounds.get( assetName ),
 			transform: { position: [ instance.x, instance.y, instance.z ], yaw: instance.yaw, rotation },
 			scale: [ instance.sx, instance.sy, instance.sz ],
 			collision: { shape: 'none', enabled: false },
@@ -176,6 +180,21 @@ function exportScannedLOD( sourceBytes, albedoBytes, name ) {
 	const jsonHeader = Buffer.alloc( 8 ); jsonHeader.writeUInt32LE( jsonPadded.length, 0 ); jsonHeader.writeUInt32LE( 0x4e4f534a, 4 );
 	const binHeader = Buffer.alloc( 8 ); binHeader.writeUInt32LE( binPadded.length, 0 ); binHeader.writeUInt32LE( 0x004e4942, 4 );
 	return Buffer.concat( [ header, jsonHeader, jsonPadded, binHeader, binPadded ] );
+}
+
+function boundsForGLB( bytes ) {
+	const parsed = parseGLB( bytes.buffer.slice( bytes.byteOffset, bytes.byteOffset + bytes.byteLength ) );
+	const positions = parsed.meshes[ 0 ]?.[ 0 ]?.attributes?.POSITION?.array;
+	if ( ! positions?.length ) throw new Error( 'Exported scanned asset has no positions for streaming bounds' );
+	const min = [ Infinity, Infinity, Infinity ], max = [ - Infinity, - Infinity, - Infinity ];
+	for ( let index = 0; index < positions.length; index += 3 ) for ( let axis = 0; axis < 3; axis ++ ) {
+		min[ axis ] = Math.min( min[ axis ], positions[ index + axis ] );
+		max[ axis ] = Math.max( max[ axis ], positions[ index + axis ] );
+	}
+	const center = min.map( ( value, axis ) => ( value + max[ axis ] ) * 0.5 );
+	let radiusSq = 0;
+	for ( let index = 0; index < positions.length; index += 3 ) radiusSq = Math.max( radiusSq, ( positions[ index ] - center[ 0 ] ) ** 2 + ( positions[ index + 1 ] - center[ 1 ] ) ** 2 + ( positions[ index + 2 ] - center[ 2 ] ) ** 2 );
+	return { center, radius: Math.max( 0.01, Math.sqrt( radiusSq ) ) };
 }
 
 function exportTerrain( data, segments ) {

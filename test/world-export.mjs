@@ -38,6 +38,7 @@ try {
 	assert.deepEqual( [ source.objects[ 0 ].collision.columns, source.objects[ 0 ].collision.rows ], [ 513, 513 ], 'terrain source declares the grid used for collision extraction' );
 	const scannedObjects = source.objects.slice( 1 );
 	assert.equal( scannedObjects.length, 139, 'export contains the seeded scanned debris placements from the runtime placer' );
+	assert.ok( source.objects.every( ( object ) => object.streamingBounds && Number.isFinite( object.streamingBounds.radius ) && object.streamingBounds.radius > 0 ), 'exported island objects include local streaming bounds' );
 	assert.ok( scannedObjects.every( ( object ) => Array.isArray( object.transform.rotation ) && Math.abs( Math.hypot( ...object.transform.rotation ) - 1 ) < 1e-4 && object.collision.enabled === false ), 'scanned objects carry normalized collision-free rotations' );
 	const scannedAssetIDs = new Set( scannedObjects.map( ( object ) => object.assetId ) );
 	assert.equal( scannedAssetIDs.size, 4, 'all four scanned debris assets are included once each' );
@@ -60,6 +61,10 @@ try {
 		}
 	} );
 	assert.equal( runtimeMeshes, 1, 'runtime package loader must instantiate the exported terrain mesh' );
+	const deferredObject = { ...source.objects[ 0 ], id: 'tw-object:deferred-copy', label: 'Deferred copy', transform: { position: [ 20, 0, 20 ], yaw: 0 }, collision: { shape: 'none', enabled: false } };
+	const filteredConnector = { worldId: source.worldId, manifest: { assets: [ { id: source.objects[ 0 ].assetId, priority: 'visible' } ], objects: [ source.objects[ 0 ], deferredObject ] } };
+	const filteredRoot = await loadWorldPackage( filteredConnector, { assets: new Map( [ [ source.objects[ 0 ].assetId, payload ] ] ), objectIDs: new Set( [ source.objects[ 0 ].id ] ) } );
+	assert.deepEqual( filteredRoot.userData.worldPackage.loadedObjects, new Set( [ source.objects[ 0 ].id ] ), 'view streaming appends only selected instances even when assets are shared' );
 	const testRotation = [ 0, 0, Math.SQRT1_2, Math.SQRT1_2 ];
 	const rotatedObject = { ...source.objects[ 0 ], transform: { position: [ 1, 2, 3 ], yaw: Math.PI / 2, rotation: testRotation }, collision: { shape: 'none', enabled: false } };
 	const rotatedConnector = { worldId: source.worldId, manifest: { assets: [ { id: rotatedObject.assetId, priority: 'visible' } ], objects: [ rotatedObject ] } };

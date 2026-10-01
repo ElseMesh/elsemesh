@@ -14,6 +14,9 @@ try {
 	const sourcePath = path.join( root, 'world-source.json' );
 	const assetsPath = path.join( root, 'assets' );
 	await mkdir( assetsPath );
+	const boundedAssetBytes = Buffer.from( 'mesh' );
+	const boundedAssetID = `sha256:${createHashForTest( boundedAssetBytes )}`;
+	await writeFile( path.join( assetsPath, boundedAssetID.slice( 'sha256:'.length ) ), boundedAssetBytes );
 	await writeFile( sourcePath, JSON.stringify( {
 		protocol: 'tidewater.world-source/1',
 		worldId: 'tw-world:manifest-test',
@@ -22,7 +25,7 @@ try {
 		styleGuide: '',
 		rules: { gravity: 1, avatarComplexity: 20000, physicsProfile: 'default', movement: { walkSpeed: 2.5, sprintSpeed: 7, jumpSpeed: 4.2 }, maxPackageBytes: 10, requiredFeatures: [ 'tidewater.portal-handoff/1' ] },
 		hosts: [ { peerId: '12D3KooWAbcdefghijk1234567890123456', scopes: [ 'content-cache', 'failover-authority' ], expiresAt: 1900000000, epoch: 3, failoverAfter: 1800000000, failoverSeconds: 300 } ],
-		objects: [],
+		objects: [ { id: 'tw-object:bounded', kind: 'asset-instance', label: 'Bounded', assetId: boundedAssetID, priority: 'nearby', streamingBounds: { center: [ 1, 2, 3 ], radius: 4 }, transform: { position: [ 0, 0, 0 ], yaw: 0 }, scale: [ 1, 1, 1 ], collision: { shape: 'none', enabled: false } } ],
 		portals: [],
 		updatedAt: '2026-09-30T12:34:56Z',
 	} ) );
@@ -47,6 +50,8 @@ try {
 	assert.deepEqual( manifest.rules.requiredFeatures, [ 'tidewater.portal-handoff/1' ], 'runtime feature requirements survive deterministic conversion' );
 	assert.deepEqual( manifest.rules.movement, { walkSpeed: 2.5, sprintSpeed: 7, jumpSpeed: 4.2 }, 'world movement rules survive deterministic conversion' );
 	assert.equal( manifest.rules.maxPackageBytes, 10, 'aggregate content budget survives deterministic conversion' );
+	assert.deepEqual( manifest.objects[ 0 ].streamingBounds, { center: [ 1, 2, 3 ], radius: 4 }, 'object streaming bounds survive deterministic conversion' );
+	assert.equal( manifest.objects[ 0 ].priority, 'nearby', 'per-object streaming priority survives deterministic conversion' );
 	const oversizedBytes = Buffer.from( 'over budget' );
 	const oversizedAssetID = `sha256:${createHashForTest( oversizedBytes )}`;
 	await writeFile( path.join( assetsPath, oversizedAssetID.slice( 'sha256:'.length ) ), oversizedBytes );
@@ -79,6 +84,15 @@ try {
 	assert.throws( () => validateWorldSource( { protocol: 'tidewater.world-source/1', worldId: 'tw-world:bad-budget', title: 'Budget', coordinateSystem: 'right-handed-y-up-meters', styleGuide: '', rules: { gravity: 1, avatarComplexity: 100, physicsProfile: 'default', maxPackageBytes: 0 }, objects: [], portals: [], updatedAt: '2026-09-30T12:00:00Z' } ), /byte budget/, 'authoring source rejects an invalid package budget' );
 	const quaternionSource = { protocol: 'tidewater.world-source/1', worldId: 'tw-world:quaternion', title: 'Quaternion', coordinateSystem: 'right-handed-y-up-meters', styleGuide: '', rules: { gravity: 1, avatarComplexity: 100, physicsProfile: 'default' }, objects: [ { id: 'tw-object:rotated', kind: 'asset-instance', label: 'Rotated', transform: { position: [ 0, 0, 0 ], yaw: 0, rotation: [ 0, 0, 0, 1 ] }, scale: [ 1, 1, 1 ], collision: { shape: 'none', enabled: false } } ], portals: [], updatedAt: '2026-09-30T12:00:00Z' };
 	assert.doesNotThrow( () => validateWorldSource( quaternionSource ), 'collision-free objects accept normalized quaternion transforms' );
+	const boundedSource = structuredClone( quaternionSource );
+	boundedSource.objects[ 0 ].streamingBounds = { center: [ 1, 2, 3 ], radius: 4 };
+	boundedSource.objects[ 0 ].priority = 'nearby';
+	assert.doesNotThrow( () => validateWorldSource( boundedSource ), 'objects accept validated local streaming bounds and per-object priority' );
+	boundedSource.objects[ 0 ].streamingBounds.radius = 0;
+	assert.throws( () => validateWorldSource( boundedSource ), /object record/, 'authoring source rejects zero-radius streaming bounds' );
+	boundedSource.objects[ 0 ].streamingBounds.radius = 4;
+	boundedSource.objects[ 0 ].priority = 'urgent';
+	assert.throws( () => validateWorldSource( boundedSource ), /object record/, 'authoring source rejects unknown object streaming priority' );
 	quaternionSource.objects[ 0 ].transform.rotation = [ 0, 0, 0, 2 ];
 	assert.throws( () => validateWorldSource( quaternionSource ), /object record/, 'authoring source rejects non-normalized quaternions' );
 	quaternionSource.objects[ 0 ].transform.rotation = [ 0, 0, 0, 1 ];
