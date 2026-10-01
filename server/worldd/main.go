@@ -14,6 +14,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -46,26 +47,27 @@ func (s *stringFlags) String() string         { return strings.Join(*s, ",") }
 func (s *stringFlags) Set(value string) error { *s = append(*s, value); return nil }
 
 type daemon struct {
-	ctx              context.Context
-	host             host.Host
-	dht              *dht.IpfsDHT
-	discovery        *routing.RoutingDiscovery
-	manifest         signedDocument
-	authorityMu      sync.RWMutex
-	authority        *signedDocument
-	authorityChanged chan struct{}
-	world            worldManifest
-	key              crypto.PrivKey
-	assetsDir        string
-	webRoot          string
-	publicGateway    string
-	directoryURL     string
-	assetCheckMu     sync.Mutex
-	verifiedAssets   map[string]assetFileStamp
-	roleStateMu      sync.RWMutex
-	roleState        signedDocument
-	roleStateSerial  uint64
-	roleStatePath    string
+	ctx                   context.Context
+	host                  host.Host
+	dht                   *dht.IpfsDHT
+	discovery             *routing.RoutingDiscovery
+	manifest              signedDocument
+	authorityMu           sync.RWMutex
+	authority             *signedDocument
+	authorityChanged      chan struct{}
+	world                 worldManifest
+	key                   crypto.PrivKey
+	assetsDir             string
+	webRoot               string
+	publicGateway         string
+	directoryURL          string
+	allowedBrowserOrigins map[string]struct{}
+	assetCheckMu          sync.Mutex
+	verifiedAssets        map[string]assetFileStamp
+	roleStateMu           sync.RWMutex
+	roleState             signedDocument
+	roleStateSerial       uint64
+	roleStatePath         string
 }
 
 func main() {
@@ -102,6 +104,7 @@ func run() error {
 	webRoot := flag.String("web-root", "", "optional built ElseMesh web client directory")
 	publicGateway := flag.String("public-gateway", "", "public HTTPS/WSS gateway origin included in signed node records")
 	directoryURL := flag.String("directory-url", "", "optional HTTPS ElseMesh directory service URL for publishing this discoverable node")
+	var allowedBrowserOriginsFlags stringFlags
 	dhtMode := flag.String("dht-mode", "auto", "DHT mode: auto, client, or server")
 	serveRelay := flag.Bool("relay-service", false, "allow this node to provide a bounded libp2p circuit relay")
 	var bootstrap stringFlags
@@ -114,6 +117,7 @@ func run() error {
 	flag.Var(&cacheFrom, "cache-from", "owner-authorized upstream node PeerID to seed this node's content cache (repeatable)")
 	flag.Var(&roleStateFrom, "role-state-from", "world neighbor PeerID to sync owner-signed role revocations from (repeatable)")
 	flag.Var(&announceAddresses, "announce-address", "externally reachable IP multiaddr to advertise (repeatable; useful when Android blocks interface discovery)")
+	flag.Var(&allowedBrowserOriginsFlags, "allow-browser-origin", "allow this exact HTTP(S) browser origin to connect to the WebSocket gateway (repeatable)")
 	cacheSyncInterval := flag.Duration("cache-sync-interval", 5*time.Minute, "how often to retry missing owner-authorized cached assets")
 	roleStateSyncInterval := flag.Duration("role-state-sync-interval", time.Minute, "how often to sync owner-signed role revocations")
 	flag.Parse()
@@ -183,6 +187,10 @@ func run() error {
 	}
 	if *directoryURL != "" && (!validDirectoryURL(*directoryURL) || *publicGateway == "") {
 		return errors.New("directory-url requires an HTTPS service origin and --public-gateway")
+	}
+	allowedBrowserOrigins, err := parseAllowedBrowserOrigins(allowedBrowserOriginsFlags)
+	if err != nil {
+		return fmt.Errorf("allow-browser-origin: %w", err)
 	}
 	if err := os.MkdirAll(*dataDir, 0700); err != nil {
 		return err
@@ -309,7 +317,7 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("world manifest: %w", err)
 	}
-	d := &daemon{ctx: ctx, host: p2pHost, dht: router, discovery: routing.NewRoutingDiscovery(router), manifest: manifest, world: world, key: key, assetsDir: filepath.Join(*dataDir, "assets"), webRoot: *webRoot, publicGateway: *publicGateway, directoryURL: *directoryURL, authorityChanged: make(chan struct{}, 1), verifiedAssets: make(map[string]assetFileStamp), roleStatePath: roleRevocationStatePath(*dataDir, world.WorldID)}
+	d := &daemon{ctx: ctx, host: p2pHost, dht: router, discovery: routing.NewRoutingDiscovery(router), manifest: manifest, world: world, key: key, assetsDir: filepath.Join(*dataDir, "assets"), webRoot: *webRoot, publicGateway: *publicGateway, directoryURL: *directoryURL, allowedBrowserOrigins: allowedBrowserOrigins, authorityChanged: make(chan struct{}, 1), verifiedAssets: make(map[string]assetFileStamp), roleStatePath: roleRevocationStatePath(*dataDir, world.WorldID)}
 	if err := d.loadRoleRevocations(); err != nil {
 		return fmt.Errorf("load persisted role revocations: %w", err)
 	}
@@ -967,13 +975,53 @@ func writeJSON(w http.ResponseWriter, status int, value any) {
 	_ = json.NewEncoder(w).Encode(value)
 }
 
-var gatewayUpgrader = websocket.Upgrader{ReadBufferSize: 4096, WriteBufferSize: 4096, CheckOrigin: func(r *http.Request) bool {
-	origin := r.Header.Get("Origin")
+func parseAllowedBrowserOrigins(origins []string) (map[string]struct{}, error) {
+	allowed := make(map[string]struct{}, len(origins))
+	for _, origin := range origins {
+		normalized, ok := normalizeBrowserOrigin(origin)
+		if !ok {
+			return nil, fmt.Errorf("%q must be an HTTPS origin or a loopback HTTP origin without a path", origin)
+		}
+		allowed[normalized] = struct{}{}
+	}
+	return allowed, nil
+}
+
+func normalizeBrowserOrigin(origin string) (string, bool) {
+	parsed, err := url.Parse(origin)
+	if err != nil || parsed.Host == "" || parsed.User != nil || parsed.Opaque != "" || parsed.Path != "" || parsed.RawQuery != "" || parsed.Fragment != "" {
+		return "", false
+	}
+	scheme := strings.ToLower(parsed.Scheme)
+	host := strings.ToLower(parsed.Host)
+	if scheme != "https" && (scheme != "http" || !isLoopbackBrowserHost(parsed.Hostname())) {
+		return "", false
+	}
+	return scheme + "://" + host, true
+}
+
+func isLoopbackBrowserHost(host string) bool {
+	return strings.EqualFold(host, "localhost") || strings.EqualFold(host, "127.0.0.1") || strings.EqualFold(host, "::1")
+}
+
+func browserGatewayOriginAllowed(origin, requestHost string, secure bool, allowed map[string]struct{}) bool {
 	if origin == "" {
 		return true
 	}
-	return strings.EqualFold(strings.TrimPrefix(strings.TrimPrefix(origin, "https://"), "http://"), r.Host)
-}}
+	normalized, ok := normalizeBrowserOrigin(origin)
+	if !ok {
+		return false
+	}
+	scheme := "http"
+	if secure {
+		scheme = "https"
+	}
+	if strings.EqualFold(normalized, scheme+"://"+requestHost) {
+		return true
+	}
+	_, ok = allowed[normalized]
+	return ok
+}
 
 type gatewayMessage struct {
 	Type         string `json:"type"`
@@ -1000,7 +1048,10 @@ type peerResponse struct {
 }
 
 func (d *daemon) handleBrowserGateway(w http.ResponseWriter, r *http.Request) {
-	conn, err := gatewayUpgrader.Upgrade(w, r, nil)
+	upgrader := websocket.Upgrader{ReadBufferSize: 4096, WriteBufferSize: 4096, CheckOrigin: func(request *http.Request) bool {
+		return browserGatewayOriginAllowed(request.Header.Get("Origin"), request.Host, request.TLS != nil, d.allowedBrowserOrigins)
+	}}
+	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		return
 	}

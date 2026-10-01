@@ -20,12 +20,13 @@ async function unusedPort() {
 	return port;
 }
 
-function startProfile( binary, worldsDir, profile, sourcePath, assetsPath, httpPort, p2pPort, { discoverable = false, bootstrap = [], dhtMode = 'auto' } = {} ) {
+function startProfile( binary, worldsDir, profile, sourcePath, assetsPath, httpPort, p2pPort, { discoverable = false, bootstrap = [], allowedBrowserOrigins = [], dhtMode = 'auto' } = {} ) {
 	const args = [ 'tools/serve-world-profile.mjs', '--worldd', binary, '--worlds-dir', worldsDir, '--profile', profile ];
 	if ( sourcePath && assetsPath ) args.push( '--source', sourcePath, '--assets', assetsPath );
 	if ( discoverable ) args.push( '--discoverable', 'true' );
 	args.push( '--dht-mode', dhtMode );
 	for ( const address of bootstrap ) args.push( '--bootstrap', address );
+	for ( const origin of allowedBrowserOrigins ) args.push( '--allow-browser-origin', origin );
 	args.push( '--http', `127.0.0.1:${httpPort}`, '--p2p-port', String( p2pPort ) );
 	const child = spawn( process.execPath, args, { cwd: root, stdio: [ 'ignore', 'pipe', 'pipe' ] } );
 	child.commandLine = `${process.execPath} ${args.join( ' ' )}`;
@@ -110,11 +111,12 @@ try {
 	const secondHTTP = await unusedPort();
 	const firstP2P = await unusedPort();
 	const secondP2P = await unusedPort();
-	let first = startProfile( binary, worldsDir, 'first-world', path.join( root, 'worlds/island/world-source.json' ), islandAssets, firstHTTP, firstP2P, { discoverable: true, dhtMode: 'server' } );
+	let first = startProfile( binary, worldsDir, 'first-world', path.join( root, 'worlds/island/world-source.json' ), islandAssets, firstHTTP, firstP2P, { discoverable: true, allowedBrowserOrigins: [ 'http://127.0.0.1:5189' ], dhtMode: 'server' } );
 	const firstManifest = await waitForWorld( first, firstHTTP, islandSource.worldId );
 	const second = startProfile( binary, worldsDir, 'loz-underneath', caveSourcePath, caveAssets, secondHTTP, secondP2P, {
 		discoverable: true,
 		dhtMode: 'server',
+		allowedBrowserOrigins: [ 'http://127.0.0.1:5189' ],
 		bootstrap: [ `/ip4/127.0.0.1/tcp/${firstP2P}/p2p/${firstPeerID.stdout.trim()}` ],
 	} );
 	const secondManifest = await waitForWorld( second, secondHTTP, caveSource.worldId );
