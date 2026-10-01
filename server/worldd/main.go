@@ -81,6 +81,9 @@ func run() error {
 		return err
 	}
 	defaultData := filepath.Join(configDir, "tidewater", "worldd")
+	worldsDir := flag.String("worlds-dir", filepath.Join(configDir, "elsemesh", "worlds"), "directory containing named local ThruHold profiles")
+	worldProfile := flag.String("world-profile", "", "select a named local ThruHold profile (uses a separate node identity and data directory)")
+	listWorldProfiles := flag.Bool("list-world-profiles", false, "list named local ThruHold profiles, then exit")
 	dataDir := flag.String("data", defaultData, "private daemon data directory")
 	manifestPath := flag.String("manifest", "", "owner-signed world manifest JSON")
 	signManifestPath := flag.String("sign-manifest", "", "validate and owner-sign an unsigned runtime world manifest, then exit")
@@ -119,13 +122,42 @@ func run() error {
 		return nil
 	}
 	operationCount := 0
-	for _, requested := range []bool{*printNodeID, *exportNodeKey != "", *importNodeKey != "", *importAssetPath != "", *importPackagePath != "", *signManifestPath != ""} {
+	for _, requested := range []bool{*printNodeID, *exportNodeKey != "", *importNodeKey != "", *importAssetPath != "", *importPackagePath != "", *signManifestPath != "", *listWorldProfiles} {
 		if requested {
 			operationCount++
 		}
 	}
 	if operationCount > 1 || (*manifestOut != "" && *signManifestPath == "") {
 		return errors.New("choose only one one-shot identity, asset, package, or signing operation; --manifest-out requires --sign-manifest")
+	}
+	if *listWorldProfiles {
+		if *worldProfile != "" {
+			return errors.New("--list-world-profiles cannot be combined with --world-profile")
+		}
+		profiles, listErr := listWorldProfilesIn(*worldsDir)
+		if listErr != nil {
+			return listErr
+		}
+		for _, profile := range profiles {
+			fmt.Println(profile)
+		}
+		return nil
+	}
+	dataWasSet := false
+	flag.Visit(func(current *flag.Flag) {
+		if current.Name == "data" {
+			dataWasSet = true
+		}
+	})
+	if *worldProfile != "" {
+		if dataWasSet {
+			return errors.New("--world-profile cannot be combined with --data")
+		}
+		profileData, profileErr := worldProfileDataDir(*worldsDir, *worldProfile)
+		if profileErr != nil {
+			return profileErr
+		}
+		*dataDir = profileData
 	}
 	if *listenPort < 1 || *listenPort > 65535 {
 		return errors.New("p2p-port must be between 1 and 65535")

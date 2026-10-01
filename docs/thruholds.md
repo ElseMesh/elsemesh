@@ -52,6 +52,25 @@ worldd --data ./world-data --sign-manifest ./world-data/unsigned.json --manifest
 worldd --data ./world-data --manifest ./world-data/world.signed.json --webtransport :5201 --webtransport-tls-cert fullchain.pem --webtransport-tls-key privkey.pem
 ```
 
+### Multiple local ThruHolds
+
+`worldd` normally keeps one node identity, signed manifest, and content store in its selected data directory. Named profiles create separate directories under `--worlds-dir` (default: `$XDG_CONFIG_HOME/elsemesh/worlds`, or the platform's Go user config directory), including independent node keys. Profile names are lowercase slugs containing letters, digits, hyphens, and underscores. List and initialize profiles with:
+
+```sh
+worldd --list-world-profiles
+worldd --world-profile example-island --world-name "Example Island" --print-node-id
+worldd --world-profile loz-forest --world-name "Loz Forest" --print-node-id
+```
+
+Start either profile by selecting its name. To run both on one machine, start separate processes and assign distinct P2P, HTTP, and (if enabled) WebTransport listener ports. Each process has its own PeerID; do not copy one `node.key` into simultaneous processes. `--data` remains available for an explicit single-profile path and cannot be combined with `--world-profile`.
+
+```sh
+worldd --world-profile example-island --p2p-port 42901 --http 127.0.0.1:5200
+worldd --world-profile loz-forest --p2p-port 42902 --http 127.0.0.1:5201
+```
+
+These profiles provide isolated runtime storage and two independently served ThruHolds; they do not merge the identities into one multi-world daemon. Canonical Blender sources and exported packages remain in the repository's `worlds/` tree.
+
 Back up a node identity before migrating its world data. Export creates a new file with mode `0600` and refuses to overwrite an existing file; store that key offline in a protected location, never in shared Android storage or Git. Restore accepts only a `0600` backup and refuses to replace an existing `node.key`. Both commands print the PeerID so you can confirm the restored identity matches:
 
 ```sh
