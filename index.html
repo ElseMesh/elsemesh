@@ -15,11 +15,17 @@
 		#fps { position: fixed; top: 10px; left: 12px; z-index: 50; font: 500 12px/1.2 'JetBrains Mono', ui-monospace, monospace;
 			color: #e8f6ff; background: rgba(8, 14, 22, 0.55); padding: 5px 9px; border-radius: 6px; pointer-events: none;
 			backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); letter-spacing: 0.02em; }
+		#build-commit { position: fixed; right: calc(6px + env(safe-area-inset-right, 0px)); bottom: calc(5px + env(safe-area-inset-bottom, 0px)); z-index: 1001;
+			font: 500 10px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: 0.04em; color: rgba(232, 246, 255, 0.78);
+			background: rgba(8, 14, 22, 0.62); padding: 4px 5px; border-radius: 4px; pointer-events: none; user-select: text;
+			backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+		@media (pointer: coarse) { #build-commit { bottom: calc(20px + env(safe-area-inset-bottom, 0px) + clamp(104px, 28vw, 132px)); } }
 	</style>
 </head>
 <body>
 	<div id="app"></div>
 	<div id="fps">-- fps</div>
+	<div id="build-commit" aria-label="Build commit %ELSEMESH_COMMIT%" title="Build commit %ELSEMESH_COMMIT%">%ELSEMESH_COMMIT%</div>
 	<div id="loader" role="status" aria-live="polite" aria-label="Loading ElseMesh">
 		<img class="loader-art" src="ui/keyart-720.jpg" srcset="ui/keyart-720.jpg 1280w, ui/keyart.jpg 2560w" sizes="100vw" alt="" decoding="async" fetchpriority="high" onload="this.classList.add('is-in')" />
 		<div class="loader-scrim"></div>

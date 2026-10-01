@@ -29,6 +29,8 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
+        env:
+          ELSEMESH_COMMIT_SHA: ${{ github.sha }}
       - run: npm ci --prefix loz-source
       - run: npm run build --prefix loz-source
       - run: mkdir -p dist/loz && cp -a loz-source/dist/. dist/loz/
