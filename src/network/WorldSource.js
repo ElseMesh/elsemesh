@@ -67,6 +67,7 @@ export function validateWorldSource( source ) {
 	}
 	let islandOceanCount = 0;
 	let waterBodyCount = 0;
+	const waterBodies = [];
 	for ( const component of source.components || [] ) {
 		const vegetation = component?.type === 'tidewater.procedural-island-vegetation/1' && component.seed === 7 && ( component.placementAssetId === undefined || /^sha256:[0-9a-f]{64}$/.test( component.placementAssetId ) );
 		const staticVegetation = component?.type === 'tidewater.static-vegetation/1' && /^sha256:[0-9a-f]{64}$/.test( component.placementAssetId || '' );
@@ -75,9 +76,13 @@ export function validateWorldSource( source ) {
 		const allowedKeys = vegetation ? [ 'id', 'type', 'seed', 'priority', 'placementAssetId' ] : staticVegetation ? [ 'id', 'type', 'priority', 'placementAssetId' ] : islandOcean ? [ 'id', 'type', 'priority' ] : waterBody ? [ 'id', 'type', 'priority', 'center', 'extent', 'profile' ] : [];
 		if ( ! component || typeof component.id !== 'string' || ! /^tw-component:[\w.-]{1,128}$/.test( component.id ) || ids.has( component.id ) || ( ! vegetation && ! staticVegetation && ! islandOcean && ! waterBody ) || component.priority !== undefined && ! [ 'portal-preview', 'visible', 'nearby', 'background' ].includes( component.priority ) || Object.keys( component ).some( ( key ) => ! allowedKeys.includes( key ) ) ) throw new Error( 'Invalid or duplicate world component' );
 		if ( islandOcean && ++ islandOceanCount > 1 ) throw new Error( 'A world may declare only one island ocean component' );
-		if ( waterBody && ++ waterBodyCount > 1 ) throw new Error( 'A world may declare only one water body component' );
+		if ( waterBody && ++ waterBodyCount > 4 ) throw new Error( 'A world may declare at most four water body components' );
 		if ( waterBody && ( source.rules.seaLevel === undefined || islandOceanCount > 0 ) ) throw new Error( 'A portable water body requires seaLevel and cannot be combined with island-ocean' );
 		if ( islandOcean && waterBodyCount > 0 ) throw new Error( 'A world cannot combine portable water and island-ocean components' );
+		if ( waterBody ) {
+			if ( waterBodies.some( ( other ) => Math.abs( component.center[ 0 ] - other.center[ 0 ] ) < component.extent + other.extent && Math.abs( component.center[ 1 ] - other.center[ 1 ] ) < component.extent + other.extent ) ) throw new Error( 'Portable water body bounds cannot overlap' );
+			waterBodies.push( component );
+		}
 		if ( ! source.rules.requiredFeatures?.includes( component.type ) ) throw new Error( `World component ${component.type} must be listed in requiredFeatures` );
 		ids.add( component.id );
 	}

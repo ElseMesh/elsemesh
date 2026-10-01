@@ -420,6 +420,7 @@ func validateManifest(manifest worldManifest, localPeerID string, now time.Time)
 	seenComponents := make(map[string]bool, len(manifest.Components))
 	islandOceanCount := 0
 	waterBodyCount := 0
+	waterBodies := make([]worldComponent, 0, 4)
 	assetRefs := make(map[string]assetRef, len(manifest.Assets))
 	for _, asset := range manifest.Assets {
 		assetRefs[asset.ID] = asset
@@ -443,11 +444,19 @@ func validateManifest(manifest worldManifest, localPeerID string, now time.Time)
 		if islandOcean {
 			islandOceanCount++
 		}
-		if !componentIDPattern.MatchString(component.ID) || seenComponents[component.ID] || seenObjects[component.ID] || seenPortals[component.ID] || (!vegetation && !staticVegetation && !islandOcean && !waterBody) || islandOceanCount > 1 || waterBodyCount > 1 || component.Priority != "" && component.Priority != "portal-preview" && component.Priority != "visible" && component.Priority != "nearby" && component.Priority != "background" || !seenFeatures[component.Type] {
+		if !componentIDPattern.MatchString(component.ID) || seenComponents[component.ID] || seenObjects[component.ID] || seenPortals[component.ID] || (!vegetation && !staticVegetation && !islandOcean && !waterBody) || islandOceanCount > 1 || waterBodyCount > 4 || component.Priority != "" && component.Priority != "portal-preview" && component.Priority != "visible" && component.Priority != "nearby" && component.Priority != "background" || !seenFeatures[component.Type] {
 			return fmt.Errorf("invalid or unsupported world component %q", component.ID)
 		}
 		if waterBody && (manifest.Rules.SeaLevel == nil || islandOceanCount > 0) || islandOcean && waterBodyCount > 0 {
 			return errors.New("portable water requires seaLevel and cannot be combined with island-ocean")
+		}
+		if waterBody {
+			for _, other := range waterBodies {
+				if math.Abs(component.Center[0]-other.Center[0]) < component.Extent+other.Extent && math.Abs(component.Center[1]-other.Center[1]) < component.Extent+other.Extent {
+					return errors.New("portable water body bounds cannot overlap")
+				}
+			}
+			waterBodies = append(waterBodies, component)
 		}
 		if component.PlacementAssetID != "" {
 			asset, exists := assetRefs[component.PlacementAssetID]

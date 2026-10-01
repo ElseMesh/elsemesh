@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/json"
+	"fmt"
 	"math"
 	"strings"
 	"testing"
@@ -335,6 +336,23 @@ func TestWorldManifestValidatesPortableWaterBody(t *testing.T) {
 	if err := validateManifest(manifest, ownerID.String(), time.Now()); err != nil {
 		t.Fatalf("valid terrain-independent water body rejected: %v", err)
 	}
+	manifest.Components = make([]worldComponent, 4)
+	for i, x := range []float64{-900, -300, 300, 900} {
+		manifest.Components[i] = worldComponent{ID: fmt.Sprintf("tw-component:water-%d", i+1), Type: "tidewater.water-body/1", Center: []float64{x, 0}, Extent: 100}
+	}
+	if err := validateManifest(manifest, ownerID.String(), time.Now()); err != nil {
+		t.Fatalf("four non-overlapping portable water bodies rejected: %v", err)
+	}
+	manifest.Components = append(manifest.Components, worldComponent{ID: "tw-component:water-5", Type: "tidewater.water-body/1", Center: []float64{1500, 0}, Extent: 100})
+	if err := validateManifest(manifest, ownerID.String(), time.Now()); err == nil {
+		t.Fatal("more than four portable water bodies accepted")
+	}
+	manifest.Components = manifest.Components[:4]
+	manifest.Components[1].Center = []float64{-850, 0}
+	if err := validateManifest(manifest, ownerID.String(), time.Now()); err == nil {
+		t.Fatal("overlapping portable water body bounds accepted")
+	}
+	manifest.Components = []worldComponent{{ID: "tw-component:water", Type: "tidewater.water-body/1", Center: []float64{-20, 45}, Extent: 256, Profile: "storm"}}
 	document, err := signDocument(manifestProtocol, manifest, key)
 	if err != nil {
 		t.Fatal(err)

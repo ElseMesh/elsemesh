@@ -521,6 +521,7 @@ export function validateWorldComponents( components = [], rules, ids = new Set()
 	const assetRefs = new Map( assets.map( ( asset ) => [ asset.id, asset ] ) );
 	let islandOceanCount = 0;
 	let waterBodyCount = 0;
+	const waterBodies = [];
 	for ( const component of components ) {
 		invariant( component && typeof component.id === 'string' && /^tw-component:[\w.-]{1,128}$/.test( component.id ) && ! ids.has( component.id ), 'World manifest has an invalid or duplicate component ID' );
 		const vegetation = component.type === 'tidewater.procedural-island-vegetation/1' && component.seed === 7 && Object.keys( component ).every( ( key ) => [ 'id', 'type', 'seed', 'priority', 'placementAssetId' ].includes( key ) );
@@ -529,8 +530,12 @@ export function validateWorldComponents( components = [], rules, ids = new Set()
 		const waterBody = component.type === 'tidewater.water-body/1' && ( component.profile === undefined || [ 'deep-ocean', 'calm-lagoon', 'storm' ].includes( component.profile ) ) && Array.isArray( component.center ) && component.center.length === 2 && Number.isFinite( component.extent ) && component.extent >= 8 && component.extent <= 100000 && component.center.every( ( n ) => Number.isFinite( n ) && Math.abs( n ) + component.extent <= 1e6 ) && Object.keys( component ).every( ( key ) => [ 'id', 'type', 'priority', 'center', 'extent', 'profile' ].includes( key ) );
 		invariant( ( vegetation || staticVegetation || islandOcean || waterBody ) && ( component.priority === undefined || [ 'portal-preview', 'visible', 'nearby', 'background' ].includes( component.priority ) ), `Unsupported or invalid world component ${component.id}` );
 		if ( islandOcean ) invariant( ++ islandOceanCount === 1, 'World manifest may declare only one island ocean component' );
-		if ( waterBody ) invariant( ++ waterBodyCount === 1 && rules.seaLevel !== undefined && islandOceanCount === 0, 'Portable water requires seaLevel and cannot be combined with island-ocean' );
+		if ( waterBody ) invariant( ++ waterBodyCount <= 4 && rules.seaLevel !== undefined && islandOceanCount === 0, 'Portable water requires seaLevel, allows at most four bodies, and cannot be combined with island-ocean' );
 		if ( islandOcean ) invariant( waterBodyCount === 0, 'A world cannot combine portable water and island-ocean components' );
+		if ( waterBody ) {
+			invariant( ! waterBodies.some( ( other ) => Math.abs( component.center[ 0 ] - other.center[ 0 ] ) < component.extent + other.extent && Math.abs( component.center[ 1 ] - other.center[ 1 ] ) < component.extent + other.extent ), 'Portable water body bounds cannot overlap' );
+			waterBodies.push( component );
+		}
 		invariant( rules.requiredFeatures?.includes( component.type ), `World component ${component.type} is missing from requiredFeatures` );
 		if ( component.placementAssetId !== undefined ) invariant( /^sha256:[0-9a-f]{64}$/.test( component.placementAssetId ) && assetRefs.get( component.placementAssetId )?.kind === 'vegetation-placement/1' && assetRefs.get( component.placementAssetId )?.priority === 'portal-preview', `World component ${component.id} has an invalid placement asset reference` );
 		if ( component.type === 'tidewater.static-vegetation/1' ) invariant( typeof component.placementAssetId === 'string', `Static vegetation component ${component.id} requires placement data` );
