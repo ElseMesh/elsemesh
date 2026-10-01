@@ -32,7 +32,7 @@ This document tracks the agreed ElseMesh direction against the current code. It 
 
 - Use signed object bounds to request assets as they enter the view or nearby buffer, while keeping portal preview assets ready before a crossing.
 - Adapt background work to bandwidth and refine cancellation so useful shared-asset transfers are not restarted unnecessarily.
-- Keep portal preview assets available before crossing and hash-check every completed asset. Portal preparation now aborts when the player leaves its selected portal or completes a handoff; integration tests cover cancellation during manifest lookup, WebTransport readiness, and WebSocket connection setup. Browser integration tests now cover a missing asset at its current provider, fallback through signed provider records to an owner-authorized cache, and final content-hash verification. Live multi-node stale-cache recovery, concurrent-download recovery, and device/network limits still need end-to-end coverage.
+- Keep portal preview assets available before crossing and hash-check every completed asset. Portal preparation now aborts when the player leaves its selected portal or completes a handoff; integration tests cover cancellation during manifest lookup, WebTransport readiness, and WebSocket connection setup. Browser integration tests cover concurrent missing-asset responses at the current provider, shared recovery through signed provider records to an owner-authorized cache, and final content-hash verification. Recovery against live multi-node deployments and device/network limits still need end-to-end coverage.
 - Add tests for frustum entry/exit, portal approach, interrupted transfer, provider fallback, and device/network limits.
 
 ### 3. Finish portal and session continuity
