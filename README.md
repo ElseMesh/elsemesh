@@ -78,6 +78,7 @@ breach. It runs directly on WebGPU and WGSL with its own small rendering engine,
 | Key | Action |
 |---|---|
 | W A S D | Move |
+| Arrow keys | Change viewing direction |
 | Mouse | Look (click to capture the mouse, Esc to release) |
 | Shift | Sprint / boat boost |
 | Space | Jump / swim up |

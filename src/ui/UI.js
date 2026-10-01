@@ -2141,6 +2141,7 @@ export class UI {
 					<section>
 						<h3>Move</h3>
 						${ row( wasd, 'Move' ) }
+						${ row( k( '↑', '←', '↓', '→' ), 'Look around' ) }
 						${ row( mouse, 'Look around<small>Click to capture</small>' ) }
 						${ row( k( 'Shift' ), 'Sprint, boat boost' ) }
 						${ row( k( 'Space' ), 'Jump, swim up' ) }
@@ -2194,6 +2195,7 @@ export class UI {
 				<div class="tw-start-touch-hint">Left stick moves · right stick looks · tap action prompts</div>
 				<div class="tw-start-keys">
 					<span><span class="tw-wasd"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></span>Move</span>
+					<span><kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd>Look</span>
 					<span><kbd class="tw-kbd-ico">${ icon( 'mouse' ) }</kbd>Look</span>
 					<span><kbd>E</kbd>Interact</span>
 					<span><kbd>H</kbd>Settings</span>

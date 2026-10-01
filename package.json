@@ -8,7 +8,7 @@
     "test:world-gateway": "node test/world-gateway-e2e.mjs",
     "test:account-client": "node test/account-client.mjs",
     "export:island": "node tools/export-island.mjs",
-    "test": "node test/reef-placements.mjs && node test/reef-placement-render.mjs && node test/game-logic.mjs && node test/desktop-adaptive-scale.mjs && node test/camera-review.mjs && node test/world-portals.mjs && node test/world-directory.mjs && node test/world-streaming.mjs && node test/world-source-manifest.mjs && node test/world-proposal.mjs && node test/world-export.mjs && node test/world-collision.mjs && node test/world-hosted-player.mjs && node test/account-client.mjs && node test/engine-smoke.mjs && node test/world-gateway-e2e.mjs"
+	"test": "node test/reef-placements.mjs && node test/reef-placement-render.mjs && node test/game-logic.mjs && node test/desktop-adaptive-scale.mjs && node test/camera-review.mjs && node test/input-look-keys.mjs && node test/world-portals.mjs && node test/world-directory.mjs && node test/world-streaming.mjs && node test/world-source-manifest.mjs && node test/world-proposal.mjs && node test/world-export.mjs && node test/world-collision.mjs && node test/world-hosted-player.mjs && node test/account-client.mjs && node test/engine-smoke.mjs && node test/world-gateway-e2e.mjs"
   },
   "devDependencies": {
     "vite": "^8.3.0",
