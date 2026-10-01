@@ -6,12 +6,17 @@ const PRIORITY_ORDER = Object.freeze( [ 'portal-preview', 'visible', 'nearby', '
 
 function invariant( value, message ) { if ( ! value ) throw new Error( message ); }
 
-export function assetConcurrencyForConnection( connection = globalThis.navigator?.connection ) {
-	if ( ! connection ) return 3;
-	if ( connection.saveData ) return 1;
-	const type = connection.effectiveType;
-	const downlink = Number.isFinite( connection.downlink ) && connection.downlink > 0 ? connection.downlink : null;
+export function assetConcurrencyForConnection( connection = globalThis.navigator?.connection, measuredBytesPerSecond = null ) {
+	if ( connection?.saveData ) return 1;
+	const type = connection?.effectiveType;
+	const downlink = Number.isFinite( connection?.downlink ) && connection.downlink > 0 ? connection.downlink : null;
 	if ( type === 'slow-2g' || type === '2g' || ( downlink !== null && downlink < 1 ) ) return 1;
+	if ( Number.isFinite( measuredBytesPerSecond ) && measuredBytesPerSecond > 0 ) {
+		if ( measuredBytesPerSecond < 768 * 1024 ) return 1;
+		if ( measuredBytesPerSecond < 4 * 1024 * 1024 ) return 2;
+		return 3;
+	}
+	if ( ! connection ) return 3;
 	if ( type === '3g' || ( downlink !== null && downlink < 4 ) ) return 2;
 	return 3;
 }
@@ -41,6 +46,7 @@ export class WorldConnector {
 		this.manifest = null;
 		this.assets = new Map();
 		this.assetDownloads = new Map();
+		this.transferRateBytesPerSecond = null;
 		this.socket = null;
 		this.webTransport = null;
 		this.webTransportFailed = false;
@@ -164,6 +170,7 @@ export class WorldConnector {
 	}
 
 	async #downloadAsset( assetId, asset, signal ) {
+		const startedAt = performance.now();
 		const parts = [];
 		for ( let offset = 0; offset < asset.bytes; offset += this.chunkBytes ) {
 			if ( signal?.aborted ) throw signal.reason || new DOMException( 'Aborted', 'AbortError' );
@@ -177,14 +184,15 @@ export class WorldConnector {
 		const bytes = concatenate( parts, asset.bytes );
 		const digest = hex( await crypto.subtle.digest( 'SHA-256', bytes ) );
 		invariant( `sha256:${digest}` === assetId, 'Downloaded asset failed its content hash check' );
+		const rate = bytes.byteLength * 1000 / Math.max( 1, performance.now() - startedAt );
+		this.transferRateBytesPerSecond = this.transferRateBytesPerSecond === null ? rate : this.transferRateBytesPerSecond * 0.65 + rate * 0.35;
 		return bytes;
 	}
 
 	async preload( { priorities = PRIORITY_ORDER, through = 'background', after = null, assetIDs, signal, concurrency } = {} ) {
 		invariant( this.manifest, 'Load and verify the world manifest first' );
-		concurrency ??= assetConcurrencyForConnection();
 		const ranks = new Map( priorities.map( ( priority, index ) => [ priority, index ] ) );
-		invariant( Number.isInteger( concurrency ) && concurrency > 0 && concurrency <= 8, 'Invalid asset concurrency' );
+		invariant( concurrency === undefined || Number.isInteger( concurrency ) && concurrency > 0 && concurrency <= 8, 'Invalid asset concurrency' );
 		const endRank = ranks.get( through );
 		const startRank = after === null ? 0 : ranks.get( after ) + 1;
 		invariant( endRank !== undefined && startRank !== undefined && startRank <= endRank + 1, 'Invalid asset priority range' );
@@ -193,16 +201,19 @@ export class WorldConnector {
 			.filter( ( entry ) => entry.rank >= startRank && entry.rank <= endRank && ( selected === null || selected.has( entry.asset.id ) ) )
 			.sort( ( a, b ) => a.rank - b.rank || a.index - b.index );
 		const loaded = new Map();
+		const requestedConcurrency = concurrency;
 		for ( let start = 0; start < queue.length; ) {
 			const rank = queue[ start ].rank;
 			let end = start;
 			while ( end < queue.length && queue[ end ].rank === rank ) end ++;
 			const group = queue.slice( start, end );
-			for ( let offset = 0; offset < group.length; offset += concurrency ) {
+			for ( let offset = 0; offset < group.length; ) {
 				if ( signal?.aborted ) throw signal.reason || new DOMException( 'Aborted', 'AbortError' );
-				const batch = group.slice( offset, offset + concurrency );
+				const limit = requestedConcurrency ?? assetConcurrencyForConnection( globalThis.navigator?.connection, this.transferRateBytesPerSecond );
+				const batch = group.slice( offset, offset + limit );
 				const results = await Promise.all( batch.map( ( { asset } ) => this.getAsset( asset.id, { signal } ) ) );
 				for ( let i = 0; i < batch.length; i ++ ) loaded.set( batch[ i ].asset.id, results[ i ] );
+				offset += batch.length;
 			}
 			start = end;
 		}

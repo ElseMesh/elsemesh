@@ -11,6 +11,9 @@ assert.equal( assetConcurrencyForConnection( { effectiveType: '4g', downlink: 12
 assert.equal( assetConcurrencyForConnection( { effectiveType: '3g', downlink: 2 } ), 2, 'moderate links limit parallel downloads' );
 assert.equal( assetConcurrencyForConnection( { effectiveType: '2g', downlink: 0.4 } ), 1, 'slow links serialize asset downloads' );
 assert.equal( assetConcurrencyForConnection( { effectiveType: '4g', downlink: 20, saveData: true } ), 1, 'the browser data-saver preference takes precedence over link speed' );
+assert.equal( assetConcurrencyForConnection( null, 200 * 1024 ), 1, 'measured slow transfer rate reduces concurrency without browser hints' );
+assert.equal( assetConcurrencyForConnection( null, 2 * 1024 * 1024 ), 2, 'measured moderate transfer rate selects two concurrent downloads' );
+assert.equal( assetConcurrencyForConnection( null, 8 * 1024 * 1024 ), 3, 'measured fast transfer rate restores the three-request cap' );
 connector.manifest = { assets: priorities.flatMap( ( priority, index ) => [ { id: `sha256:${String( index * 2 + 1 ).padStart( 64, '0' )}`, priority }, { id: `sha256:${String( index * 2 + 2 ).padStart( 64, '0' )}`, priority } ] ) };
 const requested = [];
 let active = 0, maxActive = 0;
@@ -44,6 +47,17 @@ requested.length = 0;
 const remainder = await connector.preload( { after: 'visible', concurrency: 2 } );
 assert.equal( remainder.size, 4, 'background load contains nearby and background tiers only' );
 assert.deepEqual( requested.map( ( id ) => connector.manifest.assets.find( ( asset ) => asset.id === id ).priority ), [ 'nearby', 'nearby', 'background', 'background' ], 'remainder tiers preserve priority order' );
+
+requested.length = 0;
+maxActive = 0;
+connector.transferRateBytesPerSecond = 200 * 1024;
+await connector.preload( { after: 'visible' } );
+assert.equal( maxActive, 1, 'measured throughput controls the next preload batch concurrency' );
+requested.length = 0;
+maxActive = 0;
+connector.transferRateBytesPerSecond = 2 * 1024 * 1024;
+await connector.preload( { assetIDs: [ connector.manifest.assets[ 4 ].id, connector.manifest.assets[ 5 ].id ] } );
+assert.equal( maxActive, 2, 'moderate measured throughput permits two parallel downloads in a same-priority batch' );
 
 const camera = new PerspectiveCamera( 60, 1, 0.1, 100 );
 camera.position.set( 0, 0, 0 ); camera.lookAt( 0, 0, -1 ); camera.updateMatrixWorld( true );
