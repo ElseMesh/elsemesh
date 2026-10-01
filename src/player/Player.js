@@ -101,6 +101,52 @@ export class Player {
 		this.gravity = gravityAcceleration( rules );
 	}
 
+	setHostedWorldPose( eyePosition, yaw = this.yaw, pitch = this.pitch ) {
+		this.position.set( eyePosition.x, eyePosition.y - EYE, eyePosition.z );
+		const ground = this.colliders.groundHeightAt( this.position.x, this.position.z, eyePosition.y + 0.5 );
+		if ( Number.isFinite( ground ) && this.position.y < ground ) this.position.y = ground;
+		this.velocity.set( 0, 0, 0 );
+		this.yaw = yaw;
+		this.pitch = pitch;
+		this.mode = 'walk';
+		this.grounded = false;
+		this.camera.position.set( this.position.x, this.position.y + EYE, this.position.z );
+		this.camera.quaternion.setFromEuler( _e.set( pitch, yaw, 0 ) );
+		this._camY = this.camera.position.y;
+	}
+
+	// Hosted static worlds use only their signed package colliders. They must not collide with or
+	// sample the hidden local procedural island, reef, water, or boat simulation.
+	updateHostedWorld( dt ) {
+		const inp = this.input;
+		const look = inp.consumeLook( dt );
+		this.yaw -= look.x * 0.0022;
+		this.pitch = THREE.MathUtils.clamp( this.pitch - look.y * 0.0022, - 1.5, 1.5 );
+		const axes = inp.moveAxes();
+		_fwd.set( - Math.sin( this.yaw ), 0, - Math.cos( this.yaw ) );
+		_right.set( - _fwd.z, 0, _fwd.x );
+		_wish.set( 0, 0, 0 ).addScaledVector( _fwd, axes.y ).addScaledVector( _right, axes.x );
+		if ( _wish.lengthSq() > 1 ) _wish.normalize();
+		const sprint = Math.max( axes.sprint || 0, inp.down( 'ShiftLeft' ) || inp.down( 'ShiftRight' ) ? 1 : 0 );
+		const speed = THREE.MathUtils.lerp( 3.0, 6.2, sprint );
+		const k = 1 - Math.exp( - ( this.grounded ? 14 : 2.5 ) * dt );
+		this.velocity.x += ( _wish.x * speed - this.velocity.x ) * k;
+		this.velocity.z += ( _wish.z * speed - this.velocity.z ) * k;
+		if ( this.grounded && inp.hit( 'Space' ) ) { this.velocity.y = 4.6; this.grounded = false; }
+		this.velocity.y -= this.gravity * dt;
+		this.position.addScaledVector( this.velocity, dt );
+		this.colliders.resolveCapsule( this.position, RADIUS, HEIGHT, 0.4 );
+		const ground = this.colliders.groundHeightAt( this.position.x, this.position.z, this.position.y + 0.45, 0.15 );
+		if ( this.position.y <= ground ) {
+			this.position.y = ground;
+			if ( this.velocity.y < 0 ) this.velocity.y = 0;
+			this.grounded = true;
+		} else this.grounded = this.position.y - ground < 0.06;
+		this.camera.position.set( this.position.x, this.position.y + EYE, this.position.z );
+		this.camera.quaternion.setFromEuler( _e.set( this.pitch, this.yaw, 0 ) );
+		this._camY = this.camera.position.y;
+	}
+
 	// view direction in world space (for casting); works in every mode
 	getViewDir( out ) {
 

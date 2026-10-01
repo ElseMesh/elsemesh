@@ -8,6 +8,7 @@ export class Colliders {
 
 		this.boxes = [];
 		this.cylinders = [];
+		this.heightfields = [];
 		this._v = new THREE.Vector3();
 
 	}
@@ -42,6 +43,32 @@ export class Colliders {
 
 	}
 
+	addHeightfield( positions, columns, rows, { position, scale, yaw = 0, tag = '' } = {} ) {
+		if ( ! positions || ! Number.isInteger( columns ) || ! Number.isInteger( rows ) || columns < 2 || rows < 2 || columns * rows > 4194304 || positions.length !== columns * rows * 3 || ! position || ! scale || ! [ position.x, position.y, position.z, scale.x, scale.y, scale.z, yaw ].every( Number.isFinite ) || scale.x <= 0 || scale.y <= 0 || scale.z <= 0 ) throw new Error( 'Invalid heightfield dimensions or transform' );
+		const first = { x: positions[ 0 ], z: positions[ 2 ] };
+		const last = { x: positions[ positions.length - 3 ], z: positions[ positions.length - 1 ] };
+		const minX = Math.min( first.x, last.x ), maxX = Math.max( first.x, last.x );
+		const minZ = Math.min( first.z, last.z ), maxZ = Math.max( first.z, last.z );
+		if ( ! Number.isFinite( minX + maxX + minZ + maxZ ) || maxX <= minX || maxZ <= minZ ) throw new Error( 'Heightfield has invalid bounds' );
+		const stepX = ( maxX - minX ) / ( columns - 1 ), stepZ = ( maxZ - minZ ) / ( rows - 1 );
+		const tolerance = Math.max( stepX, stepZ ) * 1e-4 + 1e-4;
+		for ( let row = 0; row < rows; row ++ ) for ( let column = 0; column < columns; column ++ ) {
+			const offset = ( row * columns + column ) * 3;
+			const expectedX = minX + column * stepX, expectedZ = minZ + row * stepZ;
+			if ( ! Number.isFinite( positions[ offset + 1 ] ) || Math.abs( positions[ offset ] - expectedX ) > tolerance || Math.abs( positions[ offset + 2 ] - expectedZ ) > tolerance ) throw new Error( 'Heightfield vertices must form a regular XZ grid' );
+		}
+		const field = { positions, columns, rows, minX, minZ, maxX, maxZ, stepX, stepZ, position, scale, yaw, cos: Math.cos( yaw ), sin: Math.sin( yaw ), tag };
+		this.heightfields.push( field );
+		return field;
+	}
+
+	removeHeightfield( field ) {
+		const index = this.heightfields.indexOf( field );
+		if ( index === - 1 ) return false;
+		this.heightfields.splice( index, 1 );
+		return true;
+	}
+
 	_toLocal( b, x, z ) {
 
 		const dx = x - b.center.x, dz = z - b.center.z;
@@ -66,6 +93,23 @@ export class Colliders {
 			const [ lx, lz ] = this._toLocal( b, x, z );
 			if ( Math.abs( lx ) <= b.half.x + pad && Math.abs( lz ) <= b.half.z + pad ) best = Math.max( best, b.top );
 
+		}
+		for ( const field of this.heightfields ) {
+			const dx = x - field.position.x, dz = z - field.position.z;
+			const localX = ( dx * field.cos - dz * field.sin ) / field.scale.x;
+			const localZ = ( dx * field.sin + dz * field.cos ) / field.scale.z;
+			let column = ( localX - field.minX ) / field.stepX;
+			let row = ( localZ - field.minZ ) / field.stepZ;
+			if ( column < - pad / field.stepX || column > field.columns - 1 + pad / field.stepX || row < - pad / field.stepZ || row > field.rows - 1 + pad / field.stepZ ) continue;
+			column = Math.max( 0, Math.min( field.columns - 1, column ) );
+			row = Math.max( 0, Math.min( field.rows - 1, row ) );
+			const x0 = Math.min( field.columns - 2, Math.floor( column ) ), z0 = Math.min( field.rows - 2, Math.floor( row ) );
+			const tx = column - x0, tz = row - z0;
+			const h = ( cx, cz ) => field.positions[ ( cz * field.columns + cx ) * 3 + 1 ];
+			const h0 = h( x0, z0 ) * ( 1 - tx ) + h( x0 + 1, z0 ) * tx;
+			const h1 = h( x0, z0 + 1 ) * ( 1 - tx ) + h( x0 + 1, z0 + 1 ) * tx;
+			const worldHeight = field.position.y + ( h0 * ( 1 - tz ) + h1 * tz ) * field.scale.y;
+			if ( worldHeight <= maxY ) best = Math.max( best, worldHeight );
 		}
 
 		return best;

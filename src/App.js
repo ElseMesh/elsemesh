@@ -417,8 +417,7 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 			this.remoteWorldActive = true;
 			this.refraction.enabled = false;
 			this.camera.position.set( 0, 3, 8 );
-			this.fly.setPose( this.camera.position.clone(), Math.PI, - 0.1 );
-			this.fly.velocity.set( 0, 0, 0 );
+			this.player.setHostedWorldPose( this.camera.position, Math.PI, - 0.1 );
 			this.portalPreviousPosition = this.camera.position.clone();
 
 		}
@@ -780,7 +779,7 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 		// signed manifest and prioritized destination assets are ready.
 		this.camera.position.copy( previous );
 		this.portalPreviousPosition.copy( previous );
-		this.fly.velocity.set( 0, 0, 0 );
+		this.player.setHostedWorldPose( previous, this.player.yaw, this.player.pitch );
 		if ( ! preparation.noticeShown ) {
 			preparation.noticeShown = true;
 			this.ui?.ui?.toast( preparation.status === 'failed' ? 'This portal could not load its destination' : 'Preparing the world beyond this portal…', 3500 );
@@ -815,10 +814,11 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 		this.streamWorldRemainder( destinationConnector, destinationRoot );
 
 		const exit = portal.exit;
-		const velocity = rotatePortalVelocity( this.fly.velocity, portal.entry.yaw, exit.yaw );
-		this.fly.velocity.x = velocity.x;
-		this.fly.velocity.z = velocity.z;
-		this.fly.setPose( new Vector3( ...exit.position ), exit.yaw, this.fly.pitch );
+		const velocity = rotatePortalVelocity( this.player.velocity, portal.entry.yaw, exit.yaw );
+		this.player.setHostedWorldPose( new Vector3( ...exit.position ), exit.yaw, this.player.pitch );
+		this.player.velocity.x = velocity.x;
+		this.player.velocity.z = velocity.z;
+		this.player.velocity.y = velocity.y;
 		this.portalPreviousPosition.copy( this.camera.position );
 		this.portalPreparations.clear();
 		sourceConnector.close();
@@ -860,7 +860,7 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 
 		}
 		if ( this.remoteWorldActive ) {
-			this.fly.update( dt );
+			this.player.updateHostedWorld( dt );
 			this.updateWorldPortals();
 		}
 		else {

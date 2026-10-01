@@ -57,7 +57,7 @@ const source = {
 		priority: 'visible',
 		transform: { position: [ 0, 0, 0 ], yaw: 0 },
 		scale: [ 1, 1, 1 ],
-		collision: { shape: 'none', enabled: false },
+		collision: { shape: 'heightfield', enabled: true, columns: 513, rows: 513, walkable: true, solid: true },
 	} ],
 	portals: [],
 	updatedAt,
@@ -81,11 +81,13 @@ function exportTerrain( data, segments ) {
 	const mins = [ Infinity, Infinity, Infinity ], maxs = [ - Infinity, - Infinity, - Infinity ];
 
 	for ( let z = 0; z < side; z ++ ) {
-		const iz = Math.round( z * ( data.res - 1 ) / segments );
-		const worldZ = data.origin + ( iz + 0.5 ) * data.texel;
+		const sampleZ = z * ( data.res - 1 ) / segments;
+		const iz = Math.round( sampleZ );
+		const worldZ = data.origin + ( sampleZ + 0.5 ) * data.texel;
 		for ( let x = 0; x < side; x ++ ) {
-			const ix = Math.round( x * ( data.res - 1 ) / segments );
-			const worldX = data.origin + ( ix + 0.5 ) * data.texel;
+			const sampleX = x * ( data.res - 1 ) / segments;
+			const ix = Math.round( sampleX );
+			const worldX = data.origin + ( sampleX + 0.5 ) * data.texel;
 			const sourceIndex = iz * data.res + ix;
 			const height = data.heights[ sourceIndex ];
 			const vertex = z * side + x;

@@ -53,6 +53,8 @@ type worldObject struct {
 		Enabled     bool    `json:"enabled"`
 		Center      vector3 `json:"center"`
 		HalfExtents vector3 `json:"halfExtents"`
+		Columns     uint32  `json:"columns"`
+		Rows        uint32  `json:"rows"`
 		Walkable    bool    `json:"walkable"`
 		Solid       bool    `json:"solid"`
 	} `json:"collision"`
@@ -200,22 +202,28 @@ func validateManifest(manifest worldManifest, localPeerID string, now time.Time)
 				return errors.New("object scale out of bounds")
 			}
 		}
-		if object.Collision.Shape != "box" && object.Collision.Shape != "none" {
+		if object.Collision.Shape != "box" && object.Collision.Shape != "heightfield" && object.Collision.Shape != "none" {
 			return errors.New("unsupported object collision shape")
 		}
 		if object.Collision.Enabled {
-			if object.Collision.Shape != "box" {
-				return errors.New("enabled object collision must use box shape")
-			}
-			for _, extent := range object.Collision.HalfExtents {
-				if math.IsNaN(extent) || math.IsInf(extent, 0) || extent <= 0 || extent > 1000 {
-					return errors.New("object collision half extents out of bounds")
+			switch object.Collision.Shape {
+			case "box":
+				for _, extent := range object.Collision.HalfExtents {
+					if math.IsNaN(extent) || math.IsInf(extent, 0) || extent <= 0 || extent > 1000 {
+						return errors.New("object collision half extents out of bounds")
+					}
 				}
-			}
-			for _, coordinate := range object.Collision.Center {
-				if math.IsNaN(coordinate) || math.IsInf(coordinate, 0) || math.Abs(coordinate) > 1e6 {
-					return errors.New("object collision center out of bounds")
+				for _, coordinate := range object.Collision.Center {
+					if math.IsNaN(coordinate) || math.IsInf(coordinate, 0) || math.Abs(coordinate) > 1e6 {
+						return errors.New("object collision center out of bounds")
+					}
 				}
+			case "heightfield":
+				if object.Collision.Columns < 2 || object.Collision.Rows < 2 || object.Collision.Columns > 4097 || object.Collision.Rows > 4097 || uint64(object.Collision.Columns)*uint64(object.Collision.Rows) > 4194304 || !object.Collision.Walkable || !object.Collision.Solid {
+					return errors.New("invalid object heightfield dimensions or flags")
+				}
+			default:
+				return errors.New("enabled object collision must use box or heightfield shape")
 			}
 		}
 		seenObjects[object.ID] = true

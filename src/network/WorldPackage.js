@@ -12,6 +12,7 @@ import { Color } from '../engine/math/Color.js';
 import { SRGBColorSpace } from '../engine/constants.js';
 import { standard } from '../materials/Materials.js';
 import { Vector3 } from '../engine/math/Vector3.js';
+import { Matrix4 } from '../engine/math/Matrix4.js';
 
 const COMPONENTS = Object.freeze( {
 	POSITION: [ 'position', 3 ],
@@ -84,9 +85,32 @@ export function registerWorldPackageCollisions( root, colliders ) {
 	for ( const object of state.connector?.manifest?.objects || [] ) {
 		const collision = object.collision;
 		if ( ! state.loadedObjects.has( object.id ) || ! collision?.enabled || state.activeColliders.has( object.id ) ) continue;
-		if ( collision.shape !== 'box' || ! Array.isArray( collision.center ) || collision.center.length !== 3 || ! collision.center.every( Number.isFinite ) || ! Array.isArray( collision.halfExtents ) || collision.halfExtents.length !== 3 || ! collision.halfExtents.every( ( value ) => Number.isFinite( value ) && value > 0 ) ) throw new Error( `World object ${object.id} has invalid collision bounds` );
 		const instance = root.children.find( ( child ) => child.userData.worldObjectId === object.id );
 		if ( ! instance ) continue;
+		if ( collision.shape === 'heightfield' ) {
+			const meshes = [];
+			instance.traverse( ( child ) => { if ( child.isMesh ) meshes.push( child ); } );
+			if ( meshes.length !== 1 ) throw new Error( `World object ${object.id} heightfield must have exactly one mesh` );
+			const attribute = meshes[ 0 ].geometry.getAttribute( 'position' );
+			if ( ! attribute || attribute.count !== collision.columns * collision.rows ) throw new Error( `World object ${object.id} heightfield vertex count does not match its dimensions` );
+			root.updateMatrixWorld( true );
+			const relative = new Matrix4().copy( instance.matrixWorld ).invert().multiply( meshes[ 0 ].matrixWorld );
+			const positions = new Float32Array( attribute.count * 3 );
+			const point = new Vector3();
+			for ( let index = 0; index < attribute.count; index ++ ) {
+				point.fromBufferAttribute( attribute, index ).applyMatrix4( relative );
+				positions[ index * 3 ] = point.x;
+				positions[ index * 3 + 1 ] = point.y;
+				positions[ index * 3 + 2 ] = point.z;
+			}
+			const field = colliders.addHeightfield( positions, collision.columns, collision.rows, {
+				position: new Vector3( ...object.transform.position ), scale: new Vector3( ...( object.scale || [ 1, 1, 1 ] ) ),
+				yaw: object.transform.yaw || 0, tag: `world:${object.id}`,
+			} );
+			state.activeColliders.set( object.id, { shape: 'heightfield', collider: field } );
+			continue;
+		}
+		if ( collision.shape !== 'box' || ! Array.isArray( collision.center ) || collision.center.length !== 3 || ! collision.center.every( Number.isFinite ) || ! Array.isArray( collision.halfExtents ) || collision.halfExtents.length !== 3 || ! collision.halfExtents.every( ( value ) => Number.isFinite( value ) && value > 0 ) ) throw new Error( `World object ${object.id} has invalid collision bounds` );
 		const scale = object.scale || [ 1, 1, 1 ];
 		const yaw = object.transform?.yaw || 0;
 		const cos = Math.cos( yaw ), sin = Math.sin( yaw );
@@ -98,14 +122,17 @@ export function registerWorldPackageCollisions( root, colliders ) {
 		);
 		const half = new Vector3( collision.halfExtents[ 0 ] * scale[ 0 ], collision.halfExtents[ 1 ] * scale[ 1 ], collision.halfExtents[ 2 ] * scale[ 2 ] );
 		const box = colliders.addBox( center, half, yaw, { walkable: collision.walkable, solid: collision.solid, tag: `world:${object.id}` } );
-		state.activeColliders.set( object.id, box );
+		state.activeColliders.set( object.id, { shape: 'box', collider: box } );
 	}
 }
 
 export function unregisterWorldPackageCollisions( root, colliders ) {
 	const active = root?.userData?.worldPackage?.activeColliders;
 	if ( ! active || ! colliders ) return;
-	for ( const box of active.values() ) colliders.removeBox( box );
+	for ( const { shape, collider } of active.values() ) {
+		if ( shape === 'heightfield' ) colliders.removeHeightfield( collider );
+		else colliders.removeBox( collider );
+	}
 	active.clear();
 }
 

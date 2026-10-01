@@ -17,7 +17,7 @@
       "id": "tw-object:island-terrain",
       "kind": "asset-instance",
       "label": "Procedural island terrain",
-      "assetId": "sha256:aa8e00c83c42e4be705fb09b4c13c590e51a005fde3e1b3fa74ebcfd448f6173",
+      "assetId": "sha256:d3cec3194167eaf7018f401cabcecb337ab989cd6141b45fc8c43f5aa4d8a3cf",
       "priority": "visible",
       "transform": {
         "position": [
@@ -33,8 +33,12 @@
         1
       ],
       "collision": {
-        "shape": "none",
-        "enabled": false
+        "shape": "heightfield",
+        "enabled": true,
+        "columns": 513,
+        "rows": 513,
+        "walkable": true,
+        "solid": true
       }
     }
   ],

@@ -309,7 +309,9 @@ function validateWorldObjects( objects ) {
 	for ( const object of objects ) {
 		const collision = object?.collision;
 		if ( collision?.enabled !== true ) continue;
-		invariant( collision.shape === 'box' && validVector( collision.center ) && validVector( collision.halfExtents ) && collision.halfExtents.every( ( value ) => value > 0 && value <= 1000 ) && typeof collision.walkable === 'boolean' && typeof collision.solid === 'boolean', `World object ${object.id || '(unknown)'} has invalid collision bounds` );
+		const box = collision.shape === 'box' && validVector( collision.center ) && validVector( collision.halfExtents ) && collision.halfExtents.every( ( value ) => value > 0 && value <= 1000 ) && typeof collision.walkable === 'boolean' && typeof collision.solid === 'boolean';
+		const heightfield = collision.shape === 'heightfield' && Number.isInteger( collision.columns ) && Number.isInteger( collision.rows ) && collision.columns >= 2 && collision.rows >= 2 && collision.columns <= 4097 && collision.rows <= 4097 && collision.columns * collision.rows <= 4194304 && collision.walkable === true && collision.solid === true;
+		invariant( box || heightfield, `World object ${object.id || '(unknown)'} has invalid collision bounds` );
 	}
 }
 

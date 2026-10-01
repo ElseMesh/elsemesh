@@ -132,6 +132,19 @@ func TestWorldManifestValidatesEnabledObjectCollisionBounds(t *testing.T) {
 	if err := validateManifest(manifest, ownerID.String(), time.Now()); err == nil {
 		t.Fatal("enabled collision with no shape accepted")
 	}
+	manifest.Objects[0].Collision.Shape = "heightfield"
+	manifest.Objects[0].Collision.Columns = 513
+	manifest.Objects[0].Collision.Rows = 513
+	manifest.Objects[0].Collision.Walkable = true
+	manifest.Objects[0].Collision.Solid = true
+	if err := validateManifest(manifest, ownerID.String(), time.Now()); err != nil {
+		t.Fatalf("valid heightfield collision rejected: %v", err)
+	}
+	manifest.Objects[0].Collision.Columns = 4097
+	manifest.Objects[0].Collision.Rows = 4097
+	if err := validateManifest(manifest, ownerID.String(), time.Now()); err == nil {
+		t.Fatal("oversized heightfield collision accepted")
+	}
 }
 
 func TestTemporaryFailoverAuthorityRequiresOwnerWindow(t *testing.T) {
