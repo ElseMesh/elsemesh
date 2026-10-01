@@ -117,7 +117,7 @@ export class WorldConnector {
 		const destination = new WorldConnector( {
 			worldId: portal.destinationWorldId,
 			nodeId: portal.destinationPeerId,
-			gateway: this.gateway,
+			gateway: portal.destinationGateway || this.gateway,
 			chunkBytes: this.chunkBytes,
 		} );
 		await destination.getManifest();

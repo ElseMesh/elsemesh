@@ -194,6 +194,12 @@
           "type": "string",
           "minLength": 1
         },
+        "destinationGateway": {
+          "type": "string",
+          "format": "uri",
+          "description": "Optional HTTPS or WSS origin for the destination node's browser gateway.",
+          "pattern": "^(https|wss)://[^/?#]+/?$"
+        },
         "entry": {
           "$ref": "#/$defs/transform"
         },

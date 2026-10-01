@@ -29,7 +29,7 @@ export function validateWorldSource( source ) {
 		ids.add( object.id );
 	}
 	for ( const portal of source.portals ) {
-		if ( typeof portal.id !== 'string' || ! /^tw-portal:[\w.-]{1,128}$/.test( portal.id ) || ids.has( portal.id ) || ! /^tw-world:[\w.-]{1,128}$/.test( portal.destinationWorldId || '' ) || typeof portal.destinationPeerId !== 'string' || portal.destinationPeerId.length < 20 || portal.destinationPeerId.length > 128 || ! portal.entry || ! validVector( portal.entry.position ) || ! Number.isFinite( portal.entry.yaw ) || ! portal.exit || ! validVector( portal.exit.position ) || ! Number.isFinite( portal.exit.yaw ) || typeof portal.openView !== 'boolean' || typeof portal.enabled !== 'boolean' ) throw new Error( 'Invalid or duplicate portal record' );
+		if ( typeof portal.id !== 'string' || ! /^tw-portal:[\w.-]{1,128}$/.test( portal.id ) || ids.has( portal.id ) || ! /^tw-world:[\w.-]{1,128}$/.test( portal.destinationWorldId || '' ) || typeof portal.destinationPeerId !== 'string' || portal.destinationPeerId.length < 20 || portal.destinationPeerId.length > 128 || ( portal.destinationGateway !== undefined && ! validGateway( portal.destinationGateway ) ) || ! portal.entry || ! validVector( portal.entry.position ) || ! Number.isFinite( portal.entry.yaw ) || ! portal.exit || ! validVector( portal.exit.position ) || ! Number.isFinite( portal.exit.yaw ) || typeof portal.openView !== 'boolean' || typeof portal.enabled !== 'boolean' ) throw new Error( 'Invalid or duplicate portal record' );
 		ids.add( portal.id );
 	}
 	return source;
@@ -37,4 +37,14 @@ export function validateWorldSource( source ) {
 
 function validVector( value ) {
 	return Array.isArray( value ) && value.length === 3 && value.every( ( n ) => Number.isFinite( n ) && Math.abs( n ) <= 1e6 );
+}
+
+function validGateway( value ) {
+	if ( typeof value !== 'string' ) return false;
+	try {
+		const gateway = new URL( value );
+		return [ 'https:', 'wss:' ].includes( gateway.protocol ) && ! gateway.username && ! gateway.password && ( gateway.pathname === '' || gateway.pathname === '/' ) && ! gateway.search && ! gateway.hash;
+	} catch {
+		return false;
+	}
 }

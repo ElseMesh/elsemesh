@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"net/url"
 	"regexp"
 	"strings"
 	"time"
@@ -56,6 +57,7 @@ type portal struct {
 	ID          string    `json:"id"`
 	Destination string    `json:"destinationWorldId"`
 	PeerID      string    `json:"destinationPeerId"`
+	Gateway     string    `json:"destinationGateway,omitempty"`
 	Entry       transform `json:"entry"`
 	Exit        transform `json:"exit"`
 	OpenView    bool      `json:"openView"`
@@ -193,6 +195,9 @@ func validateManifest(manifest worldManifest, localPeerID string, now time.Time)
 		if _, err := peer.Decode(p.PeerID); err != nil {
 			return fmt.Errorf("invalid destination peer for portal %q", p.ID)
 		}
+		if p.Gateway != "" && !validPortalGateway(p.Gateway) {
+			return fmt.Errorf("invalid destination gateway for portal %q", p.ID)
+		}
 		for _, t := range []transform{p.Entry, p.Exit} {
 			for _, coordinate := range t.Position {
 				if math.IsNaN(coordinate) || math.IsInf(coordinate, 0) || math.Abs(coordinate) > 1e6 {
@@ -206,6 +211,11 @@ func validateManifest(manifest worldManifest, localPeerID string, now time.Time)
 		seenPortals[p.ID] = true
 	}
 	return nil
+}
+
+func validPortalGateway(value string) bool {
+	parsed, err := url.Parse(value)
+	return err == nil && parsed.IsAbs() && (parsed.Scheme == "https" || parsed.Scheme == "wss") && parsed.Hostname() != "" && parsed.User == nil && (parsed.Path == "" || parsed.Path == "/") && parsed.RawQuery == "" && parsed.Fragment == ""
 }
 
 type authorityLease struct {

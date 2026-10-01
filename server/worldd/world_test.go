@@ -135,3 +135,16 @@ func TestLookupIncludesAuthorizedCacheProviders(t *testing.T) {
 		t.Fatalf("lookup should omit a node that cannot serve and retain cache peers, got %v", providers)
 	}
 }
+
+func TestPortalGatewayRequiresSecureOrigin(t *testing.T) {
+	for _, gateway := range []string{"https://world.example", "wss://world.example:8443/"} {
+		if !validPortalGateway(gateway) {
+			t.Errorf("secure portal gateway rejected: %s", gateway)
+		}
+	}
+	for _, gateway := range []string{"http://world.example", "wss://user:pass@world.example", "https://world.example/path", "https://world.example?token=x"} {
+		if validPortalGateway(gateway) {
+			t.Errorf("unsafe or ambiguous portal gateway accepted: %s", gateway)
+		}
+	}
+}
