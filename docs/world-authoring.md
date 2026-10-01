@@ -41,7 +41,14 @@ Static asset instances may declare an enabled box collision in local asset coord
 
 Owner-authorized serving permissions live in the source document's optional `hosts` list, so Blender and AI source edits retain the policy that will be signed. Each grant names a node PeerID, a unique subset of `content-cache` and `failover-authority` scopes, an expiry Unix timestamp, and a positive grant epoch. Failover grants also require an activation timestamp and a duration of 1–3600 seconds fully inside the grant expiry. The converter copies grants into the runtime manifest; only the owner node signs that manifest. Keep grants scoped to known neighbors and remove/re-issue them when permissions change.
 
-To produce a runtime document, import each GLB into the node's content store with `worldd --import-asset`, set the resulting ID on the matching source object, then run `tools/world-source-to-manifest.mjs`. The converter carries the versioned source document's `updatedAt` and owner host grants into the runtime manifest so the same source and assets produce byte-stable unsigned manifest content. Worlds are private by default; pass `--discoverable true` only when publishing to public discovery. Blender export preserves `updatedAt` when metadata is unchanged; when it changes metadata, set `SOURCE_DATE_EPOCH` for reproducible timestamps. Finally, use `worldd --sign-manifest` with the world's persistent owner identity. Runtime signing keys stay on the owner node; the AI service must only return unsigned proposals.
+To produce a runtime document, import each GLB with `worldd --import-asset`, set the resulting ID on the matching source object, then run `tools/world-source-to-manifest.mjs`. After signing the result, `worldd --import-package` can install all assets from the generated hash-named `assets` directory in one verified operation:
+
+```sh
+worldd --data ./node --manifest ./world.signed.json \
+  --import-package ./worlds/island/assets
+```
+
+The package operation requires the owner or an active `content-cache` grant, requires the directory to contain exactly the assets listed by that signed manifest, checks each byte count and SHA-256, and verifies every asset before installing any. It is repeatable and leaves existing valid content-addressed files in place. Use `--import-asset` for a single asset or before its ID is known. The converter carries `updatedAt` and owner host grants into the runtime manifest so the same source and assets produce byte-stable unsigned manifest content. Worlds are private by default; pass `--discoverable true` only when publishing to public discovery. Blender export preserves `updatedAt` when metadata is unchanged; when it changes metadata, set `SOURCE_DATE_EPOCH` for reproducible timestamps. Finally, use `worldd --sign-manifest` with the world's persistent owner identity. Runtime signing keys stay on the owner node; the AI service must only return unsigned proposals.
 
 ### Apply a reviewable proposal
 

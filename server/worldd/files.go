@@ -17,6 +17,8 @@ import (
 
 var errFileNotFound = errors.New("file not found")
 
+const maxImportPackageBytes int64 = 16 << 30
+
 func readPrivateKey(path string) ([]byte, error) {
 	data, err := os.ReadFile(path)
 	if errors.Is(err, os.ErrNotExist) {
@@ -89,6 +91,165 @@ func importAsset(source, assetsDir string) (string, error) {
 		return "", err
 	}
 	return id, nil
+}
+
+func importWorldPackage(packageAssetsDir, assetsDir string, manifest worldManifest) (int, int64, error) {
+	packageInfo, err := os.Stat(packageAssetsDir)
+	if err != nil {
+		return 0, 0, err
+	}
+	if !packageInfo.IsDir() {
+		return 0, 0, errors.New("world package assets path must be a directory")
+	}
+	if len(manifest.Assets) > 10000 {
+		return 0, 0, errors.New("world package contains too many assets")
+	}
+
+	expected := make(map[string]assetRef, len(manifest.Assets))
+	var packageBytes int64
+	for _, asset := range manifest.Assets {
+		if !assetIDPattern.MatchString(asset.ID) || asset.Bytes < 0 || asset.Bytes > maxAssetBytes {
+			return 0, 0, fmt.Errorf("invalid package asset %q", asset.ID)
+		}
+		if _, duplicate := expected[asset.ID]; duplicate {
+			return 0, 0, fmt.Errorf("duplicate package asset %q", asset.ID)
+		}
+		if asset.Bytes > maxImportPackageBytes-packageBytes {
+			return 0, 0, errors.New("world package exceeds the 16 GiB import limit")
+		}
+		packageBytes += asset.Bytes
+		expected[strings.TrimPrefix(asset.ID, "sha256:")] = asset
+	}
+	if manifest.Rules.MaxPackageBytes != nil && packageBytes > *manifest.Rules.MaxPackageBytes {
+		return 0, 0, errors.New("world package exceeds its signed byte budget")
+	}
+
+	entries, err := os.ReadDir(packageAssetsDir)
+	if err != nil {
+		return 0, 0, err
+	}
+	if len(entries) != len(expected) {
+		return 0, 0, errors.New("package directory does not contain exactly the manifest assets")
+	}
+	for _, entry := range entries {
+		if _, ok := expected[entry.Name()]; !ok {
+			return 0, 0, fmt.Errorf("package contains unreferenced file %q", entry.Name())
+		}
+		info, err := entry.Info()
+		if err != nil {
+			return 0, 0, err
+		}
+		if !info.Mode().IsRegular() {
+			return 0, 0, fmt.Errorf("package asset %q is not a regular file", entry.Name())
+		}
+	}
+
+	if err := os.MkdirAll(assetsDir, 0700); err != nil {
+		return 0, 0, err
+	}
+	stagingDir, err := os.MkdirTemp(assetsDir, ".package-import-*")
+	if err != nil {
+		return 0, 0, err
+	}
+	defer os.RemoveAll(stagingDir)
+
+	staged := make(map[string]string, len(manifest.Assets))
+	for _, asset := range manifest.Assets {
+		filename := strings.TrimPrefix(asset.ID, "sha256:")
+		source := filepath.Join(packageAssetsDir, filename)
+		info, err := os.Lstat(source)
+		if err != nil {
+			return 0, 0, err
+		}
+		if !info.Mode().IsRegular() || info.Size() != asset.Bytes {
+			return 0, 0, fmt.Errorf("package asset %s has an invalid file type or size", asset.ID)
+		}
+		actualID, err := importAsset(source, stagingDir)
+		if err != nil {
+			return 0, 0, fmt.Errorf("verify package asset %s: %w", asset.ID, err)
+		}
+		if actualID != asset.ID {
+			return 0, 0, fmt.Errorf("package asset %s does not match its signed hash", asset.ID)
+		}
+		staged[asset.ID] = filepath.Join(stagingDir, filename)
+	}
+
+	store := make(map[string]bool, len(manifest.Assets))
+	for _, asset := range manifest.Assets {
+		filename := strings.TrimPrefix(asset.ID, "sha256:")
+		destination := filepath.Join(assetsDir, filename)
+		info, err := os.Lstat(destination)
+		if errors.Is(err, os.ErrNotExist) {
+			store[asset.ID] = false
+			continue
+		}
+		if err != nil {
+			return 0, 0, err
+		}
+		if !info.Mode().IsRegular() || info.Size() != asset.Bytes {
+			return 0, 0, fmt.Errorf("existing content-store entry for %s is not the signed asset", asset.ID)
+		}
+		file, err := os.Open(destination)
+		if err != nil {
+			return 0, 0, err
+		}
+		actualID, hashErr := hashFile(file)
+		closeErr := file.Close()
+		if hashErr != nil {
+			return 0, 0, hashErr
+		}
+		if closeErr != nil {
+			return 0, 0, closeErr
+		}
+		if actualID != asset.ID {
+			return 0, 0, fmt.Errorf("existing content-store entry for %s has a bad hash", asset.ID)
+		}
+		store[asset.ID] = true
+	}
+
+	for _, asset := range manifest.Assets {
+		if store[asset.ID] {
+			continue
+		}
+		filename := strings.TrimPrefix(asset.ID, "sha256:")
+		destination := filepath.Join(assetsDir, filename)
+		if err := os.Link(staged[asset.ID], destination); err != nil {
+			if !errors.Is(err, os.ErrExist) {
+				return 0, 0, err
+			}
+			info, statErr := os.Lstat(destination)
+			if statErr != nil || !info.Mode().IsRegular() || info.Size() != asset.Bytes {
+				return 0, 0, fmt.Errorf("concurrent content-store entry for %s is invalid", asset.ID)
+			}
+			file, openErr := os.Open(destination)
+			if openErr != nil {
+				return 0, 0, openErr
+			}
+			actualID, hashErr := hashFile(file)
+			closeErr := file.Close()
+			if hashErr != nil {
+				return 0, 0, hashErr
+			}
+			if closeErr != nil {
+				return 0, 0, closeErr
+			}
+			if actualID != asset.ID {
+				return 0, 0, fmt.Errorf("concurrent content-store entry for %s has a bad hash", asset.ID)
+			}
+		}
+	}
+	return len(manifest.Assets), packageBytes, nil
+}
+
+func importAuthorizedPackage(document signedDocument, localPeerID, packageAssetsDir, assetsDir string, now time.Time) (int, int64, error) {
+	manifest, err := decodeManifest(document, localPeerID, now)
+	if err != nil {
+		return 0, 0, err
+	}
+	if !canServeWorldAssets(manifest, localPeerID, now) {
+		return 0, 0, errors.New("this node lacks an owner or content-cache grant for package assets")
+	}
+	return importWorldPackage(packageAssetsDir, assetsDir, manifest)
 }
 
 func signManifestFile(source, destination, owner string, key crypto.PrivKey, now time.Time) error {

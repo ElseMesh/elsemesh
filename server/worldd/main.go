@@ -78,6 +78,7 @@ func run() error {
 	signManifestPath := flag.String("sign-manifest", "", "validate and owner-sign an unsigned runtime world manifest, then exit")
 	manifestOut := flag.String("manifest-out", "", "output path for --sign-manifest (must not already exist)")
 	importAssetPath := flag.String("import-asset", "", "import one asset into the content-addressed store, print its sha256 ID, then exit")
+	importPackagePath := flag.String("import-package", "", "verify and import all assets referenced by --manifest from this hash-named assets directory, then exit")
 	printNodeID := flag.Bool("print-node-id", false, "print this data directory's persistent node PeerID, then exit")
 	worldName := flag.String("world-name", "My ThruHold", "create a local starter world when none is supplied")
 	listenPort := flag.Int("p2p-port", 42901, "libp2p TCP and QUIC listen port")
@@ -101,13 +102,13 @@ func run() error {
 	cacheSyncInterval := flag.Duration("cache-sync-interval", 5*time.Minute, "how often to retry missing owner-authorized cached assets")
 	flag.Parse()
 	operationCount := 0
-	for _, requested := range []bool{*printNodeID, *importAssetPath != "", *signManifestPath != ""} {
+	for _, requested := range []bool{*printNodeID, *importAssetPath != "", *importPackagePath != "", *signManifestPath != ""} {
 		if requested {
 			operationCount++
 		}
 	}
 	if operationCount > 1 || (*manifestOut != "" && *signManifestPath == "") {
-		return errors.New("use only one of --print-node-id, --import-asset, or --sign-manifest; --manifest-out requires --sign-manifest")
+		return errors.New("use only one of --print-node-id, --import-asset, --import-package, or --sign-manifest; --manifest-out requires --sign-manifest")
 	}
 	if *listenPort < 1 || *listenPort > 65535 {
 		return errors.New("p2p-port must be between 1 and 65535")
@@ -152,6 +153,21 @@ func run() error {
 			return importErr
 		}
 		fmt.Println(id)
+		return nil
+	}
+	if *importPackagePath != "" {
+		if *manifestPath == "" {
+			return errors.New("--import-package requires an owner-signed --manifest")
+		}
+		document, loadErr := loadWorldManifest(*manifestPath, *dataDir, *worldName, localID.String(), key)
+		if loadErr != nil {
+			return loadErr
+		}
+		count, totalBytes, importErr := importAuthorizedPackage(document, localID.String(), *importPackagePath, filepath.Join(*dataDir, "assets"), time.Now())
+		if importErr != nil {
+			return importErr
+		}
+		fmt.Printf("Imported %d verified package assets (%d bytes)\n", count, totalBytes)
 		return nil
 	}
 	if *signManifestPath != "" {

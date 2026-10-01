@@ -18,4 +18,11 @@ The assets are content-addressed by SHA-256 and their IDs are recorded in the wo
 
 This is a transportable static example world, not a replacement for the playable procedural JavaScript island. The existing game remains the complete, interactive example; this package demonstrates the content that a world node can host independently. Original scanned model files and their CC0 credits remain in `public/models/debris`.
 
-To serve it from a node, import every distinct GLB referenced by the source with `worldd --import-asset`, convert the source with `tools/world-source-to-manifest.mjs`, then sign the result with that node's persistent identity.
+To serve it from a node, import the source GLBs once with `worldd --import-asset` to obtain their IDs, convert the source with `tools/world-source-to-manifest.mjs`, and sign the result with the owner's persistent identity. Then install the complete generated package from its asset directory:
+
+```sh
+worldd --data ./node --manifest ./world.signed.json \
+  --import-package ./worlds/island/assets
+```
+
+The package importer verifies that every file matches the signed manifest and that the directory has no missing or extra files before adding content to the node store. A neighbor can use the same operation only when the owner-signed manifest grants that node `content-cache`.
