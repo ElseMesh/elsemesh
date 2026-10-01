@@ -247,6 +247,38 @@ func activateFailover(manifest worldManifest, delegateID string, key crypto.Priv
 	return signedDocument{}, errors.New("node has no failover-authority grant")
 }
 
+func failoverCheckDelay(manifest worldManifest, localID string, active *signedDocument, now time.Time) time.Duration {
+	if active != nil {
+		var lease authorityLease
+		if json.Unmarshal(active.Payload, &lease) == nil {
+			return time.Unix(lease.ExpiresAt, 0).Sub(now)
+		}
+	}
+	for _, grant := range manifest.Hosts {
+		if grant.PeerID != localID || grant.ExpiresAt <= now.Unix() {
+			continue
+		}
+		authorized := false
+		for _, scope := range grant.Scopes {
+			if scope == "failover-authority" {
+				authorized = true
+				break
+			}
+		}
+		if !authorized {
+			continue
+		}
+		if now.Unix() < grant.FailoverAfter {
+			return time.Unix(grant.FailoverAfter, 0).Sub(now)
+		}
+		end := min(grant.ExpiresAt, grant.FailoverAfter+grant.FailoverSeconds)
+		if now.Unix() < end {
+			return time.Unix(end, 0).Sub(now)
+		}
+	}
+	return 0
+}
+
 func validateAuthorityLease(document signedDocument, manifest worldManifest, now time.Time) (authorityLease, error) {
 	var lease authorityLease
 	if err := verifyDocument(document, "tidewater.authority/1"); err != nil {

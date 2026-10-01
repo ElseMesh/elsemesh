@@ -107,4 +107,10 @@ func TestTemporaryFailoverAuthorityRequiresOwnerWindow(t *testing.T) {
 	if _, err := validateAuthorityLease(document, manifest, time.Unix(start+120, 0)); err == nil {
 		t.Fatal("expired authority lease accepted")
 	}
+	if delay := failoverCheckDelay(manifest, delegateID.String(), nil, time.Unix(start-30, 0)); delay != 30*time.Second {
+		t.Fatalf("daemon should wake at the owner-granted activation time, got %v", delay)
+	}
+	if delay := failoverCheckDelay(manifest, delegateID.String(), &document, time.Unix(start+30, 0)); delay != 90*time.Second {
+		t.Fatalf("daemon should wake to expire its bounded lease, got %v", delay)
+	}
 }

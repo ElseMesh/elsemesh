@@ -47,6 +47,7 @@ type daemon struct {
 	dht            *dht.IpfsDHT
 	discovery      *routing.RoutingDiscovery
 	manifest       signedDocument
+	authorityMu    sync.RWMutex
 	authority      *signedDocument
 	world          worldManifest
 	key            crypto.PrivKey
@@ -196,10 +197,7 @@ func run() error {
 	}
 	d := &daemon{ctx: ctx, host: p2pHost, dht: router, discovery: routing.NewRoutingDiscovery(router), manifest: manifest, world: world, key: key, assetsDir: filepath.Join(*dataDir, "assets"), webRoot: *webRoot, verifiedAssets: make(map[string]assetFileStamp)}
 	if world.OwnerPeerID != localPeerID {
-		if lease, leaseErr := activateFailover(world, localPeerID, key, time.Now()); leaseErr == nil {
-			d.authority = &lease
-			log.Printf("temporary failover authority active for %s at epoch %d", world.WorldID, world.AuthorityEpoch+1)
-		}
+		go d.maintainFailoverAuthority()
 	}
 	if err := os.MkdirAll(d.assetsDir, 0700); err != nil {
 		return err
@@ -405,6 +403,56 @@ func (d *daemon) handleHealth(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"status": "ok", "nodeId": d.host.ID().String(), "worldId": d.world.WorldID, "protocol": manifestProtocol, "dhtPeers": len(d.host.Network().Peers())})
 }
 
+func (d *daemon) maintainFailoverAuthority() {
+	for d.ctx.Err() == nil {
+		now := time.Now()
+		d.authorityMu.Lock()
+		if d.authority != nil {
+			if _, err := validateAuthorityLease(*d.authority, d.world, now); err != nil {
+				d.authority = nil
+			}
+		}
+		if d.authority == nil {
+			if lease, err := activateFailover(d.world, d.host.ID().String(), d.key, now); err == nil {
+				d.authority = &lease
+				log.Printf("temporary failover authority active for %s at epoch %d", d.world.WorldID, d.world.AuthorityEpoch+1)
+			}
+		}
+		var active *signedDocument
+		if d.authority != nil {
+			lease := *d.authority
+			active = &lease
+		}
+		d.authorityMu.Unlock()
+
+		delay := failoverCheckDelay(d.world, d.host.ID().String(), active, now)
+		if delay <= 0 {
+			return
+		}
+		timer := time.NewTimer(delay)
+		select {
+		case <-d.ctx.Done():
+			timer.Stop()
+			return
+		case <-timer.C:
+		}
+	}
+}
+
+func (d *daemon) currentAuthorityLease() *signedDocument {
+	d.authorityMu.Lock()
+	defer d.authorityMu.Unlock()
+	if d.authority == nil {
+		return nil
+	}
+	if _, err := validateAuthorityLease(*d.authority, d.world, time.Now()); err != nil {
+		d.authority = nil
+		return nil
+	}
+	lease := *d.authority
+	return &lease
+}
+
 func (d *daemon) handleNodeRecord(w http.ResponseWriter, _ *http.Request) {
 	addresses := make([]string, 0, len(d.host.Addrs()))
 	for _, addr := range d.host.Addrs() {
@@ -434,7 +482,7 @@ func (d *daemon) handleManifest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Cache-Control", "public, max-age=30, must-revalidate")
-	writeJSON(w, http.StatusOK, map[string]any{"document": d.manifest, "authorityLease": d.authority})
+	writeJSON(w, http.StatusOK, map[string]any{"document": d.manifest, "authorityLease": d.currentAuthorityLease()})
 }
 
 func (d *daemon) handleLookup(w http.ResponseWriter, r *http.Request) {
@@ -716,7 +764,7 @@ func (d *daemon) localRequest(request gatewayMessage) (peerResponse, error) {
 	}
 	switch request.Type {
 	case "manifest.get":
-		return peerResponse{Type: "manifest", WorldID: d.world.WorldID, RequestID: request.RequestID, Document: &d.manifest, AuthorityLease: d.authority}, nil
+		return peerResponse{Type: "manifest", WorldID: d.world.WorldID, RequestID: request.RequestID, Document: &d.manifest, AuthorityLease: d.currentAuthorityLease()}, nil
 	case "asset.get":
 		if !d.canServeAssets(time.Now()) {
 			return peerResponse{}, errors.New("content_cache_not_authorized")
