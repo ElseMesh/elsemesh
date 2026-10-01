@@ -104,11 +104,12 @@ async function buildGLTF( gltf ) {
 		}
 		const base = pbr.baseColorFactor || [ 1, 1, 1, 1 ];
 		const alphaMode = source.alphaMode || 'OPAQUE';
+		const vertexColors = gltf.meshes.some( ( primitives ) => primitives.some( ( primitive ) => primitive.material === index && primitive.attributes.COLOR_0 !== undefined ) );
 		resolvedMaterials.push( standard( {
 			name: source.name || `world-material-${index}`,
 			color: new Color().setRGB( base[ 0 ], base[ 1 ], base[ 2 ], SRGBColorSpace ), opacity: base[ 3 ], roughness: pbr.roughnessFactor ?? 1,
 			metalness: pbr.metallicFactor ?? 1, side: source.doubleSided ? 'double' : 'front',
-			transparent: alphaMode === 'BLEND', alphaTest: alphaMode === 'MASK' ? ( source.alphaCutoff ?? 0.5 ) : 0,
+			transparent: alphaMode === 'BLEND', alphaTest: alphaMode === 'MASK' ? ( source.alphaCutoff ?? 0.5 ) : 0, vertexColors,
 			textures: albedo ? { worldAlbedo: albedo } : {},
 			defines: { WORLD_HAS_ALBEDO: albedo ? 1 : 0 },
 			surface: `#if WORLD_HAS_ALBEDO\n\tlet baseColor = textureSample( worldAlbedo, smpAnisoRepeat, in.uv );\n\ts.albedo *= baseColor.rgb;\n\ts.alpha *= baseColor.a;\n#endif\n`,

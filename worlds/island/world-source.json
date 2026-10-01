@@ -1,0 +1,43 @@
+{
+  "protocol": "tidewater.world-source/1",
+  "worldId": "tw-world:example-island",
+  "title": "Example Island",
+  "coordinateSystem": "right-handed-y-up-meters",
+  "styleGuide": "Procedural volcanic island terrain. Preserve the coast, central bay, volcanic ridge, beaches, seabed, and terrain color regions.",
+  "rules": {
+    "gravity": 1,
+    "avatarComplexity": 20000,
+    "physicsProfile": "tidewater-default",
+    "requiredFeatures": [
+      "tidewater.static-glb/1"
+    ]
+  },
+  "objects": [
+    {
+      "id": "tw-object:island-terrain",
+      "kind": "asset-instance",
+      "label": "Procedural island terrain",
+      "assetId": "sha256:aa8e00c83c42e4be705fb09b4c13c590e51a005fde3e1b3fa74ebcfd448f6173",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "yaw": 0
+      },
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    }
+  ],
+  "portals": [],
+  "updatedAt": "2026-10-01T00:00:00Z"
+}
