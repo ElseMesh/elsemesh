@@ -40,6 +40,14 @@ worldd --data ./world-data --manifest ./world-data/world.signed.json --webtransp
 
 `--import-asset` prints the content hash to assign to a source object. Signing validates the runtime document and never overwrites an existing signature file. Review and edit owner grants in the unsigned manifest before signing when delegating a cache or failover role. A manifest must be signed by the owning identity before other nodes can host it; neighbor permission configuration UX is still pending.
 
+To seed an owner-authorized neighbor cache, first get that node's PeerID with `worldd --data ./neighbor-cache --print-node-id`, add an unexpired `content-cache` grant for that PeerID to the owner manifest, sign it, and provide the signed manifest to the neighbor. Start the neighbor with `--cache-from <owner-peer-id>` and a `--bootstrap` multiaddr for that source if it is not discoverable through DHT. The cache node fetches missing assets over libp2p, verifies the complete SHA-256 before an atomic install, and only advertises a discoverable world after all its manifest assets are verified locally. Use `--cache-sync-interval` to adjust retry cadence. Only the owner or a node with an active `content-cache` grant can serve asset bytes; a `failover-authority` grant alone never permits content serving.
+
+```sh
+worldd --data ./neighbor-cache --manifest ./world.signed.json \
+  --bootstrap /ip4/<owner-ip>/tcp/42901/p2p/<owner-peer-id> \
+  --cache-from <owner-peer-id>
+```
+
 Build/test from the repo's `server` directory with Go 1.24.6 or newer. For Linux use `go build -o worldd ./worldd`; for Android arm64/Termux use `GOOS=android GOARCH=arm64 go build -ldflags=-checklinkname=0 -o worldd ./worldd`. The linker flag is required by the current libp2p Android network-interface dependency (`wlynxg/anet`), which uses Go linkname to work around Android netlink restrictions; keep it scoped to the Android build. For public browsers, serve the web app and gateway through HTTPS/WSS. The daemon's default HTTP bind is loopback. Bootstrap peers must speak the legacy Tidewater DHT protocol prefix; generic public IPFS bootstrap peers are not compatible.
 
-See `server/worldd` for the current code. This is an evolving prototype. It does not yet provide a production bootstrap directory, Google authentication, full owner policy engine, live cross-world rendering/handoff, or robust multi-writer simulation.
+See `server/worldd` for the current code. This is an evolving prototype. It does not yet provide a production bootstrap directory, Google authentication, full owner policy engine, rendered open-portal previews, or robust multi-writer simulation.

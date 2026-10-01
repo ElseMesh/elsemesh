@@ -42,16 +42,18 @@ func (s *stringFlags) String() string         { return strings.Join(*s, ",") }
 func (s *stringFlags) Set(value string) error { *s = append(*s, value); return nil }
 
 type daemon struct {
-	ctx       context.Context
-	host      host.Host
-	dht       *dht.IpfsDHT
-	discovery *routing.RoutingDiscovery
-	manifest  signedDocument
-	authority *signedDocument
-	world     worldManifest
-	key       crypto.PrivKey
-	assetsDir string
-	webRoot   string
+	ctx            context.Context
+	host           host.Host
+	dht            *dht.IpfsDHT
+	discovery      *routing.RoutingDiscovery
+	manifest       signedDocument
+	authority      *signedDocument
+	world          worldManifest
+	key            crypto.PrivKey
+	assetsDir      string
+	webRoot        string
+	assetCheckMu   sync.Mutex
+	verifiedAssets map[string]assetFileStamp
 }
 
 func main() {
@@ -83,8 +85,11 @@ func run() error {
 	serveRelay := flag.Bool("relay-service", false, "allow this node to provide a bounded libp2p circuit relay")
 	var bootstrap stringFlags
 	var relays stringFlags
+	var cacheFrom stringFlags
 	flag.Var(&bootstrap, "bootstrap", "bootstrap peer multiaddr (repeatable)")
 	flag.Var(&relays, "relay", "static relay peer multiaddr (repeatable)")
+	flag.Var(&cacheFrom, "cache-from", "owner-authorized upstream node PeerID to seed this node's content cache (repeatable)")
+	cacheSyncInterval := flag.Duration("cache-sync-interval", 5*time.Minute, "how often to retry missing owner-authorized cached assets")
 	flag.Parse()
 	operationCount := 0
 	for _, requested := range []bool{*printNodeID, *importAssetPath != "", *signManifestPath != ""} {
@@ -100,6 +105,9 @@ func run() error {
 	}
 	if *dhtMode != "auto" && *dhtMode != "client" && *dhtMode != "server" {
 		return errors.New("dht-mode must be auto, client, or server")
+	}
+	if *cacheSyncInterval < time.Second {
+		return errors.New("cache-sync-interval must be at least one second")
 	}
 	if (*webTransportAddress == "" && (*webTransportCert != "" || *webTransportKey != "")) || (*webTransportAddress != "" && (*webTransportCert == "" || *webTransportKey == "")) {
 		return errors.New("--webtransport requires both --webtransport-tls-cert and --webtransport-tls-key")
@@ -186,7 +194,7 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("world manifest: %w", err)
 	}
-	d := &daemon{ctx: ctx, host: p2pHost, dht: router, discovery: routing.NewRoutingDiscovery(router), manifest: manifest, world: world, key: key, assetsDir: filepath.Join(*dataDir, "assets"), webRoot: *webRoot}
+	d := &daemon{ctx: ctx, host: p2pHost, dht: router, discovery: routing.NewRoutingDiscovery(router), manifest: manifest, world: world, key: key, assetsDir: filepath.Join(*dataDir, "assets"), webRoot: *webRoot, verifiedAssets: make(map[string]assetFileStamp)}
 	if world.OwnerPeerID != localPeerID {
 		if lease, leaseErr := activateFailover(world, localPeerID, key, time.Now()); leaseErr == nil {
 			d.authority = &lease
@@ -195,6 +203,20 @@ func run() error {
 	}
 	if err := os.MkdirAll(d.assetsDir, 0700); err != nil {
 		return err
+	}
+	cacheSources := make([]peer.ID, 0, len(cacheFrom))
+	for _, value := range cacheFrom {
+		id, decodeErr := peer.Decode(value)
+		if decodeErr != nil || id == p2pHost.ID() {
+			return fmt.Errorf("invalid --cache-from peer %q", value)
+		}
+		cacheSources = append(cacheSources, id)
+	}
+	if len(cacheSources) > 0 {
+		if !d.canServeAssets(time.Now()) {
+			return errors.New("--cache-from requires ownership or an active content-cache grant")
+		}
+		go d.syncCacheLoop(cacheSources, *cacheSyncInterval)
 	}
 	p2pHost.SetStreamHandler(worldProtocol, d.handlePeerStream)
 	go d.advertiseWorld()
@@ -317,11 +339,29 @@ func newStarterManifest(title, owner string) worldManifest {
 }
 
 func (d *daemon) advertiseWorld() {
-	if !d.world.Discoverable {
+	if !d.world.Discoverable || !d.canServeAssets(time.Now()) {
 		return
+	}
+	for {
+		if d.ctx.Err() != nil || !d.canServeAssets(time.Now()) {
+			return
+		}
+		if d.hasCompleteAssets() {
+			break
+		}
+		timer := time.NewTimer(5 * time.Second)
+		select {
+		case <-d.ctx.Done():
+			timer.Stop()
+			return
+		case <-timer.C:
+		}
 	}
 	namespace := "tidewater-world-v1:" + d.world.WorldID
 	for {
+		if !d.canServeAssets(time.Now()) || !d.hasCompleteAssets() {
+			return
+		}
 		ctx, cancel := context.WithTimeout(d.ctx, 75*time.Second)
 		ttl, err := d.discovery.Advertise(ctx, namespace)
 		cancel()
@@ -329,7 +369,11 @@ func (d *daemon) advertiseWorld() {
 			log.Printf("world discovery publish failed: %v", err)
 			ttl = 5 * time.Minute
 		}
-		timer := time.NewTimer(ttl * 2 / 3)
+		refresh := ttl * 2 / 3
+		if refresh > time.Minute {
+			refresh = time.Minute
+		}
+		timer := time.NewTimer(refresh)
 		select {
 		case <-d.ctx.Done():
 			timer.Stop()
@@ -404,7 +448,11 @@ func (d *daemon) handleLookup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if worldID == d.world.WorldID {
-		writeJSON(w, http.StatusOK, map[string]any{"worldId": worldID, "providers": []string{d.host.ID().String()}, "authority": d.world.OwnerPeerID})
+		providers := []string{}
+		if d.canServeAssets(time.Now()) && d.hasCompleteAssets() {
+			providers = append(providers, d.host.ID().String())
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"worldId": worldID, "providers": providers, "authority": d.world.OwnerPeerID})
 		return
 	}
 	ctx, cancel := context.WithTimeout(r.Context(), 8*time.Second)
@@ -429,6 +477,10 @@ func (d *daemon) handleLookup(w http.ResponseWriter, r *http.Request) {
 }
 
 func (d *daemon) handleAsset(w http.ResponseWriter, r *http.Request) {
+	if !d.canServeAssets(time.Now()) {
+		http.Error(w, "this node is not authorized to cache world content", http.StatusForbidden)
+		return
+	}
 	if r.Method != http.MethodGet && r.Method != http.MethodHead {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
@@ -450,7 +502,8 @@ func (d *daemon) handleAsset(w http.ResponseWriter, r *http.Request) {
 	}
 	defer f.Close()
 	info, err := f.Stat()
-	if err != nil || !info.Mode().IsRegular() || info.Size() > maxAssetBytes {
+	asset, ok := d.assetRef(id)
+	if err != nil || !ok || !info.Mode().IsRegular() || info.Size() != asset.Bytes {
 		http.Error(w, "asset unavailable", http.StatusBadRequest)
 		return
 	}
@@ -483,8 +536,10 @@ func (d *daemon) resolveWorldPeer(ctx context.Context, worldID, targetPeerID str
 	if d.host.Network().Connectedness(peerID) == network.Connected {
 		return nil
 	}
-	if err := d.discoverTarget(ctx, worldID, peerID); err != nil {
-		return err
+	if len(d.host.Peerstore().Addrs(peerID)) == 0 {
+		if err := d.discoverTarget(ctx, worldID, peerID); err != nil {
+			return err
+		}
 	}
 	connectCtx, cancel := context.WithTimeout(ctx, 12*time.Second)
 	defer cancel()
@@ -596,9 +651,44 @@ func (d *daemon) handleBrowserGateway(w http.ResponseWriter, r *http.Request) {
 }
 
 func (d *daemon) manifestHasAsset(id string) bool {
+	_, ok := d.assetRef(id)
+	return ok
+}
+
+func (d *daemon) assetRef(id string) (assetRef, bool) {
 	for _, asset := range d.world.Assets {
 		if asset.ID == id {
-			return true
+			return asset, true
+		}
+	}
+	return assetRef{}, false
+}
+
+func (d *daemon) hasCompleteAssets() bool {
+	for _, asset := range d.world.Assets {
+		if !d.hasVerifiedAsset(asset) {
+			return false
+		}
+	}
+	return true
+}
+
+func (d *daemon) canServeAssets(now time.Time) bool {
+	return canServeWorldAssets(d.world, d.host.ID().String(), now)
+}
+
+func canServeWorldAssets(manifest worldManifest, localID string, now time.Time) bool {
+	if manifest.OwnerPeerID == localID {
+		return true
+	}
+	for _, grant := range manifest.Hosts {
+		if grant.PeerID != localID || grant.ExpiresAt <= now.Unix() {
+			continue
+		}
+		for _, scope := range grant.Scopes {
+			if scope == "content-cache" {
+				return true
+			}
 		}
 	}
 	return false
@@ -628,6 +718,9 @@ func (d *daemon) localRequest(request gatewayMessage) (peerResponse, error) {
 	case "manifest.get":
 		return peerResponse{Type: "manifest", WorldID: d.world.WorldID, RequestID: request.RequestID, Document: &d.manifest, AuthorityLease: d.authority}, nil
 	case "asset.get":
+		if !d.canServeAssets(time.Now()) {
+			return peerResponse{}, errors.New("content_cache_not_authorized")
+		}
 		return d.assetChunk(request)
 	default:
 		return peerResponse{}, errors.New("unsupported_request")
@@ -643,8 +736,10 @@ func (d *daemon) gatewayRequest(ctx context.Context, request gatewayMessage) (pe
 		return peerResponse{}, errors.New("invalid_target_peer")
 	}
 	if d.host.Network().Connectedness(peerID) != network.Connected {
-		if err := d.discoverTarget(ctx, request.WorldID, peerID); err != nil {
-			return peerResponse{}, err
+		if len(d.host.Peerstore().Addrs(peerID)) == 0 {
+			if err := d.discoverTarget(ctx, request.WorldID, peerID); err != nil {
+				return peerResponse{}, err
+			}
 		}
 		connectCtx, cancel := context.WithTimeout(ctx, 12*time.Second)
 		defer cancel()
@@ -694,7 +789,8 @@ func (d *daemon) discoverTarget(ctx context.Context, worldID string, target peer
 }
 
 func (d *daemon) assetChunk(request gatewayMessage) (peerResponse, error) {
-	if !d.manifestHasAsset(request.AssetID) {
+	asset, ok := d.assetRef(request.AssetID)
+	if !ok {
 		return peerResponse{}, errors.New("asset_not_in_manifest")
 	}
 	if request.Offset < 0 || request.Length < 1 || request.Length > 192<<10 {
@@ -707,12 +803,8 @@ func (d *daemon) assetChunk(request gatewayMessage) (peerResponse, error) {
 	}
 	defer f.Close()
 	info, err := f.Stat()
-	if err != nil || !info.Mode().IsRegular() || info.Size() > maxAssetBytes {
+	if err != nil || !info.Mode().IsRegular() || info.Size() != asset.Bytes {
 		return peerResponse{}, errors.New("asset_unavailable")
-	}
-	actual, err := hashFile(f)
-	if err != nil || actual != request.AssetID {
-		return peerResponse{}, errors.New("asset_hash_mismatch")
 	}
 	if request.Offset >= info.Size() && info.Size() != 0 {
 		return peerResponse{}, errors.New("asset_offset_out_of_range")

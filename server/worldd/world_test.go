@@ -31,6 +31,9 @@ func TestWorldManifestOwnerAndScopedHostGrant(t *testing.T) {
 	}
 	delegateID, _ := peer.IDFromPublicKey(delegate.GetPublic())
 	manifest.Hosts = []hostingGrant{{PeerID: delegateID.String(), Scopes: []string{"content-cache"}, ExpiresAt: time.Now().Add(time.Hour).Unix(), Epoch: 1}}
+	if !canServeWorldAssets(manifest, delegateID.String(), time.Now()) {
+		t.Fatal("active content-cache grant should allow serving immutable assets")
+	}
 	document, err = signDocument(manifestProtocol, manifest, owner)
 	if err != nil {
 		t.Fatal(err)
@@ -44,6 +47,16 @@ func TestWorldManifestOwnerAndScopedHostGrant(t *testing.T) {
 	manifest.Hosts[0].ExpiresAt = time.Now().Add(-time.Hour).Unix()
 	if err := validateManifest(manifest, delegateID.String(), time.Now()); err == nil {
 		t.Fatal("expired host grant accepted")
+	}
+	if canServeWorldAssets(manifest, delegateID.String(), time.Now()) {
+		t.Fatal("expired content-cache grant still allowed asset serving")
+	}
+	manifest.Hosts[0] = hostingGrant{PeerID: delegateID.String(), Scopes: []string{"failover-authority"}, Epoch: 1, FailoverAfter: time.Now().Add(-time.Minute).Unix(), FailoverSeconds: 30, ExpiresAt: time.Now().Add(time.Hour).Unix()}
+	if canServeWorldAssets(manifest, delegateID.String(), time.Now()) {
+		t.Fatal("failover-authority scope implicitly granted content caching")
+	}
+	if !canServeWorldAssets(manifest, ownerID.String(), time.Now()) {
+		t.Fatal("world owner should always be able to serve its own assets")
 	}
 }
 
