@@ -5,7 +5,7 @@ import { mkdtemp, readFile, readdir, rm } from 'node:fs/promises';
 import path from 'node:path';
 import { parseGLB } from '../src/engine/loaders/GLTF.js';
 import { getDetailImage } from '../src/world/terrain/DetailTextures.js';
-import { disposeWorldPackage, loadWorldPackage, registerWorldPackageCollisions, unregisterWorldPackageCollisions } from '../src/network/WorldPackage.js';
+import { appendWorldPackageAssets, disposeWorldPackage, loadWorldPackage, registerWorldPackageCollisions, unregisterWorldPackageCollisions } from '../src/network/WorldPackage.js';
 import { validateWorldSource } from '../src/network/WorldSource.js';
 import { Colliders } from '../src/world/Colliders.js';
 import { decodeVegetationPlacements } from '../src/network/VegetationPlacements.js';
@@ -33,6 +33,7 @@ try {
 	assert.ok( checkedInSource.objects.some( ( object ) => object.id === 'tw-object:island-village' ), 'checked-in island source contains the static village GLB instance' );
 	const checkedInBoat = checkedInSource.objects.find( ( object ) => object.id === 'tw-object:moored-lobster-boat' );
 	assert.ok( checkedInBoat, 'checked-in island package includes its moored boat as a static visual asset' );
+	assert.equal( checkedInBoat.priority, 'portal-preview', 'the moored boat is included in open portal previews' );
 	assert.deepEqual( checkedInBoat.transform.position, [ 64.5, 0, 36.5 ], 'static boat instance matches the playable world dock location' );
 	assert.equal( checkedInBoat.collision.enabled, false, 'static preview boat does not imply unsupported boat physics' );
 	const checkedInBoatGLB = parseGLB( await readFile( path.join( checkedInDir, 'assets', checkedInBoat.assetId.slice( 'sha256:'.length ) ) ) );
@@ -74,6 +75,11 @@ try {
 	assert.equal( primitive.mode, 4, 'terrain export must use triangle lists' );
 	assert.ok( primitive.attributes.COLOR_0, 'terrain export must carry its deterministic vertex colors' );
 	assert.equal( primitive.indices.length, 512 * 512 * 6, 'terrain export must cover the full configured grid' );
+	const terrainPreview = source.objects.find( ( object ) => object.id === 'tw-object:island-terrain-preview' );
+	assert.ok( terrainPreview && terrainPreview.priority === 'portal-preview' && terrainPreview.collision.enabled === false, 'open portal view gets non-colliding preview terrain' );
+	assert.equal( source.objects[ 0 ].replacesObjectId, terrainPreview.id, 'full terrain replaces the lightweight portal terrain' );
+	const previewGLB = parseGLB( firstAssets.get( terrainPreview.assetId ) );
+	assert.equal( previewGLB.meshes[ 0 ][ 0 ].indices.length, 128 * 128 * 6, 'portal terrain preview uses one sixteenth as many grid cells as full terrain' );
 	assert.deepEqual( source.rules.requiredFeatures, [ 'tidewater.static-glb/1', 'tidewater.static-glb-quaternion/1', 'tidewater.static-vegetation/1', 'tidewater.island-ocean/1' ], 'GLB transforms, portable vegetation, and the example ocean declare runtime capabilities' );
 	assert.equal( source.components.length, 2, 'portable island declares vegetation and ocean components' );
 	assert.equal( source.components[ 0 ].type, 'tidewater.static-vegetation/1', 'portable island uses terrain-independent, authored world-space vegetation placements' );
@@ -117,6 +123,14 @@ try {
 		}
 	} );
 	assert.equal( runtimeMeshes, 1, 'runtime package loader must instantiate the exported terrain mesh' );
+	const previewPayload = firstAssets.get( terrainPreview.assetId );
+	const terrainManifest = { assets: [ { id: terrainPreview.assetId, priority: 'portal-preview' }, { id: source.objects[ 0 ].assetId, priority: 'visible' } ], objects: [ source.objects[ 0 ], terrainPreview ] };
+	const terrainConnector = { worldId: source.worldId, manifest: terrainManifest };
+	const progressiveRoot = await loadWorldPackage( terrainConnector, { assets: new Map( [ [ terrainPreview.assetId, previewPayload ] ] ), objectIDs: new Set( [ terrainPreview.id ] ) } );
+	assert.equal( progressiveRoot.children[ 0 ].visible, true, 'preview terrain is visible while high detail is not loaded' );
+	await appendWorldPackageAssets( terrainConnector, progressiveRoot, new Map( [ [ source.objects[ 0 ].assetId, payload ] ] ), { objectIDs: new Set( [ source.objects[ 0 ].id ] ) } );
+	assert.equal( progressiveRoot.children.find( ( object ) => object.userData.worldObjectId === terrainPreview.id ).visible, false, 'full terrain hides the preview when it arrives' );
+	assert.equal( progressiveRoot.children.find( ( object ) => object.userData.worldObjectId === source.objects[ 0 ].id ).visible, true, 'full terrain remains visible after replacement' );
 	const villagePayload = villageBytes.buffer.slice( villageBytes.byteOffset, villageBytes.byteOffset + villageBytes.byteLength );
 	const villageConnector = { worldId: source.worldId, manifest: { assets: [ { id: villageObject.assetId, priority: 'visible' } ], objects: [ villageObject ] } };
 	const villageRoot = await loadWorldPackage( villageConnector, { assets: new Map( [ [ villageObject.assetId, villagePayload ] ] ) } );
@@ -157,6 +171,7 @@ try {
 	disposeWorldPackage( villageRoot );
 	disposeWorldPackage( filteredRoot );
 	disposeWorldPackage( rotatedRoot );
+	disposeWorldPackage( progressiveRoot );
 	console.log( 'ok deterministic procedural island terrain and village GLB package' );
 } finally {
 	await rm( output, { recursive: true, force: true } );

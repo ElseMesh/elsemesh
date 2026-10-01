@@ -472,6 +472,7 @@ export function validateWorldObjects( objects ) {
 	const ids = new Set();
 	for ( const object of objects ) {
 		invariant( object && typeof object.id === 'string' && /^tw-object:[\w.-]{1,128}$/.test( object.id ) && ! ids.has( object.id ), 'World manifest has an invalid or duplicate object ID' );
+		invariant( object.replacesObjectId === undefined || typeof object.replacesObjectId === 'string' && /^tw-object:[\w.-]{1,128}$/.test( object.replacesObjectId ) && object.replacesObjectId !== object.id, `World object ${object.id} has an invalid replacement reference` );
 		ids.add( object.id );
 		invariant( object?.priority === undefined || [ 'portal-preview', 'visible', 'nearby', 'background' ].includes( object.priority ), `World object ${object.id || '(unknown)'} has an invalid streaming priority` );
 		if ( object?.streamingBounds !== undefined ) {
@@ -488,6 +489,13 @@ export function validateWorldObjects( objects ) {
 		const heightfield = collision.shape === 'heightfield' && Number.isInteger( collision.columns ) && Number.isInteger( collision.rows ) && collision.columns >= 2 && collision.rows >= 2 && collision.columns <= 4097 && collision.rows <= 4097 && collision.columns * collision.rows <= 4194304 && collision.walkable === true && collision.solid === true;
 		const compound = collision.shape === 'compound' && Array.isArray( collision.boxes ) && collision.boxes.length > 0 && collision.boxes.length <= 2048 && collision.boxes.every( ( item ) => item && validVector( item.center ) && item.center.every( ( value ) => Math.abs( value ) <= 1e6 ) && validVector( item.halfExtents ) && item.halfExtents.every( ( value ) => value > 0 && value <= 1000 ) && Number.isFinite( item.yaw ) && Math.abs( item.yaw ) <= 360 && typeof item.walkable === 'boolean' && typeof item.solid === 'boolean' );
 		invariant( box || heightfield || compound, `World object ${object.id || '(unknown)'} has invalid collision bounds` );
+	}
+	const objectByID = new Map( objects.map( ( object ) => [ object.id, object ] ) );
+	const replacedIDs = new Set();
+	for ( const object of objects ) if ( object.replacesObjectId ) {
+		const replaced = objectByID.get( object.replacesObjectId );
+		invariant( replaced && replaced.priority === 'portal-preview' && object.priority !== 'portal-preview' && replaced.collision?.enabled !== true && ! replacedIDs.has( replaced.id ), `World object ${object.id} has an invalid preview replacement` );
+		replacedIDs.add( replaced.id );
 	}
 	return ids;
 }

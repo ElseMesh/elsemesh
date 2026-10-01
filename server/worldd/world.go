@@ -55,15 +55,16 @@ type assetRef struct {
 }
 
 type worldObject struct {
-	ID              string           `json:"id"`
-	Kind            string           `json:"kind"`
-	Label           string           `json:"label"`
-	AssetID         string           `json:"assetId"`
-	Priority        string           `json:"priority,omitempty"`
-	StreamingBounds *streamingBounds `json:"streamingBounds,omitempty"`
-	Transform       transform        `json:"transform"`
-	Scale           vector3          `json:"scale"`
-	Collision       struct {
+	ID               string           `json:"id"`
+	Kind             string           `json:"kind"`
+	Label            string           `json:"label"`
+	AssetID          string           `json:"assetId"`
+	Priority         string           `json:"priority,omitempty"`
+	ReplacesObjectID string           `json:"replacesObjectId,omitempty"`
+	StreamingBounds  *streamingBounds `json:"streamingBounds,omitempty"`
+	Transform        transform        `json:"transform"`
+	Scale            vector3          `json:"scale"`
+	Collision        struct {
 		Shape       string         `json:"shape"`
 		Enabled     bool           `json:"enabled"`
 		Center      vector3        `json:"center"`
@@ -353,6 +354,21 @@ func validateManifest(manifest worldManifest, localPeerID string, now time.Time)
 			}
 		}
 		seenObjects[object.ID] = true
+	}
+	objectByID := make(map[string]worldObject, len(manifest.Objects))
+	for _, object := range manifest.Objects {
+		objectByID[object.ID] = object
+	}
+	replacedObjects := make(map[string]bool)
+	for _, object := range manifest.Objects {
+		if object.ReplacesObjectID == "" {
+			continue
+		}
+		preview, exists := objectByID[object.ReplacesObjectID]
+		if !exists || preview.Priority != "portal-preview" || object.Priority == "portal-preview" || preview.Collision.Enabled || replacedObjects[preview.ID] {
+			return fmt.Errorf("invalid preview replacement on world object %q", object.ID)
+		}
+		replacedObjects[preview.ID] = true
 	}
 	seenPortals := make(map[string]bool, len(manifest.Portals))
 	for _, p := range manifest.Portals {

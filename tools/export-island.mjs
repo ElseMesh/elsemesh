@@ -43,7 +43,9 @@ if ( process.env.SOURCE_DATE_EPOCH !== undefined ) {
 const terrain = new TerrainData( 7 );
 const glb = exportTerrain( terrain, 512 );
 const assetId = `sha256:${createHash( 'sha256' ).update( glb ).digest( 'hex' )}`;
-const staticAssets = new Map( [ [ assetId, glb ] ] );
+const terrainPreviewGLB = exportTerrain( terrain, 128 );
+const terrainPreviewAssetId = `sha256:${createHash( 'sha256' ).update( terrainPreviewGLB ).digest( 'hex' )}`;
+const staticAssets = new Map( [ [ assetId, glb ], [ terrainPreviewAssetId, terrainPreviewGLB ] ] );
 const generated = buildIslandProceduralContent( terrain );
 const villageGLB = exportBatchGLB( generated.villageBatches, 'Procedural village' );
 const villageAssetId = `sha256:${createHash( 'sha256' ).update( villageGLB ).digest( 'hex' )}`;
@@ -94,10 +96,21 @@ const source = {
 		label: 'Procedural island terrain',
 		assetId,
 		priority: 'visible',
+		replacesObjectId: 'tw-object:island-terrain-preview',
 		streamingBounds: { center: [ 0, 0, 0 ], radius: 500 },
 		transform: { position: [ 0, 0, 0 ], yaw: 0 },
 		scale: [ 1, 1, 1 ],
 		collision: { shape: 'heightfield', enabled: true, columns: 513, rows: 513, walkable: true, solid: true },
+	}, {
+		id: 'tw-object:island-terrain-preview',
+		kind: 'asset-instance',
+		label: 'Portal preview terrain',
+		assetId: terrainPreviewAssetId,
+		priority: 'portal-preview',
+		streamingBounds: { center: [ 0, 0, 0 ], radius: 500 },
+		transform: { position: [ 0, 0, 0 ], yaw: 0 },
+		scale: [ 1, 1, 1 ],
+		collision: { shape: 'none', enabled: false },
 	}, {
 		id: 'tw-object:island-village',
 		kind: 'asset-instance',
@@ -113,7 +126,7 @@ const source = {
 		kind: 'asset-instance',
 		label: 'Moored lobster boat (static preview)',
 		assetId: boatAssetId,
-		priority: 'visible',
+		priority: 'portal-preview',
 		streamingBounds: { center: [ WORLD.boatDock.position.x, WORLD.boatDock.position.y, WORLD.boatDock.position.z ], radius: 8 },
 		transform: { position: [ WORLD.boatDock.position.x, WORLD.boatDock.position.y, WORLD.boatDock.position.z ], yaw: WORLD.boatDock.heading },
 		scale: [ 1, 1, 1 ],

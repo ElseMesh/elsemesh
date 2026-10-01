@@ -4,6 +4,8 @@
 
 ThruHolds are authored in Blender and through a separate AI editor service. ElseMesh will not ship an in-game world editor in this direction. Blender is the visual authoring tool; the existing `tidewater.world-source/1` JSON identifier is retained for compatibility; the AI service will propose edits to that document and its referenced assets.
 
+For open portal views, an object may declare `replacesObjectId` pointing to a non-colliding `portal-preview` object. The preview can render while visible-tier assets stream; the runtime hides it once the higher-detail object arrives, regardless of arrival order. Preview objects are visual only and must not carry gameplay collision.
+
 A Blender project is a working scene, not the canonical network publication. Keep the editable source, export recipe, and reproducible packaged world assets under version control. The procedural island follows the same rule: it is a built-in example world whose source and exported package live in this repository, rather than a permanent scene layer. A selected hosted world replaces the currently active world content. Server runtime manifests are separately validated and owner-signed; never treat an AI proposal or `.blend` file as an authorization to publish.
 
 ## Replaceable world content and packaging

@@ -79,7 +79,7 @@ async function main() {
 		title: source.title,
 		rules: { ...source.rules, styleGuide: source.styleGuide },
 		assets: [ ...assets.values() ],
-		objects: source.objects.map( ( { id, kind, label, assetId, priority, streamingBounds, transform, scale, collision } ) => ( { id, kind, label, assetId, priority, streamingBounds, transform, scale, collision } ) ),
+		objects: source.objects.map( ( { id, kind, label, assetId, priority, streamingBounds, transform, scale, collision, replacesObjectId } ) => ( { id, kind, label, assetId, priority, streamingBounds, transform, scale, collision, replacesObjectId } ) ),
 		components: source.components || [],
 		portals: source.portals,
 		hosts: ( source.hosts || [] ).map( ( grant ) => ( { ...grant, scopes: [ ...grant.scopes ] } ) ),

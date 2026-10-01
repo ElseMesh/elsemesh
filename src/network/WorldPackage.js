@@ -67,6 +67,11 @@ export async function appendWorldPackageAssets( connector, root, assets, { signa
 		instance.scale.set( ...( object.scale || [ 1, 1, 1 ] ) );
 		root.add( instance );
 		state.loadedObjects.add( object.id );
+		if ( object.replacesObjectId ) {
+			const replaced = root.children.find( ( child ) => child.userData.worldObjectId === object.replacesObjectId );
+			if ( replaced ) replaced.visible = false;
+		}
+		if ( object.priority === 'portal-preview' && objectRecords.some( ( replacement ) => replacement.replacesObjectId === object.id && state.loadedObjects.has( replacement.id ) ) ) instance.visible = false;
 
 	}
 	return root;

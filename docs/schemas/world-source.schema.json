@@ -276,6 +276,11 @@
             "nearby",
             "background"
           ]
+        },
+        "replacesObjectId": {
+          "type": "string",
+          "pattern": "^tw-object:[\\w.-]{1,128}$",
+          "description": "A higher-detail object that replaces a non-colliding portal-preview object after its asset loads."
         }
       },
       "additionalProperties": true,
