@@ -3,6 +3,7 @@ import { UI } from './UI.js';
 import { G } from '../core/Globals.js';
 import { GroundBounce } from '../materials/GroundBounce.js';
 import { createWorldInviteURL } from '../network/WorldConnector.js';
+import { AccountClient, accountConfiguration } from '../network/AccountClient.js';
 
 // Binds the ElseMesh UI (panel + HUD) to the running app.
 const SEA = {
@@ -124,6 +125,38 @@ export class AppUI {
 			}
 
 		} } );
+		const accountConfig = accountConfiguration();
+		if ( accountConfig ) {
+
+			const accountFolder = worldTab.addFolder( 'Account', { icon: 'user' } );
+			let accountControls = [];
+			const account = new AccountClient( accountConfig, () => {
+				accountFolder.refresh();
+				for ( const [ control, visible ] of accountControls ) control.setVisible( visible() );
+			} );
+			accountFolder.addInfo( { label: 'Status', get: () => account.status } );
+			const signIn = accountFolder.addButton( { label: 'Sign in with Google', icon: 'user', onClick: async () => {
+				try { await account.signIn(); }
+				catch ( error ) { if ( error.name !== 'AbortError' ) ui.toast( `Could not sign in: ${ error.message }`, 4200 ); }
+			} } );
+			const signOut = accountFolder.addButton( { label: 'Sign out', icon: 'logout', onClick: async () => {
+				try { await account.logout(); ui.toast( 'Signed out' ); }
+				catch ( error ) { ui.toast( `Could not sign out: ${ error.message }`, 4200 ); }
+			} } );
+			const unlinkKey = accountFolder.addButton( { label: 'Unlink this device key', icon: 'unlink', onClick: async () => {
+				if ( ! window.confirm( 'Unlink this browser key from your ElseMesh account? This signs this device out.' ) ) return;
+				try { await account.unlinkKey(); ui.toast( 'Browser key unlinked' ); }
+				catch ( error ) { ui.toast( `Could not unlink key: ${ error.message }`, 4200 ); }
+			} } );
+			const deleteAccount = accountFolder.addButton( { label: 'Delete account association', icon: 'trash', variant: 'ghost', onClick: async () => {
+				if ( ! window.confirm( 'Delete the ElseMesh account association and unlink its device key? This does not delete worlds or world-owner keys.' ) ) return;
+				try { await account.deleteAccount(); ui.toast( 'Account association deleted' ); }
+				catch ( error ) { ui.toast( `Could not delete account association: ${ error.message }`, 4200 ); }
+			} } );
+			accountControls = [ [ signIn, () => ! account.signedIn ], [ signOut, () => account.signedIn ], [ unlinkKey, () => account.signedIn ], [ deleteAccount, () => account.signedIn ] ];
+			for ( const [ control, visible ] of accountControls ) control.setVisible( visible() );
+
+		}
 
 		// ---------------------------------------------------------------- Ocean
 		const ocean = ui.addTab( 'ocean', 'Ocean', 'ocean' );

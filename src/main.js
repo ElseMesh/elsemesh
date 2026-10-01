@@ -3,6 +3,14 @@ import { App } from './App.js';
 import { UI } from './ui/UI.js';
 import { AppUI } from './ui/AppUI.js';
 
+// Public deployments can opt into account sign-in without exposing secrets or
+// requiring a build change. A missing file leaves the guest experience intact.
+try {
+	await import( /* @vite-ignore */ new URL( 'elsemesh-config.js', document.baseURI ).href );
+} catch ( error ) {
+	console.warn( 'Optional ElseMesh account configuration is unavailable:', error.message );
+}
+
 // ?bench runs in background tabs too (automation): rAF does not fire in a hidden page
 if ( /[?&]bench\b/.test( location.search ) ) {
 
