@@ -18,7 +18,8 @@ try {
 	assert.equal( detailImage.width, 512, 'procedural placement can access the shared detail image without initializing WebGPU' );
 	assert.equal( detailImage.data.length, 512 * 512 * 4, 'CPU detail image retains the exact shared RGBA data layout' );
 	const checkedInDir = path.resolve( 'worlds/island' );
-	const checkedInSource = validateWorldSource( JSON.parse( await readFile( path.join( checkedInDir, 'world-source.json' ), 'utf8' ) ) );
+	const checkedInSourceBytes = await readFile( path.join( checkedInDir, 'world-source.json' ) );
+	const checkedInSource = validateWorldSource( JSON.parse( checkedInSourceBytes ) );
 	const checkedInIDs = new Set( [ ...checkedInSource.objects.map( ( object ) => object.assetId ), ...checkedInSource.components.map( ( component ) => component.placementAssetId ).filter( Boolean ) ] );
 	const checkedInFiles = ( await readdir( path.join( checkedInDir, 'assets' ) ) ).sort();
 	assert.deepEqual( checkedInFiles, [ ...checkedInIDs ].map( ( id ) => id.slice( 'sha256:'.length ) ).sort(), 'checked-in island package stores exactly its referenced assets' );
@@ -46,6 +47,7 @@ try {
 	const source = validateWorldSource( JSON.parse( sourceBytes ) );
 	const assetBytes = await readFile( path.join( output, 'assets', source.objects[ 0 ].assetId.slice( 'sha256:'.length ) ) );
 	assert.deepEqual( sourceBytes, sourceFirst, 'repeated source generation must be byte-identical' );
+	assert.deepEqual( sourceBytes, checkedInSourceBytes, 'checked-in world source must match a clean deterministic export' );
 	assert.deepEqual( assetBytes, assetFirst, 'repeated GLB generation must be byte-identical' );
 	const placementID = source.components[ 0 ].placementAssetId;
 	const placementBytes = await readFile( path.join( output, 'assets', placementID.slice( 'sha256:'.length ) ) );
@@ -55,6 +57,7 @@ try {
 	for ( const [ id, bytes ] of firstAssets ) {
 		assert.deepEqual( await readFile( path.join( output, 'assets', id.slice( 'sha256:'.length ) ) ), bytes, `repeated generation must preserve bytes for ${id}` );
 		assert.equal( `sha256:${createHash( 'sha256' ).update( bytes ).digest( 'hex' )}`, id, `content-addressed asset bytes must match ${id}` );
+		assert.deepEqual( await readFile( path.join( checkedInDir, 'assets', id.slice( 'sha256:'.length ) ) ), bytes, `checked-in package must contain current exported bytes for ${id}` );
 	}
 	const assetFiles = ( await readdir( path.join( output, 'assets' ) ) ).sort();
 	assert.deepEqual( assetFiles, [ ...firstAssets.keys() ].map( ( id ) => id.slice( 'sha256:'.length ) ).sort(), 'package asset directory contains exactly the referenced unique assets' );
