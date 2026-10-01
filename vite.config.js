@@ -1,8 +1,8 @@
 import { execFileSync } from 'node:child_process';
 import { defineConfig } from 'vite';
 
-const commitSha = process.env.ELSEMESH_COMMIT_SHA || execFileSync( 'git', [ 'rev-parse', 'HEAD' ], { encoding: 'utf8' } ).trim();
-if ( ! /^[\da-f]{40}$/i.test( commitSha ) ) throw new Error( 'ELSEMESH_COMMIT_SHA must be the full 40-character Git HEAD SHA' );
+const commitSha = execFileSync( 'git', [ 'rev-parse', 'HEAD' ], { encoding: 'utf8' } ).trim();
+if ( ! /^[\da-f]{40}$/i.test( commitSha ) ) throw new Error( 'Git HEAD must be a full 40-character commit SHA' );
 const commitShort = commitSha.slice( 0, 8 ).toLowerCase();
 
 export default defineConfig( {
