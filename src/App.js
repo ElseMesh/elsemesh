@@ -725,6 +725,24 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 				mesh.layers.set( LAYERS.WATER );
 				root.add( mesh );
 				installed.push( { islandOcean: true, update: ( _dt, camera ) => lod.update( camera ), dispose: () => { root.remove( mesh ); lod.geometry.dispose(); } } );
+			} else if ( component.type === 'tidewater.water-body/1' ) {
+				const extent = component.extent;
+				const lod = new CDLOD( {
+					gridSize: Number( this.qs.get( 'G' ) || 32 ), leafSize: 8, levels: 12, minY: - 25, maxY: 25,
+					center: { x: component.center[ 0 ] - extent, z: component.center[ 1 ] - extent, size: extent * 2 },
+				} );
+				const surface = new WaterSurface( { fft: this.fft, cdlod: lod, foamTexture: this.foamTexture, seaLevel: connector.manifest.rules.seaLevel } );
+				const material = new WaterMaterial( {
+					surface, sky: this.sky, sceneCopy: this.sceneRenderer.opaqueCopy, sceneDepthHalf: this.sceneRenderer.opaqueDepthHalf.texture,
+				} );
+				material.clouds = this.clouds;
+				if ( this.desktopAdaptiveScale ) material.params.ssr.value = 0;
+				const mesh = new Mesh( lod.geometry, material );
+				mesh.frustumCulled = false;
+				mesh.receiveShadow = true;
+				mesh.layers.set( LAYERS.WATER );
+				root.add( mesh );
+				installed.push( { waterBody: true, update: ( _dt, camera ) => lod.update( camera ), dispose: () => { root.remove( mesh ); lod.geometry.dispose(); material.dispose(); } } );
 			}
 		}
 		root.userData.worldComponents = installed;
@@ -732,7 +750,10 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 
 	updateWorldComponents( root, dt, camera ) {
 		const components = root?.userData?.worldComponents || [];
-		if ( dt > 0 && components.some( ( component ) => component.islandOcean ) ) this.fft.update( dt );
+		const activeWater = components.some( ( component ) => component.islandOcean || component.waterBody );
+		const previewRoot = this.portalPreviewId ? this.portalPreparations.get( this.portalPreviewId )?.root : null;
+		const previewWater = ( previewRoot?.userData?.worldComponents || [] ).some( ( component ) => component.islandOcean || component.waterBody );
+		if ( dt > 0 && ( activeWater || previewWater ) ) this.fft.update( dt );
 		for ( const component of components ) component.update( dt, camera );
 	}
 

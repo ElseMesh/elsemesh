@@ -23,7 +23,7 @@ import { FFT_SIZE } from './OceanFFT.js';
 //   (seaDetailSample), surfFoam.module (surfFoamShading).
 export class WaterSurface {
 
-	constructor( { fft, cdlod, foamTexture } ) {
+	constructor( { fft, cdlod, foamTexture, seaLevel = null } ) {
 
 		this.fft = fft;
 		this.cdlod = cdlod;
@@ -42,6 +42,7 @@ export class WaterSurface {
 			foamCoverage: [ 'f32', 1 ],
 			foamSharpness: [ 'f32', 2.2 ],
 			foamScale: [ 'f32', 0.09 ], // pattern repeats per meter
+			...( seaLevel === null ? {} : { seaLevel: [ 'f32', seaLevel ] } ),
 		}, { label: 'waterSurface' } );
 		const F = this.params.fields;
 		this.amplitude = F.amplitude;
@@ -49,6 +50,7 @@ export class WaterSurface {
 		this.foamCoverage = F.foamCoverage;
 		this.foamSharpness = F.foamSharpness;
 		this.foamScale = F.foamScale;
+		this.seaLevel = seaLevel === null ? null : F.seaLevel;
 		// per-cascade contribution to the foam coverage
 		this.foamWeights = [ 0.35, 0.45, 0.5, 0.25 ];
 
@@ -111,6 +113,7 @@ fn waterSurfaceCascadeAttenuation( c: i32, depth: f32 ) -> f32 {
 		const T = !! this.terrain, SH = !! this.shore, WK = !! this.wake, DT = !! this.detail;
 		const SF = this.surfFoam;
 		const SIM = !! this.shoreSim;
+		const seaLevel = this.seaLevel ? 'waterSurface.seaLevel' : 'frame.seaLevel';
 		const cd = this.cdlod.module.name;
 		const CdV = cd[ 0 ].toUpperCase() + cd.slice( 1 ) + 'Vertex';
 		const f = ( x ) => Number( x ).toFixed( 6 );
@@ -156,7 +159,7 @@ struct WaterSurfaceVertex {
 
 // depth of the sea floor below mean sea level at xz (m)
 fn waterSurfaceSeaDepth( xz: vec2f ) -> f32 {
-	return ${ T ? 'frame.seaLevel - terrainHeightAt( xz )' : '500.0' };
+	return ${ T ? `${seaLevel} - terrainHeightAt( xz )` : '500.0' };
 }
 
 fn waterSurfaceVertex( node: vec4f, grid: vec2f ) -> WaterSurfaceVertex {
@@ -164,7 +167,7 @@ fn waterSurfaceVertex( node: vec4f, grid: vec2f ) -> WaterSurfaceVertex {
 	let worldXZ = lod.worldXZ;
 	let spacing = lod.spacing;
 	let ground = ${ T ? 'terrainHeightAt( worldXZ )' : '-500.0' };
-	let depth = ${ T ? 'frame.seaLevel - ground' : '500.0' };
+	let depth = ${ T ? `${seaLevel} - ground` : '500.0' };
 
 	var disp = vec3f( 0.0 );
 	var foam = 0.0;
@@ -195,7 +198,7 @@ ${ SH ? /* wgsl */`
 ${ WK ? '	extra += wakeDisplacement( worldXZ );' : '' }
 
 	var total = disp + extra;
-	var y = frame.seaLevel + total.y;
+	var y = ${seaLevel} + total.y;
 ${ SH ? /* wgsl */`
 	if ( nearShore ) {
 		// thin run-up sheet on the sand: take whichever surface is higher (smooth max)
@@ -219,7 +222,7 @@ ${ SH ? /* wgsl */`
 	}` : '' }
 ${ T ? /* wgsl */`
 	// hide the water sheet below dry land (beyond the swash zone)
-	let below = select( ground - 0.06, min( ground - 2.0, frame.seaLevel - 1.0 ), depth < -3.0 );
+	let below = select( ground - 0.06, min( ground - 2.0, ${seaLevel} - 1.0 ), depth < -3.0 );
 	y = select( y, min( y, below ), y < ground );` : '' }
 
 	var o: WaterSurfaceVertex;

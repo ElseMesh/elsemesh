@@ -201,6 +201,7 @@ export class WaterMaterial extends Material {
 	_shadeWGSL( { T, SH, SIM, SF, CL, HULL, REFL } ) {
 
 		const S = this.waterSurface;
+		const seaLevel = S.seaLevel ? 'waterSurface.seaLevel' : 'frame.seaLevel';
 		// the ShoreWaves module always provides shoreCrestPath / shoreSurfMedium (WGSL; the TSL-era
 		// guards on JS methods of the same names were always false in the port)
 		const hasCrest = SH;
@@ -350,7 +351,7 @@ ${ SH ? '	let folded = surf.jacobian < 0.1 || normalize( in.vs.vShoreN ).y < 0.3
 			let Rv = normalize( ( frame.view * vec4f( Rraw, 0.0 ) ).xyz );
 			// (rays toward the camera get no weight: see facing in _waterSSR)
 			if ( Rv.z < 0.5 ) {
-				let r = _waterSSR( posV, Rv, pos.y, Rraw.y );
+				let r = _waterSSR( posV, Rv, pos.y, Rraw.y, ${seaLevel} );
 				reflCol = mix( reflCol, r.rgb, r.a );
 				ssrW = r.a;
 			}
@@ -683,7 +684,7 @@ fn _waterProject( p: vec3f ) -> vec2f {
 // back toward the camera and at the end of the search range.
 // y0, ry: world height of the start and the ray's rise per metre. A hit beyond 260 m, or below the
 // water on a descending ray, is weighted 0, so the march stops once the last miss is there.
-fn _waterSSR( posV: vec3f, Rv: vec3f, y0: f32, ry: f32 ) -> vec4f {
+fn _waterSSR( posV: vec3f, Rv: vec3f, y0: f32, ry: f32, seaLevel: f32 ) -> vec4f {
 	var hit = false;
 	// steps grow with the distance: far away the first ones would all land in the same pixel
 	let stepScale = max( - posV.z / 60.0, 1.0 );
@@ -692,7 +693,7 @@ fn _waterSSR( posV: vec3f, Rv: vec3f, y0: f32, ry: f32 ) -> vec4f {
 	var prevT = 0.0;
 	for ( var i = 0; i < 11; i++ ) {
 		prevT = t;
-		if ( prevT >= 260.0 || ( ry <= 0.0 && y0 + ry * prevT < frame.seaLevel - 0.2 ) ) { break; }
+		if ( prevT >= 260.0 || ( ry <= 0.0 && y0 + ry * prevT < seaLevel - 0.2 ) ) { break; }
 		t += dt;
 		dt *= 1.7;
 		let p = posV + Rv * t;
@@ -731,7 +732,7 @@ fn _waterSSR( posV: vec3f, Rv: vec3f, y0: f32, ry: f32 ) -> vec4f {
 		color = textureSampleLevel( waterSceneColor, smpLinearClamp, uv, 0.0 ).rgb;
 		let edge = smoothstep( 0.0, 0.06, uv.x ) * smoothstep( 1.0, 0.94, uv.x ) * smoothstep( 0.0, 0.06, uv.y ) * smoothstep( 1.0, 0.94, uv.y );
 		let facing = smoothstep( 0.5, 0.1, Rv.z ); // rays toward the camera leave the screen
-		weight = edge * facing * touch * smoothstep( 260.0, 120.0, hitT ) * smoothstep( frame.seaLevel - 0.15, frame.seaLevel + 0.35, hitY );
+		weight = edge * facing * touch * smoothstep( 260.0, 120.0, hitT ) * smoothstep( seaLevel - 0.15, seaLevel + 0.35, hitY );
 	}
 	return vec4f( color, weight );
 }

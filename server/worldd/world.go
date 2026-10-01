@@ -97,11 +97,13 @@ type portal struct {
 }
 
 type worldComponent struct {
-	ID               string `json:"id"`
-	Type             string `json:"type"`
-	Seed             uint32 `json:"seed,omitempty"`
-	Priority         string `json:"priority,omitempty"`
-	PlacementAssetID string `json:"placementAssetId,omitempty"`
+	ID               string    `json:"id"`
+	Type             string    `json:"type"`
+	Seed             uint32    `json:"seed,omitempty"`
+	Priority         string    `json:"priority,omitempty"`
+	PlacementAssetID string    `json:"placementAssetId,omitempty"`
+	Center           []float64 `json:"center,omitempty"`
+	Extent           float64   `json:"extent,omitempty"`
 }
 
 func (component *worldComponent) UnmarshalJSON(data []byte) error {
@@ -120,6 +122,8 @@ func (component *worldComponent) UnmarshalJSON(data []byte) error {
 	case "tidewater.static-vegetation/1":
 		allowed["placementAssetId"] = true
 	case "tidewater.island-ocean/1":
+	case "tidewater.water-body/1":
+		allowed["center"], allowed["extent"] = true, true
 	default:
 		return fmt.Errorf("unsupported world component type %q", typeName)
 	}
@@ -414,6 +418,7 @@ func validateManifest(manifest worldManifest, localPeerID string, now time.Time)
 	}
 	seenComponents := make(map[string]bool, len(manifest.Components))
 	islandOceanCount := 0
+	waterBodyCount := 0
 	assetRefs := make(map[string]assetRef, len(manifest.Assets))
 	for _, asset := range manifest.Assets {
 		assetRefs[asset.ID] = asset
@@ -422,11 +427,26 @@ func validateManifest(manifest worldManifest, localPeerID string, now time.Time)
 		vegetation := component.Type == "tidewater.procedural-island-vegetation/1" && component.Seed == 7
 		staticVegetation := component.Type == "tidewater.static-vegetation/1" && component.Seed == 0 && component.PlacementAssetID != ""
 		islandOcean := component.Type == "tidewater.island-ocean/1" && component.Seed == 0 && component.PlacementAssetID == ""
+		waterBody := component.Type == "tidewater.water-body/1" && component.Seed == 0 && component.PlacementAssetID == "" && len(component.Center) == 2 && component.Extent >= 8 && component.Extent <= 100000
+		if waterBody {
+			waterBodyCount++
+			for _, coordinate := range component.Center {
+				if math.IsNaN(coordinate) || math.IsInf(coordinate, 0) || math.Abs(coordinate)+component.Extent > 1e6 {
+					waterBody = false
+				}
+			}
+			if math.IsNaN(component.Extent) || math.IsInf(component.Extent, 0) {
+				waterBody = false
+			}
+		}
 		if islandOcean {
 			islandOceanCount++
 		}
-		if !componentIDPattern.MatchString(component.ID) || seenComponents[component.ID] || seenObjects[component.ID] || seenPortals[component.ID] || (!vegetation && !staticVegetation && !islandOcean) || islandOceanCount > 1 || component.Priority != "" && component.Priority != "portal-preview" && component.Priority != "visible" && component.Priority != "nearby" && component.Priority != "background" || !seenFeatures[component.Type] {
+		if !componentIDPattern.MatchString(component.ID) || seenComponents[component.ID] || seenObjects[component.ID] || seenPortals[component.ID] || (!vegetation && !staticVegetation && !islandOcean && !waterBody) || islandOceanCount > 1 || waterBodyCount > 1 || component.Priority != "" && component.Priority != "portal-preview" && component.Priority != "visible" && component.Priority != "nearby" && component.Priority != "background" || !seenFeatures[component.Type] {
 			return fmt.Errorf("invalid or unsupported world component %q", component.ID)
+		}
+		if waterBody && (manifest.Rules.SeaLevel == nil || islandOceanCount > 0) || islandOcean && waterBodyCount > 0 {
+			return errors.New("portable water requires seaLevel and cannot be combined with island-ocean")
 		}
 		if component.PlacementAssetID != "" {
 			asset, exists := assetRefs[component.PlacementAssetID]

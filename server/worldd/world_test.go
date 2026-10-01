@@ -320,6 +320,43 @@ func TestWorldManifestValidatesOptionalEnvironmentLevels(t *testing.T) {
 	}
 }
 
+func TestWorldManifestValidatesPortableWaterBody(t *testing.T) {
+	key := testKey(t)
+	ownerID, err := peer.IDFromPublicKey(key.GetPublic())
+	if err != nil {
+		t.Fatal(err)
+	}
+	seaLevel := 2.5
+	manifest := newStarterManifest("Portable water", ownerID.String())
+	manifest.WorldID = "tw-world:portable-water"
+	manifest.Rules.SeaLevel = &seaLevel
+	manifest.Rules.RequiredFeatures = []string{"tidewater.water-body/1"}
+	manifest.Components = []worldComponent{{ID: "tw-component:water", Type: "tidewater.water-body/1", Center: []float64{-20, 45}, Extent: 256}}
+	if err := validateManifest(manifest, ownerID.String(), time.Now()); err != nil {
+		t.Fatalf("valid terrain-independent water body rejected: %v", err)
+	}
+	document, err := signDocument(manifestProtocol, manifest, key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := decodeManifest(document, ownerID.String(), time.Now()); err != nil {
+		t.Fatalf("signed portable water component failed daemon JSON decode: %v", err)
+	}
+	var unknownField []worldComponent
+	if err := json.Unmarshal([]byte(`[{"id":"tw-component:water","type":"tidewater.water-body/1","center":[0,0],"extent":256,"profile":"custom"}]`), &unknownField); err == nil {
+		t.Fatal("unknown portable water component profile accepted")
+	}
+	manifest.Rules.SeaLevel = nil
+	if err := validateManifest(manifest, ownerID.String(), time.Now()); err == nil {
+		t.Fatal("water body without a declared sea level accepted")
+	}
+	manifest.Rules.SeaLevel = &seaLevel
+	manifest.Components[0].Center = []float64{1e6, 0}
+	if err := validateManifest(manifest, ownerID.String(), time.Now()); err == nil {
+		t.Fatal("water body extending beyond world bounds accepted")
+	}
+}
+
 func TestWorldManifestEnforcesAggregatePackageByteBudget(t *testing.T) {
 	key, _, err := crypto.GenerateEd25519Key(rand.Reader)
 	if err != nil {
