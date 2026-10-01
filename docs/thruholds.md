@@ -10,6 +10,8 @@ The daemon is a transport and content service. The world owner controls the mani
 
 Node-to-node connections use libp2p TCP/QUIC, DHT discovery on the existing Tidewater-prefixed protocol namespace, optional static bootstrap peers, NAT traversal, and opt-in circuit relays. Browser clients cannot use native TCP/QUIC directly, so the node exposes a WebSocket gateway intended to sit behind HTTPS. An optional WebTransport HTTP/3 gateway can be enabled for browsers that support the pinned draft; clients prefer it on HTTPS and fall back to WSS if connection setup fails. Keep WSS available because WebTransport draft support varies by browser and deployment. Public deployment must configure TLS, reachable UDP for HTTP/3, request limits, rate limits, and a trusted bootstrap/DHT mesh.
 
+Android restricts the netlink interface scan used by libp2p. On Termux, provide each reachable interface address with repeatable `--announce-address` values; accepted forms are `/ip4/<address>/tcp/<port>`, `/ip6/<address>/tcp/<port>`, and the corresponding `/udp/<port>/quic-v1` form. These addresses are advertised in signed node records and DHT results. A private Wi-Fi address is only reachable on that LAN; Internet access still needs a forwarded public port or a configured relay. Without an address reachable by intended peers, the daemon can run and serve the local browser gateway but other nodes may not dial it.
+
 A browser link should identify the world and its gateway, for example `https://world-host.example/?worldId=tw-world:...&gateway=wss://world-host.example/gateway`. Invite links can also include a node PeerID/address. Unknown worlds are looked up by world ID through configured discovery; do not trust an unsigned URL as proof of ownership.
 
 An optional `directoryd` service provides HTTPS world lookup and signed node links. It is not required for hosting, world authority, or access to a known node. Directory entries are short-lived node-signed records paired with owner-signed manifests; the service indexes only discoverable worlds whose node is the owner or has an active `content-cache` grant. Nodes publish only after every manifest asset is present and hash-verified. The browser verifies the node record and then verifies the owner-signed world manifest and provider grant. Community relays remain operator opt-in, bounded, and observable.
@@ -45,6 +47,8 @@ worldd --data ./world-data --manifest ./world-data/world.signed.json \
   --public-gateway https://world-host.example --directory-url https://thruhold.org
 directoryd --http 127.0.0.1:5202 --data ./directory-data
 ```
+
+On Android/Termux, add explicit reachable libp2p addresses when interface discovery is restricted, for example `--announce-address /ip4/192.168.1.42/tcp/42901 --announce-address /ip4/192.168.1.42/udp/42901/quic-v1` for a LAN peer.
 
 Run `directoryd` behind HTTPS and rate limiting; its default listener is loopback. The directory stores announcements for up to 24 hours, while `worldd` refreshes every 12 hours. The node must be owner-authorized, and the world manifest must set `discoverable: true`. Browser links can select this directory without relying on the page's own host: `https://rebroad.github.io/tidewater/?worldId=tw-world:...&directory=https%3A%2F%2Fthruhold.org`. This repository supplies the directory service; registering or operating the `thruhold.org` domain is a separate deployment step.
 

@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -92,9 +93,11 @@ func run() error {
 	var bootstrap stringFlags
 	var relays stringFlags
 	var cacheFrom stringFlags
+	var announceAddresses stringFlags
 	flag.Var(&bootstrap, "bootstrap", "bootstrap peer multiaddr (repeatable)")
 	flag.Var(&relays, "relay", "static relay peer multiaddr (repeatable)")
 	flag.Var(&cacheFrom, "cache-from", "owner-authorized upstream node PeerID to seed this node's content cache (repeatable)")
+	flag.Var(&announceAddresses, "announce-address", "externally reachable IP multiaddr to advertise (repeatable; useful when Android blocks interface discovery)")
 	cacheSyncInterval := flag.Duration("cache-sync-interval", 5*time.Minute, "how often to retry missing owner-authorized cached assets")
 	flag.Parse()
 	operationCount := 0
@@ -114,6 +117,10 @@ func run() error {
 	}
 	if *cacheSyncInterval < time.Second {
 		return errors.New("cache-sync-interval must be at least one second")
+	}
+	parsedAnnounceAddresses, err := parseAnnounceAddresses(announceAddresses)
+	if err != nil {
+		return fmt.Errorf("announce address: %w", err)
 	}
 	if (*webTransportAddress == "" && (*webTransportCert != "" || *webTransportKey != "")) || (*webTransportAddress != "" && (*webTransportCert == "" || *webTransportKey == "")) {
 		return errors.New("--webtransport requires both --webtransport-tls-cert and --webtransport-tls-key")
@@ -156,8 +163,11 @@ func run() error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	listen := []string{fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", *listenPort), fmt.Sprintf("/ip4/0.0.0.0/udp/%d/quic-v1", *listenPort)}
+	listen := libp2pListenAddresses(*listenPort, parsedAnnounceAddresses)
 	opts := []libp2p.Option{libp2p.Identity(key), libp2p.ListenAddrStrings(listen...), libp2p.EnableAutoNATv2(), libp2p.EnableHolePunching()}
+	if len(parsedAnnounceAddresses) > 0 {
+		opts = append(opts, libp2p.AddrsFactory(appendAnnouncedAddresses(parsedAnnounceAddresses)))
+	}
 	if *serveRelay {
 		opts = append(opts, libp2p.EnableRelayService())
 	}
@@ -306,6 +316,69 @@ func parsePeerAddrs(values []string) ([]peer.AddrInfo, error) {
 		infos = append(infos, *info)
 	}
 	return infos, nil
+}
+
+func parseAnnounceAddresses(values []string) ([]ma.Multiaddr, error) {
+	if len(values) > 16 {
+		return nil, errors.New("at most 16 announce addresses are allowed")
+	}
+	addresses := make([]ma.Multiaddr, 0, len(values))
+	seen := make(map[string]bool, len(values))
+	for _, value := range values {
+		addr, err := ma.NewMultiaddr(value)
+		if err != nil {
+			return nil, err
+		}
+		protocols := addr.Protocols()
+		validShape := len(protocols) == 2 && (protocols[0].Code == ma.P_IP4 || protocols[0].Code == ma.P_IP6) && protocols[1].Code == ma.P_TCP
+		validShape = validShape || len(protocols) == 3 && (protocols[0].Code == ma.P_IP4 || protocols[0].Code == ma.P_IP6) && protocols[1].Code == ma.P_UDP && protocols[2].Code == ma.P_QUIC_V1
+		if !validShape {
+			return nil, fmt.Errorf("%q must be an IP/TCP or IP/UDP/QUIC-v1 multiaddr without a peer ID", value)
+		}
+		ipText, err := addr.ValueForProtocol(protocols[0].Code)
+		if err != nil {
+			return nil, err
+		}
+		ip := net.ParseIP(ipText)
+		if ip == nil || !ip.IsGlobalUnicast() {
+			return nil, fmt.Errorf("%q must use a non-loopback unicast IP address", value)
+		}
+		canonical := addr.String()
+		if !seen[canonical] {
+			addresses = append(addresses, addr)
+			seen[canonical] = true
+		}
+	}
+	return addresses, nil
+}
+
+func appendAnnouncedAddresses(extra []ma.Multiaddr) func([]ma.Multiaddr) []ma.Multiaddr {
+	return func(addresses []ma.Multiaddr) []ma.Multiaddr {
+		result := append([]ma.Multiaddr(nil), addresses...)
+		seen := make(map[string]bool, len(result)+len(extra))
+		for _, address := range result {
+			seen[address.String()] = true
+		}
+		for _, address := range extra {
+			if !seen[address.String()] {
+				result = append(result, address)
+				seen[address.String()] = true
+			}
+		}
+		return result
+	}
+}
+
+func libp2pListenAddresses(port int, announced []ma.Multiaddr) []string {
+	addresses := []string{fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", port), fmt.Sprintf("/ip4/0.0.0.0/udp/%d/quic-v1", port)}
+	for _, address := range announced {
+		protocols := address.Protocols()
+		if len(protocols) > 0 && protocols[0].Code == ma.P_IP6 {
+			addresses = append(addresses, fmt.Sprintf("/ip6/::/tcp/%d", port), fmt.Sprintf("/ip6/::/udp/%d/quic-v1", port))
+			break
+		}
+	}
+	return addresses
 }
 
 func loadWorldManifest(path, dataDir, title, owner string, key crypto.PrivKey) (signedDocument, error) {
