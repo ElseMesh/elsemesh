@@ -106,6 +106,44 @@ type worldComponent struct {
 	Center           []float64        `json:"center,omitempty"`
 	Extent           float64          `json:"extent,omitempty"`
 	Profile          string           `json:"profile,omitempty"`
+	Beds             []audioBed       `json:"beds,omitempty"`
+}
+
+type audioBed struct {
+	AssetID     string   `json:"assetId"`
+	Gain        float64  `json:"gain"`
+	Condition   string   `json:"condition,omitempty"`
+	Position    *vector3 `json:"position,omitempty"`
+	RefDistance *float64 `json:"refDistance,omitempty"`
+	Rolloff     *float64 `json:"rolloff,omitempty"`
+}
+
+func (bed *audioBed) UnmarshalJSON(data []byte) error {
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(data, &fields); err != nil {
+		return err
+	}
+	for key := range fields {
+		if key != "assetId" && key != "gain" && key != "condition" && key != "position" && key != "refDistance" && key != "rolloff" {
+			return fmt.Errorf("unknown field %q in ambient audio bed", key)
+		}
+	}
+	if fields["assetId"] == nil || fields["gain"] == nil {
+		return errors.New("ambient audio bed requires assetId and gain")
+	}
+	if rawPosition, exists := fields["position"]; exists {
+		var position []float64
+		if err := json.Unmarshal(rawPosition, &position); err != nil || len(position) != 3 {
+			return errors.New("ambient audio bed position must contain three coordinates")
+		}
+	}
+	type plain audioBed
+	var decoded plain
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		return err
+	}
+	*bed = audioBed(decoded)
+	return nil
 }
 
 func (component *worldComponent) UnmarshalJSON(data []byte) error {
@@ -128,6 +166,8 @@ func (component *worldComponent) UnmarshalJSON(data []byte) error {
 	case "tidewater.island-ocean/1":
 	case "tidewater.water-body/1":
 		allowed["center"], allowed["extent"], allowed["profile"] = true, true, true
+	case "tidewater.ambient-audio/1":
+		allowed["beds"] = true
 	default:
 		return fmt.Errorf("unsupported world component type %q", typeName)
 	}
@@ -441,6 +481,7 @@ func validateManifest(manifest worldManifest, localPeerID string, now time.Time)
 	seenComponents := make(map[string]bool, len(manifest.Components))
 	islandOceanCount := 0
 	waterBodyCount := 0
+	ambientAudioCount := 0
 	waterBodies := make([]worldComponent, 0, 4)
 	assetRefs := make(map[string]assetRef, len(manifest.Assets))
 	for _, asset := range manifest.Assets {
@@ -450,6 +491,7 @@ func validateManifest(manifest worldManifest, localPeerID string, now time.Time)
 		vegetation := component.Type == "tidewater.procedural-island-vegetation/1" && component.Seed == 7
 		staticVegetation := component.Type == "tidewater.static-vegetation/1" && component.Seed == 0 && component.PlacementAssetID != ""
 		staticReef := component.Type == "tidewater.static-reef/1" && component.Seed == 0 && component.PlacementAssetID != "" && component.StreamingBounds != nil
+		ambientAudio := component.Type == "tidewater.ambient-audio/1" && component.Seed == 0 && component.PlacementAssetID == "" && len(component.Beds) > 0 && len(component.Beds) <= 16
 		islandOcean := component.Type == "tidewater.island-ocean/1" && component.Seed == 0 && component.PlacementAssetID == ""
 		waterBody := component.Type == "tidewater.water-body/1" && component.Seed == 0 && component.PlacementAssetID == "" && len(component.Center) == 2 && component.Extent >= 8 && component.Extent <= 100000 && (component.Profile == "" || component.Profile == "deep-ocean" || component.Profile == "calm-lagoon" || component.Profile == "storm")
 		if waterBody {
@@ -466,7 +508,10 @@ func validateManifest(manifest worldManifest, localPeerID string, now time.Time)
 		if islandOcean {
 			islandOceanCount++
 		}
-		if !componentIDPattern.MatchString(component.ID) || seenComponents[component.ID] || seenObjects[component.ID] || seenPortals[component.ID] || (!vegetation && !staticVegetation && !staticReef && !islandOcean && !waterBody) || islandOceanCount > 1 || waterBodyCount > 4 || component.Priority != "" && component.Priority != "portal-preview" && component.Priority != "visible" && component.Priority != "nearby" && component.Priority != "background" || !seenFeatures[component.Type] {
+		if ambientAudio {
+			ambientAudioCount++
+		}
+		if !componentIDPattern.MatchString(component.ID) || seenComponents[component.ID] || seenObjects[component.ID] || seenPortals[component.ID] || (!vegetation && !staticVegetation && !staticReef && !islandOcean && !waterBody && !ambientAudio) || islandOceanCount > 1 || waterBodyCount > 4 || ambientAudioCount > 16 || component.Priority != "" && component.Priority != "portal-preview" && component.Priority != "visible" && component.Priority != "nearby" && component.Priority != "background" || !seenFeatures[component.Type] {
 			return fmt.Errorf("invalid or unsupported world component %q", component.ID)
 		}
 		if waterBody && (manifest.Rules.SeaLevel == nil || islandOceanCount > 0) || islandOcean && waterBodyCount > 0 {
@@ -494,6 +539,21 @@ func validateManifest(manifest worldManifest, localPeerID string, now time.Time)
 				return fmt.Errorf("invalid placement asset reference on world component %q", component.ID)
 			}
 		}
+		if ambientAudio {
+			priority := component.Priority
+			if priority == "" {
+				priority = "portal-preview"
+			}
+			for _, bed := range component.Beds {
+				asset, exists := assetRefs[bed.AssetID]
+				invalidPosition := bed.Position != nil && vector3OutOfBounds(*bed.Position, 100000)
+				invalidRefDistance := bed.RefDistance != nil && (math.IsNaN(*bed.RefDistance) || math.IsInf(*bed.RefDistance, 0) || *bed.RefDistance < 0.5 || *bed.RefDistance > 1000)
+				invalidRolloff := bed.Rolloff != nil && (math.IsNaN(*bed.Rolloff) || math.IsInf(*bed.Rolloff, 0) || *bed.Rolloff < 0 || *bed.Rolloff > 10)
+				if !assetIDPattern.MatchString(bed.AssetID) || !exists || asset.Kind != "audio/ogg" || asset.Bytes == 0 || asset.Bytes > 16<<20 || asset.Priority != priority || math.IsNaN(bed.Gain) || math.IsInf(bed.Gain, 0) || bed.Gain < 0 || bed.Gain > 1 || bed.Condition != "" && bed.Condition != "always" && bed.Condition != "day" && bed.Condition != "night" && bed.Condition != "dawn" && bed.Condition != "underwater" || invalidPosition || invalidRefDistance || invalidRolloff {
+					return fmt.Errorf("invalid ambient audio bed on world component %q", component.ID)
+				}
+			}
+		}
 		if bounds := component.StreamingBounds; bounds != nil {
 			if math.IsNaN(bounds.Radius) || math.IsInf(bounds.Radius, 0) || bounds.Radius <= 0 || bounds.Radius > 10000 {
 				return errors.New("component streaming bounds radius out of bounds")
@@ -507,6 +567,15 @@ func validateManifest(manifest worldManifest, localPeerID string, now time.Time)
 		seenComponents[component.ID] = true
 	}
 	return nil
+}
+
+func vector3OutOfBounds(vector vector3, limit float64) bool {
+	for _, value := range vector {
+		if math.IsNaN(value) || math.IsInf(value, 0) || math.Abs(value) > limit {
+			return true
+		}
+	}
+	return false
 }
 
 func validUnitQuaternion(rotation *vector4) bool {

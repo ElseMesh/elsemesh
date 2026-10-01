@@ -19,6 +19,8 @@ import { createVegetationPlacement } from '../src/world/vegetation/Scatter.js';
 import { encodeVegetationPlacements } from '../src/network/VegetationPlacements.js';
 import { Reef } from '../src/world/Reef.js';
 import { encodeReefPlacements } from '../src/network/ReefPlacements.js';
+import { BANK } from '../src/audio/soundBank.js';
+import { MIX } from '../src/audio/SoundScape.js';
 
 const REPO = path.resolve( path.dirname( fileURLToPath( import.meta.url ) ), '..' );
 const args = process.argv.slice( 2 );
@@ -85,7 +87,7 @@ for ( const tile of reefTiles ) {
 		streamingBounds: tile.bounds,
 	} );
 }
-if ( reefComponents.length + 2 > 128 ) throw new Error( 'Island world exceeds the 128 component limit after adding reef tiles' );
+if ( reefComponents.length + 3 > 128 ) throw new Error( 'Island world exceeds the 128 component limit after adding reef tiles and ambient audio' );
 const debrisAssetIDs = new Map();
 const debrisAssetBounds = new Map();
 for ( const assetName of SCAN_ASSETS ) {
@@ -97,6 +99,31 @@ for ( const assetName of SCAN_ASSETS ) {
 	debrisAssetBounds.set( assetName, boundsForGLB( packagedGLB ) );
 	staticAssets.set( packagedID, packagedGLB );
 }
+const ambientBeds = [];
+const ambientBedSpecs = [
+	{ name: 'surf_far', target: MIX.surfFar, condition: 'always' },
+	{ name: 'wind', target: MIX.wind, condition: 'always' },
+	{ name: 'palms', target: MIX.palms, condition: 'always' },
+	{ name: 'crickets', target: MIX.crickets, condition: 'night' },
+	{ name: 'pier_lap', target: MIX.pierLap, condition: 'always', position: [ WORLD.pier.x, 0, 35 ], refDistance: 3, rolloff: 1.3 },
+	{ name: 'under_reef', target: MIX.reef, condition: 'underwater' },
+	{ name: 'boat_lap', target: MIX.boatLap, condition: 'always', position: [ WORLD.boatDock.position.x, WORLD.boatDock.position.y, WORLD.boatDock.position.z ], refDistance: 3, rolloff: 1 },
+	{ name: 'birds_dawn', target: MIX.birdChorus, condition: 'dawn' },
+];
+for ( const spec of ambientBedSpecs ) {
+	const bank = BANK[ spec.name ];
+	if ( ! bank?.loop || ! Number.isFinite( bank.lufs ) ) throw new Error( `Ambient sound ${spec.name} must have measured loop metadata` );
+	const bytes = await readFile( path.join( REPO, 'public', 'audio', bank.file ) );
+	const id = `sha256:${createHash( 'sha256' ).update( bytes ).digest( 'hex' )}`;
+	staticAssets.set( id, bytes );
+	ambientBeds.push( {
+		assetId: id,
+		gain: Math.pow( 10, ( spec.target - bank.lufs ) / 20 ),
+		condition: spec.condition,
+		...( spec.position ? { position: spec.position, refDistance: spec.refDistance, rolloff: spec.rolloff } : {} ),
+	} );
+}
+if ( reefComponents.length + 3 > 128 ) throw new Error( 'Island world exceeds the 128 component limit after adding ambient audio' );
 const assetsPath = path.join( output, 'assets' );
 await mkdir( assetsPath, { recursive: true } );
 for ( const entry of await readdir( assetsPath, { withFileTypes: true } ) ) {
@@ -114,7 +141,7 @@ const source = {
 		gravity: 1,
 		avatarComplexity: 20000,
 		physicsProfile: 'tidewater-default',
-		requiredFeatures: [ 'tidewater.static-glb/1', 'tidewater.static-glb-quaternion/1', 'tidewater.static-vegetation/1', 'tidewater.static-reef/1', 'tidewater.island-ocean/1' ],
+		requiredFeatures: [ 'tidewater.static-glb/1', 'tidewater.static-glb-quaternion/1', 'tidewater.static-vegetation/1', 'tidewater.static-reef/1', 'tidewater.island-ocean/1', 'tidewater.ambient-audio/1' ],
 		maxPackageBytes: 64 * 1024 * 1024,
 	},
 	hosts: [],
@@ -178,6 +205,7 @@ const source = {
 		{ id: 'tw-component:island-vegetation', type: 'tidewater.static-vegetation/1', priority: 'portal-preview', placementAssetId: vegetationAssetId },
 		...reefComponents,
 		{ id: 'tw-component:island-ocean', type: 'tidewater.island-ocean/1', priority: 'portal-preview' },
+		{ id: 'tw-component:island-ambience', type: 'tidewater.ambient-audio/1', priority: 'portal-preview', beds: ambientBeds },
 	],
 	portals: [],
 	updatedAt,

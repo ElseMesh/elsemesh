@@ -48,22 +48,25 @@ async function main() {
 		if ( rank.indexOf( priority ) < rank.indexOf( ref.priority ) ) ref.priority = priority;
 	}
 	for ( const component of source.components || [] ) {
-		if ( ! component.placementAssetId ) continue; // Legacy seed-only component.
-		const id = component.placementAssetId;
 		const priority = component.priority || 'portal-preview';
-		const kind = component.type === 'tidewater.static-reef/1' ? 'reef-placement/1' : 'vegetation-placement/1';
-		let ref = assets.get( id );
-		if ( ! ref ) {
-			const assetPath = path.join( args.assets, id.slice( 'sha256:'.length ) );
-			const info = await stat( assetPath );
-			if ( ! info.isFile() || info.size > 16 * 1024 * 1024 ) throw new Error( `Invalid or oversized component data ${id}` );
-			const hasher = createHash( 'sha256' );
-			for await ( const chunk of createReadStream( assetPath ) ) hasher.update( chunk );
-			if ( `sha256:${hasher.digest( 'hex' )}` !== id ) throw new Error( `Hash mismatch for component data ${id}` );
-			ref = { id, bytes: info.size, kind, priority };
-			assets.set( id, ref );
-		} else if ( ref.kind !== kind || ref.priority !== priority ) {
-			throw new Error( `Component data ${id} conflicts with another asset kind or streaming priority` );
+		const references = [
+			...( component.placementAssetId ? [ { id: component.placementAssetId, kind: component.type === 'tidewater.static-reef/1' ? 'reef-placement/1' : 'vegetation-placement/1', limit: 16 * 1024 * 1024 } ] : [] ),
+			...( component.beds || [] ).map( ( bed ) => ( { id: bed.assetId, kind: 'audio/ogg', limit: 16 * 1024 * 1024 } ) ),
+		];
+		for ( const { id, kind, limit } of references ) {
+			let ref = assets.get( id );
+			if ( ! ref ) {
+				const assetPath = path.join( args.assets, id.slice( 'sha256:'.length ) );
+				const info = await stat( assetPath );
+				if ( ! info.isFile() || info.size < 1 || info.size > limit ) throw new Error( `Invalid or oversized component asset ${id}` );
+				const hasher = createHash( 'sha256' );
+				for await ( const chunk of createReadStream( assetPath ) ) hasher.update( chunk );
+				if ( `sha256:${hasher.digest( 'hex' )}` !== id ) throw new Error( `Hash mismatch for component asset ${id}` );
+				ref = { id, bytes: info.size, kind, priority };
+				assets.set( id, ref );
+			} else if ( ref.kind !== kind || ref.priority !== priority ) {
+				throw new Error( `Component asset ${id} conflicts with another asset kind or streaming priority` );
+			}
 		}
 	}
 	if ( source.rules.maxPackageBytes !== undefined ) {

@@ -422,6 +422,49 @@ func TestWorldManifestValidatesPortableWaterBody(t *testing.T) {
 	}
 }
 
+func TestWorldManifestValidatesAmbientAudioBeds(t *testing.T) {
+	key := testKey(t)
+	ownerID, err := peer.IDFromPublicKey(key.GetPublic())
+	if err != nil {
+		t.Fatal(err)
+	}
+	assetID := "sha256:" + strings.Repeat("a", 64)
+	manifest := newStarterManifest("Ambient audio", ownerID.String())
+	manifest.WorldID = "tw-world:ambient-audio"
+	manifest.Rules.RequiredFeatures = []string{"tidewater.ambient-audio/1"}
+	manifest.Assets = []assetRef{{ID: assetID, Bytes: 12, Kind: "audio/ogg", Priority: "portal-preview"}}
+	manifest.Components = []worldComponent{{ID: "tw-component:ambience", Type: "tidewater.ambient-audio/1", Beds: []audioBed{{AssetID: assetID, Gain: 0.4, Condition: "underwater", Position: &vector3{1, 2, 3}}}}}
+	if err := validateManifest(manifest, ownerID.String(), time.Now()); err != nil {
+		t.Fatalf("valid ambient audio component rejected: %v", err)
+	}
+	document, err := signDocument(manifestProtocol, manifest, key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := decodeManifest(document, ownerID.String(), time.Now()); err != nil {
+		t.Fatalf("signed ambient audio component failed daemon JSON decode: %v", err)
+	}
+	bad := manifest
+	bad.Components = append([]worldComponent(nil), manifest.Components...)
+	bad.Components[0].Beds = []audioBed{{AssetID: assetID, Gain: 0.4, Condition: "storms"}}
+	if err := validateManifest(bad, ownerID.String(), time.Now()); err == nil {
+		t.Fatal("unknown ambient audio condition accepted")
+	}
+	bad = manifest
+	bad.Assets = []assetRef{{ID: assetID, Bytes: 12, Kind: "glb", Priority: "portal-preview"}}
+	if err := validateManifest(bad, ownerID.String(), time.Now()); err == nil {
+		t.Fatal("non-audio asset accepted as an ambient bed")
+	}
+	bad.Assets = []assetRef{{ID: assetID, Bytes: 0, Kind: "audio/ogg", Priority: "portal-preview"}}
+	if err := validateManifest(bad, ownerID.String(), time.Now()); err == nil {
+		t.Fatal("empty audio asset accepted as an ambient bed")
+	}
+	var unknownBedField []worldComponent
+	if err := json.Unmarshal([]byte(`[{"id":"tw-component:ambience","type":"tidewater.ambient-audio/1","beds":[{"assetId":"`+assetID+`","gain":0.4,"url":"https://invalid.example/audio.ogg"}]}]`), &unknownBedField); err == nil {
+		t.Fatal("unknown ambient audio bed field accepted")
+	}
+}
+
 func TestWorldManifestEnforcesAggregatePackageByteBudget(t *testing.T) {
 	key, _, err := crypto.GenerateEd25519Key(rand.Reader)
 	if err != nil {

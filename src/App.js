@@ -422,7 +422,7 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 			const initialObjectIDs = new Set( initialObjects.map( ( object ) => object.id ) );
 			const initialComponentIDs = new Set( initialComponents.map( ( component ) => component.id ) );
 			const initialAssetIDs = new Set( initialObjects.map( ( object ) => object.assetId ) );
-			for ( const component of initialComponents ) if ( component.placementAssetId ) initialAssetIDs.add( component.placementAssetId );
+			for ( const component of initialComponents ) for ( const id of componentAssetIDs( component ) ) initialAssetIDs.add( id );
 			const visibleAssets = await connector.preload( { through: 'background', assetIDs: initialAssetIDs } );
 			this.linkedWorldRoot = await loadWorldPackage( connector, { assets: visibleAssets, objectIDs: initialObjectIDs } );
 			this.installWorldComponents( this.linkedWorldRoot, connector, initialComponentIDs );
@@ -712,7 +712,7 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 		const installed = [];
 		const installedIDs = root.userData.installedWorldComponentIDs ||= new Set();
 		for ( const component of connector.manifest.components || [] ) {
-			if ( installedIDs.has( component.id ) || componentIDs && ! componentIDs.has( component.id ) || component.placementAssetId && ! connector.assets.has( component.placementAssetId ) ) continue;
+			if ( installedIDs.has( component.id ) || componentIDs && ! componentIDs.has( component.id ) || component.placementAssetId && ! connector.assets.has( component.placementAssetId ) || component.type === 'tidewater.ambient-audio/1' && component.beds.some( ( bed ) => ! connector.assets.has( bed.assetId ) ) ) continue;
 			const count = installed.length;
 			if ( component.type === 'tidewater.procedural-island-vegetation/1' || component.type === 'tidewater.static-vegetation/1' ) {
 				if ( ! this.vegetationEnabled ) continue;
@@ -770,6 +770,10 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 				mesh.layers.set( LAYERS.WATER );
 				root.add( mesh );
 				installed.push( { waterBody: true, update: ( _dt, camera ) => lod.update( camera ), dispose: () => { root.remove( mesh ); lod.geometry.dispose(); material.dispose(); } } );
+			} else if ( component.type === 'tidewater.ambient-audio/1' ) {
+				// SoundScape consumes the signed component from the connector directly; record
+				// installation here so view streaming does not repeatedly request its loop assets.
+				installedIDs.add( component.id );
 			}
 			if ( installed.length > count ) installedIDs.add( component.id );
 		}
@@ -801,7 +805,7 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 		const assetPriorities = new Map( connector.manifest.assets.map( ( asset ) => [ asset.id, asset.priority ] ) );
 		const rank = { 'portal-preview': 0, visible: 1, nearby: 2, background: 3 };
 		const wantedRank = objects.reduce( ( best, object ) => Math.min( best, rank[ object.priority || assetPriorities.get( object.assetId ) ] ?? 1 ), Infinity );
-		const componentRank = components.reduce( ( best, component ) => Math.min( best, rank[ component.priority || assetPriorities.get( component.placementAssetId ) ] ?? 1 ), Infinity );
+		const componentRank = components.reduce( ( best, component ) => Math.min( best, rank[ component.priority || assetPriorities.get( component.placementAssetId ) || assetPriorities.get( component.beds?.[ 0 ]?.assetId ) ] ?? 1 ), Infinity );
 		const loadRank = Math.min( wantedRank, componentRank );
 		if ( state.loading ) {
 			const allStillNeeded = [ ...state.loadingObjectIDs ].every( ( objectID ) => wantedObjectIDs.has( objectID ) ) && [ ...state.loadingComponentIDs ].every( ( componentID ) => wantedComponentIDs.has( componentID ) );
@@ -811,7 +815,7 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 		if ( objects.length === 0 && components.length === 0 ) return;
 		const objectIDs = new Set( objects.map( ( object ) => object.id ) );
 		const componentIDs = new Set( components.map( ( component ) => component.id ) );
-		const assetIDs = new Set( [ ...objects.map( ( object ) => object.assetId ), ...components.map( ( component ) => component.placementAssetId ).filter( Boolean ) ] );
+		const assetIDs = new Set( [ ...objects.map( ( object ) => object.assetId ), ...components.flatMap( componentAssetIDs ) ] );
 		const loadController = new AbortController();
 		const abortForWorldChange = () => loadController.abort( state.controller.signal.reason );
 		if ( state.controller.signal.aborted ) abortForWorldChange();
@@ -1158,16 +1162,39 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 
 	updateAudio( dt ) {
 
-		if ( this.remoteWorldActive || ! this.audio || ! this.audio.enabled ) return;
+		if ( ! this.audio ) return;
+		if ( ! this.remoteWorldActive && ! this.audio.enabled ) {
+			this.audio.setWorldAmbience( null, [] );
+			return;
+		}
 		const cam = this.camera;
 		const p = cam.position;
 		const f = this._af || ( this._af = { fwd: new Vector3(), up: new Vector3() } );
 		cam.getWorldDirection( f.fwd );
 		f.up.set( 0, 1, 0 ).applyQuaternion( cam.quaternion );
+		const listener = { position: p, forward: f.fwd, up: f.up };
+		if ( this.remoteWorldActive && this.worldConnector ) {
+			const connector = this.worldConnector;
+			const components = ( connector.manifest.components || [] ).filter( ( component ) => component.type === 'tidewater.ambient-audio/1' );
+			this.audio.setWorldAmbience( connector.worldId, components, connector.assets );
+			if ( this.audio.enabled ) {
+				const h = this.cameraWaterHeight ?? G.seaLevel.value;
+				this.audio.updateWorldAudio( dt, {
+					listener,
+					underwater: p.y < h ? 1 : 0,
+					depthBelowSurface: Math.max( 0, h - p.y ),
+					daylight: 1 - G.night.value,
+					timeOfDay: this.settings.timeOfDay,
+				} );
+			}
+			return;
+		}
+		this.audio.setWorldAmbience( null, [] );
+		if ( ! this.audio.enabled ) return;
 		const h = this.cameraWaterHeight ?? 0;
 		const coast = this.terrainData.coastDistance( p.x, p.z ).d;
 		this.audio.update( dt, {
-			listener: { position: p, forward: f.fwd, up: f.up },
+			listener,
 			underwater: p.y < h ? 1 : 0,
 			depthBelowSurface: Math.max( 0, h - p.y ),
 			surfIntensity: Math.min( 1, this.shore.amplitude.value / 0.6 ),
@@ -1192,6 +1219,10 @@ function readVegetationPlacements( connector, component ) {
 	const bytes = connector.assets.get( component.placementAssetId );
 	if ( ! bytes ) throw new Error( `Vegetation component ${component.id} is missing its placement asset` );
 	return decodeVegetationPlacements( bytes, component.seed );
+}
+
+function componentAssetIDs( component ) {
+	return [ ...( component.placementAssetId ? [ component.placementAssetId ] : [] ), ...( component.beds || [] ).map( ( bed ) => bed.assetId ) ];
 }
 
 function readReefPlacements( connector, component ) {

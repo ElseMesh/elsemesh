@@ -138,6 +138,12 @@ export class SoundScape {
 		this._volume = 0.8;
 		this._buffers = new Map(); // name -> AudioBuffer
 		this._loading = new Map(); // name -> Promise
+		this._worldAudioBuffers = new Map(); // content ID -> AudioBuffer / in-flight decode
+		this._worldAudioFailures = new Set();
+		this._worldAudioComponents = new Map(); // component ID -> signed data and verified bytes
+		this._worldAudioSources = new Map(); // component ID + bed index -> running loop
+		this._worldAudioPendingBeds = new Set();
+		this._worldAudioWorldID = null;
 		this._beds = new Map(); // name -> { src, gain, trim }
 		this._voices = {}; // category -> [ { src, gain, end } ]
 		this._last = {}; // bank -> last slice index
@@ -282,6 +288,151 @@ export class SoundScape {
 			this._warn( e );
 
 		}
+
+	}
+
+	// Signed, data-only ambient loops for the active hosted world. Audio bytes come
+	// only from the connector's hash-verified asset cache, never a URL in the manifest.
+	setWorldAmbience( worldID, components = [], assets = new Map() ) {
+
+		if ( worldID !== this._worldAudioWorldID ) {
+
+			for ( const id of this._worldAudioComponents.keys() ) this._removeWorldAudioComponent( id );
+			this._worldAudioComponents.clear();
+			this._worldAudioWorldID = worldID;
+
+		}
+
+		const next = new Map( components.map( ( component ) => [ component.id, component ] ) );
+		for ( const id of this._worldAudioComponents.keys() ) if ( ! next.has( id ) ) {
+			this._removeWorldAudioComponent( id );
+			this._worldAudioComponents.delete( id );
+		}
+		for ( const component of next.values() ) {
+			const signature = JSON.stringify( component.beds );
+			const current = this._worldAudioComponents.get( component.id );
+			if ( current?.signature !== signature ) {
+				this._removeWorldAudioComponent( component.id );
+				this._worldAudioComponents.set( component.id, { signature, beds: component.beds, assets } );
+			} else current.assets = assets;
+		}
+		if ( this.enabled ) this._syncWorldAudio();
+
+	}
+
+	updateWorldAudio( dt, state = EMPTY ) {
+
+		if ( ! this.ctx || this._failed ) return;
+		try {
+
+			this._readState( state && typeof state === 'object' ? state : EMPTY );
+			if ( this.ctx.state !== 'running' ) return;
+			this._placeAudioListener();
+			this._ramp( this.muffle[ 0 ].frequency, lerp( 18000, 1100, this.env.u ), 0.08 );
+			this._ramp( this.muffle[ 1 ].frequency, lerp( 18000, 520, this.env.u ), 0.08 );
+			this._ramp( this.aboveOut.gain, lerp( 1, 0.4 / ( 1 + this.env.depth / 5 ), this.env.u ), 0.05 );
+			this._ramp( this.under.gain, this.env.u, 0.06 );
+			this._syncWorldAudio();
+			for ( const bed of this._worldAudioSources.values() ) {
+
+				const condition = bed.definition.condition || 'always';
+				let factor = 1;
+				if ( condition === 'day' ) factor = this.env.day;
+				else if ( condition === 'night' ) factor = 1 - this.env.day;
+				else if ( condition === 'underwater' ) factor = this.env.u;
+				else if ( condition === 'dawn' ) factor = this._dawnFactor();
+				this._ramp( bed.gain.gain, bed.definition.gain * factor * ( bed.mono ? MONO : 1 ), 0.35 );
+
+			}
+
+		} catch ( e ) { this._warn( e ); }
+
+	}
+
+	_removeWorldAudioComponent( componentID ) {
+
+		const prefix = `${componentID}\0`;
+		for ( const [ key, bed ] of this._worldAudioSources ) {
+			if ( ! key.startsWith( prefix ) ) continue;
+			try { bed.src.stop(); } catch ( e ) { /* already stopped */ }
+			bed.src.disconnect();
+			bed.gain.disconnect();
+			bed.panner?.disconnect();
+			this._worldAudioSources.delete( key );
+		}
+		for ( const key of this._worldAudioPendingBeds ) if ( key.startsWith( prefix ) ) this._worldAudioPendingBeds.delete( key );
+
+	}
+
+	_syncWorldAudio() {
+
+		if ( ! this.ctx || this.ctx.state === 'closed' ) return;
+		for ( const [ componentID, component ] of this._worldAudioComponents ) for ( const [ index, definition ] of component.beds.entries() ) {
+
+			const key = `${componentID}\0${index}`;
+			if ( this._worldAudioSources.has( key ) || this._worldAudioPendingBeds.has( key ) ) continue;
+			if ( this._worldAudioFailures.has( definition.assetId ) ) continue;
+			const bytes = component.assets?.get( definition.assetId );
+			if ( ! bytes ) continue;
+			let decoded = this._worldAudioBuffers.get( definition.assetId );
+			if ( ! decoded ) {
+
+				const audioBytes = bytes instanceof ArrayBuffer ? bytes.slice( 0 ) : bytes.buffer.slice( bytes.byteOffset, bytes.byteOffset + bytes.byteLength );
+				decoded = this.ctx.decodeAudioData( audioBytes ).then( ( buffer ) => {
+					this._worldAudioBuffers.set( definition.assetId, buffer );
+					return buffer;
+				} ).catch( ( error ) => {
+					this._worldAudioBuffers.delete( definition.assetId );
+					this._worldAudioFailures.add( definition.assetId );
+					this._warn( error );
+					return null;
+				} );
+				this._worldAudioBuffers.set( definition.assetId, decoded );
+
+			}
+			if ( decoded instanceof Promise ) {
+
+				this._worldAudioPendingBeds.add( key );
+				decoded.then( ( buffer ) => this._startWorldAudioBed( key, componentID, index, definition, buffer ) ).finally( () => this._worldAudioPendingBeds.delete( key ) );
+
+			} else this._startWorldAudioBed( key, componentID, index, definition, decoded );
+
+		}
+
+	}
+
+	_startWorldAudioBed( key, componentID, index, definition, buffer ) {
+
+		if ( ! buffer || ! this.ctx || this._worldAudioSources.has( key ) || this._worldAudioComponents.get( componentID )?.beds[ index ] !== definition ) return;
+		const c = this.ctx, src = c.createBufferSource(), gain = c.createGain();
+		src.buffer = buffer;
+		src.loop = true;
+		gain.gain.value = 0;
+		let panner = null;
+		if ( definition.position ) {
+			panner = c.createPanner();
+			panner.panningModel = 'HRTF';
+			panner.distanceModel = 'inverse';
+			panner.refDistance = definition.refDistance ?? 1;
+			panner.rolloffFactor = definition.rolloff ?? 1;
+			panner.maxDistance = 10000;
+			panner.positionX.value = definition.position[ 0 ];
+			panner.positionY.value = definition.position[ 1 ];
+			panner.positionZ.value = definition.position[ 2 ];
+		}
+		src.connect( gain );
+		if ( panner ) gain.connect( panner ).connect( definition.condition === 'underwater' ? this.under : this.above );
+		else gain.connect( definition.condition === 'underwater' ? this.under : this.above );
+		src.start( c.currentTime + 0.02, Math.random() * buffer.duration );
+		this._worldAudioSources.set( key, { src, gain, panner, definition, mono: buffer.numberOfChannels === 1 } );
+
+	}
+
+	_dawnFactor() {
+
+		const h = this.env.hour;
+		if ( h === null ) return 0;
+		return smooth( 5.0, 5.8, h ) * ( 1 - smooth( 6.6, 7.9, h ) );
 
 	}
 
@@ -444,6 +595,9 @@ export class SoundScape {
 
 	dispose() {
 
+		for ( const id of this._worldAudioComponents.keys() ) this._removeWorldAudioComponent( id );
+		this._worldAudioComponents.clear();
+		this._worldAudioPendingBeds.clear();
 		if ( ! this.ctx ) return;
 		try {
 
@@ -993,6 +1147,19 @@ export class SoundScape {
 
 	_placeListener() {
 
+		this._placeAudioListener();
+		const e = this.env;
+		this._pos( this.surfPan, e.lx + e.shoreX * 40, e.ly - 1.5, e.lz + e.shoreZ * 40 );
+		this._pos( this.boatPan, e.boat.x, e.boat.y + 0.3, e.boat.z );
+		this._ramp( this.boatIn.gain, e.boat.inside ? 1 : 0, 0.1 );
+		this._ramp( this.boatOut.gain, e.boat.inside ? 0 : 1, 0.1 );
+		const pier = WORLD.pier;
+		this._pos( this.pierPan, pier.x, 0, clamp( e.lz, Math.max( pier.zStart, - 40 ), pier.zEnd ) );
+
+	}
+
+	_placeAudioListener() {
+
 		const L = this.ctx.listener, e = this.env;
 		if ( L.positionX ) {
 
@@ -1012,14 +1179,6 @@ export class SoundScape {
 			L.setOrientation( e.fx, e.fy, e.fz, e.ux, e.uy, e.uz );
 
 		}
-
-		this._pos( this.surfPan, e.lx + e.shoreX * 40, e.ly - 1.5, e.lz + e.shoreZ * 40 );
-		this._pos( this.boatPan, e.boat.x, e.boat.y + 0.3, e.boat.z );
-		this._ramp( this.boatIn.gain, e.boat.inside ? 1 : 0, 0.1 );
-		this._ramp( this.boatOut.gain, e.boat.inside ? 0 : 1, 0.1 );
-		const pier = WORLD.pier;
-		this._pos( this.pierPan, pier.x, 0, clamp( e.lz, Math.max( pier.zStart, - 40 ), pier.zEnd ) );
-
 	}
 
 	_mix( now, dt ) {

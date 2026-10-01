@@ -10,3 +10,5 @@ If a local tab is silent while the hosted tab plays:
 4. Check the tab's site sound permission and the operating-system output/mixer for the local browser.
 
 The game currently has no separate local-only audio switch. If those checks pass but ambience is still absent, capture the console and Network errors before changing the mixer; the production and development paths share the same audio initialization code.
+
+Hosted worlds can additionally provide signed, content-addressed ambience through `tidewater.ambient-audio/1`. The browser plays those OGG loops through the same `SoundScape` AudioContext after the normal start gesture. See [the component contract](schemas/ambient-audio.md). This currently covers loops only; interactive sound events still use the built-in island simulation.

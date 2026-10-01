@@ -78,9 +78,10 @@ const components = [
 	{ id: 'tw-component:behind', type: 'tidewater.static-vegetation/1', placementAssetId: 'behind', priority: 'nearby', streamingBounds: { center: [ 0, 0, 10 ], radius: 1 } },
 	{ id: 'tw-component:near', type: 'tidewater.static-vegetation/1', placementAssetId: 'near', priority: 'nearby', streamingBounds: { center: [ 0, 0, 3 ], radius: 0.5 } },
 	{ id: 'tw-component:legacy', type: 'tidewater.island-ocean/1', priority: 'portal-preview' },
+	{ id: 'tw-component:ambience', type: 'tidewater.ambient-audio/1', beds: [ { assetId: 'ambient-loop' } ] },
 ];
-const componentIDs = selectWorldComponentsForView( { assets: [], components }, camera, { nearbyDistance: 5 } ).map( ( component ) => component.id );
-assert.deepEqual( componentIDs, [ 'tw-component:legacy', 'tw-component:front', 'tw-component:near' ], 'component selection uses world-space bounds, priority ordering, and eager compatibility for unbounded components' );
+const componentIDs = selectWorldComponentsForView( { assets: [ { id: 'ambient-loop', priority: 'portal-preview' } ], components }, camera, { nearbyDistance: 5 } ).map( ( component ) => component.id );
+assert.deepEqual( componentIDs, [ 'tw-component:legacy', 'tw-component:ambience', 'tw-component:front', 'tw-component:near' ], 'component selection uses world-space bounds, priority ordering, and eager compatibility for unbounded components' );
 
 const originalWebTransport = globalThis.WebTransport;
 const originalWebSocket = globalThis.WebSocket;

@@ -384,6 +384,34 @@
             "streamingBounds": { "$ref": "#/$defs/streamingBounds" }
           },
           "additionalProperties": false
+        },
+        {
+          "required": ["id", "type", "beds"],
+          "properties": {
+            "id": { "type": "string", "pattern": "^tw-component:[\\w.-]{1,128}$" },
+            "type": { "const": "tidewater.ambient-audio/1" },
+            "priority": { "enum": ["portal-preview", "visible", "nearby", "background"] },
+            "streamingBounds": { "$ref": "#/$defs/streamingBounds" },
+            "beds": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 16,
+              "items": {
+                "type": "object",
+                "required": ["assetId", "gain"],
+                "properties": {
+                  "assetId": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+                  "gain": { "type": "number", "minimum": 0, "maximum": 1 },
+                  "condition": { "enum": ["always", "day", "night", "dawn", "underwater"] },
+                  "position": { "type": "array", "items": { "type": "number", "minimum": -100000, "maximum": 100000 }, "minItems": 3, "maxItems": 3 },
+                  "refDistance": { "type": "number", "minimum": 0.5, "maximum": 1000 },
+                  "rolloff": { "type": "number", "minimum": 0, "maximum": 10 }
+                },
+                "additionalProperties": false
+              }
+            }
+          },
+          "additionalProperties": false
         }
       ]
     },

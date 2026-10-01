@@ -541,6 +541,7 @@ export function validateWorldComponents( components = [], rules, ids = new Set()
 	const assetRefs = new Map( assets.map( ( asset ) => [ asset.id, asset ] ) );
 	let islandOceanCount = 0;
 	let waterBodyCount = 0;
+	let audioComponentCount = 0;
 	const waterBodies = [];
 	for ( const component of components ) {
 		invariant( component && typeof component.id === 'string' && /^tw-component:[\w.-]{1,128}$/.test( component.id ) && ! ids.has( component.id ), 'World manifest has an invalid or duplicate component ID' );
@@ -549,10 +550,12 @@ export function validateWorldComponents( components = [], rules, ids = new Set()
 		const staticReef = component.type === 'tidewater.static-reef/1' && component.streamingBounds !== undefined && Object.keys( component ).every( ( key ) => [ 'id', 'type', 'priority', 'placementAssetId', 'streamingBounds' ].includes( key ) );
 		const islandOcean = component.type === 'tidewater.island-ocean/1' && Object.keys( component ).every( ( key ) => [ 'id', 'type', 'priority', 'streamingBounds' ].includes( key ) );
 		const waterBody = component.type === 'tidewater.water-body/1' && ( component.profile === undefined || [ 'deep-ocean', 'calm-lagoon', 'storm' ].includes( component.profile ) ) && Array.isArray( component.center ) && component.center.length === 2 && Number.isFinite( component.extent ) && component.extent >= 8 && component.extent <= 100000 && component.center.every( ( n ) => Number.isFinite( n ) && Math.abs( n ) + component.extent <= 1e6 ) && Object.keys( component ).every( ( key ) => [ 'id', 'type', 'priority', 'center', 'extent', 'profile', 'streamingBounds' ].includes( key ) );
-		invariant( ( vegetation || staticVegetation || staticReef || islandOcean || waterBody ) && ( component.priority === undefined || [ 'portal-preview', 'visible', 'nearby', 'background' ].includes( component.priority ) ), `Unsupported or invalid world component ${component.id}` );
+		const ambientAudio = component.type === 'tidewater.ambient-audio/1' && Object.keys( component ).every( ( key ) => [ 'id', 'type', 'priority', 'streamingBounds', 'beds' ].includes( key ) ) && Array.isArray( component.beds ) && component.beds.length > 0 && component.beds.length <= 16 && component.beds.every( ( bed ) => validAudioBed( bed, assetRefs, component.priority || 'portal-preview' ) );
+		invariant( ( vegetation || staticVegetation || staticReef || islandOcean || waterBody || ambientAudio ) && ( component.priority === undefined || [ 'portal-preview', 'visible', 'nearby', 'background' ].includes( component.priority ) ), `Unsupported or invalid world component ${component.id}` );
 		if ( islandOcean ) invariant( ++ islandOceanCount === 1, 'World manifest may declare only one island ocean component' );
 		if ( waterBody ) invariant( ++ waterBodyCount <= 4 && rules.seaLevel !== undefined && islandOceanCount === 0, 'Portable water requires seaLevel, allows at most four bodies, and cannot be combined with island-ocean' );
 		if ( islandOcean ) invariant( waterBodyCount === 0, 'A world cannot combine portable water and island-ocean components' );
+		if ( ambientAudio ) invariant( ++ audioComponentCount <= 16, 'World manifest may declare at most 16 ambient audio components' );
 		if ( waterBody ) {
 			invariant( ! waterBodies.some( ( other ) => Math.abs( component.center[ 0 ] - other.center[ 0 ] ) < component.extent + other.extent && Math.abs( component.center[ 1 ] - other.center[ 1 ] ) < component.extent + other.extent ), 'Portable water body bounds cannot overlap' );
 			waterBodies.push( component );
@@ -568,6 +571,12 @@ export function validateWorldComponents( components = [], rules, ids = new Set()
 		ids.add( component.id );
 	}
 	return ids;
+}
+
+function validAudioBed( bed, assetRefs, priority ) {
+	if ( ! bed || typeof bed !== 'object' || Array.isArray( bed ) || Object.keys( bed ).some( ( key ) => ! [ 'assetId', 'gain', 'condition', 'position', 'refDistance', 'rolloff' ].includes( key ) ) ) return false;
+	const asset = assetRefs.get( bed.assetId );
+	return typeof bed.assetId === 'string' && /^sha256:[0-9a-f]{64}$/.test( bed.assetId ) && asset?.kind === 'audio/ogg' && asset.bytes > 0 && asset.bytes <= 16 * 1024 * 1024 && asset.priority === priority && Number.isFinite( bed.gain ) && bed.gain >= 0 && bed.gain <= 1 && ( bed.condition === undefined || [ 'always', 'day', 'night', 'dawn', 'underwater' ].includes( bed.condition ) ) && ( bed.position === undefined || validVector( bed.position ) && bed.position.every( ( value ) => Math.abs( value ) <= 100000 ) ) && ( bed.refDistance === undefined || Number.isFinite( bed.refDistance ) && bed.refDistance >= 0.5 && bed.refDistance <= 1000 ) && ( bed.rolloff === undefined || Number.isFinite( bed.rolloff ) && bed.rolloff >= 0 && bed.rolloff <= 10 );
 }
 
 function validComponentStreamingBounds( bounds ) {
