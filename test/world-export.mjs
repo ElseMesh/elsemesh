@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, readdir, rm } from 'node:fs/promises';
 import path from 'node:path';
 import { parseGLB } from '../src/engine/loaders/GLTF.js';
 import { loadWorldPackage, registerWorldPackageCollisions, unregisterWorldPackageCollisions } from '../src/network/WorldPackage.js';
@@ -26,7 +26,12 @@ try {
 	const assetBytes = await readFile( path.join( output, 'assets', source.objects[ 0 ].assetId.slice( 'sha256:'.length ) ) );
 	assert.deepEqual( sourceBytes, sourceFirst, 'repeated source generation must be byte-identical' );
 	assert.deepEqual( assetBytes, assetFirst, 'repeated GLB generation must be byte-identical' );
-	for ( const [ id, bytes ] of firstAssets ) assert.deepEqual( await readFile( path.join( output, 'assets', id.slice( 'sha256:'.length ) ) ), bytes, `repeated generation must preserve bytes for ${id}` );
+	for ( const [ id, bytes ] of firstAssets ) {
+		assert.deepEqual( await readFile( path.join( output, 'assets', id.slice( 'sha256:'.length ) ) ), bytes, `repeated generation must preserve bytes for ${id}` );
+		assert.equal( `sha256:${createHash( 'sha256' ).update( bytes ).digest( 'hex' )}`, id, `content-addressed asset bytes must match ${id}` );
+	}
+	const assetFiles = ( await readdir( path.join( output, 'assets' ) ) ).sort();
+	assert.deepEqual( assetFiles, [ ...firstAssets.keys() ].map( ( id ) => id.slice( 'sha256:'.length ) ).sort(), 'package asset directory contains exactly the referenced unique assets' );
 	assert.equal( `sha256:${createHash( 'sha256' ).update( assetBytes ).digest( 'hex' )}`, source.objects[ 0 ].assetId, 'exported asset path and source hash must match' );
 	const parsed = parseGLB( assetBytes.buffer.slice( assetBytes.byteOffset, assetBytes.byteOffset + assetBytes.byteLength ) );
 	const primitive = parsed.meshes[ 0 ][ 0 ];
