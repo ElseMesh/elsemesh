@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import net from 'node:net';
 import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
@@ -102,24 +102,15 @@ try {
 	const caveSourcePath = path.join( root, 'worlds/loz-underneath/world-source.json' );
 	const caveSource = JSON.parse( await readFile( caveSourcePath, 'utf8' ) );
 	const caveAssets = path.join( root, 'worlds/loz-underneath/assets' );
-	const firstPath = path.join( tempRoot, 'first.json' );
 	const firstPeerID = spawnSync( binary, [ '--worlds-dir', worldsDir, '--world-profile', 'first-world', '--print-node-id' ], { encoding: 'utf8' } );
 	assert.equal( firstPeerID.status, 0, `could not initialize the island profile identity:\n${firstPeerID.stderr}` );
 	const secondPeerID = spawnSync( binary, [ '--worlds-dir', worldsDir, '--world-profile', 'loz-underneath', '--print-node-id' ], { encoding: 'utf8' } );
 	assert.equal( secondPeerID.status, 0, `could not initialize the cave profile identity:\n${secondPeerID.stderr}` );
-	const portalIsland = {
-		...islandSource,
-		portals: [ {
-			id: 'tw-portal:loz-underneath', destinationWorldId: caveSource.worldId,
-			entry: { position: [ 800, 10, 800 ], yaw: 0 }, exit: { position: [ 0, 3, 8 ], yaw: 0 }, openView: true, enabled: true,
-		} ],
-	};
-	await writeFile( firstPath, JSON.stringify( portalIsland ) );
 	const firstHTTP = await unusedPort();
 	const secondHTTP = await unusedPort();
 	const firstP2P = await unusedPort();
 	const secondP2P = await unusedPort();
-	let first = startProfile( binary, worldsDir, 'first-world', firstPath, islandAssets, firstHTTP, firstP2P, { discoverable: true, dhtMode: 'server' } );
+	let first = startProfile( binary, worldsDir, 'first-world', path.join( root, 'worlds/island/world-source.json' ), islandAssets, firstHTTP, firstP2P, { discoverable: true, dhtMode: 'server' } );
 	const firstManifest = await waitForWorld( first, firstHTTP, islandSource.worldId );
 	const second = startProfile( binary, worldsDir, 'loz-underneath', caveSourcePath, caveAssets, secondHTTP, secondP2P, {
 		discoverable: true,
@@ -133,6 +124,8 @@ try {
 	assert.equal( secondPeerID.stdout.trim(), secondManifest.ownerPeerId, 'the pre-created cave identity is the owner identity used by the hosted profile' );
 	assert.equal( firstManifest.portals[ 0 ].destinationWorldId, secondManifest.worldId, 'the island profile carries a signed portal to the LOZ-derived cave world' );
 	assert.equal( firstManifest.portals[ 0 ].destinationPeerId, undefined, 'the portal resolves the cave provider by stable world ID without pinning its node' );
+	assert.equal( secondManifest.portals[ 0 ].destinationWorldId, firstManifest.worldId, 'the cave profile carries the reciprocal signed portal to the example island' );
+	assert.equal( secondManifest.portals[ 0 ].destinationPeerId, undefined, 'the cave resolves the island provider by stable world ID without pinning its node' );
 	await waitForProvider( first, second, firstHTTP, secondHTTP, caveSource.worldId, secondManifest.ownerPeerId );
 	const islandConnector = new WorldConnector( { worldId: firstManifest.worldId, nodeId: firstManifest.ownerPeerId, gateway: `http://127.0.0.1:${firstHTTP}` } );
 	try {

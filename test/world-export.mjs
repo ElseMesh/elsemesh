@@ -83,7 +83,8 @@ try {
 	assert.equal( source.objects[ 0 ].replacesObjectId, terrainPreview.id, 'full terrain replaces the lightweight portal terrain' );
 	const previewGLB = parseGLB( firstAssets.get( terrainPreview.assetId ) );
 	assert.equal( previewGLB.meshes[ 0 ][ 0 ].indices.length, 128 * 128 * 6, 'portal terrain preview uses one sixteenth as many grid cells as full terrain' );
-	assert.deepEqual( source.rules.requiredFeatures, [ 'tidewater.static-glb/1', 'tidewater.static-glb-quaternion/1', 'tidewater.static-vegetation/1', 'tidewater.static-reef/1', 'tidewater.island-ocean/1', 'tidewater.ambient-audio/1' ], 'GLB transforms, portable vegetation and reef, ocean, and audio declare runtime capabilities' );
+	assert.deepEqual( source.rules.requiredFeatures, [ 'tidewater.static-glb/1', 'tidewater.static-glb-quaternion/1', 'tidewater.static-vegetation/1', 'tidewater.static-reef/1', 'tidewater.island-ocean/1', 'tidewater.ambient-audio/1', 'tidewater.portal-handoff/1', 'tidewater.portal-preview-static/1' ], 'GLB transforms, portable vegetation and reef, ocean, audio, and portals declare runtime capabilities' );
+	assert.equal( source.portals[ 0 ].destinationWorldId, 'tw-world:loz-underneath', 'the example island links to the portable LOZ-derived cave' );
 	assert.equal( source.components.length, 3 + source.components.filter( ( component ) => component.type === 'tidewater.static-reef/1' ).length, 'portable island declares vegetation, reef tiles, ocean, and ambient components' );
 	assert.equal( source.components[ 0 ].type, 'tidewater.static-vegetation/1', 'portable island uses terrain-independent, authored world-space vegetation placements' );
 	assert.match( source.components[ 0 ].placementAssetId, /^sha256:[0-9a-f]{64}$/, 'vegetation placement data is content addressed' );

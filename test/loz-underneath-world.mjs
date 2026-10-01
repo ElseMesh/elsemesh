@@ -23,7 +23,7 @@ try {
 	const source = validateWorldSource( JSON.parse( generatedSourceBytes ) );
 	assert.equal( source.worldId, 'tw-world:loz-underneath' );
 	assert.equal( source.title, 'UNDERNEATH: Basalt Cavern' );
-	assert.deepEqual( source.rules.requiredFeatures, [ 'tidewater.static-glb/1', 'tidewater.static-glb-emissive-strength/1', 'tidewater.ambient-audio/1' ] );
+	assert.deepEqual( source.rules.requiredFeatures, [ 'tidewater.static-glb/1', 'tidewater.static-glb-emissive-strength/1', 'tidewater.ambient-audio/1', 'tidewater.portal-handoff/1', 'tidewater.portal-preview-static/1' ] );
 	const rulesWithoutPackageBudget = { ...source.rules };
 	delete rulesWithoutPackageBudget.maxPackageBytes;
 	assert.doesNotThrow( () => validateWorldRequirements( { rules: rulesWithoutPackageBudget, assets: [] } ), 'browser recognizes every capability required by this package' );
@@ -31,6 +31,15 @@ try {
 	assert.match( source.objects[ 0 ].assetId, /^sha256:[0-9a-f]{64}$/ );
 	assert.equal( source.objects[ 0 ].priority, 'portal-preview', 'the complete compact cave scene can be staged behind an open portal before arrival' );
 	assert.equal( source.objects[ 0 ].collision.shape, 'compound' );
+	assert.deepEqual( source.portals, [ {
+		id: 'tw-portal:example-island', destinationWorldId: 'tw-world:example-island',
+		entry: { position: [ 0, 4.2, 8 ], yaw: Math.PI / 2 }, exit: { position: [ - 340, 4.2, 80 ], yaw: Math.PI / 2 }, openView: true, enabled: true,
+	} ], 'the cave ships a reciprocal, provider-discoverable portal at its mapped entrance' );
+	const islandSource = validateWorldSource( JSON.parse( await readFile( path.join( root, 'worlds/island/world-source.json' ), 'utf8' ) ) );
+	assert.deepEqual( islandSource.portals, [ {
+		id: 'tw-portal:loz-underneath', destinationWorldId: source.worldId,
+		entry: { position: [ - 340, 4.2, 80 ], yaw: Math.PI / 2 }, exit: { position: [ 0, 4.2, 8 ], yaw: Math.PI / 2 }, openView: true, enabled: true,
+	} ], 'the island ships the reciprocal portal to the cave world' );
 	assert.ok( source.objects[ 0 ].collision.boxes.length > 300 && source.objects[ 0 ].collision.boxes.length <= 2048, 'the converted cave layout has bounded floor and wall proxies' );
 	assert.ok( source.objects[ 0 ].collision.boxes.some( box => box.walkable ) && source.objects[ 0 ].collision.boxes.some( box => ! box.walkable && box.solid ), 'collision includes both walkable floors and solid walls' );
 	const ambience = source.components.find( component => component.type === 'tidewater.ambient-audio/1' );

@@ -14,4 +14,4 @@ The package deliberately marks only implemented behavior: static cave, closed st
 
 The portable GLB uses `KHR_materials_emissive_strength`. ElseMesh's static GLB loader honors that extension; worlds that rely on it declare `tidewater.static-glb-emissive-strength/1` as a required feature.
 
-The package currently has no portal to the main island. Its source asset depends on the archived LOZ cave scene, whose terrain entrance and land world are not yet exported as a ThruHold. Portals are signed world records; omit `destinationPeerId` to resolve providers by world ID through the configured directory or destination gateway when linking this world later.
+The package carries a reciprocal, open-view portal to `tw-world:example-island` at the transformed cave entrance. Its entry `[0, 4.2, 8]` maps to the island portal at `[-340, 4.2, 80]`; both worlds resolve the destination by signed world ID without pinning a provider PeerID. The profile end-to-end test starts each package under a separate owner identity, discovers providers through the local DHT, and fetches the cave's portal-preview asset before crossing.

@@ -141,7 +141,7 @@ const source = {
 		gravity: 1,
 		avatarComplexity: 20000,
 		physicsProfile: 'tidewater-default',
-		requiredFeatures: [ 'tidewater.static-glb/1', 'tidewater.static-glb-quaternion/1', 'tidewater.static-vegetation/1', 'tidewater.static-reef/1', 'tidewater.island-ocean/1', 'tidewater.ambient-audio/1' ],
+		requiredFeatures: [ 'tidewater.static-glb/1', 'tidewater.static-glb-quaternion/1', 'tidewater.static-vegetation/1', 'tidewater.static-reef/1', 'tidewater.island-ocean/1', 'tidewater.ambient-audio/1', 'tidewater.portal-handoff/1', 'tidewater.portal-preview-static/1' ],
 		maxPackageBytes: 64 * 1024 * 1024,
 	},
 	hosts: [],
@@ -207,7 +207,14 @@ const source = {
 		{ id: 'tw-component:island-ocean', type: 'tidewater.island-ocean/1', priority: 'portal-preview' },
 		{ id: 'tw-component:island-ambience', type: 'tidewater.ambient-audio/1', priority: 'portal-preview', beds: ambientBeds },
 	],
-	portals: [],
+	portals: [ {
+		id: 'tw-portal:loz-underneath',
+		destinationWorldId: 'tw-world:loz-underneath',
+		entry: { position: [ - 340, 4.2, 80 ], yaw: Math.PI / 2 },
+		exit: { position: [ 0, 4.2, 8 ], yaw: Math.PI / 2 },
+		openView: true,
+		enabled: true,
+	} ],
 	updatedAt,
 };
 await writeFile( sourcePath, `${JSON.stringify( source, null, 2 )}\n` );

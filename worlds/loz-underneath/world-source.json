@@ -17,7 +17,9 @@
     "requiredFeatures": [
       "tidewater.static-glb/1",
       "tidewater.static-glb-emissive-strength/1",
-      "tidewater.ambient-audio/1"
+      "tidewater.ambient-audio/1",
+      "tidewater.portal-handoff/1",
+      "tidewater.portal-preview-static/1"
     ]
   },
   "hosts": [],
@@ -12813,6 +12815,29 @@
       ]
     }
   ],
-  "portals": [],
+  "portals": [
+    {
+      "id": "tw-portal:example-island",
+      "destinationWorldId": "tw-world:example-island",
+      "entry": {
+        "position": [
+          0,
+          4.2,
+          8
+        ],
+        "yaw": 1.5707963267948966
+      },
+      "exit": {
+        "position": [
+          -340,
+          4.2,
+          80
+        ],
+        "yaw": 1.5707963267948966
+      },
+      "openView": true,
+      "enabled": true
+    }
+  ],
   "updatedAt": "2026-10-01T00:00:00.000Z"
 }

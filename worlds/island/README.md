@@ -8,6 +8,8 @@ Regenerate it with:
 npm run export:island
 ```
 
+The package has an open-view portal at `[-340, 4.2, 80]` to the separately hosted `tw-world:loz-underneath` package. The cave package has the reciprocal portal at `[0, 4.2, 8]`. The signed records identify destination worlds rather than fixed nodes, so each side can discover whichever authorized provider currently serves the destination.
+
 The package contains:
 
 - A 512 by 512 terrain GLB with normals, vertex colors, and a matching heightfield collision declaration.
