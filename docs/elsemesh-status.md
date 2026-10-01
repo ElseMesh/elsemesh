@@ -4,6 +4,8 @@ This document tracks the agreed ElseMesh direction against the current code. It 
 
 ## Implemented foundations
 
+Graphics comparisons can use the named and captured camera URL parameters documented in [graphics-review.md](graphics-review.md), so a view and time of day can be reproduced after a normal page load without changing the phone or browser environment.
+
 | Capability | Current evidence | Boundary |
 | --- | --- | --- |
 | Linux and Termux world node | `server/worldd`; `tools/build-server.sh` | Linux amd64/arm64 and Android arm64 binaries build from the external checkout. On the Flip7, both Android binaries reported the embedded source SHA; `worldd --print-node-id` generated a PeerID; and a short live daemon run served `/healthz`, the node record, and the signed starter-manifest endpoints before clean SIGTERM shutdown. On 2026-10-01, two Android `worldd` processes built from `2a3601d6c929c1f7a93cad663f4bbee5d5b78073` connected over libp2p using a bootstrap multiaddr; the owner served its signed manifest and a cache-granted peer fetched and installed a 34-byte asset whose SHA-256 matched. Both reported one DHT peer, both daemons stopped, and disposable Termux data was removed. Public deployment still requires operator-managed TLS, ports, and process lifetime. |

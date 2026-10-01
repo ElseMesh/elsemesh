@@ -37,6 +37,35 @@ export const VIEWS = {
 	tMorning: { p: [ 18, 3.0, - 60 ], yaw: 0.2, pitch: 0.05, time: 7.2 },
 };
 
+export function cameraPoseFromSearch( search ) {
+
+	const params = new URLSearchParams( search );
+	const viewName = params.get( 'view' );
+	if ( viewName !== null ) return VIEWS[ viewName ] || null;
+	const encodedPose = params.get( 'pose' );
+	if ( encodedPose === null ) return null;
+
+	let pose;
+	try {
+		pose = JSON.parse( encodedPose );
+	} catch {
+		return null;
+	}
+	if ( ! pose || ! Array.isArray( pose.p ) || pose.p.length !== 3 || ! pose.p.every( Number.isFinite ) || ! Number.isFinite( pose.yaw ) || ! Number.isFinite( pose.pitch ) || Math.abs( pose.pitch ) > Math.PI / 2 ) return null;
+	if ( pose.time !== undefined && ( ! Number.isFinite( pose.time ) || pose.time < 0 || pose.time > 24 ) ) return null;
+	return pose;
+
+}
+
+function applyCameraPose( app, pose ) {
+
+	if ( pose.time !== undefined ) app.settings.timeOfDay = pose.time;
+	if ( app.setFreeCam ) app.setFreeCam( true );
+	app.fly.setPose( new Vector3( ...pose.p ), pose.yaw, pose.pitch );
+	app.fly.velocity.set( 0, 0, 0 );
+
+}
+
 export function installDebugViews( app ) {
 
 	window.__views = Object.keys( VIEWS );
@@ -52,12 +81,12 @@ export function installDebugViews( app ) {
 
 		const v = VIEWS[ name ];
 		if ( ! v ) return 'unknown view';
-		if ( v.time !== undefined ) app.settings.timeOfDay = v.time;
-		if ( app.setFreeCam ) app.setFreeCam( true );
-		app.fly.setPose( new Vector3( ...v.p ), v.yaw, v.pitch );
-		app.fly.velocity.set( 0, 0, 0 );
+		applyCameraPose( app, v );
 		return name;
 
 	};
+
+	const reviewPose = cameraPoseFromSearch( window.location.search );
+	if ( reviewPose ) applyCameraPose( app, reviewPose );
 
 }
