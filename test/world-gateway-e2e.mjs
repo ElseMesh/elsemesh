@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict';
-import { spawn, spawnSync } from 'node:child_process';
+import { fork, spawn, spawnSync } from 'node:child_process';
 import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import http from 'node:http';
+import https from 'node:https';
 import net from 'node:net';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { WorldConnector } from '../src/network/WorldConnector.js';
 
 const projectRoot = path.resolve( path.dirname( fileURLToPath( import.meta.url ) ), '..' );
 const daemonDir = path.join( projectRoot, 'server', 'worldd' );
@@ -76,25 +77,101 @@ try {
 		}
 	}, 'authorized cache to sync and verify the signed asset', [ owner, cache ] );
 
-	const connector = new WorldConnector( { worldId: worldID, nodeId: ownerPeerID, gateway: `http://127.0.0.1:${cacheHTTPPort}`, chunkBytes: 64 * 1024 } );
+	const certPath = path.join( tempRoot, 'gateway-cert.pem' );
+	const keyPath = path.join( tempRoot, 'gateway-key.pem' );
+	const certificate = spawnSync( 'openssl', [ 'req', '-x509', '-newkey', 'rsa:2048', '-nodes', '-days', '1', '-keyout', keyPath, '-out', certPath, '-subj', '/CN=localhost', '-addext', 'subjectAltName=DNS:localhost,IP:127.0.0.1', '-addext', 'basicConstraints=critical,CA:TRUE' ], { encoding: 'utf8', timeout: 30000 } );
+	assert.equal( certificate.status, 0, `local gateway test certificate generation failed:\n${certificate.stdout}\n${certificate.stderr}` );
+	const secureGateway = await createSecureGatewayProxy( cacheHTTPPort, keyPath, certPath );
 	try {
-		const manifest = await connector.getManifest();
-		assert.equal( manifest.ownerPeerId, ownerPeerID, 'browser connector verifies the owner-signed manifest through the cache gateway' );
-		assert.equal( connector.nodeId, ownerPeerID, 'initial manifest is served through the requested owner peer' );
-
-		await stopDaemon( owner );
-		const downloaded = await connector.getAsset( assetID );
-		assert.deepEqual( Buffer.from( downloaded ), assetBytes, 'browser connector recovers the same content-addressed asset from the authorized cache' );
-		assert.equal( connector.nodeId, cachePeerID, 'provider recovery selects the live cache peer after owner shutdown' );
-		assert.equal( connector.manifest.ownerPeerId, ownerPeerID, 'cache serves the unchanged owner-signed manifest' );
+		const result = await runConnectorClient( {
+			worldID, ownerPeerID, cachePeerID, gateway: secureGateway.url, assetID,
+			assetSource, certPath, owner,
+		} );
+		assert.ok( result.ok, `secure connector client failed: ${result.error || 'unknown error'}` );
+		assert.ok( secureGateway.upgrades >= 2, `expected WSS connection and provider-recovery reconnect, saw ${secureGateway.upgrades} upgrades` );
+		assert.ok( secureGateway.lookups >= 1, 'provider recovery performs HTTPS world lookup' );
 	} finally {
-		connector.close();
+		await new Promise( ( resolve, reject ) => secureGateway.server.close( ( error ) => error ? reject( error ) : resolve() ) );
 	}
 
-	console.log( 'ok   live worldd WebSocket gateway, signed manifest, authorized cache recovery, and asset SHA-256 verification' );
+	console.log( 'ok   live worldd WSS gateway, signed manifest, authorized cache recovery, HTTPS provider lookup, and asset SHA-256 verification' );
 } finally {
 	for ( const child of processes.reverse() ) await stopDaemon( child );
 	await rm( tempRoot, { recursive: true, force: true } );
+}
+
+async function runConnectorClient( { worldID, ownerPeerID, cachePeerID, gateway, assetID, assetSource, certPath, owner } ) {
+	const child = fork( fileURLToPath( new URL( './world-gateway-client.mjs', import.meta.url ) ), [ worldID, ownerPeerID, cachePeerID, gateway, assetID, assetSource ], {
+		env: { ...process.env, NODE_EXTRA_CA_CERTS: certPath },
+		stdio: [ 'ignore', 'pipe', 'pipe', 'ipc' ],
+	} );
+	child.output = '';
+	child.stdout.setEncoding( 'utf8' ).on( 'data', ( value ) => { child.output += value; } );
+	child.stderr.setEncoding( 'utf8' ).on( 'data', ( value ) => { child.output += value; } );
+	let ownerStopped = false;
+	let result = null;
+	child.on( 'message', async ( message ) => {
+		if ( message?.type === 'manifest-ready' && ! ownerStopped ) {
+			ownerStopped = true;
+			try {
+				await stopDaemon( owner );
+				child.send( { type: 'owner-stopped' } );
+			} catch ( error ) {
+				child.kill( 'SIGKILL' );
+				result = { ok: false, error: `failed to stop owner: ${error}` };
+			}
+		} else if ( message?.type === 'result' ) {
+			result = message;
+		}
+	} );
+	const exitCode = await new Promise( ( resolve, reject ) => {
+		const timer = setTimeout( () => { child.kill( 'SIGKILL' ); reject( new Error( `WSS connector client timed out:\n${child.output}` ) ); }, 45000 );
+		child.once( 'exit', ( code ) => { clearTimeout( timer ); resolve( code ); } );
+		child.once( 'error', ( error ) => { clearTimeout( timer ); reject( error ); } );
+	} );
+	assert.equal( exitCode, 0, `WSS connector client exited ${exitCode}:\n${child.output}` );
+	assert.ok( result, `WSS connector client returned no result:\n${child.output}` );
+	return result;
+}
+
+async function createSecureGatewayProxy( upstreamPort, keyPath, certPath ) {
+	let upgrades = 0;
+	let lookups = 0;
+	const server = https.createServer( { key: await readFile( keyPath ), cert: await readFile( certPath ) }, ( request, response ) => {
+		if ( request.url?.startsWith( '/api/lookup' ) ) lookups ++;
+		const upstream = http.request( { hostname: '127.0.0.1', port: upstreamPort, method: request.method, path: request.url, headers: request.headers }, ( upstreamResponse ) => {
+			response.writeHead( upstreamResponse.statusCode || 502, upstreamResponse.headers );
+			upstreamResponse.pipe( response );
+		} );
+		upstream.on( 'error', () => { if ( ! response.headersSent ) response.writeHead( 502 ); response.end(); } );
+		request.pipe( upstream );
+	} );
+	server.on( 'upgrade', ( request, clientSocket, head ) => {
+		upgrades ++;
+		const upstream = http.request( { hostname: '127.0.0.1', port: upstreamPort, method: request.method, path: request.url, headers: request.headers } );
+		upstream.on( 'upgrade', ( upstreamResponse, upstreamSocket, responseHead ) => {
+			clientSocket.write( `HTTP/1.1 ${upstreamResponse.statusCode} ${upstreamResponse.statusMessage}\r\n` );
+			for ( let index = 0; index < upstreamResponse.rawHeaders.length; index += 2 ) clientSocket.write( `${upstreamResponse.rawHeaders[ index ]}: ${upstreamResponse.rawHeaders[ index + 1 ]}\r\n` );
+			clientSocket.write( '\r\n' );
+			if ( head.length ) upstreamSocket.write( head );
+			if ( responseHead.length ) clientSocket.write( responseHead );
+			upstreamSocket.pipe( clientSocket );
+			clientSocket.pipe( upstreamSocket );
+			clientSocket.on( 'error', () => upstreamSocket.destroy() );
+			upstreamSocket.on( 'error', () => clientSocket.destroy() );
+		} );
+		upstream.on( 'response', ( response ) => {
+			clientSocket.write( `HTTP/1.1 ${response.statusCode} ${response.statusMessage}\r\n` );
+			for ( let index = 0; index < response.rawHeaders.length; index += 2 ) clientSocket.write( `${response.rawHeaders[ index ]}: ${response.rawHeaders[ index + 1 ]}\r\n` );
+			clientSocket.write( '\r\n' );
+			response.pipe( clientSocket );
+		} );
+		upstream.on( 'error', () => clientSocket.destroy() );
+		upstream.end();
+	} );
+	await new Promise( ( resolve, reject ) => server.listen( 0, '127.0.0.1', resolve ).once( 'error', reject ) );
+	const { port } = server.address();
+	return { server, url: `https://127.0.0.1:${port}`, get upgrades() { return upgrades; }, get lookups() { return lookups; } };
 }
 
 function runCli( binary, args ) {
