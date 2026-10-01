@@ -54,6 +54,19 @@ node tools/apply-world-proposal.mjs --source ./island.world-source.json \
 
 The tool applies operations to a copy, runs the same source validator used by Blender/client code, and creates a new output file only if the complete result is valid. Review the resulting diff and candidate assets before converting or signing. The proposal tool never imports Blender scripts, signs a manifest, or publishes content.
 
+### Apply typed Blender preview actions
+
+`tools/blender/world_actions.py` is the Blender-side companion for data-only scene edits. It accepts a JSON plan bound to the exact source-file bytes with `sourceHash`; supported operations are add, update, or remove for stable-ID asset instances and portals. The plan cannot contain Python or Blender operator names. New object instances must reference an existing `sha256:` asset, and the runner verifies its digest before importing it. Existing source markers created by `world_source.py` are the edit targets, so start from a Blender file imported from the same source snapshot.
+
+Run it in a disposable copy of the scene. It writes an unsigned source candidate and a separate `.blend` candidate, refusing to overwrite either destination. Review both candidates and run the ordinary source and asset validators before publishing. The runner does not sign or publish. Its Python validation tests do not require Blender; applying GLB imports and scene operations still needs Blender installed and is not verified by those tests.
+
+```sh
+python3 test/blender-world-actions.py
+blender working-copy.blend --background --python tools/blender/world_actions.py -- \
+  --plan plan.json --source island.world-source.json --assets worlds/island/assets \
+  --out-source candidate.world-source.json --out-blend candidate.blend
+```
+
 ## AI editor service
 
 The service is a planned, separate authoring product, not part of the world daemon's authority path. Its first implementation should be a tool-using assistant rather than model fine-tuning: provide a bounded Blender workspace and explicit operations through `bpy`, alongside schema-aware JSON edits. This yields inspectable actions and avoids training a model to emit opaque scene files.
