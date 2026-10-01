@@ -8,6 +8,7 @@ import { getDetailImage } from '../src/world/terrain/DetailTextures.js';
 import { disposeWorldPackage, loadWorldPackage, registerWorldPackageCollisions, unregisterWorldPackageCollisions } from '../src/network/WorldPackage.js';
 import { validateWorldSource } from '../src/network/WorldSource.js';
 import { Colliders } from '../src/world/Colliders.js';
+import { decodeVegetationPlacements } from '../src/network/VegetationPlacements.js';
 
 const temporaryRoot = process.env.PREFIX ? path.join( process.env.PREFIX, 'tmp' ) : '/var/tmp';
 const output = await mkdtemp( path.join( temporaryRoot, 'elsemesh-island-export-' ) );
@@ -18,7 +19,7 @@ try {
 	assert.equal( detailImage.data.length, 512 * 512 * 4, 'CPU detail image retains the exact shared RGBA data layout' );
 	const checkedInDir = path.resolve( 'worlds/island' );
 	const checkedInSource = validateWorldSource( JSON.parse( await readFile( path.join( checkedInDir, 'world-source.json' ), 'utf8' ) ) );
-	const checkedInIDs = new Set( checkedInSource.objects.map( ( object ) => object.assetId ) );
+	const checkedInIDs = new Set( [ ...checkedInSource.objects.map( ( object ) => object.assetId ), ...checkedInSource.components.map( ( component ) => component.placementAssetId ).filter( Boolean ) ] );
 	const checkedInFiles = ( await readdir( path.join( checkedInDir, 'assets' ) ) ).sort();
 	assert.deepEqual( checkedInFiles, [ ...checkedInIDs ].map( ( id ) => id.slice( 'sha256:'.length ) ).sort(), 'checked-in island package stores exactly its referenced assets' );
 	let checkedInBytes = 0;
@@ -29,6 +30,9 @@ try {
 	}
 	assert.ok( checkedInBytes <= checkedInSource.rules.maxPackageBytes, 'checked-in assets fit the world package budget' );
 	assert.ok( checkedInSource.objects.some( ( object ) => object.id === 'tw-object:island-village' ), 'checked-in island source contains the static village GLB instance' );
+	const checkedInVegetationBytes = await readFile( path.join( checkedInDir, 'assets', checkedInSource.components[ 0 ].placementAssetId.slice( 'sha256:'.length ) ) );
+	const checkedInVegetation = decodeVegetationPlacements( new Uint8Array( checkedInVegetationBytes ), 7 );
+	assert.ok( Object.values( checkedInVegetation ).filter( Array.isArray ).reduce( ( count, records ) => count + records.length, 0 ) > 100, 'checked-in component asset contains portable individual vegetation placements' );
 	const sourcePath = path.join( output, 'world-source.json' );
 	execFileSync( process.execPath, [ 'tools/export-island.mjs', '--out', output ], { stdio: 'inherit' } );
 	const sourceFirst = await readFile( sourcePath );
@@ -36,13 +40,18 @@ try {
 	const assetPath = path.join( output, 'assets', firstDocument.objects[ 0 ].assetId.slice( 'sha256:'.length ) );
 	const assetFirst = await readFile( assetPath );
 	const firstAssets = new Map();
-	for ( const id of new Set( firstDocument.objects.map( ( object ) => object.assetId ) ) ) firstAssets.set( id, await readFile( path.join( output, 'assets', id.slice( 'sha256:'.length ) ) ) );
+	for ( const id of new Set( [ ...firstDocument.objects.map( ( object ) => object.assetId ), ...firstDocument.components.map( ( component ) => component.placementAssetId ).filter( Boolean ) ] ) ) firstAssets.set( id, await readFile( path.join( output, 'assets', id.slice( 'sha256:'.length ) ) ) );
 	execFileSync( process.execPath, [ 'tools/export-island.mjs', '--out', output ], { stdio: 'inherit' } );
 	const sourceBytes = await readFile( sourcePath );
 	const source = validateWorldSource( JSON.parse( sourceBytes ) );
 	const assetBytes = await readFile( path.join( output, 'assets', source.objects[ 0 ].assetId.slice( 'sha256:'.length ) ) );
 	assert.deepEqual( sourceBytes, sourceFirst, 'repeated source generation must be byte-identical' );
 	assert.deepEqual( assetBytes, assetFirst, 'repeated GLB generation must be byte-identical' );
+	const placementID = source.components[ 0 ].placementAssetId;
+	const placementBytes = await readFile( path.join( output, 'assets', placementID.slice( 'sha256:'.length ) ) );
+	assert.equal( `sha256:${createHash( 'sha256' ).update( placementBytes ).digest( 'hex' )}`, placementID, 'vegetation placement asset is content addressed' );
+	assert.ok( placementBytes.length < 3 * 1024 * 1024, 'compact binary placement encoding stays below three MiB' );
+	assert.deepEqual( decodeVegetationPlacements( new Uint8Array( placementBytes ), 7 ), checkedInVegetation, 'exported placements match the checked-in portable vegetation data' );
 	for ( const [ id, bytes ] of firstAssets ) {
 		assert.deepEqual( await readFile( path.join( output, 'assets', id.slice( 'sha256:'.length ) ) ), bytes, `repeated generation must preserve bytes for ${id}` );
 		assert.equal( `sha256:${createHash( 'sha256' ).update( bytes ).digest( 'hex' )}`, id, `content-addressed asset bytes must match ${id}` );
@@ -56,7 +65,10 @@ try {
 	assert.ok( primitive.attributes.COLOR_0, 'terrain export must carry its deterministic vertex colors' );
 	assert.equal( primitive.indices.length, 512 * 512 * 6, 'terrain export must cover the full configured grid' );
 	assert.deepEqual( source.rules.requiredFeatures, [ 'tidewater.static-glb/1', 'tidewater.static-glb-quaternion/1', 'tidewater.procedural-island-vegetation/1' ], 'GLB transforms and procedural vegetation declare their runtime capabilities' );
-	assert.deepEqual( source.components, [ { id: 'tw-component:island-vegetation', type: 'tidewater.procedural-island-vegetation/1', seed: 7, priority: 'visible' } ], 'portable island uses the versioned deterministic vegetation renderer component' );
+	assert.equal( source.components.length, 1, 'portable island declares one vegetation component' );
+	assert.equal( source.components[ 0 ].type, 'tidewater.procedural-island-vegetation/1', 'portable island uses the versioned deterministic vegetation renderer' );
+	assert.match( source.components[ 0 ].placementAssetId, /^sha256:[0-9a-f]{64}$/, 'vegetation placement data is content addressed' );
+	assert.equal( source.components[ 0 ].priority, 'portal-preview', 'vegetation records are available for open portal previews' );
 	assert.ok( source.rules.maxPackageBytes >= [ ...firstAssets.values() ].reduce( ( total, bytes ) => total + bytes.length, 0 ), 'signed package byte budget covers every unique asset' );
 	assert.deepEqual( [ source.objects[ 0 ].collision.columns, source.objects[ 0 ].collision.rows ], [ 513, 513 ], 'terrain source declares the grid used for collision extraction' );
 	const villageObject = source.objects.find( ( object ) => object.id === 'tw-object:island-village' );

@@ -242,6 +242,11 @@ export class VegSite {
 // Keep procedural placement consistent for the live island and portable exports.
 // Only CPU-side records are produced here; renderers may turn them into instanced meshes.
 export function createVegetationPlacement( terrain, village = null ) {
+	const site = createVegetationSite( terrain, village );
+	return { site, records: scatterVegetation( site ) };
+}
+
+export function createVegetationSite( terrain, village = null ) {
 	const footprints = village && typeof village.getFootprints === 'function' ? village.getFootprints() : [];
 	const paths = [];
 	if ( village ) for ( const p of [ village.path, ...( village.sidePaths || [] ) ] ) {
@@ -253,7 +258,7 @@ export function createVegetationPlacement( terrain, village = null ) {
 		paths.push( { points, width: p.width ?? 1.8 } );
 	}
 	const site = new VegSite( terrain, { footprints, paths: paths.length ? paths : null } );
-	return { site, records: scatterVegetation( site ) };
+	return site;
 }
 
 // Spatial hash of placed plants for minimum-distance tests across types.

@@ -138,10 +138,22 @@ func TestWorldManifestValidatesProceduralComponents(t *testing.T) {
 	manifest := newStarterManifest("Procedural component", ownerID.String())
 	manifest.WorldID = "tw-world:procedural-component"
 	manifest.Rules.RequiredFeatures = []string{"tidewater.procedural-island-vegetation/1"}
-	manifest.Components = []worldComponent{{ID: "tw-component:island-vegetation", Type: "tidewater.procedural-island-vegetation/1", Seed: 7, Priority: "visible"}}
+	placementID := "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+	manifest.Assets = []assetRef{{ID: placementID, Bytes: 1, Kind: "vegetation-placement/1", Priority: "portal-preview"}}
+	manifest.Components = []worldComponent{{ID: "tw-component:island-vegetation", Type: "tidewater.procedural-island-vegetation/1", Seed: 7, Priority: "portal-preview", PlacementAssetID: placementID}}
 	if err := validateManifest(manifest, ownerID.String(), time.Now()); err != nil {
 		t.Fatalf("valid procedural component rejected: %v", err)
 	}
+	manifest.Components[0].PlacementAssetID = "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+	if err := validateManifest(manifest, ownerID.String(), time.Now()); err == nil {
+		t.Fatal("procedural component referencing an undeclared placement asset accepted")
+	}
+	manifest.Components[0].PlacementAssetID = placementID
+	manifest.Assets[0].Priority = "visible"
+	if err := validateManifest(manifest, ownerID.String(), time.Now()); err == nil {
+		t.Fatal("procedural placement data not available for portal preview accepted")
+	}
+	manifest.Assets[0].Priority = "portal-preview"
 
 	manifest.Rules.RequiredFeatures = nil
 	if err := validateManifest(manifest, ownerID.String(), time.Now()); err == nil {

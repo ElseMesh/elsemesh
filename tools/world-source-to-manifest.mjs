@@ -47,6 +47,23 @@ async function main() {
 		const rank = [ 'portal-preview', 'visible', 'nearby', 'background' ];
 		if ( rank.indexOf( priority ) < rank.indexOf( ref.priority ) ) ref.priority = priority;
 	}
+	for ( const component of source.components || [] ) {
+		if ( ! component.placementAssetId ) continue; // Legacy seed-only component.
+		const id = component.placementAssetId;
+		let ref = assets.get( id );
+		if ( ! ref ) {
+			const assetPath = path.join( args.assets, id.slice( 'sha256:'.length ) );
+			const info = await stat( assetPath );
+			if ( ! info.isFile() || info.size > 16 * 1024 * 1024 ) throw new Error( `Invalid or oversized component data ${id}` );
+			const hasher = createHash( 'sha256' );
+			for await ( const chunk of createReadStream( assetPath ) ) hasher.update( chunk );
+			if ( `sha256:${hasher.digest( 'hex' )}` !== id ) throw new Error( `Hash mismatch for component data ${id}` );
+			ref = { id, bytes: info.size, kind: 'vegetation-placement/1', priority: 'portal-preview' };
+			assets.set( id, ref );
+		} else if ( ref.kind !== 'vegetation-placement/1' ) {
+			throw new Error( `Component data ${id} conflicts with a GLB asset` );
+		}
+	}
 	if ( source.rules.maxPackageBytes !== undefined ) {
 		const packageBytes = [ ...assets.values() ].reduce( ( total, asset ) => total + asset.bytes, 0 );
 		if ( packageBytes > source.rules.maxPackageBytes ) throw new Error( `World package uses ${packageBytes} bytes, over its declared ${source.rules.maxPackageBytes}-byte budget` );

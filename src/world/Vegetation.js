@@ -1,6 +1,6 @@
 import * as THREE from '../engine/index.js';
 import { G } from '../core/Globals.js';
-import { createVegetationPlacement, buildGrassMask, RULES } from './vegetation/Scatter.js';
+import { createVegetationPlacement, createVegetationSite, buildGrassMask, RULES } from './vegetation/Scatter.js';
 import { VegType, LodLevel } from './vegetation/InstanceLOD.js';
 import { GrassField } from './vegetation/GrassField.js';
 import { uCamPos, uGustOffset, UNDER_FERN_FADE } from './vegetation/VegNodes.js';
@@ -72,7 +72,7 @@ const CANOPY_FAR = [ 2600, 2800 ];
 
 export class Vegetation {
 
-	constructor( { scene, terrain, village = null, includeGrass = true } ) {
+	constructor( { scene, terrain, village = null, includeGrass = true, placementRecords = null } ) {
 
 		this.scene = scene;
 		this.terrain = terrain;
@@ -81,10 +81,10 @@ export class Vegetation {
 		this.group.matrixAutoUpdate = false;
 
 		const t0 = performance.now();
-		const placement = createVegetationPlacement( terrain, village );
-		const { site } = placement;
+		const placement = placementRecords ? null : createVegetationPlacement( terrain, village );
+		const site = placement?.site || createVegetationSite( terrain, village );
 		this.site = site;
-		const recs = placement.records;
+		const recs = placementRecords || placement.records;
 		this.records = recs;
 		const t1 = performance.now();
 		const grassMask = includeGrass ? buildGrassMask( site ) : null;

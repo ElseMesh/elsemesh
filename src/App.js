@@ -63,6 +63,7 @@ import { BoatController } from './player/BoatController.js';
 import { BoatSpray } from './player/BoatSpray.js';
 import { WakeSim } from './ocean/WakeSim.js';
 import { Vegetation } from './world/Vegetation.js';
+import { decodeVegetationPlacements } from './network/VegetationPlacements.js';
 import { SoundScape } from './audio/SoundScape.js';
 import { updateCameraVelocity, useStaticVelocity } from './post/CameraVelocity.js';
 import { Group } from './engine/scene/Group.js';
@@ -415,6 +416,7 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 			const initialObjects = selectWorldObjectsForView( connector.manifest, this.camera );
 			const initialObjectIDs = new Set( initialObjects.map( ( object ) => object.id ) );
 			const initialAssetIDs = new Set( initialObjects.map( ( object ) => object.assetId ) );
+			for ( const component of connector.manifest.components || [] ) if ( component.placementAssetId ) initialAssetIDs.add( component.placementAssetId );
 			const visibleAssets = await connector.preload( { through: 'background', assetIDs: initialAssetIDs } );
 			this.linkedWorldRoot = await loadWorldPackage( connector, { assets: visibleAssets, objectIDs: initialObjectIDs } );
 			this.installWorldComponents( this.linkedWorldRoot, connector );
@@ -708,11 +710,12 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 		}
 		for ( const component of connector.manifest.components || [] ) {
 			if ( component.type === 'tidewater.procedural-island-vegetation/1' ) {
-				if ( ! this.remoteWorldActive && this.vegetation && this.vegetation.group.parent !== root ) {
+				const placementRecords = component.placementAssetId ? readVegetationPlacements( connector, component ) : null;
+				if ( ! this.remoteWorldActive && this.vegetation && this.vegetation.group.parent !== root && ( ! placementRecords || sameVegetationPlacements( this.vegetation.records, placementRecords ) ) ) {
 					root.add( this.vegetation.group );
 					installed.push( this.vegetation );
 				} else {
-					installed.push( new Vegetation( { scene: root, terrain: this.terrainData, village: this.village } ) );
+					installed.push( new Vegetation( { scene: root, terrain: this.terrainData, village: this.village, placementRecords } ) );
 				}
 			}
 		}
@@ -1111,4 +1114,25 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 
 	}
 
+}
+
+function readVegetationPlacements( connector, component ) {
+	const bytes = connector.assets.get( component.placementAssetId );
+	if ( ! bytes ) throw new Error( `Vegetation component ${component.id} is missing its placement asset` );
+	return decodeVegetationPlacements( bytes, component.seed );
+}
+
+function sameVegetationPlacements( left, right ) {
+	for ( const key of Object.keys( left ) ) {
+		const a = left[ key ], b = right[ key ];
+		if ( Array.isArray( a ) ) {
+			if ( ! Array.isArray( b ) || a.length !== b.length ) return false;
+			for ( let index = 0; index < a.length; index ++ ) {
+				const aRecord = a[ index ], bRecord = b[ index ];
+				const keys = Object.keys( aRecord );
+				if ( ! bRecord || keys.length !== Object.keys( bRecord ).length || keys.some( ( field ) => ! Object.hasOwn( bRecord, field ) || Math.fround( aRecord[ field ] ) !== bRecord[ field ] ) ) return false;
+			}
+		} else if ( a !== b ) return false;
+	}
+	return true;
 }

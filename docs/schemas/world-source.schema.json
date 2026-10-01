@@ -305,7 +305,8 @@
         "id": { "type": "string", "pattern": "^tw-component:[\\w.-]{1,128}$" },
         "type": { "const": "tidewater.procedural-island-vegetation/1" },
         "seed": { "const": 7 },
-        "priority": { "enum": ["portal-preview", "visible", "nearby", "background"] }
+        "priority": { "enum": ["portal-preview", "visible", "nearby", "background"] },
+        "placementAssetId": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" }
       },
       "additionalProperties": false
     },

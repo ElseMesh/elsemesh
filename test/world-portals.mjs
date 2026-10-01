@@ -57,6 +57,11 @@ assert.doesNotThrow( () => validateWorldPortals( [ runtimePortal ], runtimeIDs )
 assert.throws( () => validateWorldPortals( [ { ...runtimePortal, id: 'tw-object:asset' } ], new Set( [ 'tw-object:asset' ] ) ), /duplicate portal ID/, 'browser rejects cross-kind entity ID collisions' );
 assert.throws( () => validateWorldPortals( [ { ...runtimePortal, destinationGateway: 'http://world.example' } ] ), /destination gateway/, 'browser rejects insecure portal gateways' );
 assert.throws( () => validateWorldComponents( [ { id: 'tw-component:duplicate', type: 'tidewater.procedural-island-vegetation/1', seed: 7 } ], { requiredFeatures: [ 'tidewater.procedural-island-vegetation/1' ] }, new Set( [ 'tw-component:duplicate' ] ) ), /duplicate component ID/, 'browser rejects duplicate IDs across entity kinds' );
+const placementAssetId = `sha256:${'a'.repeat( 64 )}`;
+const vegetationComponent = { id: 'tw-component:portable-vegetation', type: 'tidewater.procedural-island-vegetation/1', seed: 7, placementAssetId };
+const placementAsset = [ { id: placementAssetId, kind: 'vegetation-placement/1', priority: 'portal-preview' } ];
+assert.doesNotThrow( () => validateWorldComponents( [ vegetationComponent ], { requiredFeatures: [ vegetationComponent.type ] }, new Set(), placementAsset ), 'browser accepts a declared JSON placement asset available for portal preview' );
+assert.throws( () => validateWorldComponents( [ vegetationComponent ], { requiredFeatures: [ vegetationComponent.type ] }, new Set(), [] ), /placement asset reference/, 'browser rejects a component that points at undeclared placement data' );
 const directoryLink = worldLinkFromLocation( { search: '?worldId=tw-world:coast&directory=https%3A%2F%2Fthruhold.org', origin: 'https://rebroad.github.io' } );
 assert.equal( directoryLink.directory, 'https://thruhold.org', 'browser link can opt into the community directory' );
 assert.throws( () => new WorldConnector( { worldId: 'tw-world:coast', directory: 'http://thruhold.org' } ), 'directory endpoints must use HTTPS' );

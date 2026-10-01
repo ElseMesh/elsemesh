@@ -109,7 +109,7 @@ export class WorldConnector {
 		validateWorldRequirements( reply.document.payload );
 		const entityIDs = validateWorldObjects( reply.document.payload.objects );
 		validateWorldPortals( reply.document.payload.portals, entityIDs );
-		validateWorldComponents( reply.document.payload.components, reply.document.payload.rules, entityIDs );
+		validateWorldComponents( reply.document.payload.components, reply.document.payload.rules, entityIDs, reply.document.payload.assets );
 		validateWorldHosts( reply.document.payload.hosts );
 		this.manifest = reply.document.payload;
 		invariant( Number.isSafeInteger( this.manifest.authorityEpoch ) && this.manifest.authorityEpoch > 0, 'Manifest authority epoch is outside the supported range' );
@@ -458,12 +458,14 @@ export function validateWorldPortals( portals = [], ids = new Set() ) {
 	return ids;
 }
 
-export function validateWorldComponents( components = [], rules, ids = new Set() ) {
+export function validateWorldComponents( components = [], rules, ids = new Set(), assets = [] ) {
 	invariant( Array.isArray( components ) && components.length <= 128, 'World manifest has an invalid component list' );
+	const assetRefs = new Map( assets.map( ( asset ) => [ asset.id, asset ] ) );
 	for ( const component of components ) {
 		invariant( component && typeof component.id === 'string' && /^tw-component:[\w.-]{1,128}$/.test( component.id ) && ! ids.has( component.id ), 'World manifest has an invalid or duplicate component ID' );
 		invariant( component.type === 'tidewater.procedural-island-vegetation/1' && component.seed === 7 && ( component.priority === undefined || [ 'portal-preview', 'visible', 'nearby', 'background' ].includes( component.priority ) ), `Unsupported or invalid world component ${component.id}` );
 		invariant( rules.requiredFeatures?.includes( component.type ), `World component ${component.type} is missing from requiredFeatures` );
+		if ( component.placementAssetId !== undefined ) invariant( /^sha256:[0-9a-f]{64}$/.test( component.placementAssetId ) && assetRefs.get( component.placementAssetId )?.kind === 'vegetation-placement/1' && assetRefs.get( component.placementAssetId )?.priority === 'portal-preview', `World component ${component.id} has an invalid placement asset reference` );
 		ids.add( component.id );
 	}
 	return ids;

@@ -14,6 +14,7 @@ import { InstancedProps } from '../src/world/Props.js';
 import { DebrisPlacer } from '../src/world/debris/DebrisPlacement.js';
 import { SCAN_ASSETS } from '../src/world/debris/ScannedDebris.js';
 import { createVegetationPlacement } from '../src/world/vegetation/Scatter.js';
+import { encodeVegetationPlacements } from '../src/network/VegetationPlacements.js';
 
 const REPO = path.resolve( path.dirname( fileURLToPath( import.meta.url ) ), '..' );
 const args = process.argv.slice( 2 );
@@ -47,6 +48,9 @@ const villageAssetId = `sha256:${createHash( 'sha256' ).update( villageGLB ).dig
 const villageBounds = boundsForGLB( villageGLB );
 staticAssets.set( villageAssetId, villageGLB );
 const debris = generated.debris;
+const vegetationDocument = Buffer.from( encodeVegetationPlacements( generated.vegetation, 7 ) );
+const vegetationAssetId = `sha256:${createHash( 'sha256' ).update( vegetationDocument ).digest( 'hex' )}`;
+staticAssets.set( vegetationAssetId, vegetationDocument );
 const debrisAssetIDs = new Map();
 const debrisAssetBounds = new Map();
 for ( const assetName of SCAN_ASSETS ) {
@@ -114,7 +118,7 @@ const source = {
 			collision: { shape: 'none', enabled: false },
 		};
 	} ) ],
-	components: [ { id: 'tw-component:island-vegetation', type: 'tidewater.procedural-island-vegetation/1', seed: 7, priority: 'visible' } ],
+	components: [ { id: 'tw-component:island-vegetation', type: 'tidewater.procedural-island-vegetation/1', seed: 7, priority: 'portal-preview', placementAssetId: vegetationAssetId } ],
 	portals: [],
 	updatedAt,
 };
@@ -152,6 +156,7 @@ function buildIslandProceduralContent( terrainData ) {
 		villageTriangles: batches.reduce( ( total, { batch } ) => total + batch.triangles, 0 ),
 		villageColliders,
 		debris: placer.scanned,
+		vegetation: vegetation.records,
 	};
 }
 
