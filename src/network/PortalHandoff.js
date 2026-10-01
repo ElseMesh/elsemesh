@@ -51,6 +51,14 @@ export function mapPortalCamera( sourceCamera, destinationCamera, entry, exit ) 
 	return destinationCamera;
 }
 
+// Plane normal points toward the source-side of the exit. Portal rendering discards
+// fragments with positive signed distance so only content beyond the threshold shows.
+export function portalExitClipPlane( exit ) {
+	const nx = Math.sin( exit.yaw ), nz = Math.cos( exit.yaw );
+	const [ x, , z ] = exit.position;
+	return [ nx, 0, nz, - nx * x - nz * z ];
+}
+
 function localX( x, z, originX, originZ, yaw ) {
 	const dx = x - originX, dz = z - originZ;
 	return dx * Math.cos( yaw ) - dz * Math.sin( yaw );

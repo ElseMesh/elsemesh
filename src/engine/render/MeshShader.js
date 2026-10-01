@@ -296,6 +296,9 @@ struct FragOut {
 
 @fragment fn fs( vs: VSOut, @builtin( front_facing ) front: bool ) -> FragOut {
 	let in = fragInput( vs, front );
+#if PORTAL_CLIP
+	if ( dot( vec4f( in.P, 1.0 ), frame.portalClipPlane ) > 0.0 ) { discard; }
+#endif
 #if REFRACTION_CLIP
 #if !CLIP_DISTANCES
 	// the water's refraction source only holds what is under the water (pass.defines)

@@ -56,12 +56,13 @@ const FRAME_FIELDS = {
 	// 1 when the frame renders with reversed depth (always, except shadow maps)
 	reversedDepth: [ 'f32', 1 ],
 	pad0: [ 'f32', 0 ],
+	portalClipPlane: [ 'vec4f', new Vector4() ], // world-space plane for isolated portal destination views
 	// free slots for experiments / debug views
 	debug: [ 'vec4f', new Vector4() ],
 };
 
 const CAMERA_FIELDS = [ 'view', 'proj', 'viewProj', 'invView', 'invProj', 'invViewProj', 'viewProjNoJitter', 'prevViewProjNoJitter',
-	'cameraPos', 'near', 'prevCameraPos', 'far', 'resolution', 'invResolution', 'jitter', 'prevJitter', 'reversedDepth' ];
+	'cameraPos', 'near', 'prevCameraPos', 'far', 'resolution', 'invResolution', 'jitter', 'prevJitter', 'reversedDepth', 'portalClipPlane' ];
 
 // The main frame block (main camera; also what compute shaders see).
 export const FrameUniforms = new UniformBlock( 'Frame', FRAME_FIELDS, { label: 'frame' } );

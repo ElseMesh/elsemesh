@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
-import { alignPortalPreview, crossedPortalPlane, mapPortalCamera, rotatePortalVelocity } from '../src/network/PortalHandoff.js';
+import { alignPortalPreview, crossedPortalPlane, mapPortalCamera, portalExitClipPlane, rotatePortalVelocity } from '../src/network/PortalHandoff.js';
 import { PerspectiveCamera } from '../src/engine/scene/Camera.js';
 import { Vector3 } from '../src/engine/math/Vector3.js';
+import { Material } from '../src/engine/render/Material.js';
+import { buildMeshShader } from '../src/engine/render/MeshShader.js';
 import { validateWorldSource } from '../src/network/WorldSource.js';
 import { worldLinkFromLocation, WorldConnector } from '../src/network/WorldConnector.js';
 
@@ -29,6 +31,11 @@ mapPortalCamera( sourceCamera, destinationCamera, { position: [ 0, 0, 0 ], yaw: 
 const destinationDirection = destinationCamera.getWorldDirection( new Vector3() );
 assert.ok( Math.abs( destinationCamera.position.x - 12 ) < 1e-9 && Math.abs( destinationCamera.position.y - 3 ) < 1e-9 && Math.abs( destinationCamera.position.z - 20 ) < 1e-9, 'portal camera position maps from entry coordinates into the destination' );
 assert.ok( Math.abs( destinationDirection.x + 1 ) < 1e-9 && Math.abs( destinationDirection.z ) < 1e-9, 'portal camera direction rotates through the destination orientation' );
+const exitClipPlane = portalExitClipPlane( { position: [ 10, 2, 20 ], yaw: Math.PI / 2 } );
+const clipDistance = ( point ) => exitClipPlane[ 0 ] * point[ 0 ] + exitClipPlane[ 1 ] * point[ 1 ] + exitClipPlane[ 2 ] * point[ 2 ] + exitClipPlane[ 3 ];
+assert.ok( clipDistance( [ 12, 3, 20 ] ) > 0 && clipDistance( [ 8, 3, 20 ] ) < 0, 'exit-plane clipping keeps destination-side geometry and rejects geometry on the virtual camera side' );
+const clippedShader = buildMeshShader( new Material( { lit: false } ), [ { name: 'position', location: 0, wgsl: 'vec3f' } ], { kind: 'main', defines: { PORTAL_CLIP: 1 } } );
+assert.match( clippedShader.code, /frame\.portalClipPlane/, 'portal render pipelines discard fragments using the per-view exit plane' );
 
 const source = {
 	protocol: 'tidewater.world-source/1', worldId: 'tw-world:source', title: 'Source',
