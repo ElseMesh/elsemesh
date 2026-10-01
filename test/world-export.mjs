@@ -18,20 +18,37 @@ try {
 	const firstDocument = JSON.parse( sourceFirst );
 	const assetPath = path.join( output, 'assets', firstDocument.objects[ 0 ].assetId.slice( 'sha256:'.length ) );
 	const assetFirst = await readFile( assetPath );
+	const firstAssets = new Map();
+	for ( const id of new Set( firstDocument.objects.map( ( object ) => object.assetId ) ) ) firstAssets.set( id, await readFile( path.join( output, 'assets', id.slice( 'sha256:'.length ) ) ) );
 	execFileSync( process.execPath, [ 'tools/export-island.mjs', '--out', output ], { stdio: 'inherit' } );
 	const sourceBytes = await readFile( sourcePath );
 	const source = validateWorldSource( JSON.parse( sourceBytes ) );
 	const assetBytes = await readFile( path.join( output, 'assets', source.objects[ 0 ].assetId.slice( 'sha256:'.length ) ) );
 	assert.deepEqual( sourceBytes, sourceFirst, 'repeated source generation must be byte-identical' );
 	assert.deepEqual( assetBytes, assetFirst, 'repeated GLB generation must be byte-identical' );
+	for ( const [ id, bytes ] of firstAssets ) assert.deepEqual( await readFile( path.join( output, 'assets', id.slice( 'sha256:'.length ) ) ), bytes, `repeated generation must preserve bytes for ${id}` );
 	assert.equal( `sha256:${createHash( 'sha256' ).update( assetBytes ).digest( 'hex' )}`, source.objects[ 0 ].assetId, 'exported asset path and source hash must match' );
 	const parsed = parseGLB( assetBytes.buffer.slice( assetBytes.byteOffset, assetBytes.byteOffset + assetBytes.byteLength ) );
 	const primitive = parsed.meshes[ 0 ][ 0 ];
 	assert.equal( primitive.mode, 4, 'terrain export must use triangle lists' );
 	assert.ok( primitive.attributes.COLOR_0, 'terrain export must carry its deterministic vertex colors' );
 	assert.equal( primitive.indices.length, 512 * 512 * 6, 'terrain export must cover the full configured grid' );
-	assert.deepEqual( source.rules.requiredFeatures, [ 'tidewater.static-glb/1' ] );
+	assert.deepEqual( source.rules.requiredFeatures, [ 'tidewater.static-glb/1', 'tidewater.static-glb-quaternion/1' ], 'quaternion transforms declare their required runtime capability' );
+	assert.ok( source.rules.maxPackageBytes >= [ ...firstAssets.values() ].reduce( ( total, bytes ) => total + bytes.length, 0 ), 'signed package byte budget covers every unique asset' );
 	assert.deepEqual( [ source.objects[ 0 ].collision.columns, source.objects[ 0 ].collision.rows ], [ 513, 513 ], 'terrain source declares the grid used for collision extraction' );
+	const scannedObjects = source.objects.slice( 1 );
+	assert.equal( scannedObjects.length, 139, 'export contains the seeded scanned debris placements from the runtime placer' );
+	assert.ok( scannedObjects.every( ( object ) => Array.isArray( object.transform.rotation ) && Math.abs( Math.hypot( ...object.transform.rotation ) - 1 ) < 1e-4 && object.collision.enabled === false ), 'scanned objects carry normalized collision-free rotations' );
+	const scannedAssetIDs = new Set( scannedObjects.map( ( object ) => object.assetId ) );
+	assert.equal( scannedAssetIDs.size, 4, 'all four scanned debris assets are included once each' );
+	for ( const id of scannedAssetIDs ) {
+		const bytes = firstAssets.get( id );
+		const parsed = parseGLB( bytes.buffer.slice( bytes.byteOffset, bytes.byteOffset + bytes.byteLength ) );
+		assert.equal( parsed.meshes.length, 1, 'scanned asset export keeps a single LOD mesh' );
+		assert.ok( parsed.materials[ 0 ]?.pbrMetallicRoughness?.baseColorTexture, 'scanned asset has a base-color texture' );
+		assert.equal( parsed.images[ 0 ]?.mimeType, 'image/jpeg', 'scanned albedo is embedded in the GLB' );
+		assert.ok( parsed.images[ 0 ]?.bytes?.length > 0, 'scanned GLB contains embedded image bytes' );
+	}
 	const payload = assetBytes.buffer.slice( assetBytes.byteOffset, assetBytes.byteOffset + assetBytes.byteLength );
 	const connector = { worldId: source.worldId, manifest: { assets: [ { id: source.objects[ 0 ].assetId, priority: 'visible' } ], objects: source.objects } };
 	const root = await loadWorldPackage( connector, { assets: new Map( [ [ source.objects[ 0 ].assetId, payload ] ] ) } );
@@ -43,6 +60,11 @@ try {
 		}
 	} );
 	assert.equal( runtimeMeshes, 1, 'runtime package loader must instantiate the exported terrain mesh' );
+	const testRotation = [ 0, 0, Math.SQRT1_2, Math.SQRT1_2 ];
+	const rotatedObject = { ...source.objects[ 0 ], transform: { position: [ 1, 2, 3 ], yaw: Math.PI / 2, rotation: testRotation }, collision: { shape: 'none', enabled: false } };
+	const rotatedConnector = { worldId: source.worldId, manifest: { assets: [ { id: rotatedObject.assetId, priority: 'visible' } ], objects: [ rotatedObject ] } };
+	const rotatedRoot = await loadWorldPackage( rotatedConnector, { assets: new Map( [ [ rotatedObject.assetId, payload ] ] ) } );
+	assert.ok( Math.abs( rotatedRoot.children[ 0 ].quaternion.z - Math.SQRT1_2 ) < 1e-6 && Math.abs( rotatedRoot.children[ 0 ].quaternion.w - Math.SQRT1_2 ) < 1e-6, 'runtime package loader applies signed quaternion transforms' );
 	const colliders = new Colliders();
 	registerWorldPackageCollisions( root, colliders );
 	assert.equal( colliders.heightfields.length, 1, 'hosted terrain package registers its heightfield collision' );

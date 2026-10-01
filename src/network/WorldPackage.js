@@ -55,7 +55,8 @@ export async function appendWorldPackageAssets( connector, root, assets, { signa
 		instance.userData.worldObjectId = object.id;
 		const t = object.transform || {};
 		instance.position.set( ...( t.position || [ 0, 0, 0 ] ) );
-		instance.rotation.y = t.yaw || 0;
+		if ( t.rotation ) instance.quaternion.set( ...t.rotation );
+		else instance.rotation.y = t.yaw || 0;
 		instance.scale.set( ...( object.scale || [ 1, 1, 1 ] ) );
 		root.add( instance );
 		state.loadedObjects.add( object.id );

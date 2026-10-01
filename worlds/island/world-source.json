@@ -9,8 +9,10 @@
     "avatarComplexity": 20000,
     "physicsProfile": "tidewater-default",
     "requiredFeatures": [
-      "tidewater.static-glb/1"
-    ]
+      "tidewater.static-glb/1",
+      "tidewater.static-glb-quaternion/1"
+    ],
+    "maxPackageBytes": 67108864
   },
   "hosts": [],
   "objects": [
@@ -40,6 +42,4176 @@
         "rows": 513,
         "walkable": true,
         "solid": true
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-0",
+      "kind": "asset-instance",
+      "label": "dead quiver trunk",
+      "assetId": "sha256:1ffb419a0a3c96c14ddf5b63676066aaa9f40189e33329dfba95fb73dab0d064",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          -25.22721932161871,
+          2.6985905455327948,
+          -79.75349806343104
+        ],
+        "yaw": 0.08651416978403967,
+        "rotation": [
+          -0.07487234590381164,
+          0.04300922156128325,
+          0.0017340039253572275,
+          0.9962636859335682
+        ]
+      },
+      "scale": [
+        1.8763043756578996,
+        2.101956228592566,
+        2.2522675820895834
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-1",
+      "kind": "asset-instance",
+      "label": "dead quiver trunk",
+      "assetId": "sha256:1ffb419a0a3c96c14ddf5b63676066aaa9f40189e33329dfba95fb73dab0d064",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          142.0147015139206,
+          2.3543092746799985,
+          -91.62326720677413
+        ],
+        "yaw": 0.3429031240877974,
+        "rotation": [
+          0.9850367786972318,
+          0.006466230598017269,
+          -0.1706188847281934,
+          0.023450557557152193
+        ]
+      },
+      "scale": [
+        3.0638684533581273,
+        1.5143124530357972,
+        1.5781093960893557
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-2",
+      "kind": "asset-instance",
+      "label": "dead quiver trunk",
+      "assetId": "sha256:1ffb419a0a3c96c14ddf5b63676066aaa9f40189e33329dfba95fb73dab0d064",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          -52.36895287187526,
+          2.265109052067349,
+          -75.735109019557
+        ],
+        "yaw": -0.406726947056308,
+        "rotation": [
+          -0.06006983126261183,
+          -0.2022886858678837,
+          -0.024618463115613647,
+          0.9771718550059407
+        ]
+      },
+      "scale": [
+        1.6295961665742495,
+        1.3917868634951964,
+        1.4536281197181304
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-3",
+      "kind": "asset-instance",
+      "label": "dead quiver trunk",
+      "assetId": "sha256:1ffb419a0a3c96c14ddf5b63676066aaa9f40189e33329dfba95fb73dab0d064",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          74.49984808414881,
+          2.794250808056588,
+          -85.57211807388781
+        ],
+        "yaw": 2.619704172139034,
+        "rotation": [
+          0.0014816920608411522,
+          0.9661422441001923,
+          -0.002462589344463352,
+          0.25799400071978723
+        ]
+      },
+      "scale": [
+        1.6434558598817874,
+        1.6581459396651812,
+        1.7237542149273908
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-4",
+      "kind": "asset-instance",
+      "label": "dead quiver trunk",
+      "assetId": "sha256:1ffb419a0a3c96c14ddf5b63676066aaa9f40189e33329dfba95fb73dab0d064",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          45.53979957655214,
+          2.6747453563898285,
+          -77.41448646282532
+        ],
+        "yaw": 0.0006416273481359702,
+        "rotation": [
+          0.10522710351430534,
+          0.0005177298491564866,
+          -0.0019115373094871705,
+          0.9944462452374726
+        ]
+      },
+      "scale": [
+        2.0519819416791396,
+        1.3220159943614687,
+        1.3788068234466546
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-5",
+      "kind": "asset-instance",
+      "label": "dead quiver trunk",
+      "assetId": "sha256:1ffb419a0a3c96c14ddf5b63676066aaa9f40189e33329dfba95fb73dab0d064",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          121.04633398826384,
+          2.774001265389226,
+          -91.6547728779208
+        ],
+        "yaw": 0.16090800759695276,
+        "rotation": [
+          0.09431041591236777,
+          0.08049285781235442,
+          -0.012774686264247683,
+          0.9922012158239308
+        ]
+      },
+      "scale": [
+        2.38221756242395,
+        1.9256124028137749,
+        2.037262493791709
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-6",
+      "kind": "asset-instance",
+      "label": "dead quiver trunk",
+      "assetId": "sha256:1ffb419a0a3c96c14ddf5b63676066aaa9f40189e33329dfba95fb73dab0d064",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          4.201548172621297,
+          2.2723714329519393,
+          -72.37486547236236
+        ],
+        "yaw": 0.23181817359022297,
+        "rotation": [
+          0.050137243894741855,
+          0.11491626114299826,
+          0.0062434267304921935,
+          0.9920894764698467
+        ]
+      },
+      "scale": [
+        2.4084577396457854,
+        1.9145928999142987,
+        1.8167477626330697
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-7",
+      "kind": "asset-instance",
+      "label": "dead quiver trunk",
+      "assetId": "sha256:1ffb419a0a3c96c14ddf5b63676066aaa9f40189e33329dfba95fb73dab0d064",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          -140.87777154559572,
+          2.553818815047529,
+          -83.86378390615276
+        ],
+        "yaw": 1.1702640835228317,
+        "rotation": [
+          0.13046344554780384,
+          0.5441298861826148,
+          -0.0632260295983063,
+          0.8263803153027811
+        ]
+      },
+      "scale": [
+        1.8623652481712185,
+        1.2913748164262089,
+        1.2141949756134758
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-8",
+      "kind": "asset-instance",
+      "label": "dead quiver trunk",
+      "assetId": "sha256:1ffb419a0a3c96c14ddf5b63676066aaa9f40189e33329dfba95fb73dab0d064",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          -122.52918719825439,
+          2.670521723994203,
+          -89.98446768525524
+        ],
+        "yaw": -0.2156135034975953,
+        "rotation": [
+          0.0629678301447441,
+          -0.1073465229071886,
+          0.006241898312046973,
+          0.9922060345976843
+        ]
+      },
+      "scale": [
+        2.7424175758148315,
+        1.6104784520076851,
+        1.6699940193147236
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-9",
+      "kind": "asset-instance",
+      "label": "dead quiver trunk",
+      "assetId": "sha256:1ffb419a0a3c96c14ddf5b63676066aaa9f40189e33329dfba95fb73dab0d064",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          -120.0902074920394,
+          2.10740528808423,
+          -82.99016829042885
+        ],
+        "yaw": -0.43974617216453893,
+        "rotation": [
+          -0.13950937397586305,
+          -0.2171320128431579,
+          -0.040794611043560074,
+          0.9652598734441137
+        ]
+      },
+      "scale": [
+        2.895525161530953,
+        1.331776840612292,
+        1.2757137021053686
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-10",
+      "kind": "asset-instance",
+      "label": "dead quiver trunk",
+      "assetId": "sha256:1ffb419a0a3c96c14ddf5b63676066aaa9f40189e33329dfba95fb73dab0d064",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          80.45980928060645,
+          2.3148737533510144,
+          -77.64878033010123
+        ],
+        "yaw": 0.358005147524564,
+        "rotation": [
+          -0.05761658365969196,
+          0.1781010766031017,
+          0.01688496977975502,
+          0.9821788195617633
+        ]
+      },
+      "scale": [
+        3.0406807888151635,
+        1.8350853044539688,
+        1.8944077085485953
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-11",
+      "kind": "asset-instance",
+      "label": "dead quiver trunk",
+      "assetId": "sha256:1ffb419a0a3c96c14ddf5b63676066aaa9f40189e33329dfba95fb73dab0d064",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          127.2391110098661,
+          1.9850490192756274,
+          -82.12724454290603
+        ],
+        "yaw": 0.560307776254798,
+        "rotation": [
+          0.1367289531410779,
+          0.27288547415728925,
+          -0.03268287916715684,
+          0.9517197805952347
+        ]
+      },
+      "scale": [
+        1.501655866207,
+        1.7690184379794767,
+        1.866357161943687
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-12",
+      "kind": "asset-instance",
+      "label": "dead quiver trunk",
+      "assetId": "sha256:1ffb419a0a3c96c14ddf5b63676066aaa9f40189e33329dfba95fb73dab0d064",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          64.55534117486357,
+          2.0878207623488545,
+          -73.19507588604726
+        ],
+        "yaw": 0.046745322355846455,
+        "rotation": [
+          0.9985503525498725,
+          0.002054949345116272,
+          -0.02318825438099185,
+          -0.04853118033261583
+        ]
+      },
+      "scale": [
+        2.626735800078537,
+        1.2388999954398188,
+        1.1857540196367022
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-13",
+      "kind": "asset-instance",
+      "label": "dead quiver trunk",
+      "assetId": "sha256:1ffb419a0a3c96c14ddf5b63676066aaa9f40189e33329dfba95fb73dab0d064",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          -78.3141672934671,
+          1.9371354486011054,
+          -73.18909283805691
+        ],
+        "yaw": -0.1302906768006819,
+        "rotation": [
+          0.9954232568896998,
+          0.0009376261037270768,
+          0.06454929604926946,
+          0.07046310296840644
+        ]
+      },
+      "scale": [
+        1.4424766062870022,
+        1.5776240046003034,
+        1.5984789065412317
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-14",
+      "kind": "asset-instance",
+      "label": "dead quiver trunk",
+      "assetId": "sha256:1ffb419a0a3c96c14ddf5b63676066aaa9f40189e33329dfba95fb73dab0d064",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          -32.591545738271435,
+          2.231749271416258,
+          -73.50623737291653
+        ],
+        "yaw": -0.05272379104041823,
+        "rotation": [
+          -0.0010400762074386854,
+          -0.026358572096363258,
+          0.00021964340897630608,
+          0.999651987281222
+        ]
+      },
+      "scale": [
+        3.1420122782317708,
+        1.4974501665149416,
+        1.5162030855382786
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-15",
+      "kind": "asset-instance",
+      "label": "dead quiver trunk",
+      "assetId": "sha256:1ffb419a0a3c96c14ddf5b63676066aaa9f40189e33329dfba95fb73dab0d064",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          90.69460313392241,
+          2.851553411542581,
+          -86.31806952399343
+        ],
+        "yaw": -0.5210905755502666,
+        "rotation": [
+          0.018586931496365606,
+          -0.25750978128376684,
+          0.00189449944801656,
+          0.9660950519449819
+        ]
+      },
+      "scale": [
+        1.7768185316709244,
+        2.0581701352660144,
+        1.9321821453253851
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-16",
+      "kind": "asset-instance",
+      "label": "dead quiver trunk",
+      "assetId": "sha256:1ffb419a0a3c96c14ddf5b63676066aaa9f40189e33329dfba95fb73dab0d064",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          110.46374394611473,
+          2.554782775558793,
+          -85.46868725472518
+        ],
+        "yaw": 0.02672253965359786,
+        "rotation": [
+          0.01090152993343093,
+          0.013486010883420737,
+          -0.01161848566568425,
+          0.9997821237381668
+        ]
+      },
+      "scale": [
+        1.8283826027881942,
+        1.1615193100380043,
+        1.2251390780177933
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-17",
+      "kind": "asset-instance",
+      "label": "dead quiver trunk",
+      "assetId": "sha256:1ffb419a0a3c96c14ddf5b63676066aaa9f40189e33329dfba95fb73dab0d064",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          -158.16991014979206,
+          2.075273242454079,
+          -52.543523473957954
+        ],
+        "yaw": 0.9299568909391029,
+        "rotation": [
+          -0.018628661335768865,
+          0.4481662766437046,
+          -0.003710387239045822,
+          0.8937483955133524
+        ]
+      },
+      "scale": [
+        2.055705822990234,
+        1.4225116531763757,
+        1.4974618860927797
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-18",
+      "kind": "asset-instance",
+      "label": "dead quiver trunk",
+      "assetId": "sha256:1ffb419a0a3c96c14ddf5b63676066aaa9f40189e33329dfba95fb73dab0d064",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          -51.911654837097856,
+          1.7708324383191292,
+          -69.29820796157384
+        ],
+        "yaw": 0.05780241175414985,
+        "rotation": [
+          0.00815287305867952,
+          0.028817196915841954,
+          0.00964134306280559,
+          0.9995049496259375
+        ]
+      },
+      "scale": [
+        1.4153006544743956,
+        1.1564469411969183,
+        1.0514410795191746
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-19",
+      "kind": "asset-instance",
+      "label": "dead quiver trunk",
+      "assetId": "sha256:1ffb419a0a3c96c14ddf5b63676066aaa9f40189e33329dfba95fb73dab0d064",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          7.025667028413241,
+          2.836678210019186,
+          -77.50459700054212
+        ],
+        "yaw": -0.27212711857260663,
+        "rotation": [
+          0.9899326404327256,
+          0.015023122283717986,
+          0.13591463247118654,
+          -0.03653609014334765
+        ]
+      },
+      "scale": [
+        1.7668177111451715,
+        2.103464510291815,
+        1.96408371847483
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-20",
+      "kind": "asset-instance",
+      "label": "dead quiver trunk",
+      "assetId": "sha256:1ffb419a0a3c96c14ddf5b63676066aaa9f40189e33329dfba95fb73dab0d064",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          38.06010803066704,
+          2.959115359728133,
+          -85.77304517219238
+        ],
+        "yaw": -0.9447936808094273,
+        "rotation": [
+          0.8903533126745027,
+          -0.0040783542412616645,
+          0.45484921578222504,
+          0.01914514399311142
+        ]
+      },
+      "scale": [
+        1.726504246477288,
+        1.9344780250851596,
+        1.7496355540291102
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-21",
+      "kind": "asset-instance",
+      "label": "dead quiver trunk",
+      "assetId": "sha256:1ffb419a0a3c96c14ddf5b63676066aaa9f40189e33329dfba95fb73dab0d064",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          -86.4977377217876,
+          2.951296611960005,
+          -91.66355369398367
+        ],
+        "yaw": -0.661776379872252,
+        "rotation": [
+          0.9415626130367715,
+          -0.030607587276266973,
+          0.32344979304652344,
+          0.08890024021707604
+        ]
+      },
+      "scale": [
+        1.782131075710544,
+        2.2637484853288954,
+        2.3895587551799857
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-22",
+      "kind": "asset-instance",
+      "label": "dead quiver trunk",
+      "assetId": "sha256:1ffb419a0a3c96c14ddf5b63676066aaa9f40189e33329dfba95fb73dab0d064",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          -84.25518236038472,
+          2.3992327182761235,
+          -79.65745574831753
+        ],
+        "yaw": -0.5140034533653675,
+        "rotation": [
+          -0.045331555817782844,
+          -0.25456605238775715,
+          -0.02749122097474998,
+          0.9656010603702598
+        ]
+      },
+      "scale": [
+        1.762909943367744,
+        2.063921188669545,
+        2.1735314011885984
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-23",
+      "kind": "asset-instance",
+      "label": "dead quiver trunk",
+      "assetId": "sha256:1ffb419a0a3c96c14ddf5b63676066aaa9f40189e33329dfba95fb73dab0d064",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          -128.15266601984123,
+          2.033448664250234,
+          -82.53278286878594
+        ],
+        "yaw": 0.1607617400124349,
+        "rotation": [
+          0.9915425940426333,
+          0.0036057522624349256,
+          -0.0793927623474662,
+          0.10260152063525341
+        ]
+      },
+      "scale": [
+        2.367359786640027,
+        1.2782787470413106,
+        1.3323997774164997
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-24",
+      "kind": "asset-instance",
+      "label": "dead quiver trunk",
+      "assetId": "sha256:1ffb419a0a3c96c14ddf5b63676066aaa9f40189e33329dfba95fb73dab0d064",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          134.9432570172664,
+          2.1706299349234786,
+          -86.20310854538417
+        ],
+        "yaw": 0.6036493719778275,
+        "rotation": [
+          0.08666504526982989,
+          0.2949409853977622,
+          -0.012023539664198949,
+          0.9515011400702149
+        ]
+      },
+      "scale": [
+        3.0657850066480132,
+        2.2198531571775675,
+        2.369208310573776
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-25",
+      "kind": "asset-instance",
+      "label": "dead quiver trunk",
+      "assetId": "sha256:1ffb419a0a3c96c14ddf5b63676066aaa9f40189e33329dfba95fb73dab0d064",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          -104.3756100074355,
+          2.1200587354543647,
+          -79.75175704512893
+        ],
+        "yaw": -0.24879607937487427,
+        "rotation": [
+          0.11213021862582914,
+          -0.1228681273342749,
+          0.010252505540490047,
+          0.9860147683916477
+        ]
+      },
+      "scale": [
+        3.0321961506517416,
+        1.9602710833506924,
+        2.067576250074237
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-26",
+      "kind": "asset-instance",
+      "label": "dead quiver branch 01",
+      "assetId": "sha256:4db3e1d2ecf5f50361c0662f9e5555f97a63e56c0ec76881c8d6d489aee8377b",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          1.2800341662331225,
+          1.373587366370019,
+          -58.8926163081248
+        ],
+        "yaw": -0.7653347275613296,
+        "rotation": [
+          -0.06278204455457241,
+          -0.3733817538682541,
+          -0.041722543252851435,
+          0.9246100313885461
+        ]
+      },
+      "scale": [
+        2.119230042025447,
+        1.8367934979201603,
+        1.6650222410990367
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-27",
+      "kind": "asset-instance",
+      "label": "dead quiver branch 02",
+      "assetId": "sha256:7fe1ca8005be099418080eadb889ce11e921b012bb1cbbd50d1c0fe312372382",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          -139.64912985410274,
+          1.7848255508533994,
+          -73.35483163398958
+        ],
+        "yaw": 0.7827824257318498,
+        "rotation": [
+          -0.06386265232533078,
+          0.3809096959297057,
+          0.03327705308471729,
+          0.9218036683170175
+        ]
+      },
+      "scale": [
+        1.4152932431548833,
+        1.3773759199543782,
+        1.470055822736982
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-28",
+      "kind": "asset-instance",
+      "label": "dead quiver branch 01",
+      "assetId": "sha256:4db3e1d2ecf5f50361c0662f9e5555f97a63e56c0ec76881c8d6d489aee8377b",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          32.38458401826674,
+          1.8935468407849565,
+          -65.1716049278256
+        ],
+        "yaw": 0.25009671199420924,
+        "rotation": [
+          -0.009532067080888065,
+          0.12473450132340551,
+          0.003060538140470179,
+          0.9921396459083053
+        ]
+      },
+      "scale": [
+        2.3492863845080136,
+        2.504765180051667,
+        2.7053831564142246
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-29",
+      "kind": "asset-instance",
+      "label": "dead quiver branch 02",
+      "assetId": "sha256:7fe1ca8005be099418080eadb889ce11e921b012bb1cbbd50d1c0fe312372382",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          -132.92614052036365,
+          1.37800857990789,
+          -70.31895499942786
+        ],
+        "yaw": -0.14926939683332718,
+        "rotation": [
+          -0.06595519436587656,
+          -0.07574587737890602,
+          -0.025194922418422173,
+          0.9946243965842526
+        ]
+      },
+      "scale": [
+        2.3271281484514477,
+        2.246498392319974,
+        2.253506634726267
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-30",
+      "kind": "asset-instance",
+      "label": "dead quiver trunk",
+      "assetId": "sha256:1ffb419a0a3c96c14ddf5b63676066aaa9f40189e33329dfba95fb73dab0d064",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          93.17182066597027,
+          1.749144957434912,
+          -72.9456625546111
+        ],
+        "yaw": -0.0387804424582357,
+        "rotation": [
+          -0.06523462580721584,
+          -0.019835968398731953,
+          -0.008729752930655912,
+          0.9976345870945166
+        ]
+      },
+      "scale": [
+        0.8379985984702527,
+        0.7133927896086658,
+        0.7457007994999658
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-31",
+      "kind": "asset-instance",
+      "label": "dead quiver branch 01",
+      "assetId": "sha256:4db3e1d2ecf5f50361c0662f9e5555f97a63e56c0ec76881c8d6d489aee8377b",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          69.15488690412924,
+          1.7461446150175688,
+          -69.18181273149345
+        ],
+        "yaw": -0.4117403147287012,
+        "rotation": [
+          0.14420953081434348,
+          -0.19935338177589473,
+          0.009033744674158795,
+          0.9692162977653562
+        ]
+      },
+      "scale": [
+        1.6967644188553095,
+        1.641123395877833,
+        1.8042527338879357
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-32",
+      "kind": "asset-instance",
+      "label": "dead quiver branch 02",
+      "assetId": "sha256:7fe1ca8005be099418080eadb889ce11e921b012bb1cbbd50d1c0fe312372382",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          -78.49941404444063,
+          1.5092174747906395,
+          -66.31829780704686
+        ],
+        "yaw": 0.39853208398602513,
+        "rotation": [
+          -0.08258210967733538,
+          0.19757274215255846,
+          0.020847292451005243,
+          0.9765810755472489
+        ]
+      },
+      "scale": [
+        2.028265228867531,
+        2.2098859836715885,
+        2.415413693437989
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-33",
+      "kind": "asset-instance",
+      "label": "dead quiver trunk",
+      "assetId": "sha256:1ffb419a0a3c96c14ddf5b63676066aaa9f40189e33329dfba95fb73dab0d064",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          144.15676722578704,
+          1.5624739137533743,
+          -80.95863112801212
+        ],
+        "yaw": -0.3600606726718716,
+        "rotation": [
+          0.012741677874669061,
+          -0.17890299158455114,
+          -0.010478543502669817,
+          0.9837284022397131
+        ]
+      },
+      "scale": [
+        0.5635928673671564,
+        0.7187933844647236,
+        0.7869835781970436
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-34",
+      "kind": "asset-instance",
+      "label": "dead quiver branch 02",
+      "assetId": "sha256:7fe1ca8005be099418080eadb889ce11e921b012bb1cbbd50d1c0fe312372382",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          50.89274914926618,
+          1.8162097348894448,
+          -66.61319165776537
+        ],
+        "yaw": 0.15084449856429813,
+        "rotation": [
+          0.9961821555927656,
+          -0.0045556870164299955,
+          -0.07492733650913518,
+          0.044567396580977955
+        ]
+      },
+      "scale": [
+        1.8582045599818229,
+        1.6587946516469756,
+        1.5900877565194236
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-35",
+      "kind": "asset-instance",
+      "label": "dead quiver trunk",
+      "assetId": "sha256:1ffb419a0a3c96c14ddf5b63676066aaa9f40189e33329dfba95fb73dab0d064",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          87.14223321478894,
+          1.644836241478437,
+          -69.37304312073931
+        ],
+        "yaw": 0.24200660394232104,
+        "rotation": [
+          -0.030552441230257937,
+          0.12041519141120187,
+          -0.004300373858188916,
+          0.99224404094807
+        ]
+      },
+      "scale": [
+        0.8399937933809689,
+        0.575761272838073,
+        0.599474481703223
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-36",
+      "kind": "asset-instance",
+      "label": "dead quiver branch 01",
+      "assetId": "sha256:4db3e1d2ecf5f50361c0662f9e5555f97a63e56c0ec76881c8d6d489aee8377b",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          71.17325142652722,
+          1.8904681591470922,
+          -71.28644549628024
+        ],
+        "yaw": -0.0428601248431255,
+        "rotation": [
+          0.028379212692186604,
+          -0.021254690748491848,
+          -0.0052236749217024325,
+          0.9993575794621613
+        ]
+      },
+      "scale": [
+        1.5838209003210066,
+        1.279286908782694,
+        1.3855457350712574
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-37",
+      "kind": "asset-instance",
+      "label": "dead quiver branch 01",
+      "assetId": "sha256:4db3e1d2ecf5f50361c0662f9e5555f97a63e56c0ec76881c8d6d489aee8377b",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          -119.46605515087755,
+          1.356598170724806,
+          -71.73324880183308
+        ],
+        "yaw": -0.817503544739843,
+        "rotation": [
+          0.101347275800276,
+          -0.3937404875183097,
+          0.026341376530641107,
+          0.9132378058639369
+        ]
+      },
+      "scale": [
+        2.9915101151913404,
+        2.680367020844269,
+        2.608286378687979
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-38",
+      "kind": "asset-instance",
+      "label": "dead quiver branch 01",
+      "assetId": "sha256:4db3e1d2ecf5f50361c0662f9e5555f97a63e56c0ec76881c8d6d489aee8377b",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          39.31480950519814,
+          1.2665466065040722,
+          -58.81931939349067
+        ],
+        "yaw": 0.9245895769953549,
+        "rotation": [
+          -0.10664587467897836,
+          0.4445516429718993,
+          0.0760244308647571,
+          0.8861268419682535
+        ]
+      },
+      "scale": [
+        2.5146310169249775,
+        2.4569910636441668,
+        2.2793548388318925
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-39",
+      "kind": "asset-instance",
+      "label": "dead quiver trunk",
+      "assetId": "sha256:1ffb419a0a3c96c14ddf5b63676066aaa9f40189e33329dfba95fb73dab0d064",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          -95.78102914155761,
+          1.8214598335172758,
+          -74.97797526430301
+        ],
+        "yaw": -0.4350756355503562,
+        "rotation": [
+          -0.09806426868127932,
+          -0.21587755827794453,
+          -0.03399285639321707,
+          0.9708886469385604
+        ]
+      },
+      "scale": [
+        1.0314332930335668,
+        0.7666880935430526,
+        0.7419296745483689
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-40",
+      "kind": "asset-instance",
+      "label": "dead quiver branch 02",
+      "assetId": "sha256:7fe1ca8005be099418080eadb889ce11e921b012bb1cbbd50d1c0fe312372382",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          -22.64559524372608,
+          2.0385107487899785,
+          -68.40865812435851
+        ],
+        "yaw": -0.5324167854166275,
+        "rotation": [
+          0.10015617267220586,
+          -0.26054055988288,
+          0.014729268832065042,
+          0.9601408263224951
+        ]
+      },
+      "scale": [
+        2.0428136348724366,
+        1.6778454302117547,
+        1.6683341582502988
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-41",
+      "kind": "asset-instance",
+      "label": "dead quiver branch 01",
+      "assetId": "sha256:4db3e1d2ecf5f50361c0662f9e5555f97a63e56c0ec76881c8d6d489aee8377b",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          131.42210639305537,
+          1.7911285323308408,
+          -80.90319267576726
+        ],
+        "yaw": 1.049849891999789,
+        "rotation": [
+          0.8594313721859616,
+          -0.07146313412553523,
+          -0.5005243638373283,
+          -0.0758030221610512
+        ]
+      },
+      "scale": [
+        2.9217717539519072,
+        3.095998533135967,
+        3.4022574008735624
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-42",
+      "kind": "asset-instance",
+      "label": "dead quiver trunk",
+      "assetId": "sha256:1ffb419a0a3c96c14ddf5b63676066aaa9f40189e33329dfba95fb73dab0d064",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          -8.850017813717123,
+          1.5577765034528026,
+          -63.90292242837362
+        ],
+        "yaw": -0.5852625181318367,
+        "rotation": [
+          0.952824484476679,
+          -0.007365570728283994,
+          0.2845405328331161,
+          0.10539419018448695
+        ]
+      },
+      "scale": [
+        1.552375161192691,
+        0.6831725096063953,
+        0.6770622016524477
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-43",
+      "kind": "asset-instance",
+      "label": "dead quiver branch 01",
+      "assetId": "sha256:4db3e1d2ecf5f50361c0662f9e5555f97a63e56c0ec76881c8d6d489aee8377b",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          33.777726145993924,
+          1.777218236761025,
+          -63.02625356571356
+        ],
+        "yaw": 0.812545191941288,
+        "rotation": [
+          0.9096650348004661,
+          -0.06617560470570655,
+          -0.3935623726711572,
+          -0.11506073448727007
+        ]
+      },
+      "scale": [
+        2.6149585396051407,
+        2.3581782946727,
+        2.4014138970654666
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-44",
+      "kind": "asset-instance",
+      "label": "dead quiver branch 01",
+      "assetId": "sha256:4db3e1d2ecf5f50361c0662f9e5555f97a63e56c0ec76881c8d6d489aee8377b",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          0.6481239412999015,
+          1.8834906064656323,
+          -66.82502291797516
+        ],
+        "yaw": -0.44421725854724853,
+        "rotation": [
+          0.9722359420431923,
+          -0.00922015398529351,
+          0.21878548590661331,
+          0.08249347196282386
+        ]
+      },
+      "scale": [
+        1.645480528473854,
+        1.760762211023444,
+        1.7702652873327356
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-45",
+      "kind": "asset-instance",
+      "label": "dead quiver branch 01",
+      "assetId": "sha256:4db3e1d2ecf5f50361c0662f9e5555f97a63e56c0ec76881c8d6d489aee8377b",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          -17.638052301376003,
+          1.2882758595609793,
+          -57.93587955754575
+        ],
+        "yaw": 0.41433919169775996,
+        "rotation": [
+          0.9743085379403459,
+          0.009710674956750449,
+          -0.20379543152814292,
+          0.09537294048464652
+        ]
+      },
+      "scale": [
+        1.880968042090535,
+        1.8024426740262907,
+        1.857586541467885
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-46",
+      "kind": "asset-instance",
+      "label": "dead quiver trunk",
+      "assetId": "sha256:1ffb419a0a3c96c14ddf5b63676066aaa9f40189e33329dfba95fb73dab0d064",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          32.971615788142714,
+          1.3151778415310234,
+          -57.80409386759333
+        ],
+        "yaw": -0.2545734535241846,
+        "rotation": [
+          0.1161507697080391,
+          -0.12407238295197333,
+          -0.002809964513568101,
+          0.985447688405773
+        ]
+      },
+      "scale": [
+        1.1057924787507374,
+        0.6628432549270136,
+        0.6863674229720027
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-47",
+      "kind": "asset-instance",
+      "label": "dead quiver trunk",
+      "assetId": "sha256:1ffb419a0a3c96c14ddf5b63676066aaa9f40189e33329dfba95fb73dab0d064",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          58.65260909132681,
+          1.7471666579902005,
+          -66.8903997471927
+        ],
+        "yaw": 0.8121156752793959,
+        "rotation": [
+          -0.019119322898298187,
+          0.3951987319312858,
+          0.025782336301734186,
+          0.918034686113024
+        ]
+      },
+      "scale": [
+        0.690884790275855,
+        0.7149489693609732,
+        0.6485105674212219
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-48",
+      "kind": "asset-instance",
+      "label": "dead quiver trunk",
+      "assetId": "sha256:1ffb419a0a3c96c14ddf5b63676066aaa9f40189e33329dfba95fb73dab0d064",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          27.025994422838792,
+          1.901826803868264,
+          -66.97379669411316
+        ],
+        "yaw": 0.5352447504801965,
+        "rotation": [
+          0.955709862279911,
+          0.01825453342434204,
+          -0.2593303331713275,
+          0.13796089825606944
+        ]
+      },
+      "scale": [
+        1.0507521576387295,
+        0.9759392945894173,
+        0.9554894921322143
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-49",
+      "kind": "asset-instance",
+      "label": "dead quiver trunk",
+      "assetId": "sha256:1ffb419a0a3c96c14ddf5b63676066aaa9f40189e33329dfba95fb73dab0d064",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          23.787713058936927,
+          1.2520600215984037,
+          -57.958083558789944
+        ],
+        "yaw": -0.00013357080291942491,
+        "rotation": [
+          0.9938032194772278,
+          -0.010174724488202676,
+          0.0011987219430717338,
+          0.11068061711062731
+        ]
+      },
+      "scale": [
+        1.058704723205152,
+        0.6648948675553713,
+        0.639971040534521
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-50",
+      "kind": "asset-instance",
+      "label": "dead quiver branch 01",
+      "assetId": "sha256:4db3e1d2ecf5f50361c0662f9e5555f97a63e56c0ec76881c8d6d489aee8377b",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          118.49215310039888,
+          1.775133737085439,
+          -76.65273354126906
+        ],
+        "yaw": -0.18784821353018388,
+        "rotation": [
+          0.06041580924029933,
+          -0.09337192569003377,
+          0.0016383222491787282,
+          0.9937952150151371
+        ]
+      },
+      "scale": [
+        2.6475915305316446,
+        2.1393224222015808,
+        2.2146145910571056
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-51",
+      "kind": "asset-instance",
+      "label": "dead quiver branch 02",
+      "assetId": "sha256:7fe1ca8005be099418080eadb889ce11e921b012bb1cbbd50d1c0fe312372382",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          59.98075757216756,
+          1.3968611143127214,
+          -60.73309861064226
+        ],
+        "yaw": 0.5649677433289226,
+        "rotation": [
+          0.1325136693010175,
+          0.27493529815432566,
+          -0.028671684170685344,
+          0.9518553691627678
+        ]
+      },
+      "scale": [
+        2.40801461301744,
+        2.2890169803159104,
+        2.413640967212815
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-52",
+      "kind": "asset-instance",
+      "label": "dead quiver branch 01",
+      "assetId": "sha256:4db3e1d2ecf5f50361c0662f9e5555f97a63e56c0ec76881c8d6d489aee8377b",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          8.282492577800175,
+          1.5900993602604665,
+          -59.55825495997765
+        ],
+        "yaw": 0.7041482534910648,
+        "rotation": [
+          0.9375047929800205,
+          -0.03338136370470624,
+          -0.34528932560425774,
+          -0.027308044976889413
+        ]
+      },
+      "scale": [
+        2.664273598045111,
+        2.186051305404332,
+        2.1336423782799385
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-53",
+      "kind": "asset-instance",
+      "label": "dead quiver trunk",
+      "assetId": "sha256:1ffb419a0a3c96c14ddf5b63676066aaa9f40189e33329dfba95fb73dab0d064",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          162.51429382393448,
+          1.3879445523362117,
+          -85.13288796980841
+        ],
+        "yaw": -0.30417734579458194,
+        "rotation": [
+          0.9875763496734373,
+          -0.0015026926591747806,
+          0.15115112755168908,
+          0.042942195103576296
+        ]
+      },
+      "scale": [
+        0.5826446649486736,
+        0.9647483140496269,
+        0.979735427228911
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-54",
+      "kind": "asset-instance",
+      "label": "dead quiver branch 02",
+      "assetId": "sha256:7fe1ca8005be099418080eadb889ce11e921b012bb1cbbd50d1c0fe312372382",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          -55.47675732166308,
+          1.4799728669095096,
+          -63.71540511022112
+        ],
+        "yaw": -0.5760656603158387,
+        "rotation": [
+          -0.07675471486230345,
+          -0.28469011282949197,
+          -0.044669589597571224,
+          0.9544971876169788
+        ]
+      },
+      "scale": [
+        2.3941966824233534,
+        2.6226845132065604,
+        2.6746364754498884
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-55",
+      "kind": "asset-instance",
+      "label": "dead quiver branch 01",
+      "assetId": "sha256:4db3e1d2ecf5f50361c0662f9e5555f97a63e56c0ec76881c8d6d489aee8377b",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          -43.325627954780934,
+          1.867456037807387,
+          -66.40142656853321
+        ],
+        "yaw": 0.5956782383420319,
+        "rotation": [
+          0.9552874767896508,
+          -0.0030655854790948393,
+          -0.29260686531848024,
+          0.04239883539704177
+        ]
+      },
+      "scale": [
+        2.727786747738719,
+        2.479773470266434,
+        2.2857870721534135
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-56",
+      "kind": "asset-instance",
+      "label": "dead quiver branch 01",
+      "assetId": "sha256:4db3e1d2ecf5f50361c0662f9e5555f97a63e56c0ec76881c8d6d489aee8377b",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          97.06164135647937,
+          1.6551114320916773,
+          -71.41208768766533
+        ],
+        "yaw": 0.2760375869953656,
+        "rotation": [
+          0.9903855576300993,
+          -0.014317558840942738,
+          -0.13759142957784173,
+          0.00023076672018041582
+        ]
+      },
+      "scale": [
+        1.5871182668954134,
+        1.4999465307973874,
+        1.5706472502390947
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-57",
+      "kind": "asset-instance",
+      "label": "dead quiver branch 01",
+      "assetId": "sha256:4db3e1d2ecf5f50361c0662f9e5555f97a63e56c0ec76881c8d6d489aee8377b",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          90.72381186092592,
+          1.4879940040493722,
+          -68.23211425482393
+        ],
+        "yaw": -0.27067729290611264,
+        "rotation": [
+          0.9901418923611133,
+          0.017279889817746676,
+          0.13407035964789968,
+          0.03668210821807934
+        ]
+      },
+      "scale": [
+        2.4942814018577337,
+        2.2657496302582083,
+        2.356571073962364
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-58",
+      "kind": "asset-instance",
+      "label": "dead quiver branch 02",
+      "assetId": "sha256:7fe1ca8005be099418080eadb889ce11e921b012bb1cbbd50d1c0fe312372382",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          -81.20572962747676,
+          1.5297942516931178,
+          -64.80630292707473
+        ],
+        "yaw": 0.6501784212704567,
+        "rotation": [
+          0.13632911863721198,
+          0.3140689253985163,
+          -0.028299090027965226,
+          0.9391348375042912
+        ]
+      },
+      "scale": [
+        2.7950761765241623,
+        2.387763361064665,
+        2.3065395094684216
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-59",
+      "kind": "asset-instance",
+      "label": "dead quiver trunk",
+      "assetId": "sha256:1ffb419a0a3c96c14ddf5b63676066aaa9f40189e33329dfba95fb73dab0d064",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          146.91183723366802,
+          1.8795066787372205,
+          -87.28150085007186
+        ],
+        "yaw": 0.06286274283125876,
+        "rotation": [
+          0.9889510091909073,
+          0.012934468324615866,
+          -0.03232101549098646,
+          0.14409702601746105
+        ]
+      },
+      "scale": [
+        0.6400447767115793,
+        0.9563742160264933,
+        1.017042306434045
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-60",
+      "kind": "asset-instance",
+      "label": "dead quiver branch 02",
+      "assetId": "sha256:7fe1ca8005be099418080eadb889ce11e921b012bb1cbbd50d1c0fe312372382",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          -114.25562791115823,
+          1.643193027788796,
+          -73.13265683184514
+        ],
+        "yaw": -0.9026642498320203,
+        "rotation": [
+          -0.001384026916911087,
+          -0.43622726368616127,
+          -0.019043222356243252,
+          0.8996339336467185
+        ]
+      },
+      "scale": [
+        1.9807927783578634,
+        1.7775177687728887,
+        1.896165678751472
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-61",
+      "kind": "asset-instance",
+      "label": "dead quiver branch 02",
+      "assetId": "sha256:7fe1ca8005be099418080eadb889ce11e921b012bb1cbbd50d1c0fe312372382",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          126.2540266839698,
+          1.2496230930074317,
+          -69.97941345476214
+        ],
+        "yaw": 0.13638467027132206,
+        "rotation": [
+          -0.039305049794487304,
+          0.06761601890655647,
+          -0.009490233728035665,
+          0.9968917305864605
+        ]
+      },
+      "scale": [
+        2.9028879661113023,
+        2.993654867791677,
+        2.9209704608573643
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-62",
+      "kind": "asset-instance",
+      "label": "dead quiver branch 02",
+      "assetId": "sha256:7fe1ca8005be099418080eadb889ce11e921b012bb1cbbd50d1c0fe312372382",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          -161.7718270660549,
+          2.146432791764756,
+          -47.838104897872896
+        ],
+        "yaw": 0.6757074514806882,
+        "rotation": [
+          -0.026070880796975192,
+          0.3311180477637602,
+          -0.0016637582863123015,
+          0.9432276392939039
+        ]
+      },
+      "scale": [
+        1.2938582693226635,
+        1.1165330265663842,
+        1.1193286352554868
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-63",
+      "kind": "asset-instance",
+      "label": "dead quiver branch 02",
+      "assetId": "sha256:7fe1ca8005be099418080eadb889ce11e921b012bb1cbbd50d1c0fe312372382",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          -158.8371793085772,
+          1.8327821290646882,
+          -48.95107122078053
+        ],
+        "yaw": 0.4610534924530165,
+        "rotation": [
+          0.00667715525492427,
+          0.22901487475027157,
+          -0.04947655239318896,
+          0.9721417970152826
+        ]
+      },
+      "scale": [
+        1.0288651518523693,
+        0.952638985148996,
+        1.018945198609244
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-64",
+      "kind": "asset-instance",
+      "label": "lambis shell",
+      "assetId": "sha256:0ee07523352578110d78347d93a4536673f67c2d01a0aee6b334882bad80b717",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          -156.80232162074782,
+          1.994293932513601,
+          -55.052445529521364
+        ],
+        "yaw": 6.100063578395978,
+        "rotation": [
+          -0.9955372833028011,
+          0.023356510476443493,
+          -0.09140783296396122,
+          0.0021445384759159513
+        ]
+      },
+      "scale": [
+        1.0753533440409229,
+        1.0753533440409229,
+        1.0753533440409229
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-65",
+      "kind": "asset-instance",
+      "label": "dead quiver branch 02",
+      "assetId": "sha256:7fe1ca8005be099418080eadb889ce11e921b012bb1cbbd50d1c0fe312372382",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          -156.3979086405761,
+          2.0547838396773677,
+          -55.74810208520505
+        ],
+        "yaw": 1.2931626584991815,
+        "rotation": [
+          -0.09863234237820873,
+          0.5982847913803047,
+          0.08698923158748482,
+          0.790417511842844
+        ]
+      },
+      "scale": [
+        1.6368041046895088,
+        1.3713366675909144,
+        1.3834899179037583
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-66",
+      "kind": "asset-instance",
+      "label": "dead quiver branch 02",
+      "assetId": "sha256:7fe1ca8005be099418080eadb889ce11e921b012bb1cbbd50d1c0fe312372382",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          -154.10297525949787,
+          2.03028257552087,
+          -60.71967659048934
+        ],
+        "yaw": 1.5341290595641894,
+        "rotation": [
+          0.7176847651279448,
+          -0.056129130206025696,
+          -0.6937807742264449,
+          -0.021126664651958293
+        ]
+      },
+      "scale": [
+        1.1423830253072083,
+        1.1882412817438148,
+        1.0805564545612534
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-67",
+      "kind": "asset-instance",
+      "label": "dead quiver branch 02",
+      "assetId": "sha256:7fe1ca8005be099418080eadb889ce11e921b012bb1cbbd50d1c0fe312372382",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          -153.3370838338162,
+          1.9380847024868626,
+          -58.96530012274735
+        ],
+        "yaw": 1.1197007165361066,
+        "rotation": [
+          0.8438638968205998,
+          0.047739201332520305,
+          -0.5288262555270625,
+          0.07718473789623916
+        ]
+      },
+      "scale": [
+        1.5741691536270082,
+        1.5612338988715577,
+        1.4239751987878695
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-68",
+      "kind": "asset-instance",
+      "label": "dead quiver branch 02",
+      "assetId": "sha256:7fe1ca8005be099418080eadb889ce11e921b012bb1cbbd50d1c0fe312372382",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          -147.33522266437495,
+          1.342060960135725,
+          -58.39224224421676
+        ],
+        "yaw": 0.9456250151034864,
+        "rotation": [
+          0.8902466731835537,
+          0.00614635313839706,
+          -0.45539397213294397,
+          0.006278007143394845
+        ]
+      },
+      "scale": [
+        0.6393682829104363,
+        0.6964843239304874,
+        0.6938524322673801
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-69",
+      "kind": "asset-instance",
+      "label": "dead quiver branch 01",
+      "assetId": "sha256:4db3e1d2ecf5f50361c0662f9e5555f97a63e56c0ec76881c8d6d489aee8377b",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          -143.30345996917117,
+          1.3109290930904884,
+          -62.490293803895256
+        ],
+        "yaw": 0.28530669879664505,
+        "rotation": [
+          0.03181969077391327,
+          0.14269994352901103,
+          -0.023338460842729586,
+          0.9889790440860525
+        ]
+      },
+      "scale": [
+        1.7599628780968488,
+        1.438952695507585,
+        1.325164655942163
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-70",
+      "kind": "asset-instance",
+      "label": "dead quiver branch 02",
+      "assetId": "sha256:7fe1ca8005be099418080eadb889ce11e921b012bb1cbbd50d1c0fe312372382",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          -141.63796107328133,
+          1.9059488316297974,
+          -73.86691637536379
+        ],
+        "yaw": -0.22394967344051642,
+        "rotation": [
+          -0.05813274347728451,
+          -0.11351395395785856,
+          -0.03983450018557716,
+          0.9910339948698139
+        ]
+      },
+      "scale": [
+        0.639087625220418,
+        0.6160903104239183,
+        0.6744009153132635
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-71",
+      "kind": "asset-instance",
+      "label": "dead quiver branch 02",
+      "assetId": "sha256:7fe1ca8005be099418080eadb889ce11e921b012bb1cbbd50d1c0fe312372382",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          -137.51125152380033,
+          1.4777663173584874,
+          -69.4745434920723
+        ],
+        "yaw": 0.6744894401883773,
+        "rotation": [
+          0.07571972311498884,
+          0.32961346073742115,
+          -0.023220630916546397,
+          0.9407881229755867
+        ]
+      },
+      "scale": [
+        1.4179826634004713,
+        1.544448776534679,
+        1.4344360930387805
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-72",
+      "kind": "asset-instance",
+      "label": "dead quiver branch 02",
+      "assetId": "sha256:7fe1ca8005be099418080eadb889ce11e921b012bb1cbbd50d1c0fe312372382",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          -127.61877084783838,
+          1.9795520823452364,
+          -81.97521608490746
+        ],
+        "yaw": 0.662177354831508,
+        "rotation": [
+          0.08246628338647896,
+          0.3223946955909304,
+          -0.0066093204214144885,
+          0.9429831860870158
+        ]
+      },
+      "scale": [
+        0.9428535771556199,
+        1.0356914740486736,
+        0.9735054761809858
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-73",
+      "kind": "asset-instance",
+      "label": "dead quiver branch 02",
+      "assetId": "sha256:7fe1ca8005be099418080eadb889ce11e921b012bb1cbbd50d1c0fe312372382",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          -118.48769833353582,
+          1.8831063237796537,
+          -79.4743831548001
+        ],
+        "yaw": -1.2131192758000535,
+        "rotation": [
+          0.12331854932876332,
+          -0.5618048753451059,
+          0.04953707919106002,
+          0.8165255018767864
+        ]
+      },
+      "scale": [
+        0.9885635135695339,
+        0.9432619907057059,
+        0.920531335135185
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-74",
+      "kind": "asset-instance",
+      "label": "dead quiver branch 02",
+      "assetId": "sha256:7fe1ca8005be099418080eadb889ce11e921b012bb1cbbd50d1c0fe312372382",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          -112.67410568571187,
+          2.215195653993041,
+          -83.20081891837454
+        ],
+        "yaw": -0.8153011965143588,
+        "rotation": [
+          0.05166315929301161,
+          -0.3950113026963581,
+          -0.0006023834015079325,
+          0.917222233620745
+        ]
+      },
+      "scale": [
+        0.8990801920183003,
+        0.7321866732714305,
+        0.7516263406464518
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-75",
+      "kind": "asset-instance",
+      "label": "dead quiver branch 01",
+      "assetId": "sha256:4db3e1d2ecf5f50361c0662f9e5555f97a63e56c0ec76881c8d6d489aee8377b",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          -111.37835785784661,
+          1.4046141139839299,
+          -69.4341962282921
+        ],
+        "yaw": -1.102456379515403,
+        "rotation": [
+          0.09284627123997469,
+          -0.5192583467214688,
+          0.027588737017084006,
+          0.8491108295544947
+        ]
+      },
+      "scale": [
+        0.9294972871430218,
+        0.9234818987966573,
+        0.9929779435490612
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-76",
+      "kind": "asset-instance",
+      "label": "dead quiver branch 02",
+      "assetId": "sha256:7fe1ca8005be099418080eadb889ce11e921b012bb1cbbd50d1c0fe312372382",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          -108.68545842672219,
+          2.1115238411211465,
+          -81.02297944661672
+        ],
+        "yaw": -0.249900980610456,
+        "rotation": [
+          0.9865854002932247,
+          0.017337230074452085,
+          0.1243699207484577,
+          -0.10431103103039978
+        ]
+      },
+      "scale": [
+        0.6166430873796344,
+        0.6779346801705489,
+        0.7014218565071528
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-77",
+      "kind": "asset-instance",
+      "label": "dead quiver branch 01",
+      "assetId": "sha256:4db3e1d2ecf5f50361c0662f9e5555f97a63e56c0ec76881c8d6d489aee8377b",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          -108.22086679340069,
+          2.0189482959027423,
+          -79.65656201531615
+        ],
+        "yaw": 0.5848486339977832,
+        "rotation": [
+          0.09494277971065426,
+          0.2851920301425083,
+          -0.007959570647854672,
+          0.9537232406516634
+        ]
+      },
+      "scale": [
+        1.2337975658476352,
+        1.0784037168240457,
+        1.1436980827057093
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-78",
+      "kind": "asset-instance",
+      "label": "dead quiver branch 02",
+      "assetId": "sha256:7fe1ca8005be099418080eadb889ce11e921b012bb1cbbd50d1c0fe312372382",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          -107.24747277817966,
+          2.3120409369926813,
+          -83.4743180531379
+        ],
+        "yaw": -0.6775566560346965,
+        "rotation": [
+          0.9428005786497983,
+          0.02417285907087566,
+          0.3324637408923897,
+          -0.003256190071704081
+        ]
+      },
+      "scale": [
+        0.653831881005317,
+        0.6930095354849961,
+        0.7150061376889779
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-79",
+      "kind": "asset-instance",
+      "label": "dead quiver branch 02",
+      "assetId": "sha256:7fe1ca8005be099418080eadb889ce11e921b012bb1cbbd50d1c0fe312372382",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          -106.2991267614868,
+          2.199785163532149,
+          -81.82523284808273
+        ],
+        "yaw": 0.5452292386608357,
+        "rotation": [
+          -0.11486233268633142,
+          0.26992484907866393,
+          0.05669136354545477,
+          0.9543234827243181
+        ]
+      },
+      "scale": [
+        1.1674339371733367,
+        1.1136251833721391,
+        1.1738242065380287
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-80",
+      "kind": "asset-instance",
+      "label": "dead quiver branch 02",
+      "assetId": "sha256:7fe1ca8005be099418080eadb889ce11e921b012bb1cbbd50d1c0fe312372382",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          -105.35989301139179,
+          2.1774450064272246,
+          -81.74176710287924
+        ],
+        "yaw": -0.940307667821146,
+        "rotation": [
+          0.06404590209190944,
+          -0.4506350497423709,
+          0.0006570465597976229,
+          0.8904076272465004
+        ]
+      },
+      "scale": [
+        0.8251995244994759,
+        0.6801599771984228,
+        0.6399250474560704
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-81",
+      "kind": "asset-instance",
+      "label": "dead quiver branch 01",
+      "assetId": "sha256:4db3e1d2ecf5f50361c0662f9e5555f97a63e56c0ec76881c8d6d489aee8377b",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          -89.28346907625826,
+          2.1475574395821586,
+          -78.66360354051821
+        ],
+        "yaw": -0.9973239513868717,
+        "rotation": [
+          -0.07293272433738465,
+          -0.4781125664090043,
+          -0.07044222489240937,
+          0.8724259765245014
+        ]
+      },
+      "scale": [
+        1.4358448245562614,
+        1.1658171820375736,
+        1.2214540315198665
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-82",
+      "kind": "asset-instance",
+      "label": "dead quiver branch 01",
+      "assetId": "sha256:4db3e1d2ecf5f50361c0662f9e5555f97a63e56c0ec76881c8d6d489aee8377b",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          -89.29938725324223,
+          2.0051030563664907,
+          -75.6705499032504
+        ],
+        "yaw": 0.556970920981418,
+        "rotation": [
+          0.09887341615303541,
+          0.27128077383527643,
+          -0.0027676945345741256,
+          0.9574043707820251
+        ]
+      },
+      "scale": [
+        1.6380143120884894,
+        1.606849841394395,
+        1.6954017213292492
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-83",
+      "kind": "asset-instance",
+      "label": "dead quiver branch 02",
+      "assetId": "sha256:7fe1ca8005be099418080eadb889ce11e921b012bb1cbbd50d1c0fe312372382",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          -86.64354075332533,
+          2.167437328276906,
+          -77.36903625242338
+        ],
+        "yaw": 0.20546838498818243,
+        "rotation": [
+          -0.13711539009972976,
+          0.10328948967071402,
+          0.026662513403989403,
+          0.9847942736939246
+        ]
+      },
+      "scale": [
+        1.7238461969420311,
+        1.7402901474975758,
+        1.5687344385670061
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-84",
+      "kind": "asset-instance",
+      "label": "dead quiver branch 01",
+      "assetId": "sha256:4db3e1d2ecf5f50361c0662f9e5555f97a63e56c0ec76881c8d6d489aee8377b",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          -76.89921512315217,
+          1.2126130769002863,
+          -63.1419149376578
+        ],
+        "yaw": 0.8197980719696237,
+        "rotation": [
+          -0.09322833503816438,
+          0.39787677616176625,
+          0.06016615891698214,
+          0.9107044426477277
+        ]
+      },
+      "scale": [
+        1.1016259317286312,
+        0.972581111497797,
+        1.0653735270140126
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-85",
+      "kind": "asset-instance",
+      "label": "dead quiver branch 01",
+      "assetId": "sha256:4db3e1d2ecf5f50361c0662f9e5555f97a63e56c0ec76881c8d6d489aee8377b",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          -76.17159334927256,
+          1.232004546987119,
+          -63.800892349345645
+        ],
+        "yaw": -0.6420391713536903,
+        "rotation": [
+          0.013783286060358387,
+          -0.3152854407958264,
+          -0.02110040659247594,
+          0.9486621551897134
+        ]
+      },
+      "scale": [
+        1.1483248304575682,
+        1.0966097727675772,
+        1.1645804164450677
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-86",
+      "kind": "asset-instance",
+      "label": "dead quiver branch 01",
+      "assetId": "sha256:4db3e1d2ecf5f50361c0662f9e5555f97a63e56c0ec76881c8d6d489aee8377b",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          -67.99299842233057,
+          2.225442741144562,
+          -76.8944121823562
+        ],
+        "yaw": -0.6765985046610477,
+        "rotation": [
+          -0.10765211230280436,
+          -0.3315558705465802,
+          -0.05783657366670211,
+          0.9354873907056898
+        ]
+      },
+      "scale": [
+        1.224032513424754,
+        0.9942469735653137,
+        0.9306398112840819
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-87",
+      "kind": "asset-instance",
+      "label": "dead quiver branch 02",
+      "assetId": "sha256:7fe1ca8005be099418080eadb889ce11e921b012bb1cbbd50d1c0fe312372382",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          -67.71435685894062,
+          2.1509711939915723,
+          -75.39558304822513
+        ],
+        "yaw": 0.11303791258679205,
+        "rotation": [
+          0.08537749440039138,
+          0.05554982804131525,
+          0.0037785960802263225,
+          0.9947917481896168
+        ]
+      },
+      "scale": [
+        1.5761925335973501,
+        1.469355014313965,
+        1.5821441529434876
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-88",
+      "kind": "asset-instance",
+      "label": "lambis shell",
+      "assetId": "sha256:0ee07523352578110d78347d93a4536673f67c2d01a0aee6b334882bad80b717",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          -66.73711872637821,
+          2.0924657045642623,
+          -75.37339395101174
+        ],
+        "yaw": 0.5050142017657258,
+        "rotation": [
+          0.9661091427528143,
+          0.06493786259519656,
+          -0.24926987770175002,
+          -0.01675489067538946
+        ]
+      },
+      "scale": [
+        0.9003675344400108,
+        0.9003675344400108,
+        0.9003675344400108
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-89",
+      "kind": "asset-instance",
+      "label": "dead quiver branch 02",
+      "assetId": "sha256:7fe1ca8005be099418080eadb889ce11e921b012bb1cbbd50d1c0fe312372382",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          -57.29912646882847,
+          2.1157694337376576,
+          -74.53829400103969
+        ],
+        "yaw": 0.7012808484325189,
+        "rotation": [
+          0.9305142646664092,
+          0.02528207739930346,
+          -0.33648002379116815,
+          0.14242616825640778
+        ]
+      },
+      "scale": [
+        0.790740227792412,
+        0.6651858092927921,
+        0.6336069417017228
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-90",
+      "kind": "asset-instance",
+      "label": "dead quiver branch 02",
+      "assetId": "sha256:7fe1ca8005be099418080eadb889ce11e921b012bb1cbbd50d1c0fe312372382",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          -51.487990562095185,
+          1.4684052475464375,
+          -64.91593449254296
+        ],
+        "yaw": -0.7288639021448031,
+        "rotation": [
+          0.9312864252289119,
+          -0.01644683981380536,
+          0.3539013259649461,
+          0.08478765903565418
+        ]
+      },
+      "scale": [
+        0.8148686992004514,
+        0.8626687796390903,
+        0.8812654569805618
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-91",
+      "kind": "asset-instance",
+      "label": "dead quiver branch 01",
+      "assetId": "sha256:4db3e1d2ecf5f50361c0662f9e5555f97a63e56c0ec76881c8d6d489aee8377b",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          -49.99581358323354,
+          2.169240087711427,
+          -74.19934378715413
+        ],
+        "yaw": -0.8281160088654721,
+        "rotation": [
+          0.045589372285950766,
+          -0.4010248155351263,
+          -0.006685564963744603,
+          0.9149076509029239
+        ]
+      },
+      "scale": [
+        1.4175106482580304,
+        1.292756730526217,
+        1.2786694774872749
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-92",
+      "kind": "asset-instance",
+      "label": "dead quiver branch 02",
+      "assetId": "sha256:7fe1ca8005be099418080eadb889ce11e921b012bb1cbbd50d1c0fe312372382",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          -49.81417435511309,
+          2.1372024557918197,
+          -73.370961411265
+        ],
+        "yaw": -0.7791105772879228,
+        "rotation": [
+          0.12351193340766083,
+          -0.37424922948778144,
+          0.02775415920412737,
+          0.9186468435588159
+        ]
+      },
+      "scale": [
+        0.9359934836626053,
+        0.8946966021595395,
+        0.8375799406635641
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-93",
+      "kind": "asset-instance",
+      "label": "dead quiver branch 01",
+      "assetId": "sha256:4db3e1d2ecf5f50361c0662f9e5555f97a63e56c0ec76881c8d6d489aee8377b",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          -41.647930477614,
+          2.1698576954342625,
+          -73.6408373738636
+        ],
+        "yaw": -0.7934949905911731,
+        "rotation": [
+          -0.03673770333183704,
+          -0.38693681818811176,
+          -0.04150342895523064,
+          0.9204388655795234
+        ]
+      },
+      "scale": [
+        1.077567083761096,
+        0.933490046326552,
+        0.970997744948748
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-94",
+      "kind": "asset-instance",
+      "label": "dead quiver branch 02",
+      "assetId": "sha256:7fe1ca8005be099418080eadb889ce11e921b012bb1cbbd50d1c0fe312372382",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          -38.496635196052466,
+          2.2749793838624797,
+          -74.52783383930051
+        ],
+        "yaw": 0.2615897352445652,
+        "rotation": [
+          0.10075865535587669,
+          0.12872373601400494,
+          -0.0028146587020599564,
+          0.986544459643793
+        ]
+      },
+      "scale": [
+        0.9810745281167328,
+        0.9510068408669058,
+        0.9893945219519441
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-95",
+      "kind": "asset-instance",
+      "label": "dead quiver branch 02",
+      "assetId": "sha256:7fe1ca8005be099418080eadb889ce11e921b012bb1cbbd50d1c0fe312372382",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          -37.4809825099305,
+          2.2447884298355194,
+          -73.20554862125958
+        ],
+        "yaw": 0.6975738611493466,
+        "rotation": [
+          0.9280002235197894,
+          -0.07227556497392676,
+          -0.3411488647256204,
+          -0.13118414519804245
+        ]
+      },
+      "scale": [
+        1.7435442027635872,
+        1.7083116660458317,
+        1.7272071978658312
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-96",
+      "kind": "asset-instance",
+      "label": "dead quiver branch 02",
+      "assetId": "sha256:7fe1ca8005be099418080eadb889ce11e921b012bb1cbbd50d1c0fe312372382",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          -35.69931412312618,
+          2.3469054579158413,
+          -75.34279308374344
+        ],
+        "yaw": 0.6129309825843426,
+        "rotation": [
+          0.14009435808720952,
+          0.2956015897407041,
+          -0.02058469707408571,
+          0.9447589857848768
+        ]
+      },
+      "scale": [
+        1.700408859550953,
+        1.7729721063961805,
+        1.7832395394407052
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-97",
+      "kind": "asset-instance",
+      "label": "dead quiver branch 02",
+      "assetId": "sha256:7fe1ca8005be099418080eadb889ce11e921b012bb1cbbd50d1c0fe312372382",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          -22.805529238764375,
+          1.5662414595790377,
+          -61.533105187080096
+        ],
+        "yaw": 0.7264013565402254,
+        "rotation": [
+          0.930679223264081,
+          0.010493342924921437,
+          -0.3508209698339438,
+          0.1032023268322859
+        ]
+      },
+      "scale": [
+        1.5152952373959123,
+        1.5368237295442617,
+        1.4158298827192395
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-98",
+      "kind": "asset-instance",
+      "label": "dead quiver branch 02",
+      "assetId": "sha256:7fe1ca8005be099418080eadb889ce11e921b012bb1cbbd50d1c0fe312372382",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          -22.238069287157284,
+          2.250235492307791,
+          -73.69842830877178
+        ],
+        "yaw": -0.22213688857606995,
+        "rotation": [
+          0.9881933761773938,
+          0.018775357331624578,
+          0.110971828276753,
+          -0.10395475248928622
+        ]
+      },
+      "scale": [
+        1.6729633055627344,
+        1.6602782469507043,
+        1.8242580912757815
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-99",
+      "kind": "asset-instance",
+      "label": "dead quiver branch 01",
+      "assetId": "sha256:4db3e1d2ecf5f50361c0662f9e5555f97a63e56c0ec76881c8d6d489aee8377b",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          -13.264566404843372,
+          1.5369091293991632,
+          -62.79965237332027
+        ],
+        "yaw": 0.9201101381964645,
+        "rotation": [
+          0.10355655199115499,
+          0.43936063779684065,
+          -0.02655181344148043,
+          0.8919267187933242
+        ]
+      },
+      "scale": [
+        1.1447312165983021,
+        1.1540246245501482,
+        1.1371539963058843
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-100",
+      "kind": "asset-instance",
+      "label": "dead quiver branch 02",
+      "assetId": "sha256:7fe1ca8005be099418080eadb889ce11e921b012bb1cbbd50d1c0fe312372382",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          -5.453342692180126,
+          2.014253625909496,
+          -69.3661611605772
+        ],
+        "yaw": -0.6585890934610965,
+        "rotation": [
+          -0.10189244782198081,
+          -0.3235494704912932,
+          -0.057979435059677606,
+          0.9389206858578681
+        ]
+      },
+      "scale": [
+        1.6640801458619534,
+        1.5519420545486635,
+        1.5356662332797195
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-101",
+      "kind": "asset-instance",
+      "label": "dead quiver branch 01",
+      "assetId": "sha256:4db3e1d2ecf5f50361c0662f9e5555f97a63e56c0ec76881c8d6d489aee8377b",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          -4.175766023524858,
+          1.4885184951888737,
+          -62.658098316955275
+        ],
+        "yaw": -1.1282045927804962,
+        "rotation": [
+          0.8447956095479846,
+          0.020467588850160347,
+          0.5341226331209131,
+          0.024788478837810844
+        ]
+      },
+      "scale": [
+        1.6637853333726524,
+        1.7307701705652612,
+        1.6992930939313002
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-102",
+      "kind": "asset-instance",
+      "label": "dead quiver branch 02",
+      "assetId": "sha256:7fe1ca8005be099418080eadb889ce11e921b012bb1cbbd50d1c0fe312372382",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          11.853959227768078,
+          2.010317569228206,
+          -68.35036850862764
+        ],
+        "yaw": -0.9036948483538555,
+        "rotation": [
+          -0.10710288978123679,
+          -0.4358543282929215,
+          -0.08174305444540494,
+          0.8898752994430007
+        ]
+      },
+      "scale": [
+        1.3035530308261514,
+        1.4334361616140328,
+        1.3437882226522275
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-103",
+      "kind": "asset-instance",
+      "label": "dead quiver branch 01",
+      "assetId": "sha256:4db3e1d2ecf5f50361c0662f9e5555f97a63e56c0ec76881c8d6d489aee8377b",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          13.910579024198631,
+          1.5406035311683193,
+          -61.479273059581004
+        ],
+        "yaw": 1.2919395017074875,
+        "rotation": [
+          -0.07979664869345926,
+          0.6000876093515678,
+          0.09683054004062656,
+          0.790032405965384
+        ]
+      },
+      "scale": [
+        1.4523583251982926,
+        1.2481707458941966,
+        1.318164204938472
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-104",
+      "kind": "asset-instance",
+      "label": "dead quiver branch 02",
+      "assetId": "sha256:7fe1ca8005be099418080eadb889ce11e921b012bb1cbbd50d1c0fe312372382",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          15.16944743520976,
+          2.14368902035067,
+          -70.05139304178017
+        ],
+        "yaw": -0.13862687138961943,
+        "rotation": [
+          0.994605744677228,
+          0.010365585579622812,
+          0.06944073865126785,
+          -0.07635411649816219
+        ]
+      },
+      "scale": [
+        1.0818691947497427,
+        1.1134149228542272,
+        1.183578763569231
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-105",
+      "kind": "asset-instance",
+      "label": "dead quiver branch 01",
+      "assetId": "sha256:4db3e1d2ecf5f50361c0662f9e5555f97a63e56c0ec76881c8d6d489aee8377b",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          16.74649827145449,
+          1.9958703007535183,
+          -68.5974417441507
+        ],
+        "yaw": 0.12411768420021825,
+        "rotation": [
+          0.11679048061210422,
+          0.061060979819664074,
+          -0.002701776419222884,
+          0.9912740492850789
+        ]
+      },
+      "scale": [
+        1.085554004833102,
+        0.9311933732340764,
+        0.9233604916188984
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-106",
+      "kind": "asset-instance",
+      "label": "lambis shell",
+      "assetId": "sha256:0ee07523352578110d78347d93a4536673f67c2d01a0aee6b334882bad80b717",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          23.036467449408438,
+          2.165442917461337,
+          -71.00076031439279
+        ],
+        "yaw": 0.39473520911731824,
+        "rotation": [
+          0.980371354464801,
+          0.02052364970003634,
+          -0.1960457682229247,
+          -0.004104133248954718
+        ]
+      },
+      "scale": [
+        1.2361360662151128,
+        1.2361360662151128,
+        1.2361360662151128
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-107",
+      "kind": "asset-instance",
+      "label": "lambis shell",
+      "assetId": "sha256:0ee07523352578110d78347d93a4536673f67c2d01a0aee6b334882bad80b717",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          26.182616501457886,
+          1.9719351949226056,
+          -68.62520458480547
+        ],
+        "yaw": 1.4104683918985812,
+        "rotation": [
+          -0.06229604683556288,
+          0.6452510653046778,
+          -0.04576326500196571,
+          0.7600499910191434
+        ]
+      },
+      "scale": [
+        0.8023226325865835,
+        0.8023226325865835,
+        0.8023226325865835
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-108",
+      "kind": "asset-instance",
+      "label": "lambis shell",
+      "assetId": "sha256:0ee07523352578110d78347d93a4536673f67c2d01a0aee6b334882bad80b717",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          31.776776631400306,
+          1.372832861957164,
+          -58.97438440493004
+        ],
+        "yaw": 4.995334654939181,
+        "rotation": [
+          0.042924247916610134,
+          0.600306663828718,
+          0.0766050098482821,
+          -0.7949346455965879
+        ]
+      },
+      "scale": [
+        1.2559625115944073,
+        1.2559625115944073,
+        1.2559625115944073
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-109",
+      "kind": "asset-instance",
+      "label": "dead quiver branch 01",
+      "assetId": "sha256:4db3e1d2ecf5f50361c0662f9e5555f97a63e56c0ec76881c8d6d489aee8377b",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          35.061769703979,
+          1.409292052064529,
+          -59.66026783067797
+        ],
+        "yaw": -0.28426046553050777,
+        "rotation": [
+          -0.1340654885096278,
+          -0.14335866727057628,
+          -0.04185713685784918,
+          0.979654386711529
+        ]
+      },
+      "scale": [
+        1.0872418692335486,
+        0.9456509684907904,
+        0.8757134532331007
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-110",
+      "kind": "asset-instance",
+      "label": "dead quiver branch 02",
+      "assetId": "sha256:7fe1ca8005be099418080eadb889ce11e921b012bb1cbbd50d1c0fe312372382",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          39.71526457558336,
+          1.3695975722779967,
+          -61.05878554825274
+        ],
+        "yaw": 0.9289738773051655,
+        "rotation": [
+          0.8888526277805652,
+          0.03319113018112132,
+          -0.44254599434915615,
+          0.11398420000333616
+        ]
+      },
+      "scale": [
+        1.376792251970619,
+        1.4220510748125699,
+        1.5398777645616217
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-111",
+      "kind": "asset-instance",
+      "label": "dead quiver branch 02",
+      "assetId": "sha256:7fe1ca8005be099418080eadb889ce11e921b012bb1cbbd50d1c0fe312372382",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          40.322030754821675,
+          1.3157296689098978,
+          -60.51251135967337
+        ],
+        "yaw": -0.7091012563598185,
+        "rotation": [
+          0.9318165958190181,
+          -0.01420295009656405,
+          0.3411551714829849,
+          0.12300104444770366
+        ]
+      },
+      "scale": [
+        1.5133498943410815,
+        1.4978208427364215,
+        1.5169829406600472
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-112",
+      "kind": "asset-instance",
+      "label": "dead quiver branch 01",
+      "assetId": "sha256:4db3e1d2ecf5f50361c0662f9e5555f97a63e56c0ec76881c8d6d489aee8377b",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          43.38542884391985,
+          1.9874615829388658,
+          -69.58487163987462
+        ],
+        "yaw": -0.4885340944029255,
+        "rotation": [
+          -0.06074572872285087,
+          -0.24267393975331,
+          -0.037676391899487384,
+          0.9674708289659038
+        ]
+      },
+      "scale": [
+        1.1542335927486418,
+        1.1498717511532672,
+        1.2047495572289242
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-113",
+      "kind": "asset-instance",
+      "label": "dead quiver branch 02",
+      "assetId": "sha256:7fe1ca8005be099418080eadb889ce11e921b012bb1cbbd50d1c0fe312372382",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          46.852626932977735,
+          1.3489819027618268,
+          -60.70240407014759
+        ],
+        "yaw": 0.6114823094138675,
+        "rotation": [
+          0.9488622633307988,
+          0.008476877211696036,
+          -0.2968269024338836,
+          0.10715567073653762
+        ]
+      },
+      "scale": [
+        1.351427521649748,
+        1.22319091952729,
+        1.3076790103920624
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-114",
+      "kind": "asset-instance",
+      "label": "dead quiver branch 01",
+      "assetId": "sha256:4db3e1d2ecf5f50361c0662f9e5555f97a63e56c0ec76881c8d6d489aee8377b",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          51.1523999121298,
+          1.3986454214446393,
+          -61.04602724518749
+        ],
+        "yaw": 0.3420269539442833,
+        "rotation": [
+          0.09831924043196043,
+          0.16772586292442412,
+          0.00027560389127827267,
+          0.9809185929064831
+        ]
+      },
+      "scale": [
+        1.4993181721307338,
+        1.6409268052624322,
+        1.5040976290608892
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-115",
+      "kind": "asset-instance",
+      "label": "dead quiver branch 01",
+      "assetId": "sha256:4db3e1d2ecf5f50361c0662f9e5555f97a63e56c0ec76881c8d6d489aee8377b",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          59.49066156143216,
+          2.0648785597157167,
+          -72.6846059795158
+        ],
+        "yaw": 0.4816548483613294,
+        "rotation": [
+          -0.011945310410393876,
+          0.23863095282663704,
+          0.014686894381105622,
+          0.9709257814301199
+        ]
+      },
+      "scale": [
+        0.6877803225070238,
+        0.5933420769589332,
+        0.5973223745339037
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-116",
+      "kind": "asset-instance",
+      "label": "dead quiver branch 02",
+      "assetId": "sha256:7fe1ca8005be099418080eadb889ce11e921b012bb1cbbd50d1c0fe312372382",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          64.14890440465643,
+          2.2150998585859276,
+          -75.03958551954231
+        ],
+        "yaw": 0.690493163389521,
+        "rotation": [
+          -0.0213154290154718,
+          0.33875654867767624,
+          0.02823718186361442,
+          0.9402086549135127
+        ]
+      },
+      "scale": [
+        1.256274799257517,
+        1.0579880369425347,
+        1.084447889800483
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-117",
+      "kind": "asset-instance",
+      "label": "dead quiver branch 02",
+      "assetId": "sha256:7fe1ca8005be099418080eadb889ce11e921b012bb1cbbd50d1c0fe312372382",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          66.44534301426438,
+          2.107338311053813,
+          -74.04992436039126
+        ],
+        "yaw": 0.6177265481216405,
+        "rotation": [
+          0.07855626071174826,
+          0.3017923376094748,
+          -0.007467465425740984,
+          0.9501023817585723
+        ]
+      },
+      "scale": [
+        0.9682947434484959,
+        0.9792125078518165,
+        0.9376296873072602
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-118",
+      "kind": "asset-instance",
+      "label": "dead quiver branch 02",
+      "assetId": "sha256:7fe1ca8005be099418080eadb889ce11e921b012bb1cbbd50d1c0fe312372382",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          73.00358960001769,
+          1.418149999875827,
+          -64.65858485808852
+        ],
+        "yaw": -0.8044595849217681,
+        "rotation": [
+          0.02647304656902376,
+          -0.39090134847109526,
+          -0.013254117961198743,
+          0.9199563260970078
+        ]
+      },
+      "scale": [
+        1.576709886174649,
+        1.6978659137201633,
+        1.698226912805952
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-119",
+      "kind": "asset-instance",
+      "label": "dead quiver branch 01",
+      "assetId": "sha256:4db3e1d2ecf5f50361c0662f9e5555f97a63e56c0ec76881c8d6d489aee8377b",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          75.21316201281415,
+          1.3192989807208095,
+          -63.683062027477526
+        ],
+        "yaw": 0.6839056550951446,
+        "rotation": [
+          0.9410592854029456,
+          -0.006861807860573471,
+          -0.33363696959496675,
+          0.05519700598102466
+        ]
+      },
+      "scale": [
+        0.7804479514248669,
+        0.6904310114994284,
+        0.7593918662413484
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-120",
+      "kind": "asset-instance",
+      "label": "dead quiver branch 01",
+      "assetId": "sha256:4db3e1d2ecf5f50361c0662f9e5555f97a63e56c0ec76881c8d6d489aee8377b",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          78.98640370997325,
+          2.1863526398302606,
+          -76.04395906767512
+        ],
+        "yaw": 0.0820419103364573,
+        "rotation": [
+          -0.09154790173776804,
+          0.04060180124546366,
+          0.0011917694579972292,
+          0.9949718865920759
+        ]
+      },
+      "scale": [
+        1.449421534873545,
+        1.5452307423299636,
+        1.4496773977029191
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-121",
+      "kind": "asset-instance",
+      "label": "dead quiver branch 02",
+      "assetId": "sha256:7fe1ca8005be099418080eadb889ce11e921b012bb1cbbd50d1c0fe312372382",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          87.68756410358286,
+          2.2779345205217836,
+          -78.2615744616999
+        ],
+        "yaw": -0.6555349580338716,
+        "rotation": [
+          0.11285917237409195,
+          -0.3171952723543783,
+          0.011785724791399773,
+          0.9415471645638407
+        ]
+      },
+      "scale": [
+        1.6228024757467208,
+        1.528755251946271,
+        1.474350349602329
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-122",
+      "kind": "asset-instance",
+      "label": "dead quiver branch 02",
+      "assetId": "sha256:7fe1ca8005be099418080eadb889ce11e921b012bb1cbbd50d1c0fe312372382",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          90.58777195047874,
+          2.3000818596000143,
+          -79.803611419118
+        ],
+        "yaw": -0.04118213674244685,
+        "rotation": [
+          0.1389254500248827,
+          -0.019491202349064762,
+          -0.0035519506475922735,
+          0.9901046389210428
+        ]
+      },
+      "scale": [
+        1.1377688091248275,
+        1.1535177252141264,
+        1.1458571410059122
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-123",
+      "kind": "asset-instance",
+      "label": "lambis shell",
+      "assetId": "sha256:0ee07523352578110d78347d93a4536673f67c2d01a0aee6b334882bad80b717",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          92.9446125079845,
+          2.0279565249204876,
+          -77.13587849157646
+        ],
+        "yaw": 6.202210959918713,
+        "rotation": [
+          0.029444628107148936,
+          0.037808933469596635,
+          -0.09492233144184159,
+          -0.9943305533971932
+        ]
+      },
+      "scale": [
+        1.2938965088222176,
+        1.2938965088222176,
+        1.2938965088222176
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-124",
+      "kind": "asset-instance",
+      "label": "lambis shell",
+      "assetId": "sha256:0ee07523352578110d78347d93a4536673f67c2d01a0aee6b334882bad80b717",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          97.80064074357233,
+          2.253836782215885,
+          -80.6270989594448
+        ],
+        "yaw": 5.655519984890952,
+        "rotation": [
+          0.07447194791977571,
+          0.30314567980155377,
+          -0.06332635736707964,
+          -0.9479168730713179
+        ]
+      },
+      "scale": [
+        1.0852490777149797,
+        1.0852490777149797,
+        1.0852490777149797
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-125",
+      "kind": "asset-instance",
+      "label": "dead quiver branch 02",
+      "assetId": "sha256:7fe1ca8005be099418080eadb889ce11e921b012bb1cbbd50d1c0fe312372382",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          105.72845502143268,
+          2.115649580164874,
+          -79.51088037806994
+        ],
+        "yaw": 0.02079207279012421,
+        "rotation": [
+          0.07646405551148897,
+          0.011038537327217237,
+          -0.009568176938679703,
+          0.9969653198073049
+        ]
+      },
+      "scale": [
+        1.6549878006801007,
+        1.4882152307287877,
+        1.625290153406037
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-126",
+      "kind": "asset-instance",
+      "label": "dead quiver branch 02",
+      "assetId": "sha256:7fe1ca8005be099418080eadb889ce11e921b012bb1cbbd50d1c0fe312372382",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          121.35496821674487,
+          1.4932807741770213,
+          -72.37994945806729
+        ],
+        "yaw": 0.3247443416822238,
+        "rotation": [
+          0.9842001312270343,
+          -0.02007742432655802,
+          -0.16185389309492793,
+          -0.06892253633692953
+        ]
+      },
+      "scale": [
+        1.5240444696508346,
+        1.5450246150332154,
+        1.4182304679590274
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-127",
+      "kind": "asset-instance",
+      "label": "dead quiver branch 01",
+      "assetId": "sha256:4db3e1d2ecf5f50361c0662f9e5555f97a63e56c0ec76881c8d6d489aee8377b",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          125.4637589204303,
+          2.2329630656502255,
+          -85.59427923443657
+        ],
+        "yaw": 1.1672984688352832,
+        "rotation": [
+          -0.035368078155143035,
+          0.5513256422020818,
+          0.059658088200788204,
+          0.8314024583860098
+        ]
+      },
+      "scale": [
+        1.5174093444831669,
+        1.4307585815076806,
+        1.304523471918426
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-128",
+      "kind": "asset-instance",
+      "label": "dead quiver branch 01",
+      "assetId": "sha256:4db3e1d2ecf5f50361c0662f9e5555f97a63e56c0ec76881c8d6d489aee8377b",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          129.13314906823106,
+          2.0870915842807247,
+          -85.10362239860002
+        ],
+        "yaw": 0.07003718924519825,
+        "rotation": [
+          0.988755886633586,
+          0.0014008303471715602,
+          -0.03368201800017281,
+          -0.14568924457627538
+        ]
+      },
+      "scale": [
+        1.4079028920270502,
+        1.5091436649531556,
+        1.4921019478189472
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-129",
+      "kind": "asset-instance",
+      "label": "dead quiver branch 01",
+      "assetId": "sha256:4db3e1d2ecf5f50361c0662f9e5555f97a63e56c0ec76881c8d6d489aee8377b",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          129.79690548623313,
+          2.2061725074460483,
+          -86.9046712488649
+        ],
+        "yaw": -0.3691217063732878,
+        "rotation": [
+          0.01516724536136024,
+          -0.18321403453354113,
+          -0.01952088536533722,
+          0.9827621824493675
+        ]
+      },
+      "scale": [
+        1.0798823735676706,
+        1.1283836473336462,
+        1.0482372096322168
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-130",
+      "kind": "asset-instance",
+      "label": "lambis shell",
+      "assetId": "sha256:0ee07523352578110d78347d93a4536673f67c2d01a0aee6b334882bad80b717",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          130.7477521693521,
+          1.313808214666092,
+          -75.24718595910042
+        ],
+        "yaw": 2.599899742568602,
+        "rotation": [
+          0.2671953110103235,
+          0.013716146126214423,
+          -0.9622777324118225,
+          -0.0493973563452721
+        ]
+      },
+      "scale": [
+        0.9431115684099496,
+        0.9431115684099496,
+        0.9431115684099496
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-131",
+      "kind": "asset-instance",
+      "label": "dead quiver branch 01",
+      "assetId": "sha256:4db3e1d2ecf5f50361c0662f9e5555f97a63e56c0ec76881c8d6d489aee8377b",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          133.20718397690243,
+          1.2988652692300249,
+          -75.98173028170535
+        ],
+        "yaw": 0.2104879368983863,
+        "rotation": [
+          -0.06000227146524635,
+          0.10451185686244216,
+          0.0004455531894078397,
+          0.9927118417126546
+        ]
+      },
+      "scale": [
+        0.8155647170729935,
+        0.7723125223113787,
+        0.7693421786483032
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-132",
+      "kind": "asset-instance",
+      "label": "dead quiver branch 01",
+      "assetId": "sha256:4db3e1d2ecf5f50361c0662f9e5555f97a63e56c0ec76881c8d6d489aee8377b",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          138.54286113589893,
+          1.4153538123630032,
+          -77.73619604016889
+        ],
+        "yaw": -0.8884660383557069,
+        "rotation": [
+          -0.025274475149536145,
+          -0.4301289514057468,
+          -0.03725247713469364,
+          0.9016443528442006
+        ]
+      },
+      "scale": [
+        1.5153813818469644,
+        1.553129513353631,
+        1.5186919963233394
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-133",
+      "kind": "asset-instance",
+      "label": "dead quiver branch 01",
+      "assetId": "sha256:4db3e1d2ecf5f50361c0662f9e5555f97a63e56c0ec76881c8d6d489aee8377b",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          148.89802668459797,
+          1.4890384801985574,
+          -81.05197896613367
+        ],
+        "yaw": 0.9673378202768796,
+        "rotation": [
+          0.88520783881051,
+          -0.012358989219456043,
+          -0.46500550160567755,
+          0.004921480504049346
+        ]
+      },
+      "scale": [
+        0.656412257719785,
+        0.6271517778479565,
+        0.6293809395380824
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-134",
+      "kind": "asset-instance",
+      "label": "dead quiver branch 01",
+      "assetId": "sha256:4db3e1d2ecf5f50361c0662f9e5555f97a63e56c0ec76881c8d6d489aee8377b",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          150.78498848783707,
+          1.5027804345185694,
+          -81.66469295482675
+        ],
+        "yaw": 0.7317769056404151,
+        "rotation": [
+          -0.03931569426562193,
+          0.357574517745551,
+          0.01860428281834747,
+          0.9328711706898567
+        ]
+      },
+      "scale": [
+        1.6902334311045704,
+        1.4879055893520483,
+        1.5885993031666044
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-135",
+      "kind": "asset-instance",
+      "label": "lambis shell",
+      "assetId": "sha256:0ee07523352578110d78347d93a4536673f67c2d01a0aee6b334882bad80b717",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          164.61979196336162,
+          1.4711666726764896,
+          -87.6337892270034
+        ],
+        "yaw": 1.0247922781175176,
+        "rotation": [
+          -0.0830202460035324,
+          0.48731713177976993,
+          0.03160504491209014,
+          0.8686948675821424
+        ]
+      },
+      "scale": [
+        0.8226173001574353,
+        0.8226173001574353,
+        0.8226173001574353
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-136",
+      "kind": "asset-instance",
+      "label": "dead quiver branch 02",
+      "assetId": "sha256:7fe1ca8005be099418080eadb889ce11e921b012bb1cbbd50d1c0fe312372382",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          168.9044701262788,
+          1.4253466394320284,
+          -82.10617931430303
+        ],
+        "yaw": 0.37418104208786884,
+        "rotation": [
+          -0.03736777649429409,
+          0.1866303752538685,
+          0.027602419058741424,
+          0.981331166719257
+        ]
+      },
+      "scale": [
+        1.0907403163611888,
+        1.1797654520117935,
+        1.2639898553341218
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-137",
+      "kind": "asset-instance",
+      "label": "dead quiver branch 02",
+      "assetId": "sha256:7fe1ca8005be099418080eadb889ce11e921b012bb1cbbd50d1c0fe312372382",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          169.65710775971178,
+          1.4639172543625965,
+          -82.82235865565026
+        ],
+        "yaw": -1.1788656396313422,
+        "rotation": [
+          0.8276589518766034,
+          -0.04473605189198599,
+          0.5517198129130063,
+          0.09265307916565442
+        ]
+      },
+      "scale": [
+        1.3317002632655202,
+        1.1589129511660363,
+        1.0530468167230362
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
+      "id": "tw-object:scanned-debris-138",
+      "kind": "asset-instance",
+      "label": "dead quiver branch 02",
+      "assetId": "sha256:7fe1ca8005be099418080eadb889ce11e921b012bb1cbbd50d1c0fe312372382",
+      "priority": "visible",
+      "transform": {
+        "position": [
+          170.80156620312465,
+          1.4727265367820617,
+          -83.39193095858106
+        ],
+        "yaw": -0.7103630563574441,
+        "rotation": [
+          0.0795074997196247,
+          -0.3462623764057746,
+          0.025654314528249515,
+          0.9344103918087842
+        ]
+      },
+      "scale": [
+        1.1484862030483782,
+        0.9747171168307572,
+        0.9950845551539547
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
       }
     }
   ],

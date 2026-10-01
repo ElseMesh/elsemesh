@@ -139,6 +139,13 @@
         },
         "yaw": {
           "type": "number"
+        },
+        "rotation": {
+          "type": "array",
+          "description": "Optional normalized [x,y,z,w] quaternion for collision-free asset instances.",
+          "minItems": 4,
+          "maxItems": 4,
+          "items": { "type": "number" }
         }
       },
       "additionalProperties": true

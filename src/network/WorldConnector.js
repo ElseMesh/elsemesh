@@ -312,6 +312,10 @@ export class WorldConnector {
 function validateWorldObjects( objects ) {
 	invariant( Array.isArray( objects ) && objects.length <= 10000, 'World manifest has an invalid object list' );
 	for ( const object of objects ) {
+		if ( object?.transform?.rotation !== undefined ) {
+			const rotation = object.transform.rotation;
+			invariant( Array.isArray( rotation ) && rotation.length === 4 && rotation.every( Number.isFinite ) && Math.abs( Math.hypot( ...rotation ) - 1 ) <= 1e-4 && object.collision?.enabled !== true, `World object ${object.id || '(unknown)'} has an invalid quaternion transform` );
+		}
 		const collision = object?.collision;
 		if ( collision?.enabled !== true ) continue;
 		const box = collision.shape === 'box' && validVector( collision.center ) && validVector( collision.halfExtents ) && collision.halfExtents.every( ( value ) => value > 0 && value <= 1000 ) && typeof collision.walkable === 'boolean' && typeof collision.solid === 'boolean';

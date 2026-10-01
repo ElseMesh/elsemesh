@@ -29,10 +29,12 @@ var (
 )
 
 type vector3 [3]float64
+type vector4 [4]float64
 
 type transform struct {
-	Position vector3 `json:"position"`
-	Yaw      float64 `json:"yaw"`
+	Position vector3  `json:"position"`
+	Yaw      float64  `json:"yaw"`
+	Rotation *vector4 `json:"rotation,omitempty"`
 }
 
 type assetRef struct {
@@ -222,6 +224,11 @@ func validateManifest(manifest worldManifest, localPeerID string, now time.Time)
 		if math.IsNaN(object.Transform.Yaw) || math.IsInf(object.Transform.Yaw, 0) || math.Abs(object.Transform.Yaw) > 360 {
 			return errors.New("object yaw out of bounds")
 		}
+		if object.Transform.Rotation != nil {
+			if object.Collision.Enabled || !validUnitQuaternion(object.Transform.Rotation) {
+				return errors.New("object quaternion must be normalized and collision-free")
+			}
+		}
 		for _, scale := range object.Scale {
 			if math.IsNaN(scale) || math.IsInf(scale, 0) || scale <= 0 || scale > 1000 {
 				return errors.New("object scale out of bounds")
@@ -265,6 +272,9 @@ func validateManifest(manifest worldManifest, localPeerID string, now time.Time)
 			return fmt.Errorf("invalid destination gateway for portal %q", p.ID)
 		}
 		for _, t := range []transform{p.Entry, p.Exit} {
+			if t.Rotation != nil {
+				return errors.New("portal transforms support yaw only")
+			}
 			for _, coordinate := range t.Position {
 				if math.IsNaN(coordinate) || math.IsInf(coordinate, 0) || math.Abs(coordinate) > 1e6 {
 					return errors.New("portal coordinate out of bounds")
@@ -277,6 +287,20 @@ func validateManifest(manifest worldManifest, localPeerID string, now time.Time)
 		seenPortals[p.ID] = true
 	}
 	return nil
+}
+
+func validUnitQuaternion(rotation *vector4) bool {
+	if rotation == nil {
+		return false
+	}
+	lengthSquared := 0.0
+	for _, component := range rotation {
+		if math.IsNaN(component) || math.IsInf(component, 0) {
+			return false
+		}
+		lengthSquared += component * component
+	}
+	return math.Abs(math.Sqrt(lengthSquared)-1) <= 1e-4
 }
 
 func validPortalGateway(value string) bool {

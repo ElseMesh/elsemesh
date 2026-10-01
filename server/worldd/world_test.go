@@ -166,6 +166,35 @@ func TestWorldManifestEnforcesAggregatePackageByteBudget(t *testing.T) {
 	}
 }
 
+func TestWorldManifestValidatesQuaternionAssetTransforms(t *testing.T) {
+	key, _, err := crypto.GenerateEd25519Key(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ownerID, err := peer.IDFromPublicKey(key.GetPublic())
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifest := newStarterManifest("Quaternion transform", ownerID.String())
+	manifest.WorldID = "tw-world:quaternion"
+	assetID := "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+	manifest.Assets = []assetRef{{ID: assetID, Bytes: 1, Kind: "glb", Priority: "visible"}}
+	manifest.Objects = []worldObject{{ID: "tw-object:rotated", Kind: "asset-instance", Label: "Rotated", AssetID: assetID, Transform: transform{Position: vector3{0, 0, 0}, Rotation: &vector4{0, 0, 0, 1}}, Scale: vector3{1, 1, 1}}}
+	manifest.Objects[0].Collision.Shape = "none"
+	if err := validateManifest(manifest, ownerID.String(), time.Now()); err != nil {
+		t.Fatalf("normalized collision-free quaternion rejected: %v", err)
+	}
+	manifest.Objects[0].Transform.Rotation = &vector4{0, 0, 0, 2}
+	if err := validateManifest(manifest, ownerID.String(), time.Now()); err == nil {
+		t.Fatal("non-normalized quaternion accepted")
+	}
+	manifest.Objects[0].Transform.Rotation = &vector4{0, 0, 0, 1}
+	manifest.Objects[0].Collision.Enabled = true
+	if err := validateManifest(manifest, ownerID.String(), time.Now()); err == nil {
+		t.Fatal("quaternion transform with unsupported collision rotation accepted")
+	}
+}
+
 func TestWorldManifestValidatesEnabledObjectCollisionBounds(t *testing.T) {
 	key, _, err := crypto.GenerateEd25519Key(rand.Reader)
 	if err != nil {

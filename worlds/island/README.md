@@ -1,6 +1,6 @@
 # Example Island Package
 
-`world-source.json` and `assets/<sha256>` are the checked-in, deterministic static terrain package generated from the same `TerrainData` source used by the playable island.
+`world-source.json` and `assets/<sha256>` are the checked-in, deterministic static package generated from the same terrain, village layout, rock placement, and debris placement code used by the playable island.
 
 Regenerate it with:
 
@@ -8,8 +8,14 @@ Regenerate it with:
 npm run export:island
 ```
 
-The exporter writes a 512 by 512 grid of the island heightfield as a GLB with normals and vertex colors. It samples the fixed terrain seed `7`; the output hash is the asset ID. `SOURCE_DATE_EPOCH` can pin the source document timestamp when intentionally refreshing the package. Without it, regeneration preserves the checked-in timestamp.
+The package contains:
 
-The package is an initial transportable terrain layer, not a full conversion of the playable island. Water, vegetation, village props, wildlife, boat behavior, fishing, and other dynamic systems remain authored and simulated by the JavaScript game. Future package revisions should add those contents as separate static GLB instances or explicit, versioned runtime components rather than baking away their existing source behavior.
+- A 512 by 512 terrain GLB with normals, vertex colors, and a matching heightfield collision declaration.
+- The four CC0 scanned debris assets already used by the procedural scene: dead quiver trunk, two branches, and lambis shell. The exporter keeps their LOD1 geometry and embeds each albedo map in a single-mesh GLB.
+- Deterministically placed debris instances from the existing `DebrisPlacer`, including full collision-free quaternion transforms. Placement uses the fixed terrain, village pads/colliders, pier, and rocks. The package currently has no vegetation, village meshes, water, boat, wildlife, fishing behavior, or other dynamic runtime components.
 
-To serve it from a node, import the checked-in GLB with `worldd --import-asset`, confirm the printed SHA-256 matches the source document, convert the source with `tools/world-source-to-manifest.mjs`, then sign the result with that node's persistent identity.
+The assets are content-addressed by SHA-256 and their IDs are recorded in the world source. The source sets a 64 MiB aggregate package budget. `SOURCE_DATE_EPOCH` can pin the source document timestamp when intentionally refreshing the package; otherwise regeneration preserves the checked-in timestamp. Repeated exports must produce byte-identical source and asset bytes.
+
+This is a transportable static example world, not a replacement for the playable procedural JavaScript island. The existing game remains the complete, interactive example; this package demonstrates the content that a world node can host independently. Original scanned model files and their CC0 credits remain in `public/models/debris`.
+
+To serve it from a node, import every distinct GLB referenced by the source with `worldd --import-asset`, convert the source with `tools/world-source-to-manifest.mjs`, then sign the result with that node's persistent identity.

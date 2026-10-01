@@ -77,6 +77,13 @@ try {
 	assert.throws( () => movementParameters( { movement: { walkSpeed: 5, sprintSpeed: 4, jumpSpeed: 2 } } ), /movement speeds/, 'sprint speed cannot be lower than walk speed' );
 	assert.throws( () => validateWorldRequirements( { ...manifest, assets: [ { bytes: 11 } ] } ), /exceeds its declared byte budget/, 'client rejects a package larger than its signed byte budget before downloading' );
 	assert.throws( () => validateWorldSource( { protocol: 'tidewater.world-source/1', worldId: 'tw-world:bad-budget', title: 'Budget', coordinateSystem: 'right-handed-y-up-meters', styleGuide: '', rules: { gravity: 1, avatarComplexity: 100, physicsProfile: 'default', maxPackageBytes: 0 }, objects: [], portals: [], updatedAt: '2026-09-30T12:00:00Z' } ), /byte budget/, 'authoring source rejects an invalid package budget' );
+	const quaternionSource = { protocol: 'tidewater.world-source/1', worldId: 'tw-world:quaternion', title: 'Quaternion', coordinateSystem: 'right-handed-y-up-meters', styleGuide: '', rules: { gravity: 1, avatarComplexity: 100, physicsProfile: 'default' }, objects: [ { id: 'tw-object:rotated', kind: 'asset-instance', label: 'Rotated', transform: { position: [ 0, 0, 0 ], yaw: 0, rotation: [ 0, 0, 0, 1 ] }, scale: [ 1, 1, 1 ], collision: { shape: 'none', enabled: false } } ], portals: [], updatedAt: '2026-09-30T12:00:00Z' };
+	assert.doesNotThrow( () => validateWorldSource( quaternionSource ), 'collision-free objects accept normalized quaternion transforms' );
+	quaternionSource.objects[ 0 ].transform.rotation = [ 0, 0, 0, 2 ];
+	assert.throws( () => validateWorldSource( quaternionSource ), /object record/, 'authoring source rejects non-normalized quaternions' );
+	quaternionSource.objects[ 0 ].transform.rotation = [ 0, 0, 0, 1 ];
+	quaternionSource.objects[ 0 ].collision.enabled = true;
+	assert.throws( () => validateWorldSource( quaternionSource ), /object record/, 'authoring source rejects quaternion transforms when collision is enabled' );
 	const publicOutput = path.join( root, 'discoverable.json' );
 	execFileSync( process.execPath, [
 		'tools/world-source-to-manifest.mjs', '--source', sourcePath, '--owner', 'owner-peer',
