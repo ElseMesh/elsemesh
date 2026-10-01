@@ -59,8 +59,8 @@ Graphics comparisons can use the named and captured camera URL parameters docume
 
 ### 6. Add optional account features without changing world ownership
 
-- The account and role security contract is recorded in [account-roles.md](account-roles.md); no Google login, broker, or role API is implemented yet.
-- Keep worlds and node identities usable without a Google account. Implement owner-signed expiring role grants and revocation before adding Google sign-in or role-gated actions.
+- The account and role security contract is recorded in [account-roles.md](account-roles.md). An opt-in `accountd` broker verifies Google ID tokens and binds sign-in to an account Ed25519 key; browser sign-in and role-gated actions remain unimplemented.
+- Keep worlds and node identities usable without a Google account. Owner-signed expiring role-grant and revocation validators are implemented, but persistent serial tracking and enforcement at world actions remain outstanding.
 
 ## Completion standard
 

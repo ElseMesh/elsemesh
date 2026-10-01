@@ -4,7 +4,7 @@ set -euo pipefail
 ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 SERVER="$ROOT/server"
 OUT="$SERVER/bin"
-BUILD_REVISION=$(git -C "$ROOT" rev-parse --verify HEAD)
+BUILD_REVISION=${BUILD_REVISION:-$(git -C "$ROOT" rev-parse --verify HEAD)}
 
 mkdir -p "$OUT"
 
@@ -15,7 +15,7 @@ build_pair() {
 		# Its documented Go 1.23+ build requirement is -checklinkname=0.
 		ldflags+=' -checklinkname=0'
 	fi
-	for program in worldd directoryd; do
+	for program in worldd directoryd accountd; do
 		printf 'Building %s for %s/%s\n' "$program" "$os" "$arch"
 		(
 			cd "$SERVER"

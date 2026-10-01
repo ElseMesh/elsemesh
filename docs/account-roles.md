@@ -1,6 +1,6 @@
 # Optional account and world roles
 
-This document specifies the account boundary for ElseMesh. It is a design contract; the Google sign-in broker, role-grant protocol, and UI are not implemented yet.
+This document specifies the account boundary for ElseMesh. `server/accountd` now implements opt-in Google ID-token verification, nonce-bound Ed25519 proof of possession, exact-origin CORS, short-lived in-memory sessions, and a private account-key mapping file. The browser sign-in UI and use of role grants to authorize world actions are not implemented yet.
 
 ## Trust boundaries
 
@@ -15,6 +15,8 @@ This document specifies the account boundary for ElseMesh. It is a design contra
 The optional browser UI uses Google Identity Services and sends its ID token only over HTTPS to the configured account broker. The broker verifies the token signature using Google's rotating public keys and checks issuer, audience, expiration, issued-at time, and a one-time nonce bound to the login attempt. Unknown signing keys trigger a bounded key refresh; token fields are not trusted before verification. The stable Google `sub` is the account key. Email, display name, and profile image are not account identifiers and are not stored unless a later feature asks for each item with separate consent.
 
 The Google client ID and allowed web origins are explicit deployment configuration. With no configured client ID, sign-in UI and broker routes are unavailable; world hosting, invites, guest viewing, and portal travel continue normally. ID tokens are short-lived credentials: never place them in a URL, log them, or persist them in local storage. The client holds the credential in memory only long enough to complete the broker exchange. Account-broker session tokens are short-lived bearer tokens kept in memory and sent without cookies.
+
+`accountd` is not part of the browser build and is not started by `worldd`. Run it only when account sign-in is wanted. Configure `ELSEMESH_GOOGLE_CLIENT_ID` and `ELSEMESH_ACCOUNT_ALLOWED_ORIGINS`, or pass `--google-client-id` and `--allowed-origins`. The origin list must contain exact canonical HTTPS origins, without paths or wildcards. The listener accepts only loopback addresses so the browser-facing endpoint must pass through a local HTTPS reverse proxy. The server verifies Google ID tokens with Google's maintained Go verifier, then separately checks the accepted Google issuer, issue time, and the challenge nonce. It ignores email and derives a private account lookup ID from Google `sub`; the on-disk `accounts.json` contains only that opaque ID and public-key fingerprints, with mode `0600`. Sign-in challenges expire after five minutes and are single-use. Bearer sessions expire after 15 minutes, exist only in process memory, and are invalidated by logout, key unlink, account deletion, or process restart. The routes are `GET /api/challenge`, `POST /api/session`, `GET /api/me`, `DELETE /api/me/key`, `POST /api/logout`, and `DELETE /api/account`. The browser key signs the UTF-8 message `elsemesh.account-proof/1\n<challengeId>\n<nonce>\n<origin>`; send the signature and Google ID token only over HTTPS.
 
 ## Account key and role grants
 
@@ -45,7 +47,7 @@ The owner publishes signed revocation state with a monotonically increasing seri
 ## Implementation sequence
 
 1. Implement and test the owner-signed role-grant and revocation document formats, with bounded fields, exact-world binding, key fingerprints, and safe-integer timestamps. This validation foundation is now present in `server/worldd/roles.go`; no role-gated actions consume it yet.
-2. Add an optional `accountd` broker with Google ID-token verification, nonce replay prevention, proof-of-possession for account keys, private `sub` mapping, short-lived sessions, exact-origin CORS, unlink, and deletion.
+2. Complete the browser integration for the optional `accountd` broker. Server-side Google ID-token verification, nonce replay prevention, key proof-of-possession, private account-key mapping, short-lived sessions, exact-origin CORS, unlink, and deletion are implemented; a production OAuth client ID and domain deployment remain operator configuration.
 3. Add node-side verification of owner grants/revocations before any role-gated action. Keep asset reads and guest travel available without login.
 4. Add the browser sign-in and account-key UI only after the broker and node validators pass conformance tests.
 5. Deploy no Google client ID or account broker by default. Each operator opts in and configures their own Google OAuth web client.
