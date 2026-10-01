@@ -12,16 +12,19 @@ export function worldLinkFromLocation( location = globalThis.location ) {
 		worldId,
 		nodeId: params.get( 'nodeId' ),
 		gateway: params.get( 'gateway' ) || location.origin,
+		directory: params.get( 'directory' ),
 	};
 }
 
 export class WorldConnector {
-	constructor( { worldId, nodeId, gateway = globalThis.location?.origin, chunkBytes = ASSET_CHUNK_BYTES } = {} ) {
+	constructor( { worldId, nodeId, gateway = globalThis.location?.origin, directory = '', chunkBytes = ASSET_CHUNK_BYTES } = {} ) {
 		invariant( /^tw-world:[\w.-]{1,128}$/.test( worldId || '' ), 'A valid worldId is required' );
 		invariant( Number.isInteger( chunkBytes ) && chunkBytes > 0 && chunkBytes <= 192 * 1024, 'Invalid asset chunk size' );
+		invariant( ! directory || validSecureOrigin( directory ), 'Directory must be an HTTPS origin' );
 		this.worldId = worldId;
 		this.nodeId = nodeId || '';
 		this.gateway = gateway;
+		this.directory = directory;
 		this.chunkBytes = chunkBytes;
 		this.manifest = null;
 		this.assets = new Map();
@@ -32,12 +35,49 @@ export class WorldConnector {
 	}
 
 	async getManifest() {
+		let lastError = null;
+		const attempted = new Set();
+		if ( this.nodeId ) {
+			attempted.add( `${this.nodeId}\n${this.gateway}` );
+			try {
+				return await this.#fetchManifest();
+			} catch ( error ) {
+				if ( ! this.directory ) throw error;
+				lastError = error;
+				this.close();
+				this.nodeId = '';
+			}
+		}
+		if ( this.directory ) {
+			const providers = await this.#discoverDirectoryProviders();
+			for ( const provider of providers ) {
+				const key = `${provider.nodeId}\n${provider.gateway}`;
+				if ( attempted.has( key ) ) continue;
+				attempted.add( key );
+				this.nodeId = provider.nodeId;
+				this.gateway = provider.gateway;
+				try {
+					return await this.#fetchManifest();
+				} catch ( error ) {
+					lastError = error;
+					this.close();
+					this.nodeId = '';
+				}
+			}
+			throw lastError || new Error( 'Directory providers could not serve this world' );
+		}
 		if ( ! this.nodeId ) this.nodeId = await this.#discoverProvider();
+		return this.#fetchManifest();
+	}
+
+	async #fetchManifest() {
 		const reply = await this.#request( { type: 'manifest.get' } );
 		invariant( reply.type === 'manifest' && reply.document, 'World gateway returned no manifest' );
 		await verifySignedDocument( reply.document, 'tidewater.world/1' );
-		invariant( reply.document.payload.worldId === this.worldId, 'Manifest belongs to another world' );
+		invariant( reply.document.payload.protocol === 'tidewater.world/1' && reply.document.payload.worldId === this.worldId, 'Manifest belongs to another world or protocol' );
 		this.manifest = reply.document.payload;
+		const hostGrant = this.manifest.hosts?.find( ( entry ) => entry.peerId === this.nodeId && entry.scopes?.includes( 'content-cache' ) && entry.expiresAt > Date.now() / 1000 );
+		invariant( this.manifest.ownerPeerId === this.nodeId || hostGrant, 'Selected node is not authorized by the world owner to serve content' );
 		this.authorityLease = null;
 		if ( reply.authorityLease ) {
 			await verifySignedDocument( reply.authorityLease, 'tidewater.authority/1' );
@@ -58,6 +98,25 @@ export class WorldConnector {
 		const result = await response.json();
 		invariant( Array.isArray( result.providers ) && result.providers.length > 0, 'No node currently advertises this world' );
 		return result.providers[ 0 ];
+	}
+
+	async #discoverDirectoryProviders() {
+		const url = new URL( `/v1/worlds/${encodeURIComponent( this.worldId )}`, this.directory );
+		const response = await fetch( url, { credentials: 'omit', cache: 'no-store' } );
+		if ( ! response.ok ) throw new Error( `World directory lookup failed (${response.status})` );
+		const result = await response.json();
+		invariant( Array.isArray( result.providers ) && result.providers.length > 0, 'Directory has no provider for this world' );
+		const providers = [];
+		for ( const document of result.providers ) {
+			try { await verifySignedDocument( document, 'tidewater.node/1' ); }
+			catch { continue; }
+			const node = document.payload;
+			const now = Date.now() / 1000;
+			if ( node.protocol !== 'tidewater.node/1' || node.nodeId !== document.signer || ! node.worldIds?.includes( this.worldId ) || ! validSecureGateway( node.gateway ) || node.issuedAt > now + 300 || node.issuedAt < now - 86400 || node.expiresAt <= now || node.expiresAt > node.issuedAt + 172800 ) continue;
+			providers.push( { nodeId: node.nodeId, gateway: node.gateway } );
+		}
+		if ( providers.length === 0 ) throw new Error( 'Directory returned no valid signed provider for this world' );
+		return providers;
 	}
 
 	async getAsset( assetId, { signal } = {} ) {
@@ -118,6 +177,7 @@ export class WorldConnector {
 			worldId: portal.destinationWorldId,
 			nodeId: portal.destinationPeerId,
 			gateway: portal.destinationGateway || this.gateway,
+			directory: this.directory,
 			chunkBytes: this.chunkBytes,
 		} );
 		await destination.getManifest();
@@ -234,6 +294,24 @@ export class WorldConnector {
 		this.webTransport?.close();
 		this.socket = null;
 		this.webTransport = null;
+	}
+}
+
+function validSecureOrigin( value ) {
+	try {
+		const url = new URL( value );
+		return url.protocol === 'https:' && ! url.username && ! url.password && ( url.pathname === '' || url.pathname === '/' ) && ! url.search && ! url.hash;
+	} catch {
+		return false;
+	}
+}
+
+function validSecureGateway( value ) {
+	try {
+		const url = new URL( value );
+		return [ 'https:', 'wss:' ].includes( url.protocol ) && ! url.username && ! url.password && ( url.pathname === '' || url.pathname === '/' ) && ! url.search && ! url.hash;
+	} catch {
+		return false;
 	}
 }
 

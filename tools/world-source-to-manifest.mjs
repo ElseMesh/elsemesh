@@ -9,7 +9,7 @@ function options(argv) {
 	const result = {};
 	for ( let i = 0; i < argv.length; i ++ ) {
 		const key = argv[ i ];
-		if ( ! [ '--source', '--owner', '--assets', '--out', '--version' ].includes( key ) || ! argv[ i + 1 ] ) throw new Error( `Invalid or incomplete option: ${key}` );
+		if ( ! [ '--source', '--owner', '--assets', '--out', '--version', '--discoverable' ].includes( key ) || ! argv[ i + 1 ] ) throw new Error( `Invalid or incomplete option: ${key}` );
 		result[ key.slice( 2 ) ] = argv[ ++ i ];
 	}
 	for ( const key of [ 'source', 'owner', 'assets', 'out' ] ) if ( ! result[ key ] ) throw new Error( `Missing --${key}` );
@@ -21,6 +21,7 @@ async function main() {
 	const source = validateWorldSource( JSON.parse( await readFile( args.source, 'utf8' ) ) );
 	const version = args.version === undefined ? 1 : Number( args.version );
 	if ( ! Number.isSafeInteger( version ) || version < 1 ) throw new Error( '--version must be a positive integer' );
+	if ( args.discoverable !== undefined && ! [ 'true', 'false' ].includes( args.discoverable ) ) throw new Error( '--discoverable must be true or false' );
 	if ( source.styleGuide.length > 512 ) throw new Error( 'styleGuide exceeds the runtime manifest limit of 512 characters' );
 	const updatedAt = Date.parse( source.updatedAt );
 	const validTimestamp = typeof source.updatedAt === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/.test( source.updatedAt ) && Number.isFinite( updatedAt );
@@ -52,7 +53,7 @@ async function main() {
 		ownerPeerId: args.owner,
 		authorityPeerId: args.owner,
 		authorityEpoch: 1,
-		discoverable: false,
+		discoverable: args.discoverable === 'true',
 		version,
 		title: source.title,
 		rules: { ...source.rules, styleGuide: source.styleGuide },

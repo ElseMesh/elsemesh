@@ -12,7 +12,7 @@ Node-to-node connections use libp2p TCP/QUIC, DHT discovery on the existing Tide
 
 A browser link should identify the world and its gateway, for example `https://world-host.example/?worldId=tw-world:...&gateway=wss://world-host.example/gateway`. Invite links can also include a node PeerID/address. Unknown worlds are looked up by world ID through configured discovery; do not trust an unsigned URL as proof of ownership.
 
-An optional ElseMesh directory can provide bootstrap discovery and human-friendly links. It is not required for hosting, world authority, or access to a known node. Community relays are optional and should be operator opt-in, bounded, and observable.
+An optional `directoryd` service provides HTTPS world lookup and signed node links. It is not required for hosting, world authority, or access to a known node. Directory entries are short-lived node-signed records paired with owner-signed manifests; the service indexes only discoverable worlds whose node is the owner or has an active `content-cache` grant. Nodes publish only after every manifest asset is present and hash-verified. The browser verifies the node record and then verifies the owner-signed world manifest and provider grant. Community relays remain operator opt-in, bounded, and observable.
 
 ## Portals and streaming
 
@@ -38,6 +38,16 @@ worldd --data ./world-data --sign-manifest ./world-data/unsigned.json --manifest
 worldd --data ./world-data --manifest ./world-data/world.signed.json --webtransport :5201 --webtransport-tls-cert fullchain.pem --webtransport-tls-key privkey.pem
 ```
 
+To publish a discoverable node in an optional directory such as `https://thruhold.org`, create its runtime manifest with `tools/world-source-to-manifest.mjs --discoverable true`, then sign it. Public discovery is off by default. Set the node's externally reachable browser gateway and directory URL:
+
+```sh
+worldd --data ./world-data --manifest ./world-data/world.signed.json \
+  --public-gateway https://world-host.example --directory-url https://thruhold.org
+directoryd --http 127.0.0.1:5202 --data ./directory-data
+```
+
+Run `directoryd` behind HTTPS and rate limiting; its default listener is loopback. The directory stores announcements for up to 24 hours, while `worldd` refreshes every 12 hours. The node must be owner-authorized, and the world manifest must set `discoverable: true`. Browser links can select this directory without relying on the page's own host: `https://rebroad.github.io/tidewater/?worldId=tw-world:...&directory=https%3A%2F%2Fthruhold.org`. This repository supplies the directory service; registering or operating the `thruhold.org` domain is a separate deployment step.
+
 `--import-asset` prints the content hash to assign to a source object. Signing validates the runtime document and never overwrites an existing signature file. Review and edit owner grants in the unsigned manifest before signing when delegating a cache or failover role. A manifest must be signed by the owning identity before other nodes can host it; neighbor permission configuration UX is still pending.
 
 To seed an owner-authorized neighbor cache, first get that node's PeerID with `worldd --data ./neighbor-cache --print-node-id`, add an unexpired `content-cache` grant for that PeerID to the owner manifest, sign it, and provide the signed manifest to the neighbor. Start the neighbor with `--cache-from <owner-peer-id>` and a `--bootstrap` multiaddr for that source if it is not discoverable through DHT. The cache node fetches missing assets over libp2p, verifies the complete SHA-256 before an atomic install, and only advertises a discoverable world after all its manifest assets are verified locally. A live gateway's `/api/lookup` returns the local provider plus other DHT advertisers, including authorized caches. Use `--cache-sync-interval` to adjust retry cadence. Only the owner or a node with an active `content-cache` grant can serve asset bytes; a `failover-authority` grant alone never permits content serving.
@@ -48,6 +58,6 @@ worldd --data ./neighbor-cache --manifest ./world.signed.json \
   --cache-from <owner-peer-id>
 ```
 
-Build/test from the repo's `server` directory with Go 1.24.6 or newer. For Linux use `go build -o worldd ./worldd`; for Android arm64/Termux use `GOOS=android GOARCH=arm64 go build -ldflags=-checklinkname=0 -o worldd ./worldd`. The linker flag is required by the current libp2p Android network-interface dependency (`wlynxg/anet`), which uses Go linkname to work around Android netlink restrictions; keep it scoped to the Android build. For public browsers, serve the web app and gateway through HTTPS/WSS. The daemon's default HTTP bind is loopback. Bootstrap peers must speak the legacy Tidewater DHT protocol prefix; generic public IPFS bootstrap peers are not compatible.
+Build/test from the repo's `server` directory with Go 1.24.6 or newer. Build `worldd` with `go build -o worldd ./worldd` and the optional directory with `go build -o directoryd ./directoryd`. For Android arm64/Termux, build each with `GOOS=android GOARCH=arm64 go build -ldflags=-checklinkname=0 -o <binary> ./<worldd-or-directoryd>`. The linker flag is required by the current libp2p Android network-interface dependency (`wlynxg/anet`), which uses Go linkname to work around Android netlink restrictions; keep it scoped to Android builds. For public browsers, serve the web app, directory and gateway through HTTPS/WSS. The daemons' default HTTP binds are loopback. Bootstrap peers must speak the legacy Tidewater DHT protocol prefix; generic public IPFS bootstrap peers are not compatible.
 
-See `server/worldd` for the current code. This is an evolving prototype. It does not yet provide a production bootstrap directory, Google authentication, full owner policy engine, rendered open-portal previews, or robust multi-writer simulation.
+See `server/worldd` and `server/directoryd` for the current code. These are evolving prototypes. The repository does not deploy a public directory, provide Google authentication, implement the full owner policy engine, render open-portal previews, or provide robust multi-writer simulation.

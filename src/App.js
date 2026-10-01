@@ -782,7 +782,8 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 
 		const url = new URL( location.href );
 		url.searchParams.set( 'worldId', destinationConnector.worldId );
-		url.searchParams.set( 'nodeId', portal.destinationPeerId );
+		url.searchParams.set( 'nodeId', destinationConnector.nodeId );
+		url.searchParams.set( 'gateway', destinationConnector.gateway );
 		history.replaceState( null, '', url );
 		document.title = `${destinationConnector.manifest.title} · ElseMesh`;
 		this.ui?.ui?.toast( `Entered ${destinationConnector.manifest.title}`, 2600 );

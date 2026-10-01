@@ -35,7 +35,15 @@ try {
 
 	const [ first, second ] = await Promise.all( outputs.map( ( output ) => readFile( path.join( root, output ) ) ) );
 	assert.deepEqual( first, second, 'same source must produce byte-identical manifests' );
-	assert.equal( JSON.parse( first ).updatedAt, 1790771696, 'runtime timestamp must come from the source snapshot' );
+	const manifest = JSON.parse( first );
+	assert.equal( manifest.updatedAt, 1790771696, 'runtime timestamp must come from the source snapshot' );
+	assert.equal( manifest.discoverable, false, 'world publication is private by default' );
+	const publicOutput = path.join( root, 'discoverable.json' );
+	execFileSync( process.execPath, [
+		'tools/world-source-to-manifest.mjs', '--source', sourcePath, '--owner', 'owner-peer',
+		'--assets', assetsPath, '--out', publicOutput, '--discoverable', 'true',
+	], { stdio: 'ignore' } );
+	assert.equal( JSON.parse( await readFile( publicOutput, 'utf8' ) ).discoverable, true, 'discoverable must require an explicit author choice' );
 	console.log( 'ok deterministic source-to-manifest conversion' );
 } finally {
 	await rm( root, { recursive: true, force: true } );

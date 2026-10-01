@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"crypto/sha256"
@@ -53,6 +54,8 @@ type daemon struct {
 	key            crypto.PrivKey
 	assetsDir      string
 	webRoot        string
+	publicGateway  string
+	directoryURL   string
 	assetCheckMu   sync.Mutex
 	verifiedAssets map[string]assetFileStamp
 }
@@ -82,6 +85,8 @@ func run() error {
 	webTransportCert := flag.String("webtransport-tls-cert", "", "TLS certificate for the optional WebTransport listener")
 	webTransportKey := flag.String("webtransport-tls-key", "", "TLS private key for the optional WebTransport listener")
 	webRoot := flag.String("web-root", "", "optional built ElseMesh web client directory")
+	publicGateway := flag.String("public-gateway", "", "public HTTPS/WSS gateway origin included in signed node records")
+	directoryURL := flag.String("directory-url", "", "optional HTTPS ElseMesh directory service URL for publishing this discoverable node")
 	dhtMode := flag.String("dht-mode", "auto", "DHT mode: auto, client, or server")
 	serveRelay := flag.Bool("relay-service", false, "allow this node to provide a bounded libp2p circuit relay")
 	var bootstrap stringFlags
@@ -112,6 +117,12 @@ func run() error {
 	}
 	if (*webTransportAddress == "" && (*webTransportCert != "" || *webTransportKey != "")) || (*webTransportAddress != "" && (*webTransportCert == "" || *webTransportKey == "")) {
 		return errors.New("--webtransport requires both --webtransport-tls-cert and --webtransport-tls-key")
+	}
+	if *publicGateway != "" && !validPortalGateway(*publicGateway) {
+		return errors.New("public-gateway must be a secure HTTPS/WSS origin without path, query, or credentials")
+	}
+	if *directoryURL != "" && (!validDirectoryURL(*directoryURL) || *publicGateway == "") {
+		return errors.New("directory-url requires an HTTPS service origin and --public-gateway")
 	}
 	if err := os.MkdirAll(*dataDir, 0700); err != nil {
 		return err
@@ -195,7 +206,7 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("world manifest: %w", err)
 	}
-	d := &daemon{ctx: ctx, host: p2pHost, dht: router, discovery: routing.NewRoutingDiscovery(router), manifest: manifest, world: world, key: key, assetsDir: filepath.Join(*dataDir, "assets"), webRoot: *webRoot, verifiedAssets: make(map[string]assetFileStamp)}
+	d := &daemon{ctx: ctx, host: p2pHost, dht: router, discovery: routing.NewRoutingDiscovery(router), manifest: manifest, world: world, key: key, assetsDir: filepath.Join(*dataDir, "assets"), webRoot: *webRoot, publicGateway: *publicGateway, directoryURL: *directoryURL, verifiedAssets: make(map[string]assetFileStamp)}
 	if world.OwnerPeerID != localPeerID {
 		go d.maintainFailoverAuthority()
 	}
@@ -219,6 +230,9 @@ func run() error {
 	p2pHost.SetStreamHandler(worldProtocol, d.handlePeerStream)
 	go d.advertiseWorld()
 	go d.logPeerAddresses()
+	if d.directoryURL != "" {
+		go d.publishDirectory()
+	}
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/healthz", d.handleHealth)
@@ -454,17 +468,89 @@ func (d *daemon) currentAuthorityLease() *signedDocument {
 }
 
 func (d *daemon) handleNodeRecord(w http.ResponseWriter, _ *http.Request) {
-	addresses := make([]string, 0, len(d.host.Addrs()))
-	for _, addr := range d.host.Addrs() {
-		addresses = append(addresses, addr.Encapsulate(mustP2PAddr(d.host.ID())).String())
-	}
-	record := map[string]any{"protocol": "tidewater.node/1", "nodeId": d.host.ID().String(), "addresses": addresses, "worldIds": []string{d.world.WorldID}, "issuedAt": time.Now().Unix()}
+	now := time.Now()
+	record := map[string]any{"protocol": "tidewater.node/1", "nodeId": d.host.ID().String(), "addresses": d.peerAddresses(), "worldIds": []string{d.world.WorldID}, "gateway": d.publicGateway, "issuedAt": now.Unix(), "expiresAt": now.Add(24 * time.Hour).Unix()}
 	doc, err := signDocument("tidewater.node/1", record, d.key)
 	if err != nil {
 		http.Error(w, "could not sign node record", http.StatusInternalServerError)
 		return
 	}
 	writeJSON(w, http.StatusOK, doc)
+}
+
+func (d *daemon) publishDirectory() {
+	if !d.world.Discoverable {
+		log.Printf("directory publishing skipped: world %s is not marked discoverable", d.world.WorldID)
+		return
+	}
+	client := &http.Client{Timeout: 15 * time.Second}
+	for d.ctx.Err() == nil {
+		if !d.canServeAssets(time.Now()) {
+			log.Printf("directory publishing stopped: node is no longer authorized to serve %s", d.world.WorldID)
+			return
+		}
+		if !d.hasCompleteAssets() {
+			timer := time.NewTimer(5 * time.Minute)
+			select {
+			case <-d.ctx.Done():
+				timer.Stop()
+				return
+			case <-timer.C:
+				continue
+			}
+		}
+		published := false
+		now := time.Now()
+		nodeRecord := map[string]any{"protocol": "tidewater.node/1", "nodeId": d.host.ID().String(), "addresses": d.peerAddresses(), "worldIds": []string{d.world.WorldID}, "gateway": d.publicGateway, "issuedAt": now.Unix(), "expiresAt": now.Add(24 * time.Hour).Unix()}
+		nodeDocument, err := signDocument("tidewater.node/1", nodeRecord, d.key)
+		if err == nil {
+			body, marshalErr := json.Marshal(map[string]any{"node": nodeDocument, "manifest": d.manifest})
+			if marshalErr == nil {
+				ctx, cancel := context.WithTimeout(d.ctx, 15*time.Second)
+				request, requestErr := http.NewRequestWithContext(ctx, http.MethodPost, strings.TrimRight(d.directoryURL, "/")+"/v1/announce", bytes.NewReader(body))
+				if requestErr == nil {
+					request.Header.Set("Content-Type", "application/json")
+					response, postErr := client.Do(request)
+					if postErr != nil {
+						log.Printf("directory publish failed: %v", postErr)
+					} else {
+						response.Body.Close()
+						if response.StatusCode == http.StatusAccepted {
+							published = true
+						} else {
+							log.Printf("directory publish rejected: HTTP %d", response.StatusCode)
+						}
+					}
+				} else {
+					log.Printf("directory publish request failed: %v", requestErr)
+				}
+				cancel()
+			} else {
+				log.Printf("directory publish encode failed: %v", marshalErr)
+			}
+		} else {
+			log.Printf("directory node record signing failed: %v", err)
+		}
+		interval := 5 * time.Minute
+		if published {
+			interval = 12 * time.Hour
+		}
+		timer := time.NewTimer(interval)
+		select {
+		case <-d.ctx.Done():
+			timer.Stop()
+			return
+		case <-timer.C:
+		}
+	}
+}
+
+func (d *daemon) peerAddresses() []string {
+	addresses := make([]string, 0, len(d.host.Addrs()))
+	for _, addr := range d.host.Addrs() {
+		addresses = append(addresses, addr.Encapsulate(mustP2PAddr(d.host.ID())).String())
+	}
+	return addresses
 }
 
 func mustP2PAddr(id peer.ID) ma.Multiaddr {

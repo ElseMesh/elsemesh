@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { crossedPortalPlane, rotatePortalVelocity } from '../src/network/PortalHandoff.js';
 import { validateWorldSource } from '../src/network/WorldSource.js';
+import { worldLinkFromLocation, WorldConnector } from '../src/network/WorldConnector.js';
 
 const portal = { entry: { position: [ 0, 1, 0 ], yaw: 0 } };
 assert.equal( crossedPortalPlane( { x: 0, y: 1, z: 1 }, { x: 0, y: 1, z: - 0.1 }, portal ), true, 'front-to-back crossing transfers' );
@@ -25,4 +26,7 @@ const source = {
 };
 assert.doesNotThrow( () => validateWorldSource( source ), 'portal may pin a separate secure destination gateway' );
 assert.throws( () => validateWorldSource( { ...source, portals: [ { ...source.portals[ 0 ], destinationGateway: 'http://world.example' } ] } ), 'insecure destination gateways must be rejected' );
+const directoryLink = worldLinkFromLocation( { search: '?worldId=tw-world:coast&directory=https%3A%2F%2Fthruhold.org', origin: 'https://rebroad.github.io' } );
+assert.equal( directoryLink.directory, 'https://thruhold.org', 'browser link can opt into the community directory' );
+assert.throws( () => new WorldConnector( { worldId: 'tw-world:coast', directory: 'http://thruhold.org' } ), 'directory endpoints must use HTTPS' );
 console.log( 'ok   portal crossing geometry and orientation handoff' );

@@ -148,3 +148,16 @@ func TestPortalGatewayRequiresSecureOrigin(t *testing.T) {
 		}
 	}
 }
+
+func TestDirectoryURLMustBeSecureOrigin(t *testing.T) {
+	for _, directory := range []string{"https://thruhold.org", "https://directory.example/"} {
+		if !validDirectoryURL(directory) {
+			t.Errorf("valid directory origin rejected: %s", directory)
+		}
+	}
+	for _, directory := range []string{"http://thruhold.org", "wss://thruhold.org", "https://directory.example/path", "https://user:pass@directory.example"} {
+		if validDirectoryURL(directory) {
+			t.Errorf("invalid directory URL accepted: %s", directory)
+		}
+	}
+}
