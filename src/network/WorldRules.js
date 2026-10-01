@@ -5,12 +5,13 @@ export const SUPPORTED_WORLD_FEATURES = new Set( [
 	'tidewater.portal-handoff/1',
 	'tidewater.portal-preview-static/1',
 ] );
+export const SUPPORTED_PHYSICS_PROFILES = new Set( [ 'default', 'tidewater-default' ] );
 
 const FEATURE_ID = /^tidewater\.[a-z0-9.-]+\/\d+$/;
 
 export function validateWorldRequirements( manifest ) {
 	const rules = manifest?.rules;
-	if ( ! rules || ! Number.isFinite( rules.gravity ) || rules.gravity < 0.2 || rules.gravity > 2 || ! Number.isInteger( rules.avatarComplexity ) || rules.avatarComplexity < 1 || rules.avatarComplexity > 100000 || typeof rules.physicsProfile !== 'string' || rules.physicsProfile.length > 64 ) {
+	if ( ! rules || ! Number.isFinite( rules.gravity ) || rules.gravity < 0.2 || rules.gravity > 2 || ! Number.isInteger( rules.avatarComplexity ) || rules.avatarComplexity < 1 || rules.avatarComplexity > 100000 || ! SUPPORTED_PHYSICS_PROFILES.has( rules.physicsProfile ) ) {
 		throw new Error( 'World manifest contains invalid runtime rules' );
 	}
 	const required = rules.requiredFeatures ?? [];
@@ -22,4 +23,9 @@ export function validateWorldRequirements( manifest ) {
 		seen.add( feature );
 	}
 	return manifest;
+}
+
+export function gravityAcceleration( rules ) {
+	if ( ! Number.isFinite( rules?.gravity ) || rules.gravity < 0.2 || rules.gravity > 2 ) throw new Error( 'Invalid world gravity multiplier' );
+	return 9.81 * rules.gravity;
 }

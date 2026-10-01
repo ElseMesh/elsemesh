@@ -95,6 +95,11 @@ func TestWorldManifestValidatesRequiredFeatureIdentifiers(t *testing.T) {
 	if err := validateManifest(manifest, ownerID.String(), time.Now()); err == nil {
 		t.Fatal("malformed required feature accepted")
 	}
+	manifest.Rules.RequiredFeatures = nil
+	manifest.Rules.PhysicsProfile = "custom-physics"
+	if err := validateManifest(manifest, ownerID.String(), time.Now()); err == nil {
+		t.Fatal("unsupported physics profile accepted")
+	}
 }
 
 func TestWorldManifestValidatesEnabledObjectCollisionBounds(t *testing.T) {

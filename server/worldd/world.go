@@ -116,6 +116,9 @@ func validateManifest(manifest worldManifest, localPeerID string, now time.Time)
 	if manifest.Rules.AvatarComplexity == 0 || manifest.Rules.AvatarComplexity > 100000 || len(manifest.Rules.PhysicsProfile) > 64 || len(manifest.Rules.StyleGuide) > 512 {
 		return errors.New("invalid world rules")
 	}
+	if manifest.Rules.PhysicsProfile != "default" && manifest.Rules.PhysicsProfile != "tidewater-default" {
+		return errors.New("unsupported world physics profile")
+	}
 	if len(manifest.Rules.RequiredFeatures) > 64 {
 		return errors.New("too many required world features")
 	}

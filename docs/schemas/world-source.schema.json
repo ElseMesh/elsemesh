@@ -55,7 +55,7 @@
         },
         "physicsProfile": {
           "type": "string",
-          "maxLength": 64
+          "enum": ["default", "tidewater-default"]
         },
         "requiredFeatures": {
           "type": "array",

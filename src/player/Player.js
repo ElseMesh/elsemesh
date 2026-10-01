@@ -1,6 +1,7 @@
 import * as THREE from '../engine/index.js';
 import { WORLD } from '../world/WorldLayout.js';
 import { HOUSE } from '../world/boat/Wheelhouse.js';
+import { gravityAcceleration } from '../network/WorldRules.js';
 
 const HOUSE_HELM = { x: HOUSE.helmX, z: HOUSE.seatZ };
 
@@ -72,6 +73,7 @@ export class Player {
 		this.slot = query.allocate( 'player', 1 );
 		this.prompt = null;
 		this.surface = 'sand';
+		this.gravity = 9.81;
 
 		// boat cameras
 		this.orbitYaw = 0;
@@ -93,6 +95,10 @@ export class Player {
 		// set by the fishing game: while a line is out the helm / step ashore prompts give way
 		this.busy = false;
 
+	}
+
+	setWorldRules( rules ) {
+		this.gravity = gravityAcceleration( rules );
 	}
 
 	// view direction in world space (for casting); works in every mode
@@ -217,7 +223,7 @@ export class Player {
 
 		}
 
-		this.velocity.y -= 9.81 * dt;
+		this.velocity.y -= this.gravity * dt;
 		// water drag while wading
 		if ( depth > 0 ) this.velocity.multiplyScalar( Math.exp( - dt * depth * 0.8 ) );
 
@@ -632,7 +638,7 @@ export class Player {
 
 		}
 
-		v.y -= 9.81 * dt;
+		v.y -= this.gravity * dt;
 		const p = this.deckPos;
 		const oldX = p.x, oldZ = p.z;
 		p.addScaledVector( v, dt );

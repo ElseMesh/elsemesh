@@ -405,6 +405,7 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 			scene.add( this.proceduralWorldRoot );
 			const connector = this.worldConnector = new WorldConnector( worldLink );
 			await connector.getManifest();
+			this.player.setWorldRules( connector.manifest.rules );
 			const visibleAssets = await connector.preload( { through: 'visible' } );
 			this.linkedWorldRoot = await loadWorldPackage( connector, { assets: visibleAssets } );
 			registerWorldPackageCollisions( this.linkedWorldRoot, this.colliders );
@@ -809,6 +810,7 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 		registerWorldPackageCollisions( destinationRoot, this.colliders );
 		this.scene.add( destinationRoot );
 		this.worldConnector = destinationConnector;
+		this.player.setWorldRules( destinationConnector.manifest.rules );
 		this.remoteWorlds.set( destinationConnector.worldId, { connector: destinationConnector, root: destinationRoot } );
 		this.streamWorldRemainder( destinationConnector, destinationRoot );
 
