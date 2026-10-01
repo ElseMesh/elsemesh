@@ -404,6 +404,11 @@ func (d *directory) pruneLocked(now time.Time) bool {
 }
 
 func (d *directory) handleWorld(w http.ResponseWriter, r *http.Request) {
+	setPublicReadCORS(w)
+	if r.Method == http.MethodOptions {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
 	if r.Method != http.MethodGet {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
@@ -441,6 +446,11 @@ func (d *directory) handleWorld(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"worldId": worldID, "providers": providers})
+}
+
+func setPublicReadCORS(w http.ResponseWriter) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
 }
 
 func directoryProviderTier(entry provider, now time.Time) int {

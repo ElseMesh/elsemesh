@@ -55,6 +55,9 @@ func TestDirectoryAnnounceRequiresNodeSignatureAndWorldGrant(t *testing.T) {
 	}
 	lookup := httptest.NewRecorder()
 	loaded.handleWorld(lookup, httptest.NewRequest(http.MethodGet, "/v1/worlds/tw-world:coast", nil))
+	if got := lookup.Header().Get("Access-Control-Allow-Origin"); got != "*" {
+		t.Fatalf("browser directory lookup CORS origin = %q; want *", got)
+	}
 	var result struct {
 		WorldID   string           `json:"worldId"`
 		Providers []signedDocument `json:"providers"`
@@ -71,6 +74,15 @@ func TestDirectoryAnnounceRequiresNodeSignatureAndWorldGrant(t *testing.T) {
 	entry, _, err := validateAnnouncement(announcement{Node: bad, Manifest: manifest}, now)
 	if err == nil || entry.Node.Signer != "" {
 		t.Fatal("forged node announcement accepted")
+	}
+}
+
+func TestDirectoryWorldLookupSupportsCredentialFreePreflight(t *testing.T) {
+	store := &directory{entries: make(map[string]provider)}
+	response := httptest.NewRecorder()
+	store.handleWorld(response, httptest.NewRequest(http.MethodOptions, "/v1/worlds/tw-world:coast", nil))
+	if response.Code != http.StatusNoContent || response.Header().Get("Access-Control-Allow-Origin") != "*" || response.Header().Get("Access-Control-Allow-Methods") != "GET, OPTIONS" {
+		t.Fatalf("directory CORS preflight = status %d, headers %v", response.Code, response.Header())
 	}
 }
 

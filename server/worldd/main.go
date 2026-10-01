@@ -730,6 +730,11 @@ func (d *daemon) handleManifest(w http.ResponseWriter, r *http.Request) {
 }
 
 func (d *daemon) handleLookup(w http.ResponseWriter, r *http.Request) {
+	setPublicReadCORS(w)
+	if r.Method == http.MethodOptions {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
 	if r.Method != http.MethodGet {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
@@ -769,6 +774,11 @@ func (d *daemon) handleLookup(w http.ResponseWriter, r *http.Request) {
 		result["authority"] = d.currentAuthorityIdentity()
 	}
 	writeJSON(w, http.StatusOK, result)
+}
+
+func setPublicReadCORS(w http.ResponseWriter) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
 }
 
 func collectProviders(local peer.ID, localCanServe bool, discovered []peer.AddrInfo, limit int) []string {
