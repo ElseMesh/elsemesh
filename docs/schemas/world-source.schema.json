@@ -57,6 +57,16 @@
           "type": "string",
           "enum": ["default", "tidewater-default"]
         },
+        "movement": {
+          "type": "object",
+          "required": ["walkSpeed", "sprintSpeed", "jumpSpeed"],
+          "properties": {
+            "walkSpeed": { "type": "number", "minimum": 0.5, "maximum": 10 },
+            "sprintSpeed": { "type": "number", "minimum": 0.5, "maximum": 15 },
+            "jumpSpeed": { "type": "number", "minimum": 0, "maximum": 10 }
+          },
+          "additionalProperties": false
+        },
         "requiredFeatures": {
           "type": "array",
           "maxItems": 64,

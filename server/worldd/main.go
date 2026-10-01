@@ -420,7 +420,7 @@ func newStarterManifest(title, owner string) worldManifest {
 		panic(err)
 	}
 	return worldManifest{Protocol: manifestProtocol, WorldID: fmt.Sprintf("tw-world:%x", random[:]), OwnerPeerID: owner, AuthorityPeerID: owner, AuthorityEpoch: 1, Version: 1, Title: title,
-		Rules: worldRules{Gravity: 1, AvatarComplexity: 20000, PhysicsProfile: "tidewater-default"}, Assets: []assetRef{}, Portals: []portal{}, UpdatedAt: time.Now().Unix()}
+		Rules: worldRules{Gravity: 1, AvatarComplexity: 20000, PhysicsProfile: "tidewater-default", Movement: &movementRules{WalkSpeed: 3, SprintSpeed: 6.2, JumpSpeed: 4.6}}, Assets: []assetRef{}, Portals: []portal{}, UpdatedAt: time.Now().Unix()}
 }
 
 func (d *daemon) advertiseWorld() {

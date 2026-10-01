@@ -107,6 +107,34 @@ func TestWorldManifestValidatesRequiredFeatureIdentifiers(t *testing.T) {
 	}
 }
 
+func TestWorldManifestValidatesDeterministicMovementRules(t *testing.T) {
+	key, _, err := crypto.GenerateEd25519Key(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ownerID, err := peer.IDFromPublicKey(key.GetPublic())
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifest := newStarterManifest("Movement rules", ownerID.String())
+	manifest.WorldID = "tw-world:movement-rules"
+	if err := validateManifest(manifest, ownerID.String(), time.Now()); err != nil {
+		t.Fatalf("default movement rules rejected: %v", err)
+	}
+	manifest.Rules.Movement = &movementRules{WalkSpeed: 4, SprintSpeed: 8, JumpSpeed: 3}
+	if err := validateManifest(manifest, ownerID.String(), time.Now()); err != nil {
+		t.Fatalf("valid authored movement rules rejected: %v", err)
+	}
+	manifest.Rules.Movement.SprintSpeed = 3
+	if err := validateManifest(manifest, ownerID.String(), time.Now()); err == nil {
+		t.Fatal("sprint speed below walk speed accepted")
+	}
+	manifest.Rules.Movement = nil
+	if err := validateManifest(manifest, ownerID.String(), time.Now()); err != nil {
+		t.Fatalf("legacy manifest without movement fields rejected: %v", err)
+	}
+}
+
 func TestWorldManifestValidatesEnabledObjectCollisionBounds(t *testing.T) {
 	key, _, err := crypto.GenerateEd25519Key(rand.Reader)
 	if err != nil {

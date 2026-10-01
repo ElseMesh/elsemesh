@@ -83,11 +83,18 @@ type hostingGrant struct {
 }
 
 type worldRules struct {
-	Gravity          float64  `json:"gravity"`
-	AvatarComplexity uint32   `json:"avatarComplexity"`
-	PhysicsProfile   string   `json:"physicsProfile"`
-	StyleGuide       string   `json:"styleGuide,omitempty"`
-	RequiredFeatures []string `json:"requiredFeatures,omitempty"`
+	Gravity          float64        `json:"gravity"`
+	AvatarComplexity uint32         `json:"avatarComplexity"`
+	PhysicsProfile   string         `json:"physicsProfile"`
+	Movement         *movementRules `json:"movement,omitempty"`
+	StyleGuide       string         `json:"styleGuide,omitempty"`
+	RequiredFeatures []string       `json:"requiredFeatures,omitempty"`
+}
+
+type movementRules struct {
+	WalkSpeed   float64 `json:"walkSpeed"`
+	SprintSpeed float64 `json:"sprintSpeed"`
+	JumpSpeed   float64 `json:"jumpSpeed"`
 }
 
 type worldManifest struct {
@@ -122,6 +129,11 @@ func validateManifest(manifest worldManifest, localPeerID string, now time.Time)
 	}
 	if manifest.Rules.PhysicsProfile != "default" && manifest.Rules.PhysicsProfile != "tidewater-default" {
 		return errors.New("unsupported world physics profile")
+	}
+	if movement := manifest.Rules.Movement; movement != nil {
+		if math.IsNaN(movement.WalkSpeed) || math.IsInf(movement.WalkSpeed, 0) || movement.WalkSpeed < 0.5 || movement.WalkSpeed > 10 || math.IsNaN(movement.SprintSpeed) || math.IsInf(movement.SprintSpeed, 0) || movement.SprintSpeed < movement.WalkSpeed || movement.SprintSpeed > 15 || math.IsNaN(movement.JumpSpeed) || math.IsInf(movement.JumpSpeed, 0) || movement.JumpSpeed < 0 || movement.JumpSpeed > 10 {
+			return errors.New("world movement speeds are outside the supported range")
+		}
 	}
 	if len(manifest.Rules.RequiredFeatures) > 64 {
 		return errors.New("too many required world features")

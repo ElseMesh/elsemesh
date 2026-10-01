@@ -1,7 +1,7 @@
 import * as THREE from '../engine/index.js';
 import { WORLD } from '../world/WorldLayout.js';
 import { HOUSE } from '../world/boat/Wheelhouse.js';
-import { gravityAcceleration } from '../network/WorldRules.js';
+import { gravityAcceleration, movementParameters } from '../network/WorldRules.js';
 
 const HOUSE_HELM = { x: HOUSE.helmX, z: HOUSE.seatZ };
 
@@ -74,6 +74,7 @@ export class Player {
 		this.prompt = null;
 		this.surface = 'sand';
 		this.gravity = 9.81;
+		this.worldMovement = movementParameters( null );
 
 		// boat cameras
 		this.orbitYaw = 0;
@@ -99,6 +100,7 @@ export class Player {
 
 	setWorldRules( rules ) {
 		this.gravity = gravityAcceleration( rules );
+		this.worldMovement = movementParameters( rules );
 	}
 
 	setHostedWorldPose( eyePosition, yaw = this.yaw, pitch = this.pitch ) {
@@ -128,11 +130,11 @@ export class Player {
 		_wish.set( 0, 0, 0 ).addScaledVector( _fwd, axes.y ).addScaledVector( _right, axes.x );
 		if ( _wish.lengthSq() > 1 ) _wish.normalize();
 		const sprint = Math.max( axes.sprint || 0, inp.down( 'ShiftLeft' ) || inp.down( 'ShiftRight' ) ? 1 : 0 );
-		const speed = THREE.MathUtils.lerp( 3.0, 6.2, sprint );
+		const speed = THREE.MathUtils.lerp( this.worldMovement.walkSpeed, this.worldMovement.sprintSpeed, sprint );
 		const k = 1 - Math.exp( - ( this.grounded ? 14 : 2.5 ) * dt );
 		this.velocity.x += ( _wish.x * speed - this.velocity.x ) * k;
 		this.velocity.z += ( _wish.z * speed - this.velocity.z ) * k;
-		if ( this.grounded && inp.hit( 'Space' ) ) { this.velocity.y = 4.6; this.grounded = false; }
+		if ( this.grounded && this.worldMovement.jumpSpeed > 0 && inp.hit( 'Space' ) ) { this.velocity.y = this.worldMovement.jumpSpeed; this.grounded = false; }
 		this.velocity.y -= this.gravity * dt;
 		this.position.addScaledVector( this.velocity, dt );
 		this.colliders.resolveCapsule( this.position, RADIUS, HEIGHT, 0.4 );
