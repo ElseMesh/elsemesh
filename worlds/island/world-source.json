@@ -11,7 +11,8 @@
     "requiredFeatures": [
       "tidewater.static-glb/1",
       "tidewater.static-glb-quaternion/1",
-      "tidewater.procedural-island-vegetation/1"
+      "tidewater.procedural-island-vegetation/1",
+      "tidewater.island-ocean/1"
     ],
     "maxPackageBytes": 67108864
   },
@@ -11363,6 +11364,11 @@
       "seed": 7,
       "priority": "portal-preview",
       "placementAssetId": "sha256:e9ead2780768e0dabea07317da0c020497137472e6adc1cb3f166611fb0fbae6"
+    },
+    {
+      "id": "tw-component:island-ocean",
+      "type": "tidewater.island-ocean/1",
+      "priority": "portal-preview"
     }
   ],
   "portals": [],
