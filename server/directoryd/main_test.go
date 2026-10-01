@@ -74,7 +74,7 @@ func TestDirectoryAnnounceRequiresNodeSignatureAndWorldGrant(t *testing.T) {
 	}
 }
 
-func TestDirectoryAnnounceAcceptsActiveFailoverAuthorityWithoutCacheRights(t *testing.T) {
+func TestDirectoryAnnounceValidatesFailoverLeaseAlongsideCacheRights(t *testing.T) {
 	owner, ownerID := testIdentity(t)
 	delegate, delegateID := testIdentity(t)
 	now := time.Now()
@@ -84,7 +84,7 @@ func TestDirectoryAnnounceAcceptsActiveFailoverAuthorityWithoutCacheRights(t *te
 	manifest := testSignedDocument(t, manifestProtocol, map[string]any{
 		"protocol": manifestProtocol, "worldId": "tw-world:failover", "ownerPeerId": ownerID,
 		"authorityPeerId": ownerID, "authorityEpoch": 7, "discoverable": true,
-		"hosts": []any{map[string]any{"peerId": delegateID, "scopes": []string{"failover-authority"}, "expiresAt": grantExpires, "epoch": 3, "failoverAfter": failoverAfter, "failoverSeconds": 1800}},
+		"hosts": []any{map[string]any{"peerId": delegateID, "scopes": []string{"content-cache", "failover-authority"}, "expiresAt": grantExpires, "epoch": 3, "failoverAfter": failoverAfter, "failoverSeconds": 1800}},
 	}, owner)
 	node := testSignedDocument(t, nodeProtocol, map[string]any{
 		"protocol": nodeProtocol, "nodeId": delegateID, "gateway": "https://delegate.example",
@@ -98,8 +98,11 @@ func TestDirectoryAnnounceAcceptsActiveFailoverAuthorityWithoutCacheRights(t *te
 	if err != nil {
 		t.Fatalf("valid failover-only provider rejected: %v", err)
 	}
-	if entry.ExpiresAt != min(now.Add(24*time.Hour).Unix(), leaseExpires) {
-		t.Fatalf("failover provider expiry = %d; want lease expiry %d", entry.ExpiresAt, leaseExpires)
+	if entry.ExpiresAt != min(now.Add(24*time.Hour).Unix(), grantExpires) {
+		t.Fatalf("provider expiry = %d; want the longer cache grant expiry %d", entry.ExpiresAt, grantExpires)
+	}
+	if entry.AuthorityLease == nil || entry.AuthorityLease.Signature != lease.Signature {
+		t.Fatal("validated failover lease was not retained for provider ordering")
 	}
 	store := &directory{path: filepath.Join(t.TempDir(), "providers.json"), entries: make(map[string]provider)}
 	body, err := json.Marshal(announcement{Node: node, Manifest: manifest, AuthorityLease: &lease})
@@ -126,8 +129,9 @@ func TestDirectoryAnnounceAcceptsActiveFailoverAuthorityWithoutCacheRights(t *te
 	if _, _, err := validateAnnouncement(announcement{Node: node, Manifest: manifest, AuthorityLease: &badLease}, now); err == nil {
 		t.Fatal("lease that skips the next authority epoch was accepted")
 	}
-	if _, _, err := validateAnnouncement(announcement{Node: node, Manifest: manifest}, now); err == nil {
-		t.Fatal("failover-only provider without a signed active lease was accepted")
+	cacheOnly, _, err := validateAnnouncement(announcement{Node: node, Manifest: manifest}, now)
+	if err != nil || cacheOnly.AuthorityLease != nil {
+		t.Fatalf("cache authorization should remain valid without an authority lease: entry=%+v err=%v", cacheOnly, err)
 	}
 }
 
@@ -168,6 +172,69 @@ func TestDirectoryRejectsOverlappingFailoverWindows(t *testing.T) {
 	hosts[1].FailoverAfter--
 	if err := validateDirectoryFailoverWindows(hosts); err == nil {
 		t.Fatal("directory accepted overlapping failover windows")
+	}
+}
+
+func TestDirectoryLookupOrdersOwnerThenActiveFailoverThenCache(t *testing.T) {
+	owner, ownerID := testIdentity(t)
+	delegate, delegateID := testIdentity(t)
+	cache, cacheID := testIdentity(t)
+	now := time.Now()
+	worldID := "tw-world:provider-order"
+	grantExpires := now.Add(time.Hour).Unix()
+	failoverAfter := now.Add(-time.Minute).Unix()
+	manifest := testSignedDocument(t, manifestProtocol, map[string]any{
+		"protocol": manifestProtocol, "worldId": worldID, "ownerPeerId": ownerID,
+		"authorityEpoch": 7, "discoverable": true,
+		"hosts": []any{
+			map[string]any{"peerId": delegateID, "scopes": []string{"content-cache", "failover-authority"}, "expiresAt": grantExpires, "epoch": 3, "failoverAfter": failoverAfter, "failoverSeconds": 1800},
+			map[string]any{"peerId": cacheID, "scopes": []string{"content-cache"}, "expiresAt": grantExpires, "epoch": 1},
+		},
+	}, owner)
+	nodeRecord := func(id string, key crypto.PrivKey) signedDocument {
+		return testSignedDocument(t, nodeProtocol, map[string]any{
+			"protocol": nodeProtocol, "nodeId": id, "gateway": "https://" + id + ".example",
+			"worldIds": []string{worldID}, "issuedAt": now.Unix(), "expiresAt": grantExpires,
+		}, key)
+	}
+	lease := testSignedDocument(t, authorityProtocol, map[string]any{
+		"worldId": worldID, "authorityPeerId": delegateID, "epoch": 8, "grantEpoch": 3,
+		"notBefore": failoverAfter, "expiresAt": now.Add(20 * time.Minute).Unix(),
+	}, delegate)
+	// Deliberately announce in reverse preference order; map iteration and arrival
+	// order must not affect the directory's provider ordering.
+	store := &directory{path: filepath.Join(t.TempDir(), "providers.json"), entries: make(map[string]provider)}
+	for _, record := range []announcement{
+		{Node: nodeRecord(cacheID, cache), Manifest: manifest},
+		{Node: nodeRecord(delegateID, delegate), Manifest: manifest, AuthorityLease: &lease},
+		{Node: nodeRecord(ownerID, owner), Manifest: manifest},
+	} {
+		body, err := json.Marshal(record)
+		if err != nil {
+			t.Fatal(err)
+		}
+		response := httptest.NewRecorder()
+		store.handleAnnounce(response, httptest.NewRequest(http.MethodPost, "/v1/announce", bytes.NewReader(body)))
+		if response.Code != http.StatusAccepted {
+			t.Fatalf("provider announcement rejected: %d %s", response.Code, response.Body.String())
+		}
+	}
+	response := httptest.NewRecorder()
+	store.handleWorld(response, httptest.NewRequest(http.MethodGet, "/v1/worlds/"+worldID, nil))
+	var result struct {
+		Providers []signedDocument `json:"providers"`
+	}
+	if err := json.Unmarshal(response.Body.Bytes(), &result); err != nil {
+		t.Fatal(err)
+	}
+	want := []string{ownerID, delegateID, cacheID}
+	if len(result.Providers) != len(want) {
+		t.Fatalf("lookup returned %d providers; want %d", len(result.Providers), len(want))
+	}
+	for i, id := range want {
+		if got := result.Providers[i].Signer; got != id {
+			t.Fatalf("provider[%d] = %s; want %s", i, got, id)
+		}
 	}
 }
 

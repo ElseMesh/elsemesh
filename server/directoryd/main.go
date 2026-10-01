@@ -16,6 +16,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 	"sync"
 	"syscall"
@@ -96,10 +97,11 @@ type announcement struct {
 }
 
 type provider struct {
-	Node      signedDocument `json:"node"`
-	Manifest  signedDocument `json:"manifest"`
-	WorldID   string         `json:"worldId"`
-	ExpiresAt int64          `json:"expiresAt"`
+	Node           signedDocument  `json:"node"`
+	Manifest       signedDocument  `json:"manifest"`
+	AuthorityLease *signedDocument `json:"authorityLease,omitempty"`
+	WorldID        string          `json:"worldId"`
+	ExpiresAt      int64           `json:"expiresAt"`
 }
 
 type directory struct {
@@ -265,17 +267,22 @@ func validateAnnouncement(record announcement, now time.Time) (provider, string,
 			}
 		}
 	}
-	if authorizedUntil <= now.Unix() && record.AuthorityLease != nil {
+	var activeLease *signedDocument
+	if record.AuthorityLease != nil {
 		lease, err := validateDirectoryAuthorityLease(*record.AuthorityLease, node.NodeID, worldID, manifest, now)
 		if err != nil {
 			return provider{}, "", err
 		}
-		authorizedUntil = lease.ExpiresAt
+		if lease.ExpiresAt > authorizedUntil {
+			authorizedUntil = lease.ExpiresAt
+		}
+		leaseCopy := *record.AuthorityLease
+		activeLease = &leaseCopy
 	}
 	if authorizedUntil <= now.Unix() {
 		return provider{}, "", errors.New("node has no active content-serving or failover-authority authorization")
 	}
-	return provider{Node: record.Node, Manifest: record.Manifest, WorldID: worldID, ExpiresAt: min(node.ExpiresAt, authorizedUntil)}, node.NodeID, nil
+	return provider{Node: record.Node, Manifest: record.Manifest, AuthorityLease: activeLease, WorldID: worldID, ExpiresAt: min(node.ExpiresAt, authorizedUntil)}, node.NodeID, nil
 }
 
 func validateDirectoryFailoverWindows(hosts []hostGrant) error {
@@ -408,12 +415,25 @@ func (d *directory) handleWorld(w http.ResponseWriter, r *http.Request) {
 	}
 	d.mu.Lock()
 	defer d.mu.Unlock()
-	pruned := d.pruneLocked(time.Now())
-	providers := make([]signedDocument, 0)
+	now := time.Now()
+	pruned := d.pruneLocked(now)
+	entries := make([]provider, 0)
 	for _, entry := range d.entries {
 		if entry.WorldID == worldID {
-			providers = append(providers, entry.Node)
+			entries = append(entries, entry)
 		}
+	}
+	sort.Slice(entries, func(i, j int) bool {
+		leftTier := directoryProviderTier(entries[i], now)
+		rightTier := directoryProviderTier(entries[j], now)
+		if leftTier != rightTier {
+			return leftTier < rightTier
+		}
+		return entries[i].Node.Signer < entries[j].Node.Signer
+	})
+	providers := make([]signedDocument, 0, len(entries))
+	for _, entry := range entries {
+		providers = append(providers, entry.Node)
 	}
 	if pruned {
 		if err := d.saveLocked(); err != nil {
@@ -421,6 +441,31 @@ func (d *directory) handleWorld(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"worldId": worldID, "providers": providers})
+}
+
+func directoryProviderTier(entry provider, now time.Time) int {
+	var manifest manifestPayload
+	if err := json.Unmarshal(entry.Manifest.Payload, &manifest); err != nil {
+		return 2
+	}
+	if entry.Node.Signer == manifest.OwnerPeerID && entry.Node.Signer == entry.NodePayloadID() {
+		return 0
+	}
+	if entry.AuthorityLease != nil && entry.ExpiresAt > now.Unix() {
+		var lease authorityLeasePayload
+		if json.Unmarshal(entry.AuthorityLease.Payload, &lease) == nil && lease.AuthorityPeerID == entry.Node.Signer && lease.NotBefore <= now.Unix() && now.Unix() < lease.ExpiresAt {
+			return 1
+		}
+	}
+	return 2
+}
+
+func (entry provider) NodePayloadID() string {
+	var payload nodePayload
+	if json.Unmarshal(entry.Node.Payload, &payload) != nil {
+		return ""
+	}
+	return payload.NodeID
 }
 
 func (d *directory) handleNodes(w http.ResponseWriter, r *http.Request) {

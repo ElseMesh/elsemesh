@@ -78,7 +78,8 @@ const oldFetch = globalThis.fetch;
 const OldWebSocket = globalThis.WebSocket;
 let staleSecondAssets = new Set();
 let failoverProviderReachable = false;
-globalThis.fetch = async () => ( { ok: true, json: async () => ( { worldId: 'tw-world:directory-test', providers } ) } );
+let directoryProviders = providers;
+globalThis.fetch = async () => ( { ok: true, json: async () => ( { worldId: 'tw-world:directory-test', providers: directoryProviders } ) } );
 globalThis.WebSocket = class extends EventTarget {
 	static OPEN = 1;
 	static CONNECTING = 0;
@@ -125,6 +126,11 @@ try {
 	assert.equal( connector.authorityLease.grantEpoch, grantEpoch, 'signed temporary authority lease binds to its owner grant revision' );
 	connector.close();
 	failoverProviderReachable = true;
+	directoryProviders = [ providers[ 1 ], providers[ 0 ], providers[ 2 ] ];
+	const recoveredOwner = new WorldConnector( { worldId: 'tw-world:directory-test', directory: 'https://thruhold.org' } );
+	await recoveredOwner.getManifest();
+	assert.equal( recoveredOwner.nodeId, second.peerId, 'directory ordering lets a recovered owner reclaim preferred authority over an active delegate' );
+	recoveredOwner.close();
 	const failoverConnector = new WorldConnector( { worldId: 'tw-world:directory-test', nodeId: first.peerId, gateway: 'https://offline.example', directory: 'https://thruhold.org' } );
 	await failoverConnector.getManifest();
 	assert.equal( failoverConnector.nodeId, first.peerId, 'an active failover-only delegate may serve the signed world manifest' );
