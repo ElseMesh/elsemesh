@@ -1,3 +1,5 @@
+import { validateWorldRequirements } from './WorldRules.js';
+
 const ASSET_CHUNK_BYTES = 128 * 1024;
 const MAX_ASSET_BYTES = 2 * 1024 * 1024 * 1024;
 const PRIORITY_ORDER = Object.freeze( [ 'portal-preview', 'visible', 'nearby', 'background' ] );
@@ -75,6 +77,7 @@ export class WorldConnector {
 		invariant( reply.type === 'manifest' && reply.document, 'World gateway returned no manifest' );
 		await verifySignedDocument( reply.document, 'tidewater.world/1' );
 		invariant( reply.document.payload.protocol === 'tidewater.world/1' && reply.document.payload.worldId === this.worldId, 'Manifest belongs to another world or protocol' );
+		validateWorldRequirements( reply.document.payload );
 		this.manifest = reply.document.payload;
 		const hostGrant = this.manifest.hosts?.find( ( entry ) => entry.peerId === this.nodeId && entry.scopes?.includes( 'content-cache' ) && entry.expiresAt > Date.now() / 1000 );
 		invariant( this.manifest.ownerPeerId === this.nodeId || hostGrant, 'Selected node is not authorized by the world owner to serve content' );

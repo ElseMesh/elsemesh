@@ -56,6 +56,16 @@
         "physicsProfile": {
           "type": "string",
           "maxLength": 64
+        },
+        "requiredFeatures": {
+          "type": "array",
+          "maxItems": 64,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "maxLength": 96,
+            "pattern": "^tidewater\\.[a-z0-9.-]+/\\d+$"
+          }
         }
       },
       "additionalProperties": true

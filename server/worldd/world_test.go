@@ -75,6 +75,28 @@ func TestWorldManifestRejectsUnsafeAssetAndPortalData(t *testing.T) {
 	}
 }
 
+func TestWorldManifestValidatesRequiredFeatureIdentifiers(t *testing.T) {
+	owner, _, err := crypto.GenerateEd25519Key(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ownerID, _ := peer.IDFromPublicKey(owner.GetPublic())
+	manifest := newStarterManifest("Feature rules", ownerID.String())
+	manifest.WorldID = "tw-world:feature-rules"
+	manifest.Rules.RequiredFeatures = []string{"tidewater.portal-handoff/1", "tidewater.portal-preview-static/1"}
+	if err := validateManifest(manifest, ownerID.String(), time.Now()); err != nil {
+		t.Fatalf("valid required features rejected: %v", err)
+	}
+	manifest.Rules.RequiredFeatures = []string{"tidewater.portal-handoff/1", "tidewater.portal-handoff/1"}
+	if err := validateManifest(manifest, ownerID.String(), time.Now()); err == nil {
+		t.Fatal("duplicate required feature accepted")
+	}
+	manifest.Rules.RequiredFeatures = []string{"not-a-feature-id"}
+	if err := validateManifest(manifest, ownerID.String(), time.Now()); err == nil {
+		t.Fatal("malformed required feature accepted")
+	}
+}
+
 func TestTemporaryFailoverAuthorityRequiresOwnerWindow(t *testing.T) {
 	owner, _, err := crypto.GenerateEd25519Key(rand.Reader)
 	if err != nil {

@@ -21,8 +21,9 @@ const (
 )
 
 var (
-	worldIDPattern = regexp.MustCompile(`^tw-world:[a-zA-Z0-9._-]{1,128}$`)
-	assetIDPattern = regexp.MustCompile(`^sha256:[0-9a-f]{64}$`)
+	worldIDPattern      = regexp.MustCompile(`^tw-world:[a-zA-Z0-9._-]{1,128}$`)
+	assetIDPattern      = regexp.MustCompile(`^sha256:[0-9a-f]{64}$`)
+	worldFeaturePattern = regexp.MustCompile(`^tidewater\.[a-z0-9.-]+/\d+$`)
 )
 
 type vector3 [3]float64
@@ -110,6 +111,16 @@ func validateManifest(manifest worldManifest, localPeerID string, now time.Time)
 	}
 	if manifest.Rules.AvatarComplexity == 0 || manifest.Rules.AvatarComplexity > 100000 || len(manifest.Rules.PhysicsProfile) > 64 || len(manifest.Rules.StyleGuide) > 512 {
 		return errors.New("invalid world rules")
+	}
+	if len(manifest.Rules.RequiredFeatures) > 64 {
+		return errors.New("too many required world features")
+	}
+	seenFeatures := make(map[string]bool, len(manifest.Rules.RequiredFeatures))
+	for _, feature := range manifest.Rules.RequiredFeatures {
+		if len(feature) > 96 || !worldFeaturePattern.MatchString(feature) || seenFeatures[feature] {
+			return errors.New("invalid or duplicate required world feature")
+		}
+		seenFeatures[feature] = true
 	}
 	if len(manifest.Assets) > 10000 || len(manifest.Objects) > 10000 || len(manifest.Portals) > 1024 || len(manifest.Hosts) > 256 {
 		return errors.New("manifest contains too many entries")
