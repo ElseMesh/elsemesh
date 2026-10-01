@@ -67,9 +67,10 @@ import { SoundScape } from './audio/SoundScape.js';
 import { updateCameraVelocity, useStaticVelocity } from './post/CameraVelocity.js';
 import { Group } from './engine/scene/Group.js';
 import { WorldConnector, worldLinkFromLocation } from './network/WorldConnector.js';
-import { appendWorldPackageAssets, cloneWorldPackageAssets, loadWorldPackage, registerWorldPackageCollisions, unregisterWorldPackageCollisions } from './network/WorldPackage.js';
+import { appendWorldPackageAssets, loadWorldPackage, registerWorldPackageCollisions, unregisterWorldPackageCollisions } from './network/WorldPackage.js';
 import { selectWorldObjectsForView } from './network/WorldStreaming.js';
-import { alignPortalPreview, crossedPortalPlane, rotatePortalVelocity } from './network/PortalHandoff.js';
+import { crossedPortalPlane, rotatePortalVelocity } from './network/PortalHandoff.js';
+import { WorldPortalView } from './network/WorldPortalView.js';
 
 const _up = new Vector3( 0, 1, 0 );
 
@@ -96,7 +97,6 @@ export class App {
 		this.remoteWorlds = new Map();
 		this.portalPreparations = new Map();
 		this.portalPreviewId = null;
-		this.portalPreviewRoot = null;
 		this.worldBackgroundLoads = new Map();
 		this.worldStreamState = new Map();
 		this.portalPreviousPosition = null;
@@ -258,6 +258,7 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 		this.refraction = new RefractionPass( { meshRenderer: engine.meshRenderer, scene, camera, sceneRenderer: this.sceneRenderer, scale: this.desktopRefractionScale } );
 		this.sceneRenderer.onBeforeWater = () => this.refraction.render( G.seaLevel.value );
 		if ( this.sky.background ) this.sceneRenderer.background = this.sky.background;
+		this.portalView = new WorldPortalView( { scene, meshRenderer: engine.meshRenderer, sceneRenderer: this.sceneRenderer, camera } );
 		// lanterns, lamp posts, path lights, lit windows, the boat's cabin / navigation lights and the
 		// flashlight (L): nearest few packed into one small uniform array each frame
 		this.localLights = new LocalLights();
@@ -777,8 +778,7 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 		}
 		if ( ! preparation && this.remoteWorlds.has( portal.destinationWorldId ) ) {
 			const cached = this.remoteWorlds.get( portal.destinationWorldId );
-			const previewAssetIDs = new Set( cached.connector.manifest.assets.filter( ( asset ) => asset.priority === 'portal-preview' ).map( ( asset ) => asset.id ) );
-			preparation = { status: 'ready', connector: cached.connector, root: cached.root, previewRoot: cloneWorldPackageAssets( cached.root, cached.connector, previewAssetIDs ) };
+			preparation = { status: 'ready', connector: cached.connector, root: cached.root };
 			this.portalPreparations.set( portal.id, preparation );
 		}
 		if ( ! preparation ) {
@@ -788,9 +788,7 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 				if ( ! portal.openView ) return null;
 				const root = await loadWorldPackage( destination, { assets } );
 				root.name = `hosted-world:${portal.destinationWorldId}`;
-				const previewAssetIDs = new Set( assets.keys() );
-				const previewRoot = cloneWorldPackageAssets( root, destination, previewAssetIDs );
-				Object.assign( preparation, { connector: destination, root, previewRoot } );
+				Object.assign( preparation, { connector: destination, root } );
 				return { root };
 			} } ).then( async ( prepared ) => {
 				const root = prepared.preview?.root || await loadWorldPackage( prepared.connector, { assets: prepared.assets } );
@@ -804,12 +802,10 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 				console.warn( `Could not prepare portal ${portal.id}`, error );
 			} );
 		}
-		if ( portal.openView && preparation.previewRoot?.children.length ) {
+		if ( portal.openView && preparation.root ) {
 			if ( this.portalPreviewId !== portal.id ) this.clearPortalPreview();
 			this.portalPreviewId = portal.id;
-			this.portalPreviewRoot = preparation.previewRoot;
-			alignPortalPreview( preparation.previewRoot, portal.entry, portal.exit );
-			if ( preparation.previewRoot.parent !== this.scene ) this.scene.add( preparation.previewRoot );
+			this.portalView.setTarget( preparation.root, portal );
 		} else {
 			this.clearPortalPreview();
 		}
@@ -834,8 +830,7 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 
 	clearPortalPreview() {
 
-		if ( this.portalPreviewRoot ) this.scene?.remove( this.portalPreviewRoot );
-		this.portalPreviewRoot = null;
+		this.portalView?.setTarget( null, null );
 		this.portalPreviewId = null;
 
 	}
@@ -992,6 +987,7 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 		this.post.beginFrame();
 		this.underwater.updateCamera( this.camera );
 		this.shadows.render( this.scene, this.engine.meshRenderer, this.shadows.update( this.camera, G.sunDir.value ) );
+		this.portalView.render( performance.now(), this.camera );
 		this.sceneRenderer.render();
 		if ( this.post.flare ) this.post.flare.kernel.dispatch( 1 );
 		this.post.render();

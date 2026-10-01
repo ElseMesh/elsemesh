@@ -10,7 +10,7 @@ This document tracks the agreed ElseMesh direction against the current code. It 
 | Persistent cryptographic node identity and signed world documents | `server/worldd/identity.go`, `server/worldd/world.go` | Identity recovery and rotation tooling remain limited. |
 | Node discovery and optional directory | `server/worldd`, `server/directoryd`, `src/network/WorldConnector.js` | `thruhold.org` is an optional deployment target; this repository does not operate that service or domain. |
 | Browser WebTransport with WSS fallback | `server/worldd/webtransport.go`, `src/network/WorldConnector.js` | Requires a reachable HTTP/3 UDP endpoint and a browser that supports the deployed WebTransport version. |
-| Signed portals and staged asset delivery | `src/network/PortalHandoff.js`, `src/network/WorldConnector.js`, `src/network/WorldStreaming.js`, `src/App.js` | Bounded objects stream when in view or nearby; obsolete batches are canceled and higher-priority view work can preempt them. Consumers of the same asset share one in-flight download, which is canceled only after its last consumer leaves. Portal preview still uses authored tiers and distance. Bandwidth adaptation remains. |
+| Signed portals and staged asset delivery | `src/network/PortalHandoff.js`, `src/network/WorldPortalView.js`, `src/network/WorldConnector.js`, `src/network/WorldStreaming.js`, `src/App.js` | Open portals render prepared destination GLB content through a 2.42 × 4.9 m aperture using a mapped camera at 256 × 512 and up to 10 updates/s. Bounded objects stream when in view or nearby; consumers of the same asset share one in-flight download, canceled after its last consumer leaves. Dynamic destination systems, oblique near-plane clipping, and bandwidth adaptation remain. |
 | Owner-scoped immutable neighbor caching | `server/worldd/cache.go`, `server/worldd/cache_integration_test.go`, `server/worldd/files.go` | Cache grants do not authorize edits or simulation writes. Signed package assets can be preloaded as a complete, hash-verified set; failover-only grants cannot import or serve those assets. |
 | Bounded delegated authority lease | `server/worldd/world.go`, `server/worldd/main.go` | Concurrent simulation, split-brain recovery, and shared write conflict resolution are not implemented. |
 | Replaceable static world package | `src/network/WorldPackage.js`, `tools/world-source-to-manifest.mjs` | Renderer currently supports static GLB triangle meshes with embedded base-color textures, box/compound/heightfield collision, and world-handoff cleanup. |
@@ -37,7 +37,7 @@ This document tracks the agreed ElseMesh direction against the current code. It 
 
 ### 3. Finish portal and session continuity
 
-- Add portal aperture clipping and a live destination camera/render path; static preview placement is only the current first stage.
+- Add oblique near-plane clipping and animate data-driven destination components in the portal view.
 - Transfer supported player/session state explicitly and define behavior for incompatible world rules.
 - Exercise unreachable destinations, stale providers, and interrupted handoffs with a usable retry/failover path.
 

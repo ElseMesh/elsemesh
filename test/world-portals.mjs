@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
-import { alignPortalPreview, crossedPortalPlane, rotatePortalVelocity } from '../src/network/PortalHandoff.js';
+import { alignPortalPreview, crossedPortalPlane, mapPortalCamera, rotatePortalVelocity } from '../src/network/PortalHandoff.js';
+import { PerspectiveCamera } from '../src/engine/scene/Camera.js';
+import { Vector3 } from '../src/engine/math/Vector3.js';
 import { validateWorldSource } from '../src/network/WorldSource.js';
 import { worldLinkFromLocation, WorldConnector } from '../src/network/WorldConnector.js';
 
@@ -17,6 +19,16 @@ const preview = { position: { set( x, y, z ) { this.x = x; this.y = y; this.z = 
 alignPortalPreview( preview, { position: [ 10, 2, 20 ], yaw: Math.PI / 2 }, { position: [ 3, 4, 5 ], yaw: 0 } );
 assert.ok( Math.abs( preview.position.x - 5 ) < 1e-9 && Math.abs( preview.position.y + 2 ) < 1e-9 && Math.abs( preview.position.z - 23 ) < 1e-9, 'preview aligns destination exit position with the local portal entry' );
 assert.ok( Math.abs( preview.rotation.y - Math.PI / 2 ) < 1e-9, 'preview aligns destination exit orientation with the local portal entry' );
+
+const sourceCamera = new PerspectiveCamera();
+sourceCamera.position.set( 0, 1, 2 );
+sourceCamera.rotation.y = 0;
+sourceCamera.updateMatrixWorld( true );
+const destinationCamera = new PerspectiveCamera();
+mapPortalCamera( sourceCamera, destinationCamera, { position: [ 0, 0, 0 ], yaw: 0 }, { position: [ 10, 2, 20 ], yaw: Math.PI / 2 } );
+const destinationDirection = destinationCamera.getWorldDirection( new Vector3() );
+assert.ok( Math.abs( destinationCamera.position.x - 12 ) < 1e-9 && Math.abs( destinationCamera.position.y - 3 ) < 1e-9 && Math.abs( destinationCamera.position.z - 20 ) < 1e-9, 'portal camera position maps from entry coordinates into the destination' );
+assert.ok( Math.abs( destinationDirection.x + 1 ) < 1e-9 && Math.abs( destinationDirection.z ) < 1e-9, 'portal camera direction rotates through the destination orientation' );
 
 const source = {
 	protocol: 'tidewater.world-source/1', worldId: 'tw-world:source', title: 'Source',
