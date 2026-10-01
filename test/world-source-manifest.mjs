@@ -3,9 +3,8 @@ import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { validateWorldRequirements } from '../src/network/WorldRules.js';
+import { gravityAcceleration, movementParameters, validateWorldRequirements, worldSeaLevel } from '../src/network/WorldRules.js';
 import { validateWorldSource } from '../src/network/WorldSource.js';
-import { gravityAcceleration, movementParameters } from '../src/network/WorldRules.js';
 import { encodeVegetationPlacements, VEGETATION_PLACEMENT_KINDS } from '../src/network/VegetationPlacements.js';
 
 const temporaryRoot = process.env.PREFIX ? path.join( process.env.PREFIX, 'tmp' ) : '/var/tmp';
@@ -94,6 +93,8 @@ try {
 	assert.equal( gravityAcceleration( { gravity: 1 } ), 9.81, 'default world gravity preserves the built-in movement physics' );
 	assert.equal( gravityAcceleration( { gravity: 0.5 } ), 4.905, 'world gravity multiplier affects player acceleration' );
 	assert.throws( () => gravityAcceleration( { gravity: 2.1 } ), /gravity multiplier/, 'gravity outside the validated range is rejected' );
+	assert.equal( worldSeaLevel( {} ), 0, 'worlds without sea-level retain the legacy renderer level' );
+	assert.equal( worldSeaLevel( { seaLevel: -4.5 } ), -4.5, 'hosted-world sea-level is applied as declared' );
 	assert.deepEqual( movementParameters( {} ), { walkSpeed: 3, sprintSpeed: 6.2, jumpSpeed: 4.6 }, 'older manifests retain existing controller movement defaults' );
 	assert.throws( () => movementParameters( { movement: { walkSpeed: 5, sprintSpeed: 4, jumpSpeed: 2 } } ), /movement speeds/, 'sprint speed cannot be lower than walk speed' );
 	assert.throws( () => validateWorldRequirements( { ...manifest, assets: [ { bytes: 1025 } ] } ), /exceeds its declared byte budget/, 'client rejects a package larger than its signed byte budget before downloading' );

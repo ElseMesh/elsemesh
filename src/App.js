@@ -68,6 +68,7 @@ import { SoundScape } from './audio/SoundScape.js';
 import { updateCameraVelocity, useStaticVelocity } from './post/CameraVelocity.js';
 import { Group } from './engine/scene/Group.js';
 import { WorldConnector, worldLinkFromLocation } from './network/WorldConnector.js';
+import { worldSeaLevel } from './network/WorldRules.js';
 import { appendWorldPackageAssets, disposeWorldPackage, loadWorldPackage, registerWorldPackageCollisions, unregisterWorldPackageCollisions } from './network/WorldPackage.js';
 import { selectWorldObjectsForView } from './network/WorldStreaming.js';
 import { crossedPortalPlane, rotatePortalVelocity } from './network/PortalHandoff.js';
@@ -411,6 +412,7 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 			const connector = this.worldConnector = new WorldConnector( worldLink );
 			await connector.getManifest();
 			this.player.setWorldRules( connector.manifest.rules );
+			G.seaLevel.value = worldSeaLevel( connector.manifest.rules );
 			this.camera.position.set( 0, 3, 8 );
 			this.player.setHostedWorldPose( this.camera.position, Math.PI, - 0.1 );
 			const initialObjects = selectWorldObjectsForView( connector.manifest, this.camera );
@@ -923,6 +925,7 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 		this.scene.add( destinationRoot );
 		this.worldConnector = destinationConnector;
 		this.player.setWorldRules( destinationConnector.manifest.rules );
+		G.seaLevel.value = worldSeaLevel( destinationConnector.manifest.rules );
 		this.remoteWorlds.set( destinationConnector.worldId, { connector: destinationConnector, root: destinationRoot } );
 		this.streamWorldRemainder( destinationConnector, destinationRoot );
 

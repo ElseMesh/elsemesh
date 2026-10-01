@@ -41,6 +41,10 @@ export function validateWorldLevels( rules ) {
 	return rules;
 }
 
+export function worldSeaLevel( rules ) {
+	return rules?.seaLevel ?? 0;
+}
+
 export function validateWorldPackageBudget( manifest ) {
 	const maximum = manifest?.rules?.maxPackageBytes;
 	if ( maximum === undefined ) return manifest;
