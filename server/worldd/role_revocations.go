@@ -2,16 +2,20 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/libp2p/go-libp2p/core/peer"
 )
 
 const maxRoleRevocationDocumentBytes = 1 << 20
@@ -36,21 +40,67 @@ func (d *daemon) loadRoleRevocations() error {
 	if err := json.Unmarshal(data, &document); err != nil {
 		return err
 	}
-	var payload worldRoleRevocations
-	if err := decodeStrictPayload(document.Payload, &payload); err != nil {
-		return fmt.Errorf("persisted role revocation payload: %w", err)
-	}
 	// The persisted serial remains a rollback floor after the short-lived state
 	// expires. Its signature and world binding are still checked at startup;
 	// freshness is checked whenever a new state is accepted and by consumers.
-	issued := time.Unix(payload.IssuedAt, 0)
-	validated, err := validateWorldRoleRevocations(document, d.world.WorldID, d.world.OwnerPeerID, 1, issued.Add(time.Nanosecond))
+	validated, err := validateWorldRoleRevocationDocument(document, d.world.WorldID, d.world.OwnerPeerID, 1)
 	if err != nil {
 		return err
 	}
 	d.roleState = document
 	d.roleStateSerial = validated.Serial
 	return nil
+}
+
+func (d *daemon) syncRoleRevocationsFrom(ctx context.Context, source string) error {
+	response, err := d.gatewayRequest(ctx, gatewayMessage{Type: "role-revocations.get", WorldID: d.world.WorldID, TargetPeerID: source, RequestID: "role-revocations"})
+	if err != nil {
+		return err
+	}
+	if response.Type != "role-revocations" {
+		return errors.New("neighbor returned an unexpected role revocation response")
+	}
+	if response.RoleRevocations == nil {
+		return nil
+	}
+	d.roleStateMu.Lock()
+	defer d.roleStateMu.Unlock()
+	state, err := validateWorldRoleRevocationDocument(*response.RoleRevocations, d.world.WorldID, d.world.OwnerPeerID, 1)
+	if err != nil {
+		return fmt.Errorf("neighbor role revocation state: %w", err)
+	}
+	if state.Serial <= d.roleStateSerial {
+		return nil
+	}
+	if err := persistSignedRoleDocument(d.roleStatePath, *response.RoleRevocations); err != nil {
+		return err
+	}
+	d.roleState = *response.RoleRevocations
+	d.roleStateSerial = state.Serial
+	return nil
+}
+
+func (d *daemon) syncRoleRevocationsLoop(sources []peer.ID, interval time.Duration) {
+	for {
+		for _, source := range sources {
+			if d.ctx.Err() != nil {
+				return
+			}
+			ctx, cancel := context.WithTimeout(d.ctx, 20*time.Second)
+			err := d.syncRoleRevocationsFrom(ctx, source.String())
+			cancel()
+			if err != nil && d.ctx.Err() == nil {
+				log.Printf("role revocation sync from %s failed: %v", source, err)
+			}
+		}
+		timer := time.NewTimer(interval)
+		select {
+		case <-d.ctx.Done():
+			timer.Stop()
+			return
+		case <-timer.C:
+		}
+	}
 }
 
 func (d *daemon) handleRoleRevocations(w http.ResponseWriter, r *http.Request) {

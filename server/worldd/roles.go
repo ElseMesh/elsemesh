@@ -104,6 +104,17 @@ func validateWorldRoleGrant(document signedDocument, worldID, ownerPeerID string
 }
 
 func validateWorldRoleRevocations(document signedDocument, worldID, ownerPeerID string, minimumSerial uint64, now time.Time) (worldRoleRevocations, error) {
+	state, err := validateWorldRoleRevocationDocument(document, worldID, ownerPeerID, minimumSerial)
+	if err != nil {
+		return state, err
+	}
+	if err := validateSignedTimeWindow(state.IssuedAt, state.ExpiresAt, maxRevocationStateLifetime, now); err != nil {
+		return state, err
+	}
+	return state, nil
+}
+
+func validateWorldRoleRevocationDocument(document signedDocument, worldID, ownerPeerID string, minimumSerial uint64) (worldRoleRevocations, error) {
 	var state worldRoleRevocations
 	if err := verifyDocument(document, worldRoleRevocationsProtocol); err != nil {
 		return state, err
@@ -116,9 +127,6 @@ func validateWorldRoleRevocations(document signedDocument, worldID, ownerPeerID 
 	}
 	if !worldIDPattern.MatchString(state.WorldID) || state.Serial == 0 || state.Serial > maxSafeJSInteger || state.Serial < minimumSerial {
 		return state, errors.New("invalid role revocation identity")
-	}
-	if err := validateSignedTimeWindow(state.IssuedAt, state.ExpiresAt, maxRevocationStateLifetime, now); err != nil {
-		return state, err
 	}
 	if len(state.GrantIDs) > 10000 || len(state.AccountKeyFingerprints) > 10000 {
 		return state, errors.New("role revocation state contains too many entries")

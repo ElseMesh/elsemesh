@@ -85,6 +85,9 @@ func (d *daemon) syncCacheFrom(ctx context.Context, source peer.ID) error {
 		}
 		log.Printf("cached world=%s asset=%s bytes=%d source=%s", d.world.WorldID, asset.ID, asset.Bytes, source)
 	}
+	if err := d.syncRoleRevocationsFrom(ctx, source.String()); err != nil {
+		return fmt.Errorf("cache role revocation state: %w", err)
+	}
 	return nil
 }
 

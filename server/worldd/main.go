@@ -104,12 +104,15 @@ func run() error {
 	var bootstrap stringFlags
 	var relays stringFlags
 	var cacheFrom stringFlags
+	var roleStateFrom stringFlags
 	var announceAddresses stringFlags
 	flag.Var(&bootstrap, "bootstrap", "bootstrap peer multiaddr (repeatable)")
 	flag.Var(&relays, "relay", "static relay peer multiaddr (repeatable)")
 	flag.Var(&cacheFrom, "cache-from", "owner-authorized upstream node PeerID to seed this node's content cache (repeatable)")
+	flag.Var(&roleStateFrom, "role-state-from", "world neighbor PeerID to sync owner-signed role revocations from (repeatable)")
 	flag.Var(&announceAddresses, "announce-address", "externally reachable IP multiaddr to advertise (repeatable; useful when Android blocks interface discovery)")
 	cacheSyncInterval := flag.Duration("cache-sync-interval", 5*time.Minute, "how often to retry missing owner-authorized cached assets")
+	roleStateSyncInterval := flag.Duration("role-state-sync-interval", time.Minute, "how often to sync owner-signed role revocations")
 	flag.Parse()
 	if *version {
 		fmt.Printf("worldd %s\n", buildRevision)
@@ -132,6 +135,9 @@ func run() error {
 	}
 	if *cacheSyncInterval < time.Second {
 		return errors.New("cache-sync-interval must be at least one second")
+	}
+	if *roleStateSyncInterval < time.Second || *roleStateSyncInterval > 10*time.Minute {
+		return errors.New("role-state-sync-interval must be between one second and ten minutes")
 	}
 	parsedAnnounceAddresses, err := parseAnnounceAddresses(announceAddresses)
 	if err != nil {
@@ -280,11 +286,22 @@ func run() error {
 		}
 		cacheSources = append(cacheSources, id)
 	}
+	roleStateSources := make([]peer.ID, 0, len(roleStateFrom))
+	for _, value := range roleStateFrom {
+		id, decodeErr := peer.Decode(value)
+		if decodeErr != nil || id == p2pHost.ID() {
+			return fmt.Errorf("invalid --role-state-from peer %q", value)
+		}
+		roleStateSources = append(roleStateSources, id)
+	}
 	if len(cacheSources) > 0 {
 		if !d.canServeAssets(time.Now()) {
 			return errors.New("--cache-from requires ownership or an active content-cache grant")
 		}
 		go d.syncCacheLoop(cacheSources, *cacheSyncInterval)
+	}
+	if len(roleStateSources) > 0 {
+		go d.syncRoleRevocationsLoop(roleStateSources, *roleStateSyncInterval)
 	}
 	p2pHost.SetStreamHandler(worldProtocol, d.handlePeerStream)
 	go d.advertiseWorld()
@@ -915,16 +932,17 @@ type gatewayMessage struct {
 }
 
 type peerResponse struct {
-	Type           string          `json:"type"`
-	WorldID        string          `json:"worldId,omitempty"`
-	RequestID      string          `json:"requestId,omitempty"`
-	Document       *signedDocument `json:"document,omitempty"`
-	AuthorityLease *signedDocument `json:"authorityLease,omitempty"`
-	AssetID        string          `json:"assetId,omitempty"`
-	Offset         int64           `json:"offset"`
-	Total          int64           `json:"total,omitempty"`
-	Chunk          string          `json:"chunk,omitempty"`
-	Error          string          `json:"error,omitempty"`
+	Type            string          `json:"type"`
+	WorldID         string          `json:"worldId,omitempty"`
+	RequestID       string          `json:"requestId,omitempty"`
+	Document        *signedDocument `json:"document,omitempty"`
+	RoleRevocations *signedDocument `json:"roleRevocations,omitempty"`
+	AuthorityLease  *signedDocument `json:"authorityLease,omitempty"`
+	AssetID         string          `json:"assetId,omitempty"`
+	Offset          int64           `json:"offset"`
+	Total           int64           `json:"total,omitempty"`
+	Chunk           string          `json:"chunk,omitempty"`
+	Error           string          `json:"error,omitempty"`
 }
 
 func (d *daemon) handleBrowserGateway(w http.ResponseWriter, r *http.Request) {
@@ -1089,6 +1107,15 @@ func (d *daemon) localRequest(request gatewayMessage) (peerResponse, error) {
 	switch request.Type {
 	case "manifest.get":
 		return peerResponse{Type: "manifest", WorldID: d.world.WorldID, RequestID: request.RequestID, Document: &d.manifest, AuthorityLease: d.currentAuthorityLease()}, nil
+	case "role-revocations.get":
+		d.roleStateMu.RLock()
+		defer d.roleStateMu.RUnlock()
+		var document *signedDocument
+		if d.roleStateSerial > 0 {
+			copy := d.roleState
+			document = &copy
+		}
+		return peerResponse{Type: "role-revocations", WorldID: d.world.WorldID, RequestID: request.RequestID, RoleRevocations: document}, nil
 	case "asset.get":
 		if !d.canServeAssets(time.Now()) {
 			return peerResponse{}, errors.New("content_cache_not_authorized")
@@ -1131,7 +1158,7 @@ func (d *daemon) gatewayRequest(ctx context.Context, request gatewayMessage) (pe
 		return peerResponse{}, err
 	}
 	var response peerResponse
-	if err := json.NewDecoder(io.LimitReader(stream, 384<<10)).Decode(&response); err != nil {
+	if err := json.NewDecoder(io.LimitReader(stream, 2<<20)).Decode(&response); err != nil {
 		return peerResponse{}, err
 	}
 	if response.WorldID != request.WorldID || response.RequestID != request.RequestID {
