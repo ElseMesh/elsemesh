@@ -67,7 +67,7 @@ import { SoundScape } from './audio/SoundScape.js';
 import { updateCameraVelocity, useStaticVelocity } from './post/CameraVelocity.js';
 import { Group } from './engine/scene/Group.js';
 import { WorldConnector, worldLinkFromLocation } from './network/WorldConnector.js';
-import { appendWorldPackageAssets, loadWorldPackage, registerWorldPackageCollisions, unregisterWorldPackageCollisions } from './network/WorldPackage.js';
+import { appendWorldPackageAssets, disposeWorldPackage, loadWorldPackage, registerWorldPackageCollisions, unregisterWorldPackageCollisions } from './network/WorldPackage.js';
 import { selectWorldObjectsForView } from './network/WorldStreaming.js';
 import { crossedPortalPlane, rotatePortalVelocity } from './network/PortalHandoff.js';
 import { WorldPortalView } from './network/WorldPortalView.js';
@@ -169,7 +169,8 @@ export class App {
 		// data is derived (shore field, GPU textures, meshes)
 		await progress( 0.12, 'Building the village…' );
 		this.village = new Village( { scene, terrain: this.terrainData, colliders: this.colliders } );
-		if ( ! qs.has( 'noVeg' ) ) {
+		this.vegetationEnabled = ! qs.has( 'noVeg' );
+		if ( this.vegetationEnabled ) {
 
 			await progress( 0.14, 'Planting the island…' );
 			this.vegetation = new Vegetation( { scene, terrain: this.terrainData, village: this.village } );
@@ -416,6 +417,7 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 			const initialAssetIDs = new Set( initialObjects.map( ( object ) => object.assetId ) );
 			const visibleAssets = await connector.preload( { through: 'background', assetIDs: initialAssetIDs } );
 			this.linkedWorldRoot = await loadWorldPackage( connector, { assets: visibleAssets, objectIDs: initialObjectIDs } );
+			this.installWorldComponents( this.linkedWorldRoot, connector );
 			registerWorldPackageCollisions( this.linkedWorldRoot, this.colliders );
 			this.linkedWorldRoot.name = `hosted-world:${worldLink.worldId}`;
 			scene.add( this.linkedWorldRoot );
@@ -698,6 +700,29 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 
 	}
 
+	installWorldComponents( root, connector ) {
+		const installed = [];
+		if ( ! this.vegetationEnabled ) {
+			root.userData.worldComponents = installed;
+			return;
+		}
+		for ( const component of connector.manifest.components || [] ) {
+			if ( component.type === 'tidewater.procedural-island-vegetation/1' ) {
+				if ( ! this.remoteWorldActive && this.vegetation && this.vegetation.group.parent !== root ) {
+					root.add( this.vegetation.group );
+					installed.push( this.vegetation );
+				} else {
+					installed.push( new Vegetation( { scene: root, terrain: this.terrainData, village: this.village } ) );
+				}
+			}
+		}
+		root.userData.worldComponents = installed;
+	}
+
+	updateWorldComponents( root, dt, camera ) {
+		for ( const component of root?.userData?.worldComponents || [] ) component.update( dt, camera );
+	}
+
 	updateWorldStreaming() {
 
 		const connector = this.worldConnector, root = this.linkedWorldRoot;
@@ -764,11 +789,13 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 		const inRange = candidates.filter( ( candidate ) => candidate.distanceSq <= 32 * 32 );
 		const target = crossed || inRange.filter( ( candidate ) => candidate.portal.openView ).sort( ( a, b ) => a.distanceSq - b.distanceSq )[ 0 ] || inRange.sort( ( a, b ) => a.distanceSq - b.distanceSq )[ 0 ];
 		if ( ! target ) {
+			this.cancelUnneededPortalPreparations( null );
 			this.clearPortalPreview();
 			return;
 		}
 
 		const { portal } = target;
+		this.cancelUnneededPortalPreparations( portal.id );
 		if ( ! portal.openView ) this.clearPortalPreview();
 		let preparation = this.portalPreparations.get( portal.id );
 		const attempt = preparation?.attempt || 0;
@@ -782,21 +809,36 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 			this.portalPreparations.set( portal.id, preparation );
 		}
 		if ( ! preparation ) {
-			preparation = { status: 'loading', noticeShown: false, attempt };
+			preparation = { status: 'loading', noticeShown: false, attempt, controller: new AbortController() };
 			this.portalPreparations.set( portal.id, preparation );
-			connector.preparePortal( portal, { onPreview: async ( { connector: destination, assets } ) => {
+			const signal = preparation.controller.signal;
+			connector.preparePortal( portal, { signal, onPreview: async ( { connector: destination, assets } ) => {
+				if ( signal.aborted ) return null;
 				if ( ! portal.openView ) return null;
-				const root = await loadWorldPackage( destination, { assets } );
+				const root = await loadWorldPackage( destination, { assets, signal } );
+				if ( signal.aborted ) { disposeWorldPackage( root ); return null; }
+				this.installWorldComponents( root, destination );
 				root.name = `hosted-world:${portal.destinationWorldId}`;
 				Object.assign( preparation, { connector: destination, root } );
 				return { root };
 			} } ).then( async ( prepared ) => {
-				const root = prepared.preview?.root || await loadWorldPackage( prepared.connector, { assets: prepared.assets } );
-				await appendWorldPackageAssets( prepared.connector, root, prepared.assets );
+			if ( signal.aborted ) { prepared.connector.close(); return; }
+			const root = prepared.preview?.root || await loadWorldPackage( prepared.connector, { assets: prepared.assets, signal } );
+			preparation.root = root;
+			if ( signal.aborted ) { this.disposeUncommittedWorldComponents( root ); prepared.connector.close(); return; }
+			if ( ! prepared.preview?.root ) this.installWorldComponents( root, prepared.connector );
+			await appendWorldPackageAssets( prepared.connector, root, prepared.assets, { signal } );
+			if ( signal.aborted ) { this.disposeUncommittedWorldComponents( root ); prepared.connector.close(); return; }
 				root.name = `hosted-world:${portal.destinationWorldId}`;
 				Object.assign( preparation, { status: 'ready', connector: prepared.connector, root } );
 				this.remoteWorlds.set( portal.destinationWorldId, { connector: prepared.connector, root } );
 			} ).catch( ( error ) => {
+				if ( signal.aborted ) {
+					this.disposeUncommittedWorldComponents( preparation.root );
+					preparation.connector?.close();
+					if ( this.portalPreparations.get( portal.id ) === preparation ) this.portalPreparations.delete( portal.id );
+					return;
+				}
 				preparation.retryAt = Date.now() + Math.min( 60000, 2500 * 2 ** preparation.attempt );
 				Object.assign( preparation, { status: 'failed', error, attempt: preparation.attempt + 1 } );
 				console.warn( `Could not prepare portal ${portal.id}`, error );
@@ -835,6 +877,26 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 
 	}
 
+	cancelUnneededPortalPreparations( targetPortalId ) {
+		for ( const [ portalId, preparation ] of this.portalPreparations ) {
+			if ( portalId === targetPortalId || preparation.status !== 'loading' ) continue;
+			preparation.controller?.abort( new DOMException( 'Portal is no longer in view', 'AbortError' ) );
+			this.disposeUncommittedWorldComponents( preparation.root );
+			preparation.connector?.close();
+			this.portalPreparations.delete( portalId );
+		}
+
+	}
+
+	disposeUncommittedWorldComponents( root ) {
+		for ( const component of root?.userData?.worldComponents || [] ) {
+			if ( component !== this.vegetation ) component.dispose?.();
+		}
+		if ( root?.userData ) root.userData.worldComponents = [];
+		disposeWorldPackage( root );
+
+	}
+
 	enterWorldPortal( portal, preparation ) {
 
 		const sourceConnector = this.worldConnector;
@@ -860,6 +922,7 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 		this.player.velocity.z = velocity.z;
 		this.player.velocity.y = velocity.y;
 		this.portalPreviousPosition.copy( this.camera.position );
+		this.cancelUnneededPortalPreparations( null );
 		this.portalPreparations.clear();
 		sourceConnector.close();
 
@@ -963,7 +1026,8 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 		this.debris.update( this.camera );
 		this.reef.update( dt, this.camera.position );
 		this.village.update( dt );
-		if ( this.vegetation ) this.vegetation.update( dt, this.camera );
+		if ( this.vegetation && ! this.remoteWorldActive ) this.vegetation.update( dt, this.camera );
+		if ( this.remoteWorldActive ) this.updateWorldComponents( this.linkedWorldRoot, dt, this.camera );
 		if ( this.whale ) this.whale.update( dt, this.camera );
 		this.boat.update( dt );
 		this.wildlife.update( dt, this.camera, this.freeCam ? null : this.player );
@@ -988,6 +1052,7 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 		this.underwater.updateCamera( this.camera );
 		this.shadows.render( this.scene, this.engine.meshRenderer, this.shadows.update( this.camera, G.sunDir.value ) );
 		this.portalView.render( performance.now(), this.camera );
+		if ( this.remoteWorldActive ) this.updateWorldComponents( this.linkedWorldRoot, 0, this.camera );
 		this.sceneRenderer.render();
 		if ( this.post.flare ) this.post.flare.kernel.dispatch( 1 );
 		this.post.render();

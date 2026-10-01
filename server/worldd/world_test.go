@@ -126,6 +126,44 @@ func TestWorldManifestValidatesRequiredFeatureIdentifiers(t *testing.T) {
 	}
 }
 
+func TestWorldManifestValidatesProceduralComponents(t *testing.T) {
+	owner, _, err := crypto.GenerateEd25519Key(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ownerID, err := peer.IDFromPublicKey(owner.GetPublic())
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifest := newStarterManifest("Procedural component", ownerID.String())
+	manifest.WorldID = "tw-world:procedural-component"
+	manifest.Rules.RequiredFeatures = []string{"tidewater.procedural-island-vegetation/1"}
+	manifest.Components = []worldComponent{{ID: "tw-component:island-vegetation", Type: "tidewater.procedural-island-vegetation/1", Seed: 7, Priority: "visible"}}
+	if err := validateManifest(manifest, ownerID.String(), time.Now()); err != nil {
+		t.Fatalf("valid procedural component rejected: %v", err)
+	}
+
+	manifest.Rules.RequiredFeatures = nil
+	if err := validateManifest(manifest, ownerID.String(), time.Now()); err == nil {
+		t.Fatal("component missing its required feature declaration accepted")
+	}
+	manifest.Rules.RequiredFeatures = []string{"tidewater.procedural-island-vegetation/1"}
+	manifest.Components[0].Seed = 8
+	if err := validateManifest(manifest, ownerID.String(), time.Now()); err == nil {
+		t.Fatal("unsupported procedural seed accepted")
+	}
+	manifest.Components[0].Seed = 7
+	manifest.Components = append(manifest.Components, manifest.Components[0])
+	if err := validateManifest(manifest, ownerID.String(), time.Now()); err == nil {
+		t.Fatal("duplicate procedural component ID accepted")
+	}
+	manifest.Components = manifest.Components[:1]
+	manifest.Components[0].ID = "tw-object:invalid-kind-collision"
+	if err := validateManifest(manifest, ownerID.String(), time.Now()); err == nil {
+		t.Fatal("component ID using another entity prefix accepted")
+	}
+}
+
 func TestWorldManifestValidatesDeterministicMovementRules(t *testing.T) {
 	key, _, err := crypto.GenerateEd25519Key(rand.Reader)
 	if err != nil {

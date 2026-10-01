@@ -72,7 +72,7 @@ const CANOPY_FAR = [ 2600, 2800 ];
 
 export class Vegetation {
 
-	constructor( { scene, terrain, village = null } ) {
+	constructor( { scene, terrain, village = null, includeGrass = true } ) {
 
 		this.scene = scene;
 		this.terrain = terrain;
@@ -87,7 +87,7 @@ export class Vegetation {
 		const recs = placement.records;
 		this.records = recs;
 		const t1 = performance.now();
-		const grassMask = buildGrassMask( site );
+		const grassMask = includeGrass ? buildGrassMask( site ) : null;
 		this.timings = { scatter: t1 - t0, mask: performance.now() - t1 };
 
 		// materials (shared across meshes)
@@ -191,14 +191,14 @@ export class Vegetation {
 		// renderer handle; the atlas bakes with its own MeshRenderer)
 		this.renderer = true;
 
-		this.grass = new GrassField( { terrain, mask: grassMask } );
-		for ( const m of this.grass.meshes ) this.group.add( m );
+		this.grass = includeGrass ? new GrassField( { terrain, mask: grassMask } ) : null;
+		if ( this.grass ) for ( const m of this.grass.meshes ) this.group.add( m );
 
 		this.geometryTriangles = {
 			palmNear: palmNear.triangles, palmFar: palmFar.triangles, understory: under.triangles, understoryPerKind: under.perKind,
 			broadleaf: broad.triangles, broadleafPerKind: broad.perKind, monstera: monsteraMesh.triangles, bananas: bananaMesh.triangles,
 			canopy: canopy.triangles, tree: canopy.treeTriangles, shrub: canopy.shrubTriangles, impostor: 2,
-			grassNearPatch: this.grass.patchTris[ 0 ], grassMidPatch: this.grass.patchTris[ 1 ], grassFarPatch: this.grass.patchTris[ 2 ],
+			grassNearPatch: this.grass?.patchTris[ 0 ] ?? 0, grassMidPatch: this.grass?.patchTris[ 1 ] ?? 0, grassFarPatch: this.grass?.patchTris[ 2 ] ?? 0,
 		};
 
 		this.group.updateMatrixWorld( true );
@@ -253,7 +253,7 @@ export class Vegetation {
 		if ( a ) a.update( p, true );
 		if ( b ) b.update( p, true );
 
-		this.grass.update( camera );
+		this.grass?.update( camera );
 
 	}
 
@@ -261,7 +261,7 @@ export class Vegetation {
 	// (plant placement is computed once in the constructor: build Vegetation after terrain edits).
 	refreshTerrain() {
 
-		this.grass.heightTex.needsUpdate = true;
+		if ( this.grass ) this.grass.heightTex.needsUpdate = true;
 
 	}
 
@@ -286,23 +286,25 @@ export class Vegetation {
 		}
 
 		const g = this.grass;
-		types.grass = { nearCells: g.levels[ 0 ].count, midCells: g.levels[ 1 ].count, farCells: g.levels[ 2 ].count, triangles: g.triangles };
-		tris += g.triangles;
-		draws += g.levels.filter( ( l ) => l.count > 0 ).length;
+		if ( g ) {
+			types.grass = { nearCells: g.levels[ 0 ].count, midCells: g.levels[ 1 ].count, farCells: g.levels[ 2 ].count, triangles: g.triangles };
+			tris += g.triangles;
+			draws += g.levels.filter( ( l ) => l.count > 0 ).length;
+		}
 		return { types, triangles: tris, drawCalls: draws, villagePalms: this.records.villagePalms, rules: RULES };
 
 	}
 
 	dispose() {
 
-		this.scene.remove( this.group );
+		this.group.parent?.remove( this.group );
 		for ( const t of this.types ) for ( const m of t.meshes ) m.geometry.dispose();
 		for ( const m of this.materials ) m.dispose();
 		this.atlas.rtA.dispose();
 		this.leafAtlas.rt.dispose();
 		this.atlas.rtB.dispose();
 		this.atlas.depth.destroy();
-		this.grass.dispose();
+		this.grass?.dispose();
 
 	}
 

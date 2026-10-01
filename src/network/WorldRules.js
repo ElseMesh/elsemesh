@@ -5,6 +5,7 @@ export const SUPPORTED_WORLD_FEATURES = new Set( [
 	'tidewater.portal-handoff/1',
 	'tidewater.portal-preview-static/1',
 	'tidewater.static-glb-quaternion/1',
+	'tidewater.procedural-island-vegetation/1',
 ] );
 export const SUPPORTED_PHYSICS_PROFILES = new Set( [ 'default', 'tidewater-default' ] );
 export const DEFAULT_WORLD_MOVEMENT = Object.freeze( { walkSpeed: 3, sprintSpeed: 6.2, jumpSpeed: 4.6 } );

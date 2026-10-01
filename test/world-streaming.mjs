@@ -5,6 +5,9 @@ import { selectWorldObjectsForView } from '../src/network/WorldStreaming.js';
 import { PerspectiveCamera } from '../src/engine/scene/Camera.js';
 
 const connector = new WorldConnector( { worldId: 'tw-world:stream-test', nodeId: 'peer', gateway: 'https://example.test' } );
+const alreadyAborted = new AbortController();
+alreadyAborted.abort( new DOMException( 'Portal is no longer in view', 'AbortError' ) );
+await assert.rejects( connector.preparePortal( { enabled: true, destinationWorldId: 'tw-world:destination', destinationPeerId: '12D3KooW12345678901234567890' }, { signal: alreadyAborted.signal } ), { name: 'AbortError' }, 'portal preparation honors cancellation before opening a destination connection' );
 const priorities = [ 'portal-preview', 'visible', 'nearby', 'background' ];
 assert.equal( assetConcurrencyForConnection( null ), 3, 'unknown connection capability keeps the default bounded concurrency' );
 assert.equal( assetConcurrencyForConnection( { effectiveType: '4g', downlink: 12 } ), 3, 'fast links keep three parallel asset downloads' );
@@ -82,7 +85,8 @@ let releaseSharedChunk;
 const jsonReadable = ( value ) => new ReadableStream( { start( controller ) { controller.enqueue( new TextEncoder().encode( JSON.stringify( value ) ) ); controller.close(); } } );
 let transportStream = 0;
 class FakeWebTransport {
-	constructor() { this.state = 'connected'; this.ready = Promise.resolve(); this.closed = new Promise( () => {} ); }
+	static instances = [];
+	constructor() { this.state = 'connected'; this.ready = transportMode === 'blocked-ready' ? new Promise( () => {} ) : Promise.resolve(); this.closed = new Promise( () => {} ); FakeWebTransport.instances.push( this ); }
 	close() { this.state = 'closed'; }
 	async createBidirectionalStream() {
 		const index = transportStream ++;
@@ -92,9 +96,10 @@ class FakeWebTransport {
 		const writable = new WritableStream( { write( chunk ) { written += new TextDecoder().decode( chunk ); }, async close() {
 			const request = JSON.parse( written );
 			if ( index > 0 ) webTransportRequests.push( request );
+			if ( index === 1 && transportMode === 'blocked-manifest' ) return;
 			if ( index === 1 && transportMode === 'shared-download' ) await new Promise( ( resolve ) => { releaseSharedChunk = resolve; } );
 			if ( index === 2 && transportMode === 'interrupted-chunk' ) readableController.error( new Error( 'stream reset' ) );
-			else if ( index === 0 ) readableController.enqueue( new TextEncoder().encode( JSON.stringify( { type: 'connected', worldId: 'tw-world:retry-test' } ) ) );
+			else if ( index === 0 ) readableController.enqueue( new TextEncoder().encode( JSON.stringify( { type: 'connected', worldId: request.worldId } ) ) );
 			else if ( index === 1 && transportMode === 'gateway-error' ) readableController.enqueue( new TextEncoder().encode( JSON.stringify( { type: 'error', requestId: request.requestId, error: 'asset is not available' } ) ) );
 			else {
 				const chunk = bytes.slice( request.offset, request.offset + request.length );
@@ -108,7 +113,8 @@ class FakeWebTransport {
 }
 class FakeWebSocket {
 	static OPEN = 1;
-	constructor() { this.readyState = FakeWebSocket.OPEN; this.listeners = new Map(); queueMicrotask( () => this.#dispatch( 'open' ) ); }
+	static instances = [];
+	constructor() { this.readyState = FakeWebSocket.OPEN; this.listeners = new Map(); FakeWebSocket.instances.push( this ); if ( transportMode !== 'blocked-socket-connect' ) queueMicrotask( () => this.#dispatch( 'open' ) ); }
 	addEventListener( type, callback ) { const listeners = this.listeners.get( type ) || []; listeners.push( callback ); this.listeners.set( type, listeners ); }
 	send( message ) {
 		const request = JSON.parse( message );
@@ -156,6 +162,40 @@ try {
 	await assert.rejects( errorConnector.getAsset( assetId ), /asset is not available/, 'a gateway error response remains an application error' );
 	assert.equal( webSocketRequests.length, requestCount, 'gateway errors do not trigger transport fallback' );
 	errorConnector.close();
+	transportStream = 0;
+	transportMode = 'blocked-manifest';
+	const portalConnector = new WorldConnector( { worldId: 'tw-world:retry-test', nodeId: 'peer', gateway: 'https://example.test' } );
+	const portalAbort = new AbortController();
+	const portalPreparation = portalConnector.preparePortal( { enabled: true, destinationWorldId: 'tw-world:pending', destinationPeerId: '12D3KooW12345678901234567890' }, { signal: portalAbort.signal } );
+	await new Promise( ( resolve ) => setTimeout( resolve, 10 ) );
+	assert.ok( webTransportRequests.some( ( request ) => request.type === 'manifest.get' ), 'portal begins the destination manifest request before cancellation' );
+	const destinationTransport = FakeWebTransport.instances.at( -1 );
+	portalAbort.abort( new DOMException( 'Portal left view', 'AbortError' ) );
+	await assert.rejects( portalPreparation, { name: 'AbortError' }, 'portal preparation rejects when its manifest request is canceled' );
+	assert.equal( destinationTransport.state, 'closed', 'canceling portal preparation closes its destination transport' );
+	portalConnector.close();
+	transportStream = 0;
+	transportMode = 'blocked-ready';
+	const readyConnector = new WorldConnector( { worldId: 'tw-world:retry-test', nodeId: 'peer', gateway: 'https://example.test' } );
+	const readyAbort = new AbortController();
+	const readyPreparation = readyConnector.preparePortal( { enabled: true, destinationWorldId: 'tw-world:waiting', destinationPeerId: '12D3KooW12345678901234567890' }, { signal: readyAbort.signal } );
+	await new Promise( ( resolve ) => setTimeout( resolve, 0 ) );
+	const waitingTransport = FakeWebTransport.instances.at( -1 );
+	readyAbort.abort( new DOMException( 'Portal left view', 'AbortError' ) );
+	await assert.rejects( readyPreparation, { name: 'AbortError' }, 'portal preparation aborts during WebTransport setup' );
+	assert.equal( waitingTransport.state, 'closed', 'canceling WebTransport setup closes the pending session' );
+	readyConnector.close();
+	delete globalThis.WebTransport;
+	transportMode = 'blocked-socket-connect';
+	const socketConnector = new WorldConnector( { worldId: 'tw-world:retry-test', nodeId: 'peer', gateway: 'https://example.test' } );
+	const socketAbort = new AbortController();
+	const socketPreparation = socketConnector.preparePortal( { enabled: true, destinationWorldId: 'tw-world:socket-wait', destinationPeerId: '12D3KooW1234567890123456' }, { signal: socketAbort.signal } );
+	await new Promise( ( resolve ) => setTimeout( resolve, 0 ) );
+	const pendingSocket = FakeWebSocket.instances.at( -1 );
+	socketAbort.abort( new DOMException( 'Portal left view', 'AbortError' ) );
+	await assert.rejects( socketPreparation, { name: 'AbortError' }, 'portal preparation aborts during WebSocket setup' );
+	assert.equal( pendingSocket.readyState, 3, 'canceling WebSocket setup closes the pending socket' );
+	socketConnector.close();
 } finally {
 	if ( originalWebTransport === undefined ) delete globalThis.WebTransport; else globalThis.WebTransport = originalWebTransport;
 	if ( originalWebSocket === undefined ) delete globalThis.WebSocket; else globalThis.WebSocket = originalWebSocket;

@@ -98,6 +98,11 @@
         "$ref": "#/$defs/object"
       }
     },
+    "components": {
+      "type": "array",
+      "maxItems": 128,
+      "items": { "$ref": "#/$defs/component" }
+    },
     "portals": {
       "type": "array",
       "maxItems": 1024,
@@ -292,6 +297,17 @@
           }
         }
       ]
+    },
+    "component": {
+      "type": "object",
+      "required": ["id", "type", "seed"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^tw-component:[\\w.-]{1,128}$" },
+        "type": { "const": "tidewater.procedural-island-vegetation/1" },
+        "seed": { "const": 7 },
+        "priority": { "enum": ["portal-preview", "visible", "nearby", "background"] }
+      },
+      "additionalProperties": false
     },
     "portal": {
       "type": "object",

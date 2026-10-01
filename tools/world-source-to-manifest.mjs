@@ -63,6 +63,7 @@ async function main() {
 		rules: { ...source.rules, styleGuide: source.styleGuide },
 		assets: [ ...assets.values() ],
 		objects: source.objects.map( ( { id, kind, label, assetId, priority, streamingBounds, transform, scale, collision } ) => ( { id, kind, label, assetId, priority, streamingBounds, transform, scale, collision } ) ),
+		components: source.components || [],
 		portals: source.portals,
 		hosts: ( source.hosts || [] ).map( ( grant ) => ( { ...grant, scopes: [ ...grant.scopes ] } ) ),
 		updatedAt: Math.floor( updatedAt / 1000 ),

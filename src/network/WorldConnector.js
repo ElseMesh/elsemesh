@@ -6,6 +6,10 @@ const PRIORITY_ORDER = Object.freeze( [ 'portal-preview', 'visible', 'nearby', '
 
 function invariant( value, message ) { if ( ! value ) throw new Error( message ); }
 
+function throwIfAborted( signal ) {
+	if ( signal?.aborted ) throw signal.reason || new DOMException( 'Aborted', 'AbortError' );
+}
+
 export function assetConcurrencyForConnection( connection = globalThis.navigator?.connection, measuredBytesPerSecond = null ) {
 	if ( connection?.saveData ) return 1;
 	const type = connection?.effectiveType;
@@ -54,14 +58,16 @@ export class WorldConnector {
 		this.pending = new Map();
 	}
 
-	async getManifest() {
+	async getManifest( { signal } = {} ) {
+		throwIfAborted( signal );
 		let lastError = null;
 		const attempted = new Set();
 		if ( this.nodeId ) {
 			attempted.add( `${this.nodeId}\n${this.gateway}` );
 			try {
-				return await this.#fetchManifest();
+				return await this.#fetchManifest( signal );
 			} catch ( error ) {
+				if ( signal?.aborted ) throw signal.reason || error;
 				lastError = error;
 				this.close();
 				this.nodeId = '';
@@ -69,11 +75,13 @@ export class WorldConnector {
 		}
 		let providers;
 		try {
-			providers = this.directory ? await this.#discoverDirectoryProviders() : await this.#discoverGatewayProviders();
+			providers = this.directory ? await this.#discoverDirectoryProviders( signal ) : await this.#discoverGatewayProviders( signal );
 		} catch ( error ) {
+			if ( signal?.aborted ) throw signal.reason || error;
 			throw lastError || error;
 		}
 		for ( const provider of providers ) {
+			throwIfAborted( signal );
 			const nodeId = typeof provider === 'string' ? provider : provider.nodeId;
 			const gateway = typeof provider === 'string' ? this.gateway : provider.gateway;
 			const key = `${nodeId}\n${gateway}`;
@@ -82,8 +90,9 @@ export class WorldConnector {
 			this.nodeId = nodeId;
 			this.gateway = gateway;
 			try {
-				return await this.#fetchManifest();
+				return await this.#fetchManifest( signal );
 			} catch ( error ) {
+				if ( signal?.aborted ) throw signal.reason || error;
 				lastError = error;
 				this.close();
 				this.nodeId = '';
@@ -92,13 +101,15 @@ export class WorldConnector {
 		throw lastError || new Error( 'No available provider could serve this world' );
 	}
 
-	async #fetchManifest() {
-		const reply = await this.#request( { type: 'manifest.get' } );
+	async #fetchManifest( signal ) {
+		const reply = await this.#request( { type: 'manifest.get' }, { signal } );
 		invariant( reply.type === 'manifest' && reply.document, 'World gateway returned no manifest' );
 		await verifySignedDocument( reply.document, 'tidewater.world/1' );
 		invariant( reply.document.payload.protocol === 'tidewater.world/1' && reply.document.payload.worldId === this.worldId, 'Manifest belongs to another world or protocol' );
 		validateWorldRequirements( reply.document.payload );
-		validateWorldObjects( reply.document.payload.objects );
+		const entityIDs = validateWorldObjects( reply.document.payload.objects );
+		validateWorldPortals( reply.document.payload.portals, entityIDs );
+		validateWorldComponents( reply.document.payload.components, reply.document.payload.rules, entityIDs );
 		validateWorldHosts( reply.document.payload.hosts );
 		this.manifest = reply.document.payload;
 		invariant( Number.isSafeInteger( this.manifest.authorityEpoch ) && this.manifest.authorityEpoch > 0, 'Manifest authority epoch is outside the supported range' );
@@ -116,26 +127,29 @@ export class WorldConnector {
 		return this.manifest;
 	}
 
-	async #discoverGatewayProviders() {
+	async #discoverGatewayProviders( signal ) {
 		const url = new URL( '/api/lookup', this.#httpBaseURL() );
 		url.searchParams.set( 'worldId', this.worldId );
-		const response = await fetch( url, { credentials: 'omit', cache: 'no-store' } );
+		const response = await fetch( url, { credentials: 'omit', cache: 'no-store', signal } );
 		if ( ! response.ok ) throw new Error( `World lookup failed (${response.status})` );
 		const result = await response.json();
+		throwIfAborted( signal );
 		invariant( result.worldId === this.worldId && Array.isArray( result.providers ) && result.providers.length > 0, 'No node currently advertises this world' );
 		const peerIDs = [ ...new Set( result.providers.filter( ( peerId ) => typeof peerId === 'string' && /^[A-Za-z0-9]{20,256}$/.test( peerId ) ) ) ];
 		invariant( peerIDs.length > 0, 'World lookup returned no valid provider identities' );
 		return peerIDs;
 	}
 
-	async #discoverDirectoryProviders() {
+	async #discoverDirectoryProviders( signal ) {
 		const url = new URL( `/v1/worlds/${encodeURIComponent( this.worldId )}`, this.directory );
-		const response = await fetch( url, { credentials: 'omit', cache: 'no-store' } );
+		const response = await fetch( url, { credentials: 'omit', cache: 'no-store', signal } );
 		if ( ! response.ok ) throw new Error( `World directory lookup failed (${response.status})` );
 		const result = await response.json();
+		throwIfAborted( signal );
 		invariant( Array.isArray( result.providers ) && result.providers.length > 0, 'Directory has no provider for this world' );
 		const providers = [];
 		for ( const document of result.providers ) {
+			throwIfAborted( signal );
 			try { await verifySignedDocument( document, 'tidewater.node/1' ); }
 			catch { continue; }
 			const node = document.payload;
@@ -176,7 +190,7 @@ export class WorldConnector {
 			if ( signal?.aborted ) throw signal.reason || new DOMException( 'Aborted', 'AbortError' );
 			const length = Math.min( this.chunkBytes, asset.bytes - offset );
 			const reply = await this.#request( { type: 'asset.get', assetId, offset, length }, { signal } );
-			invariant( reply.type === 'asset.chunk' && reply.assetId === assetId && reply.offset === offset && reply.total === asset.bytes, `Invalid asset chunk response: ${JSON.stringify( { type: reply.type, assetId: reply.assetId, offset: reply.offset, total: reply.total } )}` );
+			invariant( reply.type === 'asset.chunk' && reply.assetId === assetId && reply.offset === offset && reply.total === asset.bytes, `Invalid asset chunk response: ${JSON.stringify( { type: reply.type, assetId: reply.assetId, offset: reply.offset, total: reply.total, expectedAssetId: assetId, expectedOffset: offset, expectedTotal: asset.bytes } )}` );
 			const bytes = decodeBase64( reply.chunk );
 			invariant( bytes.byteLength === length, 'Asset chunk has an unexpected length' );
 			parts.push( bytes );
@@ -222,7 +236,8 @@ export class WorldConnector {
 
 	// Load portal-preview content first so it can appear beyond an open doorway while
 	// the assets needed to enter the destination continue loading.
-	async preparePortal( portal, { onPreview } = {} ) {
+	async preparePortal( portal, { onPreview, signal } = {} ) {
+		throwIfAborted( signal );
 		invariant( portal && portal.enabled && portal.destinationWorldId && portal.destinationPeerId, 'Portal has no active destination' );
 		const destination = new WorldConnector( {
 			worldId: portal.destinationWorldId,
@@ -231,68 +246,103 @@ export class WorldConnector {
 			directory: this.directory,
 			chunkBytes: this.chunkBytes,
 		} );
-		await destination.getManifest();
-		const previewAssets = await destination.preload( { through: 'portal-preview' } );
-		const preview = onPreview ? await onPreview( { connector: destination, assets: previewAssets } ) : null;
-		const assets = await destination.preload( { through: 'visible' } );
-		return { connector: destination, manifest: destination.manifest, assets, previewAssetIDs: new Set( previewAssets.keys() ), preview };
+		try {
+			await destination.getManifest( { signal } );
+			throwIfAborted( signal );
+			const previewAssets = await destination.preload( { through: 'portal-preview', signal } );
+			throwIfAborted( signal );
+			const preview = onPreview ? await onPreview( { connector: destination, assets: previewAssets, signal } ) : null;
+			throwIfAborted( signal );
+			const assets = await destination.preload( { through: 'visible', signal } );
+			throwIfAborted( signal );
+			return { connector: destination, manifest: destination.manifest, assets, previewAssetIDs: new Set( previewAssets.keys() ), preview };
+		} catch ( error ) {
+			destination.close();
+			throw error;
+		}
 	}
 
-	async #connection() {
+	async #connection( signal ) {
+		throwIfAborted( signal );
 		if ( this.webTransport?.state === 'connected' ) return { kind: 'webtransport', session: this.webTransport };
 		if ( this.socket?.readyState === WebSocket.OPEN ) return { kind: 'websocket', socket: this.socket };
-		if ( this.socketPromise ) return this.socketPromise;
+		if ( this.socketPromise ) return waitWithAbort( this.socketPromise, signal );
 		const promise = ( async () => {
 			const base = this.#httpBaseURL();
 			if ( ! this.webTransportFailed && base.protocol === 'https:' && typeof globalThis.WebTransport === 'function' ) {
-				try { return await this.#openWebTransport( base ); }
+				try { return await this.#openWebTransport( base, signal ); }
 				catch ( error ) {
-					this.webTransportFailed = true;
 					this.webTransport?.close();
 					this.webTransport = null;
+					if ( signal?.aborted ) throw signal.reason || error;
+					this.webTransportFailed = true;
 					console.info( 'WebTransport unavailable; using the WebSocket gateway.', error );
 				}
 			}
-			return { kind: 'websocket', socket: await this.#openWebSocket( base ) };
+			return { kind: 'websocket', socket: await this.#openWebSocket( base, signal ) };
 		} )();
 		this.socketPromise = promise;
 		try { return await promise; }
 		finally { if ( this.socketPromise === promise ) this.socketPromise = null; }
 	}
 
-	async #openWebTransport( base ) {
+	async #openWebTransport( base, signal ) {
 		const url = new URL( base );
 		url.pathname = '/gateway-webtransport';
 		const session = this.webTransport = new globalThis.WebTransport( url.href );
 		session.closed.then( () => { if ( this.webTransport === session ) this.webTransport = null; } ).catch( () => { if ( this.webTransport === session ) this.webTransport = null; } );
-		await withTimeout( session.ready, 8000, 'WebTransport connection timed out' );
-		const stream = await session.createBidirectionalStream();
-		await writeJSONStream( stream.writable, { type: 'connect', worldId: this.worldId, targetPeerId: this.nodeId } );
-		const response = await readJSONStream( stream.readable );
-		invariant( response.type === 'connected' && response.worldId === this.worldId, response.error || 'WebTransport world connection failed' );
-		return { kind: 'webtransport', session };
+		try {
+			await withTimeout( session.ready, 8000, 'WebTransport connection timed out', signal );
+			const stream = await waitWithAbort( session.createBidirectionalStream(), signal );
+			await writeJSONStream( stream.writable, { type: 'connect', worldId: this.worldId, targetPeerId: this.nodeId }, signal );
+			const response = await readJSONStream( stream.readable, signal );
+			throwIfAborted( signal );
+			invariant( response.type === 'connected' && response.worldId === this.worldId, response.error || 'WebTransport world connection failed' );
+			return { kind: 'webtransport', session };
+		} catch ( error ) {
+			session.close();
+			if ( this.webTransport === session ) this.webTransport = null;
+			throw error;
+		}
 	}
 
-	#openWebSocket( base ) {
+	#openWebSocket( base, signal ) {
 		return new Promise( ( resolve, reject ) => {
+			if ( signal?.aborted ) { reject( signal.reason || new DOMException( 'Aborted', 'AbortError' ) ); return; }
 			const url = new URL( base );
 			url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
 			url.pathname = '/gateway';
 			const socket = this.socket = new WebSocket( url );
 			let connected = false;
-			const timeout = setTimeout( () => { socket.close(); reject( new Error( 'World gateway connection timed out' ) ); }, 20000 );
+			let settled = false;
+			const cleanup = () => { clearTimeout( timeout ); signal?.removeEventListener( 'abort', abort ); };
+			const failConnect = ( error ) => {
+				if ( settled ) return;
+				settled = true;
+				cleanup();
+				if ( this.socket === socket ) this.socket = null;
+				socket.close();
+				reject( error );
+			};
+			const abort = () => failConnect( signal.reason || new DOMException( 'Aborted', 'AbortError' ) );
+			const timeout = setTimeout( () => failConnect( new Error( 'World gateway connection timed out' ) ), 20000 );
 			const failPending = ( error ) => {
 				for ( const pending of this.pending.values() ) { clearTimeout( pending.timeout ); pending.reject( error ); }
 				this.pending.clear();
 			};
-			socket.addEventListener( 'open', () => socket.send( JSON.stringify( { type: 'connect', worldId: this.worldId, targetPeerId: this.nodeId } ) ), { once: true } );
+			signal?.addEventListener( 'abort', abort, { once: true } );
+			socket.addEventListener( 'open', () => {
+				try { socket.send( JSON.stringify( { type: 'connect', worldId: this.worldId, targetPeerId: this.nodeId } ) ); }
+				catch ( error ) { failConnect( error ); }
+			}, { once: true } );
 			socket.addEventListener( 'message', ( event ) => {
 				let response;
-				try { response = JSON.parse( event.data ); } catch { socket.close(); reject( new Error( 'Invalid response from world gateway' ) ); return; }
+				try { response = JSON.parse( event.data ); } catch { failConnect( new Error( 'Invalid response from world gateway' ) ); return; }
 				if ( ! connected ) {
-					if ( response.type !== 'connected' || response.worldId !== this.worldId ) { socket.close(); reject( new Error( response.error || 'World connection failed' ) ); return; }
+					if ( response.type !== 'connected' || response.worldId !== this.worldId ) { failConnect( new Error( response.error || 'World connection failed' ) ); return; }
 					connected = true;
-					clearTimeout( timeout );
+					settled = true;
+					cleanup();
 					resolve( socket );
 					return;
 				}
@@ -303,12 +353,16 @@ export class WorldConnector {
 				if ( response.type === 'error' ) pending.reject( new Error( response.error || response.code || 'World request failed' ) );
 				else pending.resolve( response );
 			} );
-			socket.addEventListener( 'error', () => { clearTimeout( timeout ); reject( new Error( 'World gateway connection failed' ) ); failPending( new Error( 'World gateway connection failed' ) ); }, { once: true } );
+			socket.addEventListener( 'error', () => {
+				const error = new Error( 'World gateway connection failed' );
+				failConnect( error );
+				failPending( error );
+			}, { once: true } );
 			socket.addEventListener( 'close', () => {
-				clearTimeout( timeout );
+				cleanup();
 				this.socket = null;
 				const error = new Error( connected ? 'World gateway connection closed' : 'World gateway closed before connecting' );
-				if ( ! connected ) reject( error );
+				if ( ! connected ) failConnect( error );
 				failPending( error );
 			}, { once: true } );
 		} );
@@ -329,7 +383,8 @@ export class WorldConnector {
 	async #request( message, { signal } = {} ) {
 		if ( signal?.aborted ) throw signal.reason || new DOMException( 'Aborted', 'AbortError' );
 		const requestId = globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`;
-		let connection = await this.#connection();
+		let connection = await this.#connection( signal );
+		throwIfAborted( signal );
 		if ( connection.kind === 'webtransport' ) {
 			try { return await requestWebTransport( connection.session, { ...message, requestId }, signal ); }
 			catch ( error ) {
@@ -339,7 +394,8 @@ export class WorldConnector {
 				connection.session.close();
 				if ( this.webTransport === connection.session ) this.webTransport = null;
 				console.info( 'WebTransport request failed; retrying through the WebSocket gateway.', error );
-				connection = await this.#connection();
+				connection = await this.#connection( signal );
+				throwIfAborted( signal );
 			}
 		}
 		const socket = connection.socket;
@@ -365,7 +421,10 @@ export class WorldConnector {
 
 function validateWorldObjects( objects ) {
 	invariant( Array.isArray( objects ) && objects.length <= 10000, 'World manifest has an invalid object list' );
+	const ids = new Set();
 	for ( const object of objects ) {
+		invariant( object && typeof object.id === 'string' && /^tw-object:[\w.-]{1,128}$/.test( object.id ) && ! ids.has( object.id ), 'World manifest has an invalid or duplicate object ID' );
+		ids.add( object.id );
 		invariant( object?.priority === undefined || [ 'portal-preview', 'visible', 'nearby', 'background' ].includes( object.priority ), `World object ${object.id || '(unknown)'} has an invalid streaming priority` );
 		if ( object?.streamingBounds !== undefined ) {
 			const bounds = object.streamingBounds;
@@ -380,6 +439,43 @@ function validateWorldObjects( objects ) {
 		const box = collision.shape === 'box' && validVector( collision.center ) && validVector( collision.halfExtents ) && collision.halfExtents.every( ( value ) => value > 0 && value <= 1000 ) && typeof collision.walkable === 'boolean' && typeof collision.solid === 'boolean';
 		const heightfield = collision.shape === 'heightfield' && Number.isInteger( collision.columns ) && Number.isInteger( collision.rows ) && collision.columns >= 2 && collision.rows >= 2 && collision.columns <= 4097 && collision.rows <= 4097 && collision.columns * collision.rows <= 4194304 && collision.walkable === true && collision.solid === true;
 		invariant( box || heightfield, `World object ${object.id || '(unknown)'} has invalid collision bounds` );
+	}
+	return ids;
+}
+
+export function validateWorldPortals( portals = [], ids = new Set() ) {
+	invariant( Array.isArray( portals ) && portals.length <= 1024, 'World manifest has an invalid portal list' );
+	for ( const portal of portals ) {
+		invariant( portal && typeof portal.id === 'string' && /^tw-portal:[\w.-]{1,128}$/.test( portal.id ) && ! ids.has( portal.id ), 'World manifest has an invalid or duplicate portal ID' );
+		invariant( /^tw-world:[\w.-]{1,128}$/.test( portal.destinationWorldId || '' ) && typeof portal.destinationPeerId === 'string' && /^[A-Za-z0-9]{20,256}$/.test( portal.destinationPeerId ), `Portal ${portal.id} has an invalid destination` );
+		invariant( portal.destinationGateway === undefined || validWorldGateway( portal.destinationGateway ), `Portal ${portal.id} has an invalid destination gateway` );
+		for ( const transform of [ portal.entry, portal.exit ] ) {
+			invariant( transform && validVector( transform.position ) && transform.position.every( ( value ) => Math.abs( value ) <= 1e6 ) && Number.isFinite( transform.yaw ) && Math.abs( transform.yaw ) <= 360 && transform.rotation === undefined, `Portal ${portal.id} has an invalid transform` );
+		}
+		invariant( typeof portal.openView === 'boolean' && typeof portal.enabled === 'boolean', `Portal ${portal.id} has invalid flags` );
+		ids.add( portal.id );
+	}
+	return ids;
+}
+
+export function validateWorldComponents( components = [], rules, ids = new Set() ) {
+	invariant( Array.isArray( components ) && components.length <= 128, 'World manifest has an invalid component list' );
+	for ( const component of components ) {
+		invariant( component && typeof component.id === 'string' && /^tw-component:[\w.-]{1,128}$/.test( component.id ) && ! ids.has( component.id ), 'World manifest has an invalid or duplicate component ID' );
+		invariant( component.type === 'tidewater.procedural-island-vegetation/1' && component.seed === 7 && ( component.priority === undefined || [ 'portal-preview', 'visible', 'nearby', 'background' ].includes( component.priority ) ), `Unsupported or invalid world component ${component.id}` );
+		invariant( rules.requiredFeatures?.includes( component.type ), `World component ${component.type} is missing from requiredFeatures` );
+		ids.add( component.id );
+	}
+	return ids;
+}
+
+function validWorldGateway( value ) {
+	if ( typeof value !== 'string' ) return false;
+	try {
+		const gateway = new URL( value );
+		return [ 'https:', 'wss:' ].includes( gateway.protocol ) && ! gateway.username && ! gateway.password && ( gateway.pathname === '' || gateway.pathname === '/' ) && ! gateway.search && ! gateway.hash;
+	} catch {
+		return false;
 	}
 }
 
@@ -438,32 +534,42 @@ function waitForAssetDownload( pending, signal ) {
 async function requestWebTransport( session, message, signal ) {
 	if ( signal?.aborted ) throw signal.reason || new DOMException( 'Aborted', 'AbortError' );
 	const stream = await session.createBidirectionalStream();
-	const abort = () => { stream.writable.abort( signal.reason ).catch( () => {} ); stream.readable.cancel( signal.reason ).catch( () => {} ); };
+	await writeJSONStream( stream.writable, message, signal );
+	const response = await withTimeout( readJSONStream( stream.readable, signal ), 30000, 'World request timed out', signal );
+	if ( signal?.aborted ) throw signal.reason || new DOMException( 'Aborted', 'AbortError' );
+	if ( response.type === 'error' ) {
+		const error = new Error( response.error || response.code || 'World request failed' );
+		error.gatewayResponse = true;
+		throw error;
+	}
+	invariant( response.requestId === message.requestId, 'World response does not match its request' );
+	return response;
+}
+
+async function writeJSONStream( writable, value, signal ) {
+	if ( signal?.aborted ) throw signal.reason || new DOMException( 'Aborted', 'AbortError' );
+	const writer = writable.getWriter();
+	const abort = () => { writer.abort( signal.reason ).catch( () => {} ); };
 	signal?.addEventListener( 'abort', abort, { once: true } );
 	try {
-		await writeJSONStream( stream.writable, message );
-		const response = await withTimeout( readJSONStream( stream.readable ), 30000, 'World request timed out' );
-		if ( response.type === 'error' ) {
-			const error = new Error( response.error || response.code || 'World request failed' );
-			error.gatewayResponse = true;
-			throw error;
-		}
-		invariant( response.requestId === message.requestId, 'World response does not match its request' );
-		return response;
-	} finally { signal?.removeEventListener( 'abort', abort ); }
+		await writer.write( new TextEncoder().encode( JSON.stringify( value ) ) );
+		if ( signal?.aborted ) throw signal.reason || new DOMException( 'Aborted', 'AbortError' );
+		await writer.close();
+	} finally {
+		signal?.removeEventListener( 'abort', abort );
+		writer.releaseLock();
+	}
 }
 
-async function writeJSONStream( writable, value ) {
-	const writer = writable.getWriter();
-	try { await writer.write( new TextEncoder().encode( JSON.stringify( value ) ) ); }
-	finally { await writer.close(); writer.releaseLock(); }
-}
-
-async function readJSONStream( readable ) {
+async function readJSONStream( readable, signal ) {
+	if ( signal?.aborted ) throw signal.reason || new DOMException( 'Aborted', 'AbortError' );
 	const reader = readable.getReader();
 	const chunks = [];
 	let length = 0;
+	const abort = () => { reader.cancel( signal.reason ).catch( () => {} ); };
+	signal?.addEventListener( 'abort', abort, { once: true } );
 	try {
+		if ( signal?.aborted ) abort();
 		for (;;) {
 			const { value, done } = await reader.read();
 			if ( done ) break;
@@ -471,16 +577,37 @@ async function readJSONStream( readable ) {
 			invariant( length <= 384 * 1024, 'World gateway response exceeds the size limit' );
 			chunks.push( value );
 		}
-	} finally { reader.releaseLock(); }
+		if ( signal?.aborted ) throw signal.reason || new DOMException( 'Aborted', 'AbortError' );
+	} finally {
+		signal?.removeEventListener( 'abort', abort );
+		reader.releaseLock();
+	}
 	const bytes = new Uint8Array( length );
 	let offset = 0;
 	for ( const chunk of chunks ) { bytes.set( chunk, offset ); offset += chunk.byteLength; }
 	return JSON.parse( new TextDecoder().decode( bytes ) );
 }
 
-function withTimeout( promise, milliseconds, message ) {
-	let timeout;
-	return Promise.race( [ promise, new Promise( ( _, reject ) => { timeout = setTimeout( () => reject( new Error( message ) ), milliseconds ); } ) ] ).finally( () => clearTimeout( timeout ) );
+function withTimeout( promise, milliseconds, message, signal ) {
+	if ( signal?.aborted ) return Promise.reject( signal.reason || new DOMException( 'Aborted', 'AbortError' ) );
+	return new Promise( ( resolve, reject ) => {
+		const cleanup = () => { clearTimeout( timeout ); signal?.removeEventListener( 'abort', abort ); };
+		const timeout = setTimeout( () => { cleanup(); reject( new Error( message ) ); }, milliseconds );
+		const abort = () => { cleanup(); reject( signal.reason || new DOMException( 'Aborted', 'AbortError' ) ); };
+		signal?.addEventListener( 'abort', abort, { once: true } );
+		Promise.resolve( promise ).then( ( value ) => { cleanup(); resolve( value ); }, ( error ) => { cleanup(); reject( error ); } );
+	} );
+}
+
+function waitWithAbort( promise, signal ) {
+	if ( ! signal ) return promise;
+	if ( signal.aborted ) return Promise.reject( signal.reason || new DOMException( 'Aborted', 'AbortError' ) );
+	return new Promise( ( resolve, reject ) => {
+		const cleanup = () => signal.removeEventListener( 'abort', abort );
+		const abort = () => { cleanup(); reject( signal.reason || new DOMException( 'Aborted', 'AbortError' ) ); };
+		signal.addEventListener( 'abort', abort, { once: true } );
+		Promise.resolve( promise ).then( ( value ) => { cleanup(); resolve( value ); }, ( error ) => { cleanup(); reject( error ); } );
+	} );
 }
 
 async function verifySignedDocument( document, protocol ) {

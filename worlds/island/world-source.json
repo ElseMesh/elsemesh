@@ -10,7 +10,8 @@
     "physicsProfile": "tidewater-default",
     "requiredFeatures": [
       "tidewater.static-glb/1",
-      "tidewater.static-glb-quaternion/1"
+      "tidewater.static-glb-quaternion/1",
+      "tidewater.procedural-island-vegetation/1"
     ],
     "maxPackageBytes": 67108864
   },
@@ -11353,6 +11354,14 @@
         "shape": "none",
         "enabled": false
       }
+    }
+  ],
+  "components": [
+    {
+      "id": "tw-component:island-vegetation",
+      "type": "tidewater.procedural-island-vegetation/1",
+      "seed": 7,
+      "priority": "visible"
     }
   ],
   "portals": [],

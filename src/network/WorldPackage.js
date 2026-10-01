@@ -28,8 +28,13 @@ export async function loadWorldPackage( connector, { signal, assets: preloadedAs
 	const root = new Group();
 	root.name = `world:${connector.worldId}`;
 	root.userData.worldPackage = { parsed: new Map(), loadedObjects: new Set(), connector };
-	await appendWorldPackageAssets( connector, root, assets, { signal, objectIDs } );
-	return root;
+	try {
+		await appendWorldPackageAssets( connector, root, assets, { signal, objectIDs } );
+		return root;
+	} catch ( error ) {
+		disposeWorldPackage( root );
+		throw error;
+	}
 
 }
 
@@ -157,6 +162,30 @@ export function unregisterWorldPackageCollisions( root, colliders ) {
 		else colliders.removeBox( collider );
 	}
 	active.clear();
+}
+
+export function disposeWorldPackage( root ) {
+	const state = root?.userData?.worldPackage;
+	if ( ! root || state?.disposed ) return;
+	if ( state ) state.disposed = true;
+	const geometries = new Set(), materials = new Set(), textures = new Set();
+	const roots = [ root, ...( state?.parsed?.values?.() || [] ) ];
+	for ( const packageRoot of roots ) packageRoot.traverse( ( object ) => {
+		if ( object.geometry?.dispose ) geometries.add( object.geometry );
+		for ( const material of Array.isArray( object.material ) ? object.material : [ object.material ] ) {
+			if ( ! material ) continue;
+			materials.add( material );
+			for ( const binding of Object.values( material.bindings || {} ) ) {
+				const texture = binding?.texture || binding;
+				if ( texture?.isTexture && texture.destroy ) textures.add( texture );
+			}
+		}
+	} );
+	for ( const geometry of geometries ) geometry.dispose();
+	for ( const material of materials ) material.dispose?.();
+	for ( const texture of textures ) texture.destroy();
+	state?.parsed?.clear();
+	state?.loadedObjects?.clear();
 }
 
 async function buildGLTF( gltf ) {

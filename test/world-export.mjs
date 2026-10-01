@@ -5,7 +5,7 @@ import { mkdtemp, readFile, readdir, rm } from 'node:fs/promises';
 import path from 'node:path';
 import { parseGLB } from '../src/engine/loaders/GLTF.js';
 import { getDetailImage } from '../src/world/terrain/DetailTextures.js';
-import { loadWorldPackage, registerWorldPackageCollisions, unregisterWorldPackageCollisions } from '../src/network/WorldPackage.js';
+import { disposeWorldPackage, loadWorldPackage, registerWorldPackageCollisions, unregisterWorldPackageCollisions } from '../src/network/WorldPackage.js';
 import { validateWorldSource } from '../src/network/WorldSource.js';
 import { Colliders } from '../src/world/Colliders.js';
 
@@ -55,7 +55,8 @@ try {
 	assert.equal( primitive.mode, 4, 'terrain export must use triangle lists' );
 	assert.ok( primitive.attributes.COLOR_0, 'terrain export must carry its deterministic vertex colors' );
 	assert.equal( primitive.indices.length, 512 * 512 * 6, 'terrain export must cover the full configured grid' );
-	assert.deepEqual( source.rules.requiredFeatures, [ 'tidewater.static-glb/1', 'tidewater.static-glb-quaternion/1' ], 'quaternion transforms declare their required runtime capability' );
+	assert.deepEqual( source.rules.requiredFeatures, [ 'tidewater.static-glb/1', 'tidewater.static-glb-quaternion/1', 'tidewater.procedural-island-vegetation/1' ], 'GLB transforms and procedural vegetation declare their runtime capabilities' );
+	assert.deepEqual( source.components, [ { id: 'tw-component:island-vegetation', type: 'tidewater.procedural-island-vegetation/1', seed: 7, priority: 'visible' } ], 'portable island uses the versioned deterministic vegetation renderer component' );
 	assert.ok( source.rules.maxPackageBytes >= [ ...firstAssets.values() ].reduce( ( total, bytes ) => total + bytes.length, 0 ), 'signed package byte budget covers every unique asset' );
 	assert.deepEqual( [ source.objects[ 0 ].collision.columns, source.objects[ 0 ].collision.rows ], [ 513, 513 ], 'terrain source declares the grid used for collision extraction' );
 	const villageObject = source.objects.find( ( object ) => object.id === 'tw-object:island-village' );
@@ -125,6 +126,14 @@ try {
 	assert.ok( Math.abs( colliders.groundHeightAt( px, pz, Infinity ) - py ) < 1e-4, 'heightfield collision matches exported GLB terrain vertex height' );
 	unregisterWorldPackageCollisions( root, colliders );
 	assert.equal( colliders.heightfields.length, 0, 'world handoff removes the hosted terrain heightfield' );
+	const packageState = root.userData.worldPackage;
+	disposeWorldPackage( root );
+	assert.equal( packageState.disposed, true, 'canceled or discarded world packages release their parsed render resources' );
+	assert.equal( packageState.parsed.size, 0, 'package disposal clears parsed GLB roots' );
+	disposeWorldPackage( root );
+	disposeWorldPackage( villageRoot );
+	disposeWorldPackage( filteredRoot );
+	disposeWorldPackage( rotatedRoot );
 	console.log( 'ok deterministic procedural island terrain and village GLB package' );
 } finally {
 	await rm( output, { recursive: true, force: true } );
