@@ -1,0 +1,96 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rebroad.github.io/tidewater/schemas/world-proposal.schema.json",
+  "title": "ElseMesh World Source Proposal",
+  "description": "Unsigned, reviewable operations against one exact world-source snapshot. This document cannot authorize or publish a world.",
+  "type": "object",
+  "required": ["protocol", "sourceHash", "operations"],
+  "properties": {
+    "protocol": { "const": "elsemesh.world-proposal/1" },
+    "sourceHash": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "operations": {
+      "type": "array",
+      "maxItems": 1000,
+      "items": {
+        "oneOf": [
+          {
+            "type": "object", "required": ["op", "object"],
+            "properties": { "op": { "const": "object.add" }, "object": { "$ref": "world-source.schema.json#/$defs/object" } },
+            "additionalProperties": false
+          },
+          {
+            "type": "object", "required": ["op", "id", "fields"],
+            "properties": { "op": { "const": "object.update" }, "id": { "type": "string", "pattern": "^tw-object:[\\w.-]{1,128}$" }, "fields": { "$ref": "#/$defs/objectFields" } },
+            "additionalProperties": false
+          },
+          {
+            "type": "object", "required": ["op", "id"],
+            "properties": { "op": { "const": "object.remove" }, "id": { "type": "string", "pattern": "^tw-object:[\\w.-]{1,128}$" } },
+            "additionalProperties": false
+          },
+          {
+            "type": "object", "required": ["op", "portal"],
+            "properties": { "op": { "const": "portal.add" }, "portal": { "$ref": "world-source.schema.json#/$defs/portal" } },
+            "additionalProperties": false
+          },
+          {
+            "type": "object", "required": ["op", "id", "fields"],
+            "properties": { "op": { "const": "portal.update" }, "id": { "type": "string", "pattern": "^tw-portal:[\\w.-]{1,128}$" }, "fields": { "$ref": "#/$defs/portalFields" } },
+            "additionalProperties": false
+          },
+          {
+            "type": "object", "required": ["op", "id"],
+            "properties": { "op": { "const": "portal.remove" }, "id": { "type": "string", "pattern": "^tw-portal:[\\w.-]{1,128}$" } },
+            "additionalProperties": false
+          },
+          {
+            "type": "object", "required": ["op", "fields"],
+            "properties": { "op": { "const": "world.update" }, "fields": { "$ref": "#/$defs/worldFields" } },
+            "additionalProperties": false
+          }
+        ]
+      }
+    }
+  },
+  "$defs": {
+    "objectFields": {
+      "type": "object", "minProperties": 1,
+      "properties": {
+        "label": { "type": "string", "maxLength": 160 },
+        "assetId": { "type": ["string", "null"], "pattern": "^sha256:[0-9a-f]{64}$" },
+        "priority": { "enum": ["portal-preview", "visible", "nearby", "background"] },
+        "streamingBounds": { "$ref": "world-source.schema.json#/$defs/object/properties/streamingBounds" },
+        "transform": { "$ref": "world-source.schema.json#/$defs/transform" },
+        "scale": { "$ref": "world-source.schema.json#/$defs/vector3" },
+        "collision": { "$ref": "world-source.schema.json#/$defs/object/properties/collision" }
+      },
+      "additionalProperties": false
+    },
+    "portalFields": {
+      "type": "object", "minProperties": 1,
+      "properties": {
+        "destinationWorldId": { "type": "string", "pattern": "^tw-world:[\\w.-]{1,128}$" },
+        "destinationPeerId": { "type": "string", "minLength": 20, "maxLength": 128 },
+        "destinationGateway": { "type": "string", "format": "uri" },
+        "entry": { "$ref": "world-source.schema.json#/$defs/transform" },
+        "exit": { "$ref": "world-source.schema.json#/$defs/transform" },
+        "openView": { "type": "boolean" },
+        "enabled": { "type": "boolean" },
+        "visual": { "type": "object" }
+      },
+      "additionalProperties": false
+    },
+    "worldFields": {
+      "type": "object", "minProperties": 1,
+      "properties": {
+        "title": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "styleGuide": { "type": "string", "maxLength": 10000 },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "rules": { "$ref": "world-source.schema.json#/properties/rules" },
+        "hosts": { "type": "array", "maxItems": 256, "items": { "$ref": "world-source.schema.json#/$defs/hostGrant" } }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

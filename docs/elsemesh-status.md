@@ -16,6 +16,7 @@ This document tracks the agreed ElseMesh direction against the current code. It 
 | Replaceable static world package | `src/network/WorldPackage.js`, `tools/world-source-to-manifest.mjs` | Renderer currently supports static GLB triangle meshes with embedded base-color textures and authored collision. |
 | Reproducible island source package | `worlds/island/`, `tools/export-island.mjs` | Package currently exports the terrain heightfield and scanned driftwood/shell props; it does not yet package the village, vegetation, water, boat, wildlife, or other dynamic systems. The complete procedural island remains in the game source. |
 | Blender interchange and source validation | `tools/blender/world_source.py`, `docs/world-authoring.md`, `docs/schemas/world-source.schema.json` | Blender source is unsigned; only the owner node signs a runtime manifest. |
+| Hash-bound unsigned source proposals | `tools/apply-world-proposal.mjs`, `docs/schemas/world-proposal.schema.json` | Applies allowlisted ID-based edits to a copied source snapshot and validates the complete result; there is no model service, Blender worker, preview/review UI, or publication integration yet. |
 
 ## Remaining implementation gates
 
@@ -47,7 +48,7 @@ This document tracks the agreed ElseMesh direction against the current code. It 
 
 ### 5. Build the separate AI editing service
 
-- Keep the service separate from `worldd`; it produces reviewable unsigned source patches and candidate assets, never owner signatures.
+- Connect an AI assistant to the hash-bound proposal format and Blender tools; keep the service separate from `worldd` and never give it owner signing keys.
 - Provide Blender-aware tools and a disposable, resource-limited worker with access only to an explicit task bundle.
 - Show owners a structured source diff, asset hashes, validation results, and rendered preview before acceptance.
 - Build an opt-in corpus from accepted tasks so AI assistance can improve from Blender-specific examples without training on private or rejected world data.

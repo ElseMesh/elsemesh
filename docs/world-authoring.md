@@ -43,6 +43,17 @@ Owner-authorized serving permissions live in the source document's optional `hos
 
 To produce a runtime document, import each GLB into the node's content store with `worldd --import-asset`, set the resulting ID on the matching source object, then run `tools/world-source-to-manifest.mjs`. The converter carries the versioned source document's `updatedAt` and owner host grants into the runtime manifest so the same source and assets produce byte-stable unsigned manifest content. Worlds are private by default; pass `--discoverable true` only when publishing to public discovery. Blender export preserves `updatedAt` when metadata is unchanged; when it changes metadata, set `SOURCE_DATE_EPOCH` for reproducible timestamps. Finally, use `worldd --sign-manifest` with the world's persistent owner identity. Runtime signing keys stay on the owner node; the AI service must only return unsigned proposals.
 
+### Apply a reviewable proposal
+
+`tools/apply-world-proposal.mjs` applies a bounded unsigned patch to one exact source snapshot. The proposal format is defined in [`schemas/world-proposal.schema.json`](schemas/world-proposal.schema.json). Its `sourceHash` is SHA-256 of the source file bytes, so a proposal for an older edit is rejected instead of silently rebasing. The allowlisted operations add, update, or remove stable-ID objects and portals, or update selected world metadata. Protected IDs and arbitrary script execution are not accepted.
+
+```sh
+node tools/apply-world-proposal.mjs --source ./island.world-source.json \
+  --proposal ./proposal.json --out ./candidate.world-source.json
+```
+
+The tool applies operations to a copy, runs the same source validator used by Blender/client code, and creates a new output file only if the complete result is valid. Review the resulting diff and candidate assets before converting or signing. The proposal tool never imports Blender scripts, signs a manifest, or publishes content.
+
 ## AI editor service
 
 The service is a planned, separate authoring product, not part of the world daemon's authority path. Its first implementation should be a tool-using assistant rather than model fine-tuning: provide a bounded Blender workspace and explicit operations through `bpy`, alongside schema-aware JSON edits. This yields inspectable actions and avoids training a model to emit opaque scene files.
