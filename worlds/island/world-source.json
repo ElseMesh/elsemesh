@@ -53,6 +53,38 @@
       }
     },
     {
+      "id": "tw-object:island-village",
+      "kind": "asset-instance",
+      "label": "Procedural village, pier and harbor",
+      "assetId": "sha256:4db71596026b9f03b6108766879b2220bb5c33a1e37412e18816e8c58af24301",
+      "priority": "visible",
+      "streamingBounds": {
+        "center": [
+          49.266165018081665,
+          5.180210828781128,
+          -59.4708137512207
+        ],
+        "radius": 106.39631016446681
+      },
+      "transform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "yaw": 0
+      },
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "collision": {
+        "shape": "none",
+        "enabled": false
+      }
+    },
+    {
       "id": "tw-object:scanned-debris-0",
       "kind": "asset-instance",
       "label": "dead quiver trunk",

@@ -40,7 +40,12 @@ const terrain = new TerrainData( 7 );
 const glb = exportTerrain( terrain, 512 );
 const assetId = `sha256:${createHash( 'sha256' ).update( glb ).digest( 'hex' )}`;
 const staticAssets = new Map( [ [ assetId, glb ] ] );
-const debris = buildScannedDebrisInstances( terrain );
+const generated = buildIslandProceduralContent( terrain );
+const villageGLB = exportVillageGLB( generated.villageBatches );
+const villageAssetId = `sha256:${createHash( 'sha256' ).update( villageGLB ).digest( 'hex' )}`;
+const villageBounds = boundsForGLB( villageGLB );
+staticAssets.set( villageAssetId, villageGLB );
+const debris = generated.debris;
 const debrisAssetIDs = new Map();
 const debrisAssetBounds = new Map();
 for ( const assetName of SCAN_ASSETS ) {
@@ -83,6 +88,16 @@ const source = {
 		transform: { position: [ 0, 0, 0 ], yaw: 0 },
 		scale: [ 1, 1, 1 ],
 		collision: { shape: 'heightfield', enabled: true, columns: 513, rows: 513, walkable: true, solid: true },
+	}, {
+		id: 'tw-object:island-village',
+		kind: 'asset-instance',
+		label: 'Procedural village, pier and harbor',
+		assetId: villageAssetId,
+		priority: 'visible',
+		streamingBounds: villageBounds,
+		transform: { position: [ 0, 0, 0 ], yaw: 0 },
+		scale: [ 1, 1, 1 ],
+		collision: { shape: 'none', enabled: false },
 	}, ...debris.map( ( instance, index ) => {
 		const assetName = SCAN_ASSETS[ instance.asset ];
 		const rotation = new Quaternion().setFromEuler( new Euler( instance.roll || 0, instance.yaw, instance.pitch || 0, 'YXZ' ) ).toArray();
@@ -103,19 +118,88 @@ const source = {
 };
 await writeFile( sourcePath, `${JSON.stringify( source, null, 2 )}\n` );
 console.log( `Wrote ${sourcePath}` );
-console.log( `Wrote ${staticAssets.size} content-addressed assets (${debris.length} scanned debris instances)` );
+console.log( `Wrote ${staticAssets.size} content-addressed assets (${generated.villageTriangles} village triangles, ${debris.length} scanned debris instances)` );
 
-function buildScannedDebrisInstances( terrainData ) {
+function buildIslandProceduralContent( terrainData ) {
 	const scene = { add() {}, remove() {} };
-	// Village's final assembly combines geometry and uploads GPU-backed fish props. The package
-	// needs the same CPU-authored building pads and colliders, which are created before assembly.
-	class PackageVillage extends Village { _assemble() { this.meshes = []; } }
+	// Keep the CPU-built batches for export and skip GPU-backed fish, textures, and animated details.
+	class PackageVillage extends Village {
+		_assemble() { this.meshes = []; }
+		_buildSign() {}
+		_buildLanterns() {}
+	}
 	const colliders = new Colliders();
 	const village = new PackageVillage( { scene, terrain: terrainData, colliders } );
 	const rocks = new Rocks( { scene, terrain: terrainData, village, colliders, castShadow: false, sunShadow: false } );
 	const B = new Builder();
 	const placer = new DebrisPlacer( { B, inst: new InstancedProps( B ), terrain: terrainData, village, rocks, colliders } ).run();
-	return placer.scanned;
+	const batches = Object.entries( village.B.batches )
+		.filter( ( [ , batch ] ) => batch.vcount > 0 )
+		.map( ( [ name, batch ] ) => ( { name, batch } ) );
+	for ( const [ name, batch ] of Object.entries( village.signB?.batches || {} ) ) if ( batch.vcount > 0 ) batches.push( { name: `sign-${name}`, batch } );
+	return {
+		villageBatches: batches,
+		villageTriangles: batches.reduce( ( total, { batch } ) => total + batch.triangles, 0 ),
+		debris: placer.scanned,
+	};
+}
+
+function exportVillageGLB( batches ) {
+	const chunks = [], bufferViews = [], accessors = [];
+	let byteLength = 0;
+	const append = ( typed, target ) => {
+		const bytes = Buffer.from( typed.buffer, typed.byteOffset, typed.byteLength );
+		const padding = ( 4 - byteLength % 4 ) % 4;
+		if ( padding ) { chunks.push( Buffer.alloc( padding ) ); byteLength += padding; }
+		const view = bufferViews.length;
+		bufferViews.push( { buffer: 0, byteOffset: byteLength, byteLength: bytes.length, target } );
+		chunks.push( bytes );
+		byteLength += bytes.length;
+		return view;
+	};
+	const accessor = ( typed, target, type, componentType = 5126 ) => {
+		const bufferView = append( typed, target );
+		const size = type === 'VEC3' ? 3 : type === 'VEC2' ? 2 : 1;
+		const index = accessors.length;
+		accessors.push( { bufferView, componentType, count: typed.length / size, type } );
+		return index;
+	};
+	const primitives = [], materials = [];
+	for ( const { name, batch } of batches ) {
+		const material = materials.length;
+		materials.push( {
+			name: `Island village ${name}`,
+			pbrMetallicRoughness: { baseColorFactor: [ 1, 1, 1, 1 ], metallicFactor: 0, roughnessFactor: name.includes( 'roofMetal' ) ? 0.72 : 0.9 },
+			doubleSided: true,
+		} );
+		primitives.push( {
+			attributes: {
+				POSITION: accessor( Float32Array.from( batch.pos ), 34962, 'VEC3' ),
+				NORMAL: accessor( Float32Array.from( batch.nrm ), 34962, 'VEC3' ),
+				TEXCOORD_0: accessor( Float32Array.from( batch.uv ), 34962, 'VEC2' ),
+				COLOR_0: accessor( Float32Array.from( batch.tint ), 34962, 'VEC3' ),
+			},
+			indices: accessor( Uint32Array.from( batch.idx ), 34963, 'SCALAR', 5125 ),
+			material,
+			mode: 4,
+		} );
+	}
+	const binary = Buffer.concat( chunks );
+	const gltf = {
+		asset: { version: '2.0', generator: 'ElseMesh island village exporter/1' },
+		scene: 0, scenes: [ { nodes: [ 0 ] } ], nodes: [ { name: 'Procedural village', mesh: 0 } ],
+		meshes: [ { name: 'Procedural village', primitives } ], materials, accessors, bufferViews,
+		buffers: [ { byteLength: binary.length } ],
+	};
+	const json = Buffer.from( JSON.stringify( gltf ) );
+	const jsonPadded = Buffer.concat( [ json, Buffer.alloc( ( 4 - json.length % 4 ) % 4, 0x20 ) ] );
+	const binPadded = Buffer.concat( [ binary, Buffer.alloc( ( 4 - binary.length % 4 ) % 4 ) ] );
+	const totalLength = 12 + 8 + jsonPadded.length + 8 + binPadded.length;
+	const header = Buffer.alloc( 12 );
+	header.writeUInt32LE( 0x46546c67, 0 ); header.writeUInt32LE( 2, 4 ); header.writeUInt32LE( totalLength, 8 );
+	const jsonHeader = Buffer.alloc( 8 ); jsonHeader.writeUInt32LE( jsonPadded.length, 0 ); jsonHeader.writeUInt32LE( 0x4e4f534a, 4 );
+	const binHeader = Buffer.alloc( 8 ); binHeader.writeUInt32LE( binPadded.length, 0 ); binHeader.writeUInt32LE( 0x004e4942, 4 );
+	return Buffer.concat( [ header, jsonHeader, jsonPadded, binHeader, binPadded ] );
 }
 
 function exportScannedLOD( sourceBytes, albedoBytes, name ) {
@@ -184,16 +268,25 @@ function exportScannedLOD( sourceBytes, albedoBytes, name ) {
 
 function boundsForGLB( bytes ) {
 	const parsed = parseGLB( bytes.buffer.slice( bytes.byteOffset, bytes.byteOffset + bytes.byteLength ) );
-	const positions = parsed.meshes[ 0 ]?.[ 0 ]?.attributes?.POSITION?.array;
-	if ( ! positions?.length ) throw new Error( 'Exported scanned asset has no positions for streaming bounds' );
 	const min = [ Infinity, Infinity, Infinity ], max = [ - Infinity, - Infinity, - Infinity ];
-	for ( let index = 0; index < positions.length; index += 3 ) for ( let axis = 0; axis < 3; axis ++ ) {
-		min[ axis ] = Math.min( min[ axis ], positions[ index + axis ] );
-		max[ axis ] = Math.max( max[ axis ], positions[ index + axis ] );
+	let found = false;
+	for ( const primitive of parsed.meshes.flat() ) {
+		const positions = primitive.attributes?.POSITION?.array;
+		if ( ! positions?.length ) continue;
+		found = true;
+		for ( let index = 0; index < positions.length; index += 3 ) for ( let axis = 0; axis < 3; axis ++ ) {
+			min[ axis ] = Math.min( min[ axis ], positions[ index + axis ] );
+			max[ axis ] = Math.max( max[ axis ], positions[ index + axis ] );
+		}
 	}
+	if ( ! found ) throw new Error( 'Exported asset has no positions for streaming bounds' );
 	const center = min.map( ( value, axis ) => ( value + max[ axis ] ) * 0.5 );
 	let radiusSq = 0;
-	for ( let index = 0; index < positions.length; index += 3 ) radiusSq = Math.max( radiusSq, ( positions[ index ] - center[ 0 ] ) ** 2 + ( positions[ index + 1 ] - center[ 1 ] ) ** 2 + ( positions[ index + 2 ] - center[ 2 ] ) ** 2 );
+	for ( const primitive of parsed.meshes.flat() ) {
+		const positions = primitive.attributes?.POSITION?.array;
+		if ( ! positions ) continue;
+		for ( let index = 0; index < positions.length; index += 3 ) radiusSq = Math.max( radiusSq, ( positions[ index ] - center[ 0 ] ) ** 2 + ( positions[ index + 1 ] - center[ 1 ] ) ** 2 + ( positions[ index + 2 ] - center[ 2 ] ) ** 2 );
+	}
 	return { center, radius: Math.max( 0.01, Math.sqrt( radiusSq ) ) };
 }
 

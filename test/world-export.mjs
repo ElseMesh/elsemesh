@@ -12,6 +12,19 @@ const temporaryRoot = process.env.PREFIX ? path.join( process.env.PREFIX, 'tmp' 
 const output = await mkdtemp( path.join( temporaryRoot, 'elsemesh-island-export-' ) );
 
 try {
+	const checkedInDir = path.resolve( 'worlds/island' );
+	const checkedInSource = validateWorldSource( JSON.parse( await readFile( path.join( checkedInDir, 'world-source.json' ), 'utf8' ) ) );
+	const checkedInIDs = new Set( checkedInSource.objects.map( ( object ) => object.assetId ) );
+	const checkedInFiles = ( await readdir( path.join( checkedInDir, 'assets' ) ) ).sort();
+	assert.deepEqual( checkedInFiles, [ ...checkedInIDs ].map( ( id ) => id.slice( 'sha256:'.length ) ).sort(), 'checked-in island package stores exactly its referenced assets' );
+	let checkedInBytes = 0;
+	for ( const id of checkedInIDs ) {
+		const bytes = await readFile( path.join( checkedInDir, 'assets', id.slice( 'sha256:'.length ) ) );
+		checkedInBytes += bytes.length;
+		assert.equal( `sha256:${createHash( 'sha256' ).update( bytes ).digest( 'hex' )}`, id, `checked-in package asset bytes must match ${id}` );
+	}
+	assert.ok( checkedInBytes <= checkedInSource.rules.maxPackageBytes, 'checked-in assets fit the world package budget' );
+	assert.ok( checkedInSource.objects.some( ( object ) => object.id === 'tw-object:island-village' ), 'checked-in island source contains the static village GLB instance' );
 	const sourcePath = path.join( output, 'world-source.json' );
 	execFileSync( process.execPath, [ 'tools/export-island.mjs', '--out', output ], { stdio: 'inherit' } );
 	const sourceFirst = await readFile( sourcePath );
@@ -41,7 +54,15 @@ try {
 	assert.deepEqual( source.rules.requiredFeatures, [ 'tidewater.static-glb/1', 'tidewater.static-glb-quaternion/1' ], 'quaternion transforms declare their required runtime capability' );
 	assert.ok( source.rules.maxPackageBytes >= [ ...firstAssets.values() ].reduce( ( total, bytes ) => total + bytes.length, 0 ), 'signed package byte budget covers every unique asset' );
 	assert.deepEqual( [ source.objects[ 0 ].collision.columns, source.objects[ 0 ].collision.rows ], [ 513, 513 ], 'terrain source declares the grid used for collision extraction' );
-	const scannedObjects = source.objects.slice( 1 );
+	const villageObject = source.objects.find( ( object ) => object.id === 'tw-object:island-village' );
+	assert.ok( villageObject, 'export includes the procedural village and pier as portable content' );
+	const villageBytes = firstAssets.get( villageObject.assetId );
+	assert.ok( villageBytes?.length > 0, 'village object references its content-addressed GLB' );
+	const villageGLB = parseGLB( villageBytes.buffer.slice( villageBytes.byteOffset, villageBytes.byteOffset + villageBytes.byteLength ) );
+	assert.ok( villageGLB.meshes[ 0 ].length >= 8, 'village export preserves its separate authored material batches' );
+	assert.ok( villageGLB.meshes[ 0 ].reduce( ( count, primitive ) => count + primitive.indices.length, 0 ) > 300000, 'village export includes the complete deterministic structural geometry' );
+	assert.ok( villageGLB.meshes[ 0 ].every( ( primitive ) => primitive.attributes.COLOR_0 ), 'village export carries authored per-vertex tint' );
+	const scannedObjects = source.objects.filter( ( object ) => object.id.startsWith( 'tw-object:scanned-debris-' ) );
 	assert.equal( scannedObjects.length, 139, 'export contains the seeded scanned debris placements from the runtime placer' );
 	assert.ok( source.objects.every( ( object ) => object.streamingBounds && Number.isFinite( object.streamingBounds.radius ) && object.streamingBounds.radius > 0 ), 'exported island objects include local streaming bounds' );
 	assert.ok( scannedObjects.every( ( object ) => Array.isArray( object.transform.rotation ) && Math.abs( Math.hypot( ...object.transform.rotation ) - 1 ) < 1e-4 && object.collision.enabled === false ), 'scanned objects carry normalized collision-free rotations' );
@@ -66,6 +87,12 @@ try {
 		}
 	} );
 	assert.equal( runtimeMeshes, 1, 'runtime package loader must instantiate the exported terrain mesh' );
+	const villagePayload = villageBytes.buffer.slice( villageBytes.byteOffset, villageBytes.byteOffset + villageBytes.byteLength );
+	const villageConnector = { worldId: source.worldId, manifest: { assets: [ { id: villageObject.assetId, priority: 'visible' } ], objects: [ villageObject ] } };
+	const villageRoot = await loadWorldPackage( villageConnector, { assets: new Map( [ [ villageObject.assetId, villagePayload ] ] ) } );
+	let villageRuntimeMeshes = 0;
+	villageRoot.traverse( ( object ) => { if ( object.isMesh ) { villageRuntimeMeshes ++; assert.equal( object.material.vertexColors, true, 'village GLB keeps authored tint in hosted rendering' ); } } );
+	assert.equal( villageRuntimeMeshes, villageGLB.meshes[ 0 ].length, 'hosted package loader creates each village material batch' );
 	const deferredObject = { ...source.objects[ 0 ], id: 'tw-object:deferred-copy', label: 'Deferred copy', transform: { position: [ 20, 0, 20 ], yaw: 0 }, collision: { shape: 'none', enabled: false } };
 	const filteredConnector = { worldId: source.worldId, manifest: { assets: [ { id: source.objects[ 0 ].assetId, priority: 'visible' } ], objects: [ source.objects[ 0 ], deferredObject ] } };
 	const filteredRoot = await loadWorldPackage( filteredConnector, { assets: new Map( [ [ source.objects[ 0 ].assetId, payload ] ] ), objectIDs: new Set( [ source.objects[ 0 ].id ] ) } );
@@ -86,7 +113,7 @@ try {
 	assert.ok( Math.abs( colliders.groundHeightAt( px, pz, Infinity ) - py ) < 1e-4, 'heightfield collision matches exported GLB terrain vertex height' );
 	unregisterWorldPackageCollisions( root, colliders );
 	assert.equal( colliders.heightfields.length, 0, 'world handoff removes the hosted terrain heightfield' );
-	console.log( 'ok deterministic procedural island terrain GLB package' );
+	console.log( 'ok deterministic procedural island terrain and village GLB package' );
 } finally {
 	await rm( output, { recursive: true, force: true } );
 }

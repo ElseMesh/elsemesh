@@ -14,7 +14,7 @@ This document tracks the agreed ElseMesh direction against the current code. It 
 | Owner-scoped immutable neighbor caching | `server/worldd/cache.go`, `server/worldd/cache_integration_test.go`, `server/worldd/files.go` | Cache grants do not authorize edits or simulation writes. Signed package assets can be preloaded as a complete, hash-verified set; failover-only grants cannot import or serve those assets. |
 | Bounded delegated authority lease | `server/worldd/world.go`, `server/worldd/main.go` | Concurrent simulation, split-brain recovery, and shared write conflict resolution are not implemented. |
 | Replaceable static world package | `src/network/WorldPackage.js`, `tools/world-source-to-manifest.mjs` | Renderer currently supports static GLB triangle meshes with embedded base-color textures and authored collision. |
-| Reproducible island source package | `worlds/island/`, `tools/export-island.mjs` | Package currently exports the terrain heightfield and scanned driftwood/shell props; it does not yet package the village, vegetation, water, boat, wildlife, or other dynamic systems. The complete procedural island remains in the game source. |
+| Reproducible island source package | `worlds/island/`, `tools/export-island.mjs` | Package exports terrain, vertex-tinted static village/pier geometry, and scanned driftwood/shell props; village shader textures and animated details, vegetation, water, boat, wildlife, and dynamic systems remain un-packaged. The complete procedural island remains in the game source. |
 | Blender interchange and source validation | `tools/blender/world_source.py`, `docs/world-authoring.md`, `docs/schemas/world-source.schema.json` | Blender source is unsigned; only the owner node signs a runtime manifest. |
 | Hash-bound unsigned source proposals | `tools/apply-world-proposal.mjs`, `docs/schemas/world-proposal.schema.json` | Applies allowlisted ID-based edits to a copied source snapshot and validates the complete result; there is no model service, Blender worker, preview/review UI, or publication integration yet. |
 | Typed Blender scene action prototype | `tools/blender/world_actions.py`, `test/blender-world-actions.py` | Hash-bound add/update/remove plans now target imported stable-ID source markers and verify content-addressed GLB imports. Python plan validation is tested; Blender scene execution remains unverified because Blender is unavailable in this environment. |
@@ -23,7 +23,7 @@ This document tracks the agreed ElseMesh direction against the current code. It 
 
 ### 1. Complete the island as a portable example world
 
-- Export and content-address the remaining static village, pier, vegetation, reef, and boat content without replacing or degrading the built-in procedural game path.
+- Preserve the village's material fidelity in the portable GLB, export vegetation/reef content, and represent the boat and other interactive systems as versioned data-driven components without replacing or degrading the built-in procedural game path.
 - Define which parts stay data-driven runtime components, such as water, weather, fish, and wildlife, instead of flattening them into static meshes.
 - Make the exporter deterministic, verify every emitted hash, and keep all source assets and generation code in this repository.
 - Load the resulting package as a hosted ThruHold and compare its authored scene against the built-in island on desktop and Android.
