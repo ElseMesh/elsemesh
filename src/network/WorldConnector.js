@@ -545,15 +545,18 @@ function validWorldGateway( value ) {
 	}
 }
 
-function validateWorldHosts( hosts = [] ) {
+export function validateWorldHosts( hosts = [] ) {
 	invariant( Array.isArray( hosts ) && hosts.length <= 256, 'World manifest has an invalid host grant list' );
 	const peerIDs = new Set();
+	const failoverWindows = [];
 	for ( const grant of hosts ) {
 		invariant( grant && typeof grant.peerId === 'string' && /^[A-Za-z0-9]{20,256}$/.test( grant.peerId ) && ! peerIDs.has( grant.peerId ) && Number.isSafeInteger( grant.epoch ) && grant.epoch > 0 && Number.isSafeInteger( grant.expiresAt ) && grant.expiresAt > 0 && Array.isArray( grant.scopes ) && grant.scopes.length > 0 && grant.scopes.length <= 2 && new Set( grant.scopes ).size === grant.scopes.length && grant.scopes.every( ( scope ) => scope === 'content-cache' || scope === 'failover-authority' ), 'World manifest contains an invalid host grant' );
 		const failover = grant.scopes.includes( 'failover-authority' );
 		invariant( failover ? Number.isSafeInteger( grant.failoverAfter ) && grant.failoverAfter > 0 && Number.isSafeInteger( grant.failoverSeconds ) && grant.failoverSeconds >= 1 && grant.failoverSeconds <= 3600 && grant.failoverAfter <= grant.expiresAt - grant.failoverSeconds : grant.failoverAfter === undefined && grant.failoverSeconds === undefined, 'World manifest contains an invalid host grant failover window' );
+		if ( failover ) failoverWindows.push( [ grant.failoverAfter, grant.failoverAfter + grant.failoverSeconds ] );
 		peerIDs.add( grant.peerId );
 	}
+	for ( let i = 0; i < failoverWindows.length; i ++ ) for ( let j = i + 1; j < failoverWindows.length; j ++ ) invariant( failoverWindows[ i ][ 0 ] >= failoverWindows[ j ][ 1 ] || failoverWindows[ j ][ 0 ] >= failoverWindows[ i ][ 1 ], 'World manifest contains overlapping host grant failover windows' );
 }
 
 function validVector( value ) {

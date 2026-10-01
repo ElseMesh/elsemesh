@@ -103,6 +103,29 @@ func TestWorldManifestRejectsUnsafeAssetAndPortalData(t *testing.T) {
 	}
 }
 
+func TestWorldManifestRejectsOverlappingFailoverAuthorityWindows(t *testing.T) {
+	owner, delegateA, delegateB := testKey(t), testKey(t), testKey(t)
+	ownerID, _ := peer.IDFromPublicKey(owner.GetPublic())
+	delegateAID, _ := peer.IDFromPublicKey(delegateA.GetPublic())
+	delegateBID, _ := peer.IDFromPublicKey(delegateB.GetPublic())
+	now := time.Now()
+	start := now.Add(time.Hour).Unix()
+	manifest := newStarterManifest("Sequential authority", ownerID.String())
+	manifest.WorldID = "tw-world:sequential-authority"
+	manifest.Hosts = []hostingGrant{
+		{PeerID: delegateAID.String(), Scopes: []string{"failover-authority"}, Epoch: 1, FailoverAfter: start, FailoverSeconds: 60, ExpiresAt: start + 120},
+		{PeerID: delegateBID.String(), Scopes: []string{"failover-authority"}, Epoch: 1, FailoverAfter: start + 60, FailoverSeconds: 60, ExpiresAt: start + 180},
+	}
+	if err := validateManifest(manifest, ownerID.String(), now); err != nil {
+		t.Fatalf("adjacent failover windows should be allowed: %v", err)
+	}
+	manifest.Hosts[1].FailoverAfter--
+	manifest.Hosts[1].ExpiresAt--
+	if err := validateManifest(manifest, ownerID.String(), now); err == nil {
+		t.Fatal("overlapping failover authority windows were accepted")
+	}
+}
+
 func TestWorldManifestValidatesRequiredFeatureIdentifiers(t *testing.T) {
 	owner, _, err := crypto.GenerateEd25519Key(rand.Reader)
 	if err != nil {

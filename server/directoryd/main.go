@@ -242,6 +242,9 @@ func validateAnnouncement(record announcement, now time.Time) (provider, string,
 	if err := json.Unmarshal(record.Manifest.Payload, &manifest); err != nil {
 		return provider{}, "", err
 	}
+	if err := validateDirectoryFailoverWindows(manifest.Hosts); err != nil {
+		return provider{}, "", err
+	}
 	if manifest.Protocol != manifestProtocol || !manifest.Discoverable || manifest.WorldID != worldID || manifest.OwnerPeerID != record.Manifest.Signer || manifest.AuthorityEpoch == 0 || manifest.AuthorityEpoch > 9007199254740991 {
 		return provider{}, "", errors.New("manifest does not authorize a discoverable world record")
 	}
@@ -273,6 +276,33 @@ func validateAnnouncement(record announcement, now time.Time) (provider, string,
 		return provider{}, "", errors.New("node has no active content-serving or failover-authority authorization")
 	}
 	return provider{Node: record.Node, Manifest: record.Manifest, WorldID: worldID, ExpiresAt: min(node.ExpiresAt, authorizedUntil)}, node.NodeID, nil
+}
+
+func validateDirectoryFailoverWindows(hosts []hostGrant) error {
+	windows := make([][2]int64, 0, len(hosts))
+	for _, grant := range hosts {
+		failover := false
+		for _, scope := range grant.Scopes {
+			if scope == "failover-authority" {
+				failover = true
+			}
+		}
+		if !failover {
+			continue
+		}
+		if grant.FailoverAfter <= 0 || grant.FailoverAfter > 9007199254740991 || grant.FailoverSeconds < 1 || grant.FailoverSeconds > 3600 || grant.ExpiresAt <= grant.FailoverSeconds || grant.ExpiresAt > 9007199254740991 || grant.FailoverAfter > grant.ExpiresAt-grant.FailoverSeconds {
+			return errors.New("manifest contains an invalid failover grant window")
+		}
+		windows = append(windows, [2]int64{grant.FailoverAfter, grant.FailoverAfter + grant.FailoverSeconds})
+	}
+	for i, window := range windows {
+		for _, other := range windows[i+1:] {
+			if window[0] < other[1] && other[0] < window[1] {
+				return errors.New("manifest contains overlapping failover authority windows")
+			}
+		}
+	}
+	return nil
 }
 
 func validateDirectoryAuthorityLease(document signedDocument, nodeID, worldID string, manifest manifestPayload, now time.Time) (authorityLeasePayload, error) {

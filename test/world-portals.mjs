@@ -5,12 +5,18 @@ import { Vector3 } from '../src/engine/math/Vector3.js';
 import { Material } from '../src/engine/render/Material.js';
 import { buildMeshShader } from '../src/engine/render/MeshShader.js';
 import { validateWorldSource } from '../src/network/WorldSource.js';
-import { validateWorldComponents, validateWorldPortals } from '../src/network/WorldConnector.js';
+import { validateWorldComponents, validateWorldHosts, validateWorldPortals } from '../src/network/WorldConnector.js';
 import { worldLinkFromLocation, WorldConnector } from '../src/network/WorldConnector.js';
 import { validateWorldRequirements } from '../src/network/WorldRules.js';
 import { VEGETATION_PLACEMENT_KINDS, decodeVegetationPlacements, encodeVegetationPlacements } from '../src/network/VegetationPlacements.js';
 
 const portal = { entry: { position: [ 0, 1, 0 ], yaw: 0 } };
+const sequentialFailoverGrants = [
+	{ peerId: '12D3KooWAbcdefghijk1234567890123456', scopes: [ 'failover-authority' ], expiresAt: 2000, epoch: 1, failoverAfter: 1000, failoverSeconds: 60 },
+	{ peerId: '12D3KooWAbcdefghijk1234567890123457', scopes: [ 'failover-authority' ], expiresAt: 2000, epoch: 1, failoverAfter: 1060, failoverSeconds: 60 },
+];
+assert.doesNotThrow( () => validateWorldHosts( sequentialFailoverGrants ), 'adjacent failover grants can provide sequential redundancy' );
+assert.throws( () => validateWorldHosts( [ sequentialFailoverGrants[ 0 ], { ...sequentialFailoverGrants[ 1 ], failoverAfter: 1059 } ] ), /overlapping/, 'client rejects owner grants that could activate two failover authorities in the same epoch' );
 assert.equal( crossedPortalPlane( { x: 0, y: 1, z: 1 }, { x: 0, y: 1, z: - 0.1 }, portal ), true, 'front-to-back crossing transfers' );
 assert.equal( crossedPortalPlane( { x: 0, y: 1, z: - 1 }, { x: 0, y: 1, z: 0.1 }, portal ), false, 'back-to-front crossing does not transfer' );
 assert.equal( crossedPortalPlane( { x: 2, y: 1, z: 1 }, { x: 2, y: 1, z: - 0.1 }, portal ), false, 'crossings outside the doorway width do not transfer' );

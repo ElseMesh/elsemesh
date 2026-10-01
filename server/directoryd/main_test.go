@@ -157,6 +157,20 @@ func TestDirectoryRejectsUntrustedWorldClaims(t *testing.T) {
 	}
 }
 
+func TestDirectoryRejectsOverlappingFailoverWindows(t *testing.T) {
+	hosts := []hostGrant{
+		{PeerID: "delegate-a", Scopes: []string{"failover-authority"}, ExpiresAt: 2000, Epoch: 1, FailoverAfter: 1000, FailoverSeconds: 60},
+		{PeerID: "delegate-b", Scopes: []string{"failover-authority"}, ExpiresAt: 2100, Epoch: 1, FailoverAfter: 1060, FailoverSeconds: 60},
+	}
+	if err := validateDirectoryFailoverWindows(hosts); err != nil {
+		t.Fatalf("adjacent failover windows should be allowed: %v", err)
+	}
+	hosts[1].FailoverAfter--
+	if err := validateDirectoryFailoverWindows(hosts); err == nil {
+		t.Fatal("directory accepted overlapping failover windows")
+	}
+}
+
 func testIdentity(t *testing.T) (crypto.PrivKey, string) {
 	t.Helper()
 	key, _, err := crypto.GenerateEd25519Key(nil)

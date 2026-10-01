@@ -225,6 +225,7 @@ func validateManifest(manifest worldManifest, localPeerID string, now time.Time)
 		return errors.New("invalid authority peer identity")
 	}
 	seenHosts := make(map[string]bool, len(manifest.Hosts))
+	failoverWindows := make([][2]int64, 0, len(manifest.Hosts))
 	for _, grant := range manifest.Hosts {
 		if _, err := peer.Decode(grant.PeerID); err != nil || seenHosts[grant.PeerID] || grant.Epoch == 0 || grant.Epoch > maxSafeJSInteger || grant.ExpiresAt <= 0 || grant.ExpiresAt > int64(maxSafeJSInteger) {
 			return errors.New("invalid or duplicate hosting grant")
@@ -244,11 +245,19 @@ func validateManifest(manifest worldManifest, localPeerID string, now time.Time)
 			if grant.FailoverAfter <= 0 || grant.FailoverAfter > int64(maxSafeJSInteger) || grant.FailoverSeconds < 1 || grant.FailoverSeconds > 3600 || grant.FailoverAfter > grant.ExpiresAt-grant.FailoverSeconds {
 				return errors.New("invalid failover grant window")
 			}
+			failoverWindows = append(failoverWindows, [2]int64{grant.FailoverAfter, grant.FailoverAfter + grant.FailoverSeconds})
 		} else if grant.FailoverAfter != 0 || grant.FailoverSeconds != 0 {
 			return errors.New("failover window without failover permission")
 		}
 		if grant.PeerID == localPeerID && grant.ExpiresAt > now.Unix() {
 			permitted = true
+		}
+	}
+	for i, window := range failoverWindows {
+		for _, other := range failoverWindows[i+1:] {
+			if window[0] < other[1] && other[0] < window[1] {
+				return errors.New("failover authority windows overlap")
+			}
 		}
 	}
 	if !permitted {
