@@ -15,9 +15,11 @@ import (
 )
 
 const (
-	manifestProtocol = "tidewater.world/1"
-	maxManifestBytes = 1 << 20
-	maxAssetBytes    = 2 << 30
+	manifestProtocol  = "tidewater.world/1"
+	authorityProtocol = "tidewater.authority/2"
+	maxManifestBytes  = 1 << 20
+	maxAssetBytes     = 2 << 30
+	maxSafeJSInteger  = uint64(9007199254740991)
 )
 
 var (
@@ -146,7 +148,7 @@ func validateManifest(manifest worldManifest, localPeerID string, now time.Time)
 	}
 	seenHosts := make(map[string]bool, len(manifest.Hosts))
 	for _, grant := range manifest.Hosts {
-		if _, err := peer.Decode(grant.PeerID); err != nil || seenHosts[grant.PeerID] || grant.Epoch == 0 || grant.ExpiresAt <= 0 {
+		if _, err := peer.Decode(grant.PeerID); err != nil || seenHosts[grant.PeerID] || grant.Epoch == 0 || grant.Epoch > maxSafeJSInteger || grant.ExpiresAt <= 0 || grant.ExpiresAt > int64(maxSafeJSInteger) {
 			return errors.New("invalid or duplicate hosting grant")
 		}
 		seenHosts[grant.PeerID] = true
@@ -161,7 +163,7 @@ func validateManifest(manifest worldManifest, localPeerID string, now time.Time)
 			return errors.New("hosting grant has no scopes")
 		}
 		if seenScopes["failover-authority"] {
-			if grant.FailoverAfter <= 0 || grant.FailoverSeconds < 1 || grant.FailoverSeconds > 3600 || grant.FailoverAfter > grant.ExpiresAt-grant.FailoverSeconds {
+			if grant.FailoverAfter <= 0 || grant.FailoverAfter > int64(maxSafeJSInteger) || grant.FailoverSeconds < 1 || grant.FailoverSeconds > 3600 || grant.FailoverAfter > grant.ExpiresAt-grant.FailoverSeconds {
 				return errors.New("invalid failover grant window")
 			}
 		} else if grant.FailoverAfter != 0 || grant.FailoverSeconds != 0 {
@@ -268,6 +270,7 @@ type authorityLease struct {
 	WorldID         string `json:"worldId"`
 	AuthorityPeerID string `json:"authorityPeerId"`
 	Epoch           uint64 `json:"epoch"`
+	GrantEpoch      uint64 `json:"grantEpoch"`
 	NotBefore       int64  `json:"notBefore"`
 	ExpiresAt       int64  `json:"expiresAt"`
 }
@@ -297,8 +300,8 @@ func activateFailover(manifest worldManifest, delegateID string, key crypto.Priv
 		if now.Unix() >= expires {
 			return signedDocument{}, errors.New("failover grant has expired")
 		}
-		lease := authorityLease{WorldID: manifest.WorldID, AuthorityPeerID: delegateID, Epoch: manifest.AuthorityEpoch + 1, NotBefore: grant.FailoverAfter, ExpiresAt: expires}
-		return signDocument("tidewater.authority/1", lease, key)
+		lease := authorityLease{WorldID: manifest.WorldID, AuthorityPeerID: delegateID, Epoch: manifest.AuthorityEpoch + 1, GrantEpoch: grant.Epoch, NotBefore: grant.FailoverAfter, ExpiresAt: expires}
+		return signDocument(authorityProtocol, lease, key)
 	}
 	return signedDocument{}, errors.New("node has no failover-authority grant")
 }
@@ -337,7 +340,7 @@ func failoverCheckDelay(manifest worldManifest, localID string, active *signedDo
 
 func validateAuthorityLease(document signedDocument, manifest worldManifest, now time.Time) (authorityLease, error) {
 	var lease authorityLease
-	if err := verifyDocument(document, "tidewater.authority/1"); err != nil {
+	if err := verifyDocument(document, authorityProtocol); err != nil {
 		return lease, err
 	}
 	if err := json.Unmarshal(document.Payload, &lease); err != nil {
@@ -347,7 +350,7 @@ func validateAuthorityLease(document signedDocument, manifest worldManifest, now
 		return lease, errors.New("authority lease is not currently valid")
 	}
 	for _, grant := range manifest.Hosts {
-		if grant.PeerID != lease.AuthorityPeerID || grant.Epoch == 0 || grant.ExpiresAt < lease.ExpiresAt || grant.FailoverAfter != lease.NotBefore {
+		if grant.PeerID != lease.AuthorityPeerID || grant.Epoch == 0 || grant.Epoch != lease.GrantEpoch || grant.ExpiresAt < lease.ExpiresAt || grant.FailoverAfter != lease.NotBefore {
 			continue
 		}
 		for _, scope := range grant.Scopes {

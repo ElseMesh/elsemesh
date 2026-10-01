@@ -79,15 +79,16 @@ export class WorldConnector {
 		invariant( reply.document.payload.protocol === 'tidewater.world/1' && reply.document.payload.worldId === this.worldId, 'Manifest belongs to another world or protocol' );
 		validateWorldRequirements( reply.document.payload );
 		validateWorldObjects( reply.document.payload.objects );
+		validateWorldHosts( reply.document.payload.hosts );
 		this.manifest = reply.document.payload;
 		const hostGrant = this.manifest.hosts?.find( ( entry ) => entry.peerId === this.nodeId && entry.scopes?.includes( 'content-cache' ) && entry.expiresAt > Date.now() / 1000 );
 		invariant( this.manifest.ownerPeerId === this.nodeId || hostGrant, 'Selected node is not authorized by the world owner to serve content' );
 		this.authorityLease = null;
 		if ( reply.authorityLease ) {
-			await verifySignedDocument( reply.authorityLease, 'tidewater.authority/1' );
+			await verifySignedDocument( reply.authorityLease, 'tidewater.authority/2' );
 			const lease = reply.authorityLease.payload;
-			invariant( lease.worldId === this.worldId && lease.authorityPeerId === reply.authorityLease.signer && lease.epoch > this.manifest.authorityEpoch && Date.now() / 1000 >= lease.notBefore && Date.now() / 1000 < lease.expiresAt, 'Authority lease is not valid for this world at the current time' );
-			const grant = this.manifest.hosts?.find( ( entry ) => entry.peerId === lease.authorityPeerId && entry.scopes?.includes( 'failover-authority' ) && entry.failoverAfter === lease.notBefore && entry.expiresAt >= lease.expiresAt && lease.expiresAt <= entry.failoverAfter + entry.failoverSeconds );
+			invariant( lease.worldId === this.worldId && lease.authorityPeerId === reply.authorityLease.signer && Number.isSafeInteger( lease.grantEpoch ) && lease.grantEpoch > 0 && lease.epoch > this.manifest.authorityEpoch && Date.now() / 1000 >= lease.notBefore && Date.now() / 1000 < lease.expiresAt, 'Authority lease is not valid for this world at the current time' );
+			const grant = this.manifest.hosts?.find( ( entry ) => entry.peerId === lease.authorityPeerId && entry.scopes.includes( 'failover-authority' ) && entry.epoch === lease.grantEpoch && entry.failoverAfter === lease.notBefore && entry.expiresAt >= lease.expiresAt && lease.expiresAt <= entry.failoverAfter + entry.failoverSeconds );
 			invariant( grant, 'Authority lease has no matching owner grant' );
 			this.authorityLease = lease;
 		}
@@ -312,6 +313,17 @@ function validateWorldObjects( objects ) {
 		const box = collision.shape === 'box' && validVector( collision.center ) && validVector( collision.halfExtents ) && collision.halfExtents.every( ( value ) => value > 0 && value <= 1000 ) && typeof collision.walkable === 'boolean' && typeof collision.solid === 'boolean';
 		const heightfield = collision.shape === 'heightfield' && Number.isInteger( collision.columns ) && Number.isInteger( collision.rows ) && collision.columns >= 2 && collision.rows >= 2 && collision.columns <= 4097 && collision.rows <= 4097 && collision.columns * collision.rows <= 4194304 && collision.walkable === true && collision.solid === true;
 		invariant( box || heightfield, `World object ${object.id || '(unknown)'} has invalid collision bounds` );
+	}
+}
+
+function validateWorldHosts( hosts = [] ) {
+	invariant( Array.isArray( hosts ) && hosts.length <= 256, 'World manifest has an invalid host grant list' );
+	const peerIDs = new Set();
+	for ( const grant of hosts ) {
+		invariant( grant && typeof grant.peerId === 'string' && /^[A-Za-z0-9]{20,256}$/.test( grant.peerId ) && ! peerIDs.has( grant.peerId ) && Number.isSafeInteger( grant.epoch ) && grant.epoch > 0 && Number.isSafeInteger( grant.expiresAt ) && grant.expiresAt > 0 && Array.isArray( grant.scopes ) && grant.scopes.length > 0 && grant.scopes.length <= 2 && new Set( grant.scopes ).size === grant.scopes.length && grant.scopes.every( ( scope ) => scope === 'content-cache' || scope === 'failover-authority' ), 'World manifest contains an invalid host grant' );
+		const failover = grant.scopes.includes( 'failover-authority' );
+		invariant( failover ? Number.isSafeInteger( grant.failoverAfter ) && grant.failoverAfter > 0 && Number.isSafeInteger( grant.failoverSeconds ) && grant.failoverSeconds >= 1 && grant.failoverSeconds <= 3600 && grant.failoverAfter <= grant.expiresAt - grant.failoverSeconds : grant.failoverAfter === undefined && grant.failoverSeconds === undefined, 'World manifest contains an invalid host grant failover window' );
+		peerIDs.add( grant.peerId );
 	}
 }
 

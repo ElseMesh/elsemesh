@@ -43,6 +43,10 @@ function emit( socket, type, data ) {
 const first = await identity();
 const second = await identity();
 const now = Math.floor( Date.now() / 1000 );
+const grantEpoch = 4;
+const failoverAfter = now - 30;
+const failoverSeconds = 120;
+const expiresAt = now + 3600;
 const providers = [];
 for ( const [ id, gateway ] of [ [ first, 'https://offline.example' ], [ second, 'https://online.example' ] ] ) {
 	providers.push( await signedDocument( 'tidewater.node/1', {
@@ -54,8 +58,12 @@ const manifest = await signedDocument( 'tidewater.world/1', {
 	protocol: 'tidewater.world/1', worldId: 'tw-world:directory-test', ownerPeerId: second.peerId,
 	authorityPeerId: second.peerId, authorityEpoch: 1, version: 1, discoverable: true,
 	title: 'Directory test', rules: { gravity: 1, avatarComplexity: 1000, physicsProfile: 'tidewater-default' },
-	assets: [], objects: [], portals: [], hosts: [], updatedAt: now,
+	assets: [], objects: [], portals: [], hosts: [ { peerId: first.peerId, scopes: [ 'failover-authority' ], expiresAt, epoch: grantEpoch, failoverAfter, failoverSeconds } ], updatedAt: now,
 }, second );
+let authorityLease = await signedDocument( 'tidewater.authority/2', {
+	worldId: 'tw-world:directory-test', authorityPeerId: first.peerId, epoch: 2, grantEpoch,
+	notBefore: failoverAfter, expiresAt: Math.min( expiresAt, failoverAfter + failoverSeconds ),
+}, first );
 
 const oldFetch = globalThis.fetch;
 const OldWebSocket = globalThis.WebSocket;
@@ -77,7 +85,7 @@ globalThis.WebSocket = class extends EventTarget {
 	send( value ) {
 		const request = JSON.parse( value );
 		if ( request.type === 'connect' ) emit( this, 'message', JSON.stringify( { type: 'connected', worldId: request.worldId } ) );
-		else emit( this, 'message', JSON.stringify( { type: 'manifest', worldId: request.worldId, requestId: request.requestId, document: manifest } ) );
+		else emit( this, 'message', JSON.stringify( { type: 'manifest', worldId: request.worldId, requestId: request.requestId, document: manifest, authorityLease } ) );
 	}
 	close() { this.readyState = WebSocket.CLOSED; emit( this, 'close' ); }
 };
@@ -88,7 +96,15 @@ try {
 	assert.equal( loaded.worldId, 'tw-world:directory-test' );
 	assert.equal( connector.nodeId, second.peerId, 'unreachable directory providers should fall through to the next signed gateway' );
 	assert.equal( connector.gateway, 'https://online.example' );
+	assert.equal( connector.authorityLease.grantEpoch, grantEpoch, 'signed temporary authority lease binds to its owner grant revision' );
 	connector.close();
+	authorityLease = await signedDocument( 'tidewater.authority/2', {
+		worldId: 'tw-world:directory-test', authorityPeerId: first.peerId, epoch: 2, grantEpoch: grantEpoch - 1,
+		notBefore: failoverAfter, expiresAt: Math.min( expiresAt, failoverAfter + failoverSeconds ),
+	}, first );
+	const stale = new WorldConnector( { worldId: 'tw-world:directory-test', nodeId: second.peerId, gateway: 'https://online.example' } );
+	await assert.rejects( stale.getManifest(), /no matching owner grant/, 'browser rejects a validly signed but stale grant epoch' );
+	stale.close();
 	console.log( 'ok directory node signatures, provider fallback, and owner-signed manifest verification' );
 } finally {
 	globalThis.fetch = oldFetch;

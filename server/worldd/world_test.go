@@ -44,6 +44,11 @@ func TestWorldManifestOwnerAndScopedHostGrant(t *testing.T) {
 	if _, err := decodeManifest(document, "unlisted-peer", time.Now()); err == nil {
 		t.Fatal("unlisted host accepted")
 	}
+	manifest.Hosts[0].Epoch = maxSafeJSInteger + 1
+	if err := validateManifest(manifest, ownerID.String(), time.Now()); err == nil {
+		t.Fatal("host grant epoch outside browser-safe integer range accepted")
+	}
+	manifest.Hosts[0].Epoch = 1
 	manifest.Hosts[0].ExpiresAt = time.Now().Add(-time.Hour).Unix()
 	if err := validateManifest(manifest, delegateID.String(), time.Now()); err == nil {
 		t.Fatal("expired host grant accepted")
@@ -173,9 +178,14 @@ func TestTemporaryFailoverAuthorityRequiresOwnerWindow(t *testing.T) {
 	if err != nil {
 		t.Fatalf("valid authority lease rejected: %v", err)
 	}
-	if lease.AuthorityPeerID != delegateID.String() || lease.Epoch != manifest.AuthorityEpoch+1 || lease.ExpiresAt != start+120 {
+	if lease.AuthorityPeerID != delegateID.String() || lease.Epoch != manifest.AuthorityEpoch+1 || lease.GrantEpoch != manifest.Hosts[0].Epoch || lease.ExpiresAt != start+120 {
 		t.Fatalf("unexpected bounded authority lease: %+v", lease)
 	}
+	manifest.Hosts[0].Epoch++
+	if _, err := validateAuthorityLease(document, manifest, time.Unix(start+1, 0)); err == nil {
+		t.Fatal("authority lease from a superseded owner grant was accepted")
+	}
+	manifest.Hosts[0].Epoch--
 	if _, err := validateAuthorityLease(document, manifest, time.Unix(start+120, 0)); err == nil {
 		t.Fatal("expired authority lease accepted")
 	}
