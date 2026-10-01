@@ -144,11 +144,18 @@ const smooth = ( a, b, x ) => {
 
 };
 
-let cached = null;
+let cached = null, cachedImage = null, cachedImageMs = 0;
 
-export function getDetailTexture() {
+export function getDetailImage() {
 
-	if ( cached ) return cached;
+	return getDetailTexture( { cpuOnly: true } );
+
+}
+
+export function getDetailTexture( { cpuOnly = false } = {} ) {
+
+	if ( cached ) return cpuOnly ? cached.image : cached;
+	if ( cachedImage ) return cpuOnly ? cachedImage : createTexture( cachedImage, cachedImageMs );
 	const t0 = performance.now();
 
 	const warpA = makeFbm( 4, 2, 11 ), warpB = makeFbm( 4, 2, 23 );
@@ -217,15 +224,23 @@ export function getDetailTexture() {
 
 	}
 
+	cachedImage = { width: S, height: S, data };
+	cachedImageMs = performance.now() - t0;
+	if ( cpuOnly ) return cachedImage;
+	return createTexture( cachedImage, cachedImageMs );
+
+}
+
+function createTexture( image, elapsed = 0 ) {
 	// repeat wrapping + trilinear / anisotropic filtering come from the shared samplers
 	// (smpAniso4Repeat: grazing views of the beach, anisotropy 4 as before; smpLinearRepeat elsewhere)
-	const tex = new Texture( { label: 'terrainDetail', width: S, height: S, format: 'rgba8unorm', mips: true, usage: [ 'sample', 'copyDst' ], sampler: 'aniso4Repeat', data } );
+	const tex = new Texture( { label: 'terrainDetail', width: S, height: S, format: 'rgba8unorm', mips: true, usage: [ 'sample', 'copyDst' ], sampler: 'aniso4Repeat', data: image.data } );
 	tex.getGPU();
 	generateMipmaps( tex );
 	tex.userData = {};
 	// CPU copy for placement code sampling the same fbm (vegetation Scatter.js, three's DataTexture.image)
-	tex.image = { width: S, height: S, data };
-	tex.userData.ms = performance.now() - t0;
+	tex.image = image;
+	tex.userData.ms = elapsed;
 	cached = tex;
 	return tex;
 

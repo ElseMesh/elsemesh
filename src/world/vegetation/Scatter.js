@@ -1,7 +1,7 @@
 import * as THREE from '../../engine/index.js';
 import { Noise2D, mulberry32, smoothstep, clamp } from '../../util/Noise.js';
 import { WORLD } from '../WorldLayout.js';
-import { getDetailTexture } from '../terrain/DetailTextures.js';
+import { getDetailImage } from '../terrain/DetailTextures.js';
 
 // CPU-side vegetation placement: land cover, exclusion zones and per-type scattering.
 //
@@ -25,8 +25,8 @@ export const RULES = {
 // bilinear sample of one channel of the (repeating) detail texture at uv
 function detailSampler() {
 
-	const tex = getDetailTexture();
-	const S = tex.image.width, d = tex.image.data;
+	const image = getDetailImage();
+	const S = image.width, d = image.data;
 	return ( u, v, c ) => {
 
 		const x = u * S - 0.5, y = v * S - 0.5;
@@ -237,6 +237,23 @@ export class VegSite {
 
 	}
 
+}
+
+// Keep procedural placement consistent for the live island and portable exports.
+// Only CPU-side records are produced here; renderers may turn them into instanced meshes.
+export function createVegetationPlacement( terrain, village = null ) {
+	const footprints = village && typeof village.getFootprints === 'function' ? village.getFootprints() : [];
+	const paths = [];
+	if ( village ) for ( const p of [ village.path, ...( village.sidePaths || [] ) ] ) {
+		if ( ! p || ! p.samples ) continue;
+		const points = [];
+		for ( let i = 0; i < p.samples.length; i += 5 ) points.push( [ p.samples[ i ].p.x, p.samples[ i ].p.z ] );
+		const last = p.samples[ p.samples.length - 1 ];
+		points.push( [ last.p.x, last.p.z ] );
+		paths.push( { points, width: p.width ?? 1.8 } );
+	}
+	const site = new VegSite( terrain, { footprints, paths: paths.length ? paths : null } );
+	return { site, records: scatterVegetation( site ) };
 }
 
 // Spatial hash of placed plants for minimum-distance tests across types.

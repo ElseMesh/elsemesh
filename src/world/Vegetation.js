@@ -1,6 +1,6 @@
 import * as THREE from '../engine/index.js';
 import { G } from '../core/Globals.js';
-import { VegSite, scatterVegetation, buildGrassMask, RULES } from './vegetation/Scatter.js';
+import { createVegetationPlacement, buildGrassMask, RULES } from './vegetation/Scatter.js';
 import { VegType, LodLevel } from './vegetation/InstanceLOD.js';
 import { GrassField } from './vegetation/GrassField.js';
 import { uCamPos, uGustOffset, UNDER_FERN_FADE } from './vegetation/VegNodes.js';
@@ -32,27 +32,6 @@ import { LeafAtlas } from './vegetation/LeafTextures.js';
 // and boardwalks are kept clear; otherwise a default boardwalk polyline is used.
 // The impostor atlases are baked on the first update() (recorded into the frame encoder; three.js
 // picked up from the meshes' onBeforeRender); until then far trees are not drawn.
-
-// Building footprints + boardwalk polylines from a Village instance (duck-typed).
-function villageObstacles( village ) {
-
-	if ( ! village ) return {};
-	const footprints = typeof village.getFootprints === 'function' ? village.getFootprints() : [];
-	const paths = [];
-	for ( const p of [ village.path, ...( village.sidePaths || [] ) ] ) {
-
-		if ( ! p || ! p.samples ) continue;
-		const pts = [];
-		for ( let i = 0; i < p.samples.length; i += 5 ) pts.push( [ p.samples[ i ].p.x, p.samples[ i ].p.z ] );
-		const last = p.samples[ p.samples.length - 1 ];
-		pts.push( [ last.p.x, last.p.z ] );
-		paths.push( { points: pts, width: p.width ?? 1.8 } );
-
-	}
-
-	return { footprints, paths: paths.length ? paths : null };
-
-}
 
 // bounding sphere of a geometry around its vertical axis (impostor frames are centred on it)
 function axisSphere( geometry ) {
@@ -102,9 +81,10 @@ export class Vegetation {
 		this.group.matrixAutoUpdate = false;
 
 		const t0 = performance.now();
-		const site = new VegSite( terrain, villageObstacles( village ) );
+		const placement = createVegetationPlacement( terrain, village );
+		const { site } = placement;
 		this.site = site;
-		const recs = scatterVegetation( site );
+		const recs = placement.records;
 		this.records = recs;
 		const t1 = performance.now();
 		const grassMask = buildGrassMask( site );

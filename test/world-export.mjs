@@ -4,6 +4,7 @@ import { createHash } from 'node:crypto';
 import { mkdtemp, readFile, readdir, rm } from 'node:fs/promises';
 import path from 'node:path';
 import { parseGLB } from '../src/engine/loaders/GLTF.js';
+import { getDetailImage } from '../src/world/terrain/DetailTextures.js';
 import { loadWorldPackage, registerWorldPackageCollisions, unregisterWorldPackageCollisions } from '../src/network/WorldPackage.js';
 import { validateWorldSource } from '../src/network/WorldSource.js';
 import { Colliders } from '../src/world/Colliders.js';
@@ -12,6 +13,9 @@ const temporaryRoot = process.env.PREFIX ? path.join( process.env.PREFIX, 'tmp' 
 const output = await mkdtemp( path.join( temporaryRoot, 'elsemesh-island-export-' ) );
 
 try {
+	const detailImage = getDetailImage();
+	assert.equal( detailImage.width, 512, 'procedural placement can access the shared detail image without initializing WebGPU' );
+	assert.equal( detailImage.data.length, 512 * 512 * 4, 'CPU detail image retains the exact shared RGBA data layout' );
 	const checkedInDir = path.resolve( 'worlds/island' );
 	const checkedInSource = validateWorldSource( JSON.parse( await readFile( path.join( checkedInDir, 'world-source.json' ), 'utf8' ) ) );
 	const checkedInIDs = new Set( checkedInSource.objects.map( ( object ) => object.assetId ) );
@@ -65,7 +69,7 @@ try {
 	assert.equal( villageObject.collision.shape, 'compound', 'village source includes the runtime builder collision layout' );
 	assert.equal( villageObject.collision.boxes.length, 394, 'village collision layout matches its deterministic walkable and solid boxes' );
 	const scannedObjects = source.objects.filter( ( object ) => object.id.startsWith( 'tw-object:scanned-debris-' ) );
-	assert.equal( scannedObjects.length, 139, 'export contains the seeded scanned debris placements from the runtime placer' );
+	assert.equal( scannedObjects.length, 141, 'export contains debris placements generated with the playable vegetation clearances' );
 	assert.ok( source.objects.every( ( object ) => object.streamingBounds && Number.isFinite( object.streamingBounds.radius ) && object.streamingBounds.radius > 0 ), 'exported island objects include local streaming bounds' );
 	assert.ok( scannedObjects.every( ( object ) => Array.isArray( object.transform.rotation ) && Math.abs( Math.hypot( ...object.transform.rotation ) - 1 ) < 1e-4 && object.collision.enabled === false ), 'scanned objects carry normalized collision-free rotations' );
 	const scannedAssetIDs = new Set( scannedObjects.map( ( object ) => object.assetId ) );

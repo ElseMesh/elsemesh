@@ -13,6 +13,7 @@ import { Builder } from '../src/world/village/GeoBuilder.js';
 import { InstancedProps } from '../src/world/Props.js';
 import { DebrisPlacer } from '../src/world/debris/DebrisPlacement.js';
 import { SCAN_ASSETS } from '../src/world/debris/ScannedDebris.js';
+import { createVegetationPlacement } from '../src/world/vegetation/Scatter.js';
 
 const REPO = path.resolve( path.dirname( fileURLToPath( import.meta.url ) ), '..' );
 const args = process.argv.slice( 2 );
@@ -130,6 +131,7 @@ function buildIslandProceduralContent( terrainData ) {
 	}
 	const colliders = new Colliders();
 	const village = new PackageVillage( { scene, terrain: terrainData, colliders } );
+	const vegetation = createVegetationPlacement( terrainData, village );
 	const rocks = new Rocks( { scene, terrain: terrainData, village, colliders, castShadow: false, sunShadow: false } );
 	const villageColliders = colliders.boxes.map( ( box ) => ( {
 		center: box.center.toArray(),
@@ -139,7 +141,7 @@ function buildIslandProceduralContent( terrainData ) {
 		solid: box.solid,
 	} ) );
 	const B = new Builder();
-	const placer = new DebrisPlacer( { B, inst: new InstancedProps( B ), terrain: terrainData, village, rocks, colliders } ).run();
+	const placer = new DebrisPlacer( { B, inst: new InstancedProps( B ), terrain: terrainData, village, vegetation, rocks, colliders } ).run();
 	const batches = Object.entries( village.B.batches )
 		.filter( ( [ , batch ] ) => batch.vcount > 0 )
 		.map( ( [ name, batch ] ) => ( { name, batch } ) );
