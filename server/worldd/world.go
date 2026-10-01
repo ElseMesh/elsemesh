@@ -88,7 +88,7 @@ type collisionBox struct {
 type portal struct {
 	ID          string    `json:"id"`
 	Destination string    `json:"destinationWorldId"`
-	PeerID      string    `json:"destinationPeerId"`
+	PeerID      string    `json:"destinationPeerId,omitempty"`
 	Gateway     string    `json:"destinationGateway,omitempty"`
 	Entry       transform `json:"entry"`
 	Exit        transform `json:"exit"`
@@ -454,11 +454,13 @@ func validateManifest(manifest worldManifest, localPeerID string, now time.Time)
 	}
 	seenPortals := make(map[string]bool, len(manifest.Portals))
 	for _, p := range manifest.Portals {
-		if !portalIDPattern.MatchString(p.ID) || seenPortals[p.ID] || seenObjects[p.ID] || !worldIDPattern.MatchString(p.Destination) || p.PeerID == "" || len(p.PeerID) > 256 {
+		if !portalIDPattern.MatchString(p.ID) || seenPortals[p.ID] || seenObjects[p.ID] || !worldIDPattern.MatchString(p.Destination) || len(p.PeerID) > 256 {
 			return fmt.Errorf("invalid portal %q", p.ID)
 		}
-		if _, err := peer.Decode(p.PeerID); err != nil {
-			return fmt.Errorf("invalid destination peer for portal %q", p.ID)
+		if p.PeerID != "" {
+			if _, err := peer.Decode(p.PeerID); err != nil {
+				return fmt.Errorf("invalid destination peer for portal %q", p.ID)
+			}
 		}
 		if p.Gateway != "" && !validPortalGateway(p.Gateway) {
 			return fmt.Errorf("invalid destination gateway for portal %q", p.ID)

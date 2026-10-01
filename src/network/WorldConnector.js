@@ -307,10 +307,10 @@ export class WorldConnector {
 	// the assets needed to enter the destination continue loading.
 	async preparePortal( portal, { onPreview, signal } = {} ) {
 		throwIfAborted( signal );
-		invariant( portal && portal.enabled && portal.destinationWorldId && portal.destinationPeerId, 'Portal has no active destination' );
+		invariant( portal && portal.enabled && portal.destinationWorldId, 'Portal has no active destination' );
 		const destination = new WorldConnector( {
 			worldId: portal.destinationWorldId,
-			nodeId: portal.destinationPeerId,
+			nodeId: portal.destinationPeerId || '',
 			gateway: portal.destinationGateway || this.gateway,
 			directory: this.directory,
 			chunkBytes: this.chunkBytes,
@@ -525,7 +525,7 @@ export function validateWorldPortals( portals = [], ids = new Set() ) {
 	invariant( Array.isArray( portals ) && portals.length <= 1024, 'World manifest has an invalid portal list' );
 	for ( const portal of portals ) {
 		invariant( portal && typeof portal.id === 'string' && /^tw-portal:[\w.-]{1,128}$/.test( portal.id ) && ! ids.has( portal.id ), 'World manifest has an invalid or duplicate portal ID' );
-		invariant( /^tw-world:[\w.-]{1,128}$/.test( portal.destinationWorldId || '' ) && typeof portal.destinationPeerId === 'string' && /^[A-Za-z0-9]{20,256}$/.test( portal.destinationPeerId ), `Portal ${portal.id} has an invalid destination` );
+		invariant( /^tw-world:[\w.-]{1,128}$/.test( portal.destinationWorldId || '' ) && ( portal.destinationPeerId === undefined || typeof portal.destinationPeerId === 'string' && /^[A-Za-z0-9]{20,256}$/.test( portal.destinationPeerId ) ), `Portal ${portal.id} has an invalid destination` );
 		invariant( portal.destinationGateway === undefined || validWorldGateway( portal.destinationGateway ), `Portal ${portal.id} has an invalid destination gateway` );
 		for ( const transform of [ portal.entry, portal.exit ] ) {
 			invariant( transform && validVector( transform.position ) && transform.position.every( ( value ) => Math.abs( value ) <= 1e6 ) && Number.isFinite( transform.yaw ) && Math.abs( transform.yaw ) <= 360 && transform.rotation === undefined, `Portal ${portal.id} has an invalid transform` );

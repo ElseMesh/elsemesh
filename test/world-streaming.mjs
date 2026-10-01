@@ -7,7 +7,7 @@ import { PerspectiveCamera } from '../src/engine/scene/Camera.js';
 const connector = new WorldConnector( { worldId: 'tw-world:stream-test', nodeId: 'peer', gateway: 'https://example.test' } );
 const alreadyAborted = new AbortController();
 alreadyAborted.abort( new DOMException( 'Portal is no longer in view', 'AbortError' ) );
-await assert.rejects( connector.preparePortal( { enabled: true, destinationWorldId: 'tw-world:destination', destinationPeerId: '12D3KooW12345678901234567890' }, { signal: alreadyAborted.signal } ), { name: 'AbortError' }, 'portal preparation honors cancellation before opening a destination connection' );
+await assert.rejects( connector.preparePortal( { enabled: true, destinationWorldId: 'tw-world:destination' }, { signal: alreadyAborted.signal } ), { name: 'AbortError' }, 'a world-ID portal honors cancellation before provider discovery starts' );
 const priorities = [ 'portal-preview', 'visible', 'nearby', 'background' ];
 assert.equal( assetConcurrencyForConnection( null ), 3, 'unknown connection capability keeps the default bounded concurrency' );
 assert.equal( assetConcurrencyForConnection( { effectiveType: '4g', downlink: 12 } ), 3, 'fast links keep three parallel asset downloads' );

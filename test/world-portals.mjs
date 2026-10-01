@@ -67,10 +67,17 @@ const source = {
 	} ],
 };
 assert.doesNotThrow( () => validateWorldSource( source ), 'portal may pin a separate secure destination gateway' );
+const discoveredSourcePortal = { ...source.portals[ 0 ] };
+delete discoveredSourcePortal.destinationPeerId;
+assert.doesNotThrow( () => validateWorldSource( { ...source, portals: [ discoveredSourcePortal ] } ), 'portal can resolve providers by stable destination world ID' );
+assert.throws( () => validateWorldSource( { ...source, portals: [ { ...discoveredSourcePortal, destinationPeerId: 'invalid' } ] } ), /Invalid or duplicate portal record/, 'portal rejects malformed optional provider identities' );
 assert.throws( () => validateWorldSource( { ...source, portals: [ { ...source.portals[ 0 ], destinationGateway: 'http://world.example' } ] } ), 'insecure destination gateways must be rejected' );
 const runtimePortal = { id: 'tw-portal:runtime-door', destinationWorldId: 'tw-world:destination', destinationPeerId: '12D3KooW12345678901234567890', entry: { position: [ 0, 0, 0 ], yaw: 0 }, exit: { position: [ 0, 0, 0 ], yaw: 0 }, openView: true, enabled: true };
 const runtimeIDs = new Set( [ 'tw-object:asset' ] );
 assert.doesNotThrow( () => validateWorldPortals( [ runtimePortal ], runtimeIDs ), 'browser accepts a valid signed portal' );
+const discoverableRuntimePortal = { ...runtimePortal };
+delete discoverableRuntimePortal.destinationPeerId;
+assert.doesNotThrow( () => validateWorldPortals( [ discoverableRuntimePortal ] ), 'browser permits world-ID discovery when the portal does not pin a provider' );
 assert.throws( () => validateWorldPortals( [ { ...runtimePortal, id: 'tw-object:asset' } ], new Set( [ 'tw-object:asset' ] ) ), /duplicate portal ID/, 'browser rejects cross-kind entity ID collisions' );
 assert.throws( () => validateWorldPortals( [ { ...runtimePortal, destinationGateway: 'http://world.example' } ] ), /destination gateway/, 'browser rejects insecure portal gateways' );
 assert.throws( () => validateWorldComponents( [ { id: 'tw-component:duplicate', type: 'tidewater.procedural-island-vegetation/1', seed: 7 } ], { requiredFeatures: [ 'tidewater.procedural-island-vegetation/1' ] }, new Set( [ 'tw-component:duplicate' ] ) ), /duplicate component ID/, 'browser rejects duplicate IDs across entity kinds' );

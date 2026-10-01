@@ -105,6 +105,35 @@ func TestWorldManifestRejectsUnsafeAssetAndPortalData(t *testing.T) {
 	}
 }
 
+func TestWorldManifestAllowsPortalProviderDiscoveryByWorldID(t *testing.T) {
+	owner := testKey(t)
+	ownerID, err := peer.IDFromPublicKey(owner.GetPublic())
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifest := newStarterManifest("Discovered destination", ownerID.String())
+	manifest.WorldID = "tw-world:portal-discovery"
+	manifest.Portals = []portal{{
+		ID: "tw-portal:destination", Destination: "tw-world:other",
+		Entry: transform{Position: vector3{1, 2, 3}}, Exit: transform{Position: vector3{4, 5, 6}},
+		OpenView: true, Enabled: true,
+	}}
+	if err := validateManifest(manifest, ownerID.String(), time.Now()); err != nil {
+		t.Fatalf("portal without a pinned peer should resolve by world ID: %v", err)
+	}
+	encoded, err := json.Marshal(manifest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(encoded), "destinationPeerId") {
+		t.Fatalf("un-pinned portal should omit the destinationPeerId field: %s", encoded)
+	}
+	manifest.Portals[0].PeerID = "not-a-peer-id"
+	if err := validateManifest(manifest, ownerID.String(), time.Now()); err == nil {
+		t.Fatal("malformed optional destination peer should be rejected")
+	}
+}
+
 func TestWorldManifestRejectsOverlappingFailoverAuthorityWindows(t *testing.T) {
 	owner, delegateA, delegateB := testKey(t), testKey(t), testKey(t)
 	ownerID, _ := peer.IDFromPublicKey(owner.GetPublic())

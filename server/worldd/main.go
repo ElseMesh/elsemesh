@@ -275,17 +275,26 @@ func run() error {
 	if *dhtMode == "server" {
 		mode = dht.ModeServer
 	}
-	router, err := dht.New(ctx, p2pHost, dht.Mode(mode), dht.ProtocolPrefix("/tidewater/kad/1.0.0"))
-	if err != nil {
-		return fmt.Errorf("start peer discovery: %w", err)
-	}
-	defer router.Close()
 	bootPeers, err := parsePeerAddrs(bootstrap)
 	if err != nil {
 		return fmt.Errorf("bootstrap address: %w", err)
 	}
+	dhtOptions := []dht.Option{dht.Mode(mode), dht.ProtocolPrefix("/tidewater/kad/1.0.0")}
+	if len(bootPeers) > 0 {
+		dhtOptions = append(dhtOptions, dht.BootstrapPeers(bootPeers...))
+	}
+	router, err := dht.New(ctx, p2pHost, dhtOptions...)
+	if err != nil {
+		return fmt.Errorf("start peer discovery: %w", err)
+	}
+	defer router.Close()
 	for _, info := range bootPeers {
 		p2pHost.Peerstore().AddAddrs(info.ID, info.Addrs, time.Hour)
+		connectCtx, cancel := context.WithTimeout(ctx, 8*time.Second)
+		if connectErr := p2pHost.Connect(connectCtx, info); connectErr != nil {
+			log.Printf("bootstrap peer %s connection pending: %v", info.ID, connectErr)
+		}
+		cancel()
 	}
 	if err := router.Bootstrap(ctx); err != nil {
 		log.Printf("DHT bootstrap pending: %v", err)
@@ -546,6 +555,19 @@ func (d *daemon) advertiseWorld() {
 	for {
 		if !d.canAnnounceWorld(time.Now()) || d.canServeAssets(time.Now()) && !d.hasCompleteAssets() && d.currentAuthorityLease() == nil {
 			return
+		}
+		// An isolated node can report a successful local advertisement without
+		// publishing a provider record to any DHT peers. Retry promptly after it
+		// joins the mesh instead of sleeping for the full provider-record TTL.
+		if len(d.host.Network().Peers()) == 0 {
+			timer := time.NewTimer(5 * time.Second)
+			select {
+			case <-d.ctx.Done():
+				timer.Stop()
+				return
+			case <-timer.C:
+			}
+			continue
 		}
 		ctx, cancel := context.WithTimeout(d.ctx, 75*time.Second)
 		ttl, err := d.discovery.Advertise(ctx, namespace)

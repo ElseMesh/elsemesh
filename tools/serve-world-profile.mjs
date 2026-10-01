@@ -14,7 +14,7 @@ function temporaryRoot() {
 
 export function parseArguments( argv ) {
 	const options = {};
-	const valueOptions = new Set( [ '--worldd', '--profile', '--worlds-dir', '--source', '--assets', '--http', '--p2p-port', '--public-gateway', '--directory-url', '--bootstrap', '--relay', '--announce-address', '--web-root' ] );
+	const valueOptions = new Set( [ '--worldd', '--profile', '--worlds-dir', '--source', '--assets', '--http', '--p2p-port', '--public-gateway', '--directory-url', '--discoverable', '--dht-mode', '--bootstrap', '--relay', '--announce-address', '--web-root' ] );
 	for ( let i = 0; i < argv.length; i ++ ) {
 		const key = argv[ i ];
 		if ( ! valueOptions.has( key ) || ! argv[ i + 1 ] || argv[ i + 1 ].startsWith( '--' ) ) throw new Error( `Invalid or incomplete option: ${key}` );
@@ -30,6 +30,9 @@ export function parseArguments( argv ) {
 	if ( options[ '--http' ] && ! /^(?:localhost|127\.0\.0\.1|\[[0-9a-f:]+\]|[^\s:]+):\d{1,5}$/.test( options[ '--http' ] ) ) throw new Error( '--http must be a host:port address' );
 	if ( options[ '--p2p-port' ] && ( ! /^\d+$/.test( options[ '--p2p-port' ] ) || Number( options[ '--p2p-port' ] ) < 1 || Number( options[ '--p2p-port' ] ) > 65535 ) ) throw new Error( '--p2p-port must be between 1 and 65535' );
 	if ( options[ '--directory-url' ] && ! options[ '--public-gateway' ] ) throw new Error( '--directory-url requires --public-gateway' );
+	if ( options[ '--discoverable' ] && ! [ 'true', 'false' ].includes( options[ '--discoverable' ] ) ) throw new Error( '--discoverable must be true or false' );
+	if ( options[ '--directory-url' ] && options[ '--discoverable' ] === 'false' ) throw new Error( '--directory-url cannot be combined with --discoverable false' );
+	if ( options[ '--dht-mode' ] && ! [ 'auto', 'client', 'server' ].includes( options[ '--dht-mode' ] ) ) throw new Error( '--dht-mode must be auto, client, or server' );
 	return options;
 }
 
@@ -68,7 +71,8 @@ async function serve( options ) {
 			const signedPath = path.join( tempDir, 'world.signed.json' );
 			const source = JSON.parse( await readFile( sourcePath, 'utf8' ) );
 			const converterArgs = [ path.join( repositoryRoot, 'tools/world-source-to-manifest.mjs' ), '--source', sourcePath, '--owner', peerId, '--assets', assetsPath, '--out', unsignedPath ];
-			if ( options[ '--directory-url' ] ) converterArgs.push( '--discoverable', 'true' );
+			const discoverable = options[ '--directory-url' ] ? 'true' : options[ '--discoverable' ];
+			if ( discoverable ) converterArgs.push( '--discoverable', discoverable );
 			run( process.execPath, converterArgs );
 			run( worldd, worlddArgs( options, [ '--sign-manifest', unsignedPath, '--manifest-out', signedPath ] ) );
 			run( worldd, worlddArgs( options, [ '--manifest', signedPath, '--import-package', assetsPath, '--world-name', source.title ] ) );
@@ -83,6 +87,7 @@ async function serve( options ) {
 	const args = worlddArgs( options, [] );
 	if ( options[ '--http' ] ) args.push( '--http', options[ '--http' ] );
 	if ( options[ '--p2p-port' ] ) args.push( '--p2p-port', options[ '--p2p-port' ] );
+	if ( options[ '--dht-mode' ] ) args.push( '--dht-mode', options[ '--dht-mode' ] );
 	if ( options[ '--public-gateway' ] ) args.push( '--public-gateway', options[ '--public-gateway' ] );
 	if ( options[ '--directory-url' ] ) args.push( '--directory-url', options[ '--directory-url' ] );
 	if ( options[ '--web-root' ] ) args.push( '--web-root', path.resolve( options[ '--web-root' ] ) );

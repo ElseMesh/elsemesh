@@ -221,12 +221,15 @@ async function buildGLTF( gltf ) {
 
 		}
 		const base = pbr.baseColorFactor || [ 1, 1, 1, 1 ];
+		const emissive = source.emissiveFactor || [ 0, 0, 0 ];
+		const emissiveStrength = source.extensions?.KHR_materials_emissive_strength?.emissiveStrength ?? 1;
 		const alphaMode = source.alphaMode || 'OPAQUE';
 		const vertexColors = gltf.meshes.some( ( primitives ) => primitives.some( ( primitive ) => primitive.material === index && primitive.attributes.COLOR_0 !== undefined ) );
 		resolvedMaterials.push( standard( {
 			name: source.name || `world-material-${index}`,
 			color: new Color().setRGB( base[ 0 ], base[ 1 ], base[ 2 ], SRGBColorSpace ), opacity: base[ 3 ], roughness: pbr.roughnessFactor ?? 1,
 			metalness: pbr.metallicFactor ?? 1, side: source.doubleSided ? 'double' : 'front',
+			emissive: new Color().setRGB( emissive[ 0 ], emissive[ 1 ], emissive[ 2 ], SRGBColorSpace ), emissiveIntensity: emissiveStrength,
 			transparent: alphaMode === 'BLEND', alphaTest: alphaMode === 'MASK' ? ( source.alphaCutoff ?? 0.5 ) : 0, vertexColors,
 			textures: albedo ? { worldAlbedo: albedo } : {},
 			defines: { WORLD_HAS_ALBEDO: albedo ? 1 : 0 },
