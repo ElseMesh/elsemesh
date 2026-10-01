@@ -6,6 +6,16 @@ const PRIORITY_ORDER = Object.freeze( [ 'portal-preview', 'visible', 'nearby', '
 
 function invariant( value, message ) { if ( ! value ) throw new Error( message ); }
 
+export function assetConcurrencyForConnection( connection = globalThis.navigator?.connection ) {
+	if ( ! connection ) return 3;
+	if ( connection.saveData ) return 1;
+	const type = connection.effectiveType;
+	const downlink = Number.isFinite( connection.downlink ) && connection.downlink > 0 ? connection.downlink : null;
+	if ( type === 'slow-2g' || type === '2g' || ( downlink !== null && downlink < 1 ) ) return 1;
+	if ( type === '3g' || ( downlink !== null && downlink < 4 ) ) return 2;
+	return 3;
+}
+
 export function worldLinkFromLocation( location = globalThis.location ) {
 	const params = new URLSearchParams( location.search );
 	const worldId = params.get( 'worldId' );
@@ -170,8 +180,9 @@ export class WorldConnector {
 		return bytes;
 	}
 
-	async preload( { priorities = PRIORITY_ORDER, through = 'background', after = null, assetIDs, signal, concurrency = 3 } = {} ) {
+	async preload( { priorities = PRIORITY_ORDER, through = 'background', after = null, assetIDs, signal, concurrency } = {} ) {
 		invariant( this.manifest, 'Load and verify the world manifest first' );
+		concurrency ??= assetConcurrencyForConnection();
 		const ranks = new Map( priorities.map( ( priority, index ) => [ priority, index ] ) );
 		invariant( Number.isInteger( concurrency ) && concurrency > 0 && concurrency <= 8, 'Invalid asset concurrency' );
 		const endRank = ranks.get( through );

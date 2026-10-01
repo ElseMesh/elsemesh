@@ -1,11 +1,16 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { WorldConnector } from '../src/network/WorldConnector.js';
+import { assetConcurrencyForConnection, WorldConnector } from '../src/network/WorldConnector.js';
 import { selectWorldObjectsForView } from '../src/network/WorldStreaming.js';
 import { PerspectiveCamera } from '../src/engine/scene/Camera.js';
 
 const connector = new WorldConnector( { worldId: 'tw-world:stream-test', nodeId: 'peer', gateway: 'https://example.test' } );
 const priorities = [ 'portal-preview', 'visible', 'nearby', 'background' ];
+assert.equal( assetConcurrencyForConnection( null ), 3, 'unknown connection capability keeps the default bounded concurrency' );
+assert.equal( assetConcurrencyForConnection( { effectiveType: '4g', downlink: 12 } ), 3, 'fast links keep three parallel asset downloads' );
+assert.equal( assetConcurrencyForConnection( { effectiveType: '3g', downlink: 2 } ), 2, 'moderate links limit parallel downloads' );
+assert.equal( assetConcurrencyForConnection( { effectiveType: '2g', downlink: 0.4 } ), 1, 'slow links serialize asset downloads' );
+assert.equal( assetConcurrencyForConnection( { effectiveType: '4g', downlink: 20, saveData: true } ), 1, 'the browser data-saver preference takes precedence over link speed' );
 connector.manifest = { assets: priorities.flatMap( ( priority, index ) => [ { id: `sha256:${String( index * 2 + 1 ).padStart( 64, '0' )}`, priority }, { id: `sha256:${String( index * 2 + 2 ).padStart( 64, '0' )}`, priority } ] ) };
 const requested = [];
 let active = 0, maxActive = 0;
