@@ -50,6 +50,8 @@ export class WorldConnector {
 		this.manifest = null;
 		this.assets = new Map();
 		this.assetDownloads = new Map();
+		this.unavailableProviders = new Set();
+		this.providerRecovery = null;
 		this.transferRateBytesPerSecond = null;
 		this.socket = null;
 		this.webTransport = null;
@@ -58,20 +60,24 @@ export class WorldConnector {
 		this.pending = new Map();
 	}
 
-	async getManifest( { signal } = {} ) {
+	async getManifest( { signal, excludeProviders = this.unavailableProviders } = {} ) {
 		throwIfAborted( signal );
 		let lastError = null;
-		const attempted = new Set();
+		const attempted = new Set( excludeProviders );
 		if ( this.nodeId ) {
-			attempted.add( `${this.nodeId}\n${this.gateway}` );
-			try {
-				return await this.#fetchManifest( signal );
-			} catch ( error ) {
-				if ( signal?.aborted ) throw signal.reason || error;
-				lastError = error;
-				this.close();
-				this.nodeId = '';
+			const key = `${this.nodeId}\n${this.gateway}`;
+			if ( ! attempted.has( key ) ) {
+				attempted.add( key );
+				try {
+					return await this.#fetchManifest( signal );
+				} catch ( error ) {
+					if ( signal?.aborted ) throw signal.reason || error;
+					lastError = error;
+					this.close();
+					this.nodeId = '';
+				}
 			}
+			this.nodeId = '';
 		}
 		let providers;
 		try {
@@ -184,6 +190,48 @@ export class WorldConnector {
 	}
 
 	async #downloadAsset( assetId, asset, signal ) {
+		let lastError;
+		for ( ;; ) {
+			throwIfAborted( signal );
+			const providerKey = `${this.nodeId}\n${this.gateway}`;
+			if ( this.unavailableProviders.has( providerKey ) ) {
+				await this.#recoverProvider( signal );
+				continue;
+			}
+			try {
+				return await this.#downloadAssetFromCurrentProvider( assetId, asset, signal );
+			} catch ( error ) {
+				if ( signal?.aborted ) throw signal.reason || error;
+				lastError = error;
+				this.unavailableProviders.add( providerKey );
+				try {
+					await this.#recoverProvider( signal );
+					const replacement = this.manifest?.assets.find( ( entry ) => entry.id === assetId );
+					invariant( replacement && replacement.bytes === asset.bytes, 'Replacement provider does not advertise the same asset' );
+				} catch ( recoveryError ) {
+					if ( signal?.aborted ) throw signal.reason || recoveryError;
+					throw lastError;
+				}
+			}
+		}
+	}
+
+	async #recoverProvider( signal ) {
+		if ( ! this.providerRecovery ) {
+			const recovery = ( async () => {
+				this.close();
+				this.nodeId = '';
+				return this.getManifest( { signal, excludeProviders: this.unavailableProviders } );
+			} )();
+			const wrapped = recovery.finally( () => {
+				if ( this.providerRecovery === wrapped ) this.providerRecovery = null;
+			} );
+			this.providerRecovery = wrapped;
+		}
+		return this.providerRecovery;
+	}
+
+	async #downloadAssetFromCurrentProvider( assetId, asset, signal ) {
 		const startedAt = performance.now();
 		const parts = [];
 		for ( let offset = 0; offset < asset.bytes; offset += this.chunkBytes ) {

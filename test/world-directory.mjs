@@ -42,23 +42,29 @@ function emit( socket, type, data ) {
 
 const first = await identity();
 const second = await identity();
+const third = await identity();
 const now = Math.floor( Date.now() / 1000 );
 const grantEpoch = 4;
 const failoverAfter = now - 30;
 const failoverSeconds = 120;
 const expiresAt = now + 3600;
 const providers = [];
-for ( const [ id, gateway ] of [ [ first, 'https://offline.example' ], [ second, 'https://online.example' ] ] ) {
+for ( const [ id, gateway ] of [ [ first, 'https://offline.example' ], [ second, 'https://online.example' ], [ third, 'https://cache.example' ] ] ) {
 	providers.push( await signedDocument( 'tidewater.node/1', {
 		protocol: 'tidewater.node/1', nodeId: id.peerId, gateway,
 		worldIds: [ 'tw-world:directory-test' ], issuedAt: now, expiresAt: now + 3600,
 	}, id ) );
 }
+const assetBytes = new Uint8Array( [ 17, 29, 43, 61 ] );
+const assetId = `sha256:${Buffer.from( await crypto.subtle.digest( 'SHA-256', assetBytes ) ).toString( 'hex' )}`;
 let manifest = await signedDocument( 'tidewater.world/1', {
 	protocol: 'tidewater.world/1', worldId: 'tw-world:directory-test', ownerPeerId: second.peerId,
 	authorityPeerId: second.peerId, authorityEpoch: 1, version: 1, discoverable: true,
 	title: 'Directory test', rules: { gravity: 1, avatarComplexity: 1000, physicsProfile: 'tidewater-default' },
-	assets: [], objects: [], portals: [], hosts: [ { peerId: first.peerId, scopes: [ 'failover-authority' ], expiresAt, epoch: grantEpoch, failoverAfter, failoverSeconds } ], updatedAt: now,
+	assets: [ { id: assetId, bytes: assetBytes.length, priority: 'visible' } ], objects: [], portals: [], hosts: [
+		{ peerId: first.peerId, scopes: [ 'failover-authority' ], expiresAt, epoch: grantEpoch, failoverAfter, failoverSeconds },
+		{ peerId: third.peerId, scopes: [ 'content-cache' ], expiresAt, epoch: 1 },
+	], updatedAt: now,
 }, second );
 const validManifest = manifest;
 let authorityLease = await signedDocument( 'tidewater.authority/2', {
@@ -69,6 +75,7 @@ const validAuthorityLease = authorityLease;
 
 const oldFetch = globalThis.fetch;
 const OldWebSocket = globalThis.WebSocket;
+let staleSecondAsset = false;
 globalThis.fetch = async () => ( { ok: true, json: async () => ( { worldId: 'tw-world:directory-test', providers } ) } );
 globalThis.WebSocket = class extends EventTarget {
 	static OPEN = 1;
@@ -78,6 +85,7 @@ globalThis.WebSocket = class extends EventTarget {
 	constructor( url ) {
 		super();
 		this.url = String( url );
+		this.targetPeerId = '';
 		this.readyState = WebSocket.CONNECTING;
 		queueMicrotask( () => {
 			if ( this.url.includes( 'offline.example' ) ) emit( this, 'error' );
@@ -87,10 +95,19 @@ globalThis.WebSocket = class extends EventTarget {
 	send( value ) {
 		const request = JSON.parse( value );
 		if ( request.type === 'connect' ) {
+			this.targetPeerId = request.targetPeerId;
 			if ( this.url.includes( 'offline.example' ) || request.targetPeerId === first.peerId ) emit( this, 'message', JSON.stringify( { type: 'error', error: 'world_unreachable' } ) );
 			else emit( this, 'message', JSON.stringify( { type: 'connected', worldId: request.worldId } ) );
 		}
-		else emit( this, 'message', JSON.stringify( { type: 'manifest', worldId: request.worldId, requestId: request.requestId, document: manifest, authorityLease } ) );
+		else if ( request.type === 'manifest.get' ) emit( this, 'message', JSON.stringify( { type: 'manifest', worldId: request.worldId, requestId: request.requestId, document: manifest, authorityLease } ) );
+		else if ( request.type === 'asset.get' && this.targetPeerId === second.peerId && staleSecondAsset ) {
+			staleSecondAsset = false;
+			emit( this, 'message', JSON.stringify( { type: 'error', requestId: request.requestId, code: 'asset_not_found', error: 'cached asset is stale' } ) );
+		}
+		else if ( request.type === 'asset.get' ) {
+			const chunk = assetBytes.slice( request.offset, request.offset + request.length );
+			emit( this, 'message', JSON.stringify( { type: 'asset.chunk', requestId: request.requestId, assetId, offset: request.offset, total: assetBytes.length, chunk: Buffer.from( chunk ).toString( 'base64' ) } ) );
+		}
 	}
 	close() { this.readyState = WebSocket.CLOSED; emit( this, 'close' ); }
 };
@@ -136,14 +153,24 @@ try {
 	unsafeManifestEpoch.close();
 	manifest = validManifest;
 	globalThis.fetch = async ( input ) => {
-		assert.equal( new URL( input ).pathname, '/api/lookup' );
-		return { ok: true, json: async () => ( { worldId: 'tw-world:directory-test', providers: [ first.peerId, second.peerId ] } ) };
+		const pathname = new URL( input ).pathname;
+		if ( pathname === '/api/lookup' ) return { ok: true, json: async () => ( { worldId: 'tw-world:directory-test', providers: [ first.peerId, second.peerId, third.peerId ] } ) };
+		assert.equal( pathname, '/v1/worlds/tw-world%3Adirectory-test' );
+		return { ok: true, json: async () => ( { providers } ) };
 	};
 	const dhtFallback = new WorldConnector( { worldId: 'tw-world:directory-test', gateway: 'https://bootstrap.example' } );
 	assert.equal( ( await dhtFallback.getManifest() ).worldId, 'tw-world:directory-test' );
 	assert.equal( dhtFallback.nodeId, second.peerId, 'DHT lookup should fall through from an unreachable cache to another provider without a directory' );
 	dhtFallback.close();
-	console.log( 'ok directory node signatures, provider fallback, and owner-signed manifest verification' );
+	staleSecondAsset = true;
+	const staleCache = new WorldConnector( { worldId: 'tw-world:directory-test', directory: 'https://thruhold.org' } );
+	await staleCache.getManifest();
+	assert.equal( staleCache.nodeId, second.peerId, 'asset recovery starts from the current owner provider' );
+	assert.deepEqual( await staleCache.getAsset( assetId ), assetBytes, 'missing cached content retries from another signed provider and verifies the asset hash' );
+	assert.equal( staleCache.nodeId, third.peerId, 'asset recovery moves to a different owner-authorized cache provider' );
+	assert.ok( staleCache.unavailableProviders.has( `${second.peerId}\nhttps://online.example` ), 'failed cache providers are excluded for the connector session' );
+	staleCache.close();
+	console.log( 'ok directory signatures, stale-cache asset recovery, and owner-signed manifest verification' );
 } finally {
 	globalThis.fetch = oldFetch;
 	if ( OldWebSocket === undefined ) delete globalThis.WebSocket;
