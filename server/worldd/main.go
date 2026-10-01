@@ -495,33 +495,59 @@ func (d *daemon) handleLookup(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid worldId", http.StatusBadRequest)
 		return
 	}
-	if worldID == d.world.WorldID {
-		providers := []string{}
-		if d.canServeAssets(time.Now()) && d.hasCompleteAssets() {
-			providers = append(providers, d.host.ID().String())
-		}
-		writeJSON(w, http.StatusOK, map[string]any{"worldId": worldID, "providers": providers, "authority": d.world.OwnerPeerID})
-		return
-	}
+	localCanServe := worldID == d.world.WorldID && d.canServeAssets(time.Now()) && d.hasCompleteAssets()
 	ctx, cancel := context.WithTimeout(r.Context(), 8*time.Second)
 	defer cancel()
 	peers, err := d.discovery.FindPeers(ctx, "tidewater-world-v1:"+worldID)
 	if err != nil {
+		if localCanServe {
+			writeJSON(w, http.StatusOK, map[string]any{"worldId": worldID, "providers": []string{d.host.ID().String()}, "authority": d.world.OwnerPeerID})
+			return
+		}
 		http.Error(w, "discovery unavailable", http.StatusServiceUnavailable)
 		return
 	}
-	providers := make([]string, 0, 8)
+	discovered := make([]peer.AddrInfo, 0, 16)
 	for info := range peers {
-		if info.ID == "" || info.ID == d.host.ID() {
-			continue
-		}
-		d.host.Peerstore().AddAddrs(info.ID, info.Addrs, time.Hour)
-		providers = append(providers, info.ID.String())
-		if len(providers) == 16 {
+		discovered = append(discovered, info)
+		if len(discovered) == 32 {
 			break
 		}
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"worldId": worldID, "providers": providers})
+	providers := collectProviders(d.host.ID(), localCanServe, discovered, 16)
+	for _, info := range discovered {
+		if info.ID != "" && info.ID != d.host.ID() {
+			d.host.Peerstore().AddAddrs(info.ID, info.Addrs, time.Hour)
+		}
+	}
+	result := map[string]any{"worldId": worldID, "providers": providers}
+	if worldID == d.world.WorldID {
+		result["authority"] = d.world.OwnerPeerID
+	}
+	writeJSON(w, http.StatusOK, result)
+}
+
+func collectProviders(local peer.ID, localCanServe bool, discovered []peer.AddrInfo, limit int) []string {
+	if limit <= 0 {
+		return []string{}
+	}
+	providers := make([]string, 0, min(limit, len(discovered)+1))
+	seen := make(map[peer.ID]bool, len(discovered)+1)
+	if localCanServe && local != "" {
+		providers = append(providers, local.String())
+		seen[local] = true
+	}
+	for _, info := range discovered {
+		if info.ID == "" || seen[info.ID] || (info.ID == local && !localCanServe) {
+			continue
+		}
+		providers = append(providers, info.ID.String())
+		seen[info.ID] = true
+		if len(providers) == limit {
+			break
+		}
+	}
+	return providers
 }
 
 func (d *daemon) handleAsset(w http.ResponseWriter, r *http.Request) {

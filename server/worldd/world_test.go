@@ -114,3 +114,24 @@ func TestTemporaryFailoverAuthorityRequiresOwnerWindow(t *testing.T) {
 		t.Fatalf("daemon should wake to expire its bounded lease, got %v", delay)
 	}
 }
+
+func TestLookupIncludesAuthorizedCacheProviders(t *testing.T) {
+	localKey, _, err := crypto.GenerateEd25519Key(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cacheKey, _, err := crypto.GenerateEd25519Key(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	local, _ := peer.IDFromPublicKey(localKey.GetPublic())
+	cache, _ := peer.IDFromPublicKey(cacheKey.GetPublic())
+	providers := collectProviders(local, true, []peer.AddrInfo{{ID: local}, {ID: cache}, {ID: cache}}, 16)
+	if len(providers) != 2 || providers[0] != local.String() || providers[1] != cache.String() {
+		t.Fatalf("lookup should return the local owner and unique cache peers, got %v", providers)
+	}
+	providers = collectProviders(local, false, []peer.AddrInfo{{ID: local}, {ID: cache}}, 16)
+	if len(providers) != 1 || providers[0] != cache.String() {
+		t.Fatalf("lookup should omit a node that cannot serve and retain cache peers, got %v", providers)
+	}
+}
