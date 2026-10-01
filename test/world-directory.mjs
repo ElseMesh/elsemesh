@@ -54,12 +54,13 @@ for ( const [ id, gateway ] of [ [ first, 'https://offline.example' ], [ second,
 		worldIds: [ 'tw-world:directory-test' ], issuedAt: now, expiresAt: now + 3600,
 	}, id ) );
 }
-const manifest = await signedDocument( 'tidewater.world/1', {
+let manifest = await signedDocument( 'tidewater.world/1', {
 	protocol: 'tidewater.world/1', worldId: 'tw-world:directory-test', ownerPeerId: second.peerId,
 	authorityPeerId: second.peerId, authorityEpoch: 1, version: 1, discoverable: true,
 	title: 'Directory test', rules: { gravity: 1, avatarComplexity: 1000, physicsProfile: 'tidewater-default' },
 	assets: [], objects: [], portals: [], hosts: [ { peerId: first.peerId, scopes: [ 'failover-authority' ], expiresAt, epoch: grantEpoch, failoverAfter, failoverSeconds } ], updatedAt: now,
 }, second );
+const validManifest = manifest;
 let authorityLease = await signedDocument( 'tidewater.authority/2', {
 	worldId: 'tw-world:directory-test', authorityPeerId: first.peerId, epoch: 2, grantEpoch,
 	notBefore: failoverAfter, expiresAt: Math.min( expiresAt, failoverAfter + failoverSeconds ),
@@ -109,7 +110,31 @@ try {
 	const stale = new WorldConnector( { worldId: 'tw-world:directory-test', nodeId: second.peerId, gateway: 'https://online.example' } );
 	await assert.rejects( stale.getManifest(), /no matching owner grant/, 'browser rejects a validly signed but stale grant epoch' );
 	stale.close();
+	authorityLease = await signedDocument( 'tidewater.authority/2', {
+		worldId: 'tw-world:directory-test', authorityPeerId: first.peerId, epoch: 3, grantEpoch,
+		notBefore: failoverAfter, expiresAt: Math.min( expiresAt, failoverAfter + failoverSeconds ),
+	}, first );
+	const skippedEpoch = new WorldConnector( { worldId: 'tw-world:directory-test', nodeId: second.peerId, gateway: 'https://online.example' } );
+	await assert.rejects( skippedEpoch.getManifest(), /Authority lease is not valid/, 'browser requires failover authority to advance exactly one epoch' );
+	skippedEpoch.close();
+	authorityLease = await signedDocument( 'tidewater.authority/2', {
+		worldId: 'tw-world:directory-test', authorityPeerId: first.peerId, epoch: Number.MAX_SAFE_INTEGER + 1, grantEpoch,
+		notBefore: failoverAfter, expiresAt: Math.min( expiresAt, failoverAfter + failoverSeconds ),
+	}, first );
+	const unsafeEpoch = new WorldConnector( { worldId: 'tw-world:directory-test', nodeId: second.peerId, gateway: 'https://online.example' } );
+	await assert.rejects( unsafeEpoch.getManifest(), /Authority lease is not valid/, 'browser rejects authority epochs outside JavaScript safe integer range' );
+	unsafeEpoch.close();
 	authorityLease = validAuthorityLease;
+	manifest = await signedDocument( 'tidewater.world/1', {
+		protocol: 'tidewater.world/1', worldId: 'tw-world:directory-test', ownerPeerId: second.peerId,
+		authorityPeerId: second.peerId, authorityEpoch: Number.MAX_SAFE_INTEGER + 1, version: 1, discoverable: true,
+		title: 'Directory test', rules: { gravity: 1, avatarComplexity: 1000, physicsProfile: 'tidewater-default' },
+		assets: [], objects: [], portals: [], hosts: [], updatedAt: now,
+	}, second );
+	const unsafeManifestEpoch = new WorldConnector( { worldId: 'tw-world:directory-test', nodeId: second.peerId, gateway: 'https://online.example' } );
+	await assert.rejects( unsafeManifestEpoch.getManifest(), /Manifest authority epoch/, 'browser rejects a manifest epoch outside safe integer range' );
+	unsafeManifestEpoch.close();
+	manifest = validManifest;
 	globalThis.fetch = async ( input ) => {
 		assert.equal( new URL( input ).pathname, '/api/lookup' );
 		return { ok: true, json: async () => ( { worldId: 'tw-world:directory-test', providers: [ first.peerId, second.peerId ] } ) };

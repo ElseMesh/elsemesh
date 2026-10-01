@@ -125,7 +125,7 @@ type worldManifest struct {
 }
 
 func validateManifest(manifest worldManifest, localPeerID string, now time.Time) error {
-	if manifest.Protocol != manifestProtocol || !worldIDPattern.MatchString(manifest.WorldID) || manifest.Version == 0 {
+	if manifest.Protocol != manifestProtocol || !worldIDPattern.MatchString(manifest.WorldID) || manifest.Version == 0 || manifest.Version > maxSafeJSInteger {
 		return errors.New("invalid world identity or protocol")
 	}
 	if len(manifest.Title) == 0 || len(manifest.Title) > 160 || strings.TrimSpace(manifest.Title) != manifest.Title {
@@ -159,7 +159,7 @@ func validateManifest(manifest worldManifest, localPeerID string, now time.Time)
 		return errors.New("manifest contains too many entries")
 	}
 	permitted := manifest.OwnerPeerID == localPeerID
-	if manifest.AuthorityPeerID == "" || manifest.AuthorityEpoch == 0 || manifest.AuthorityPeerID != manifest.OwnerPeerID {
+	if manifest.AuthorityPeerID == "" || manifest.AuthorityEpoch == 0 || manifest.AuthorityEpoch > maxSafeJSInteger || manifest.AuthorityPeerID != manifest.OwnerPeerID {
 		return errors.New("world authority is missing an epoch")
 	}
 	if _, err := peer.Decode(manifest.OwnerPeerID); err != nil {
@@ -343,6 +343,9 @@ type authorityLease struct {
 }
 
 func activateFailover(manifest worldManifest, delegateID string, key crypto.PrivKey, now time.Time) (signedDocument, error) {
+	if manifest.AuthorityEpoch == 0 || manifest.AuthorityEpoch >= maxSafeJSInteger {
+		return signedDocument{}, errors.New("world authority epoch cannot be safely advanced")
+	}
 	keyPeerID, err := peer.IDFromPublicKey(key.GetPublic())
 	if err != nil || keyPeerID.String() != delegateID {
 		return signedDocument{}, errors.New("failover signer does not match delegate node")
@@ -413,7 +416,9 @@ func validateAuthorityLease(document signedDocument, manifest worldManifest, now
 	if err := json.Unmarshal(document.Payload, &lease); err != nil {
 		return lease, err
 	}
-	if lease.WorldID != manifest.WorldID || lease.AuthorityPeerID != document.Signer || lease.Epoch != manifest.AuthorityEpoch+1 || now.Unix() < lease.NotBefore || now.Unix() >= lease.ExpiresAt {
+	if manifest.AuthorityEpoch == 0 || manifest.AuthorityEpoch >= maxSafeJSInteger || lease.Epoch == 0 || lease.Epoch > maxSafeJSInteger || lease.GrantEpoch == 0 || lease.GrantEpoch > maxSafeJSInteger ||
+		lease.NotBefore <= 0 || lease.NotBefore > int64(maxSafeJSInteger) || lease.ExpiresAt <= lease.NotBefore || lease.ExpiresAt > int64(maxSafeJSInteger) ||
+		lease.WorldID != manifest.WorldID || lease.AuthorityPeerID != document.Signer || lease.Epoch != manifest.AuthorityEpoch+1 || now.Unix() < lease.NotBefore || now.Unix() >= lease.ExpiresAt {
 		return lease, errors.New("authority lease is not currently valid")
 	}
 	for _, grant := range manifest.Hosts {

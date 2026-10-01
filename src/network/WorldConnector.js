@@ -83,13 +83,14 @@ export class WorldConnector {
 		validateWorldObjects( reply.document.payload.objects );
 		validateWorldHosts( reply.document.payload.hosts );
 		this.manifest = reply.document.payload;
+		invariant( Number.isSafeInteger( this.manifest.authorityEpoch ) && this.manifest.authorityEpoch > 0, 'Manifest authority epoch is outside the supported range' );
 		const hostGrant = this.manifest.hosts?.find( ( entry ) => entry.peerId === this.nodeId && entry.scopes?.includes( 'content-cache' ) && entry.expiresAt > Date.now() / 1000 );
 		invariant( this.manifest.ownerPeerId === this.nodeId || hostGrant, 'Selected node is not authorized by the world owner to serve content' );
 		this.authorityLease = null;
 		if ( reply.authorityLease ) {
 			await verifySignedDocument( reply.authorityLease, 'tidewater.authority/2' );
 			const lease = reply.authorityLease.payload;
-			invariant( lease.worldId === this.worldId && lease.authorityPeerId === reply.authorityLease.signer && Number.isSafeInteger( lease.grantEpoch ) && lease.grantEpoch > 0 && lease.epoch > this.manifest.authorityEpoch && Date.now() / 1000 >= lease.notBefore && Date.now() / 1000 < lease.expiresAt, 'Authority lease is not valid for this world at the current time' );
+			invariant( lease.worldId === this.worldId && lease.authorityPeerId === reply.authorityLease.signer && Number.isSafeInteger( lease.grantEpoch ) && lease.grantEpoch > 0 && Number.isSafeInteger( lease.epoch ) && lease.epoch === this.manifest.authorityEpoch + 1 && Number.isSafeInteger( lease.notBefore ) && lease.notBefore > 0 && Number.isSafeInteger( lease.expiresAt ) && lease.expiresAt > lease.notBefore && Date.now() / 1000 >= lease.notBefore && Date.now() / 1000 < lease.expiresAt, 'Authority lease is not valid for this world at the current time' );
 			const grant = this.manifest.hosts?.find( ( entry ) => entry.peerId === lease.authorityPeerId && entry.scopes.includes( 'failover-authority' ) && entry.epoch === lease.grantEpoch && entry.failoverAfter === lease.notBefore && entry.expiresAt >= lease.expiresAt && lease.expiresAt <= entry.failoverAfter + entry.failoverSeconds );
 			invariant( grant, 'Authority lease has no matching owner grant' );
 			this.authorityLease = lease;

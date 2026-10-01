@@ -65,6 +65,25 @@ func TestWorldManifestOwnerAndScopedHostGrant(t *testing.T) {
 	}
 }
 
+func TestWorldManifestRejectsUnsafeAuthorityEpochAndVersion(t *testing.T) {
+	owner, _, err := crypto.GenerateEd25519Key(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ownerID, _ := peer.IDFromPublicKey(owner.GetPublic())
+	manifest := newStarterManifest("Safe epochs", ownerID.String())
+	manifest.WorldID = "tw-world:safe-epochs"
+	manifest.AuthorityEpoch = maxSafeJSInteger + 1
+	if err := validateManifest(manifest, ownerID.String(), time.Now()); err == nil {
+		t.Fatal("authority epoch outside JavaScript safe integer range accepted")
+	}
+	manifest.AuthorityEpoch = 1
+	manifest.Version = maxSafeJSInteger + 1
+	if err := validateManifest(manifest, ownerID.String(), time.Now()); err == nil {
+		t.Fatal("world version outside JavaScript safe integer range accepted")
+	}
+}
+
 func TestWorldManifestRejectsUnsafeAssetAndPortalData(t *testing.T) {
 	manifest := newStarterManifest("Island", "owner")
 	manifest.WorldID = "tw-world:invalid-case"
@@ -311,6 +330,13 @@ func TestTemporaryFailoverAuthorityRequiresOwnerWindow(t *testing.T) {
 	}
 	if delay := failoverCheckDelay(manifest, delegateID.String(), &document, time.Unix(start+30, 0)); delay != 90*time.Second {
 		t.Fatalf("daemon should wake to expire its bounded lease, got %v", delay)
+	}
+	manifest.AuthorityEpoch = maxSafeJSInteger
+	if _, err := activateFailover(manifest, delegateID.String(), delegate, time.Unix(start+1, 0)); err == nil {
+		t.Fatal("failover authority advanced an epoch beyond JavaScript safe integer range")
+	}
+	if _, err := validateAuthorityLease(document, manifest, time.Unix(start+1, 0)); err == nil {
+		t.Fatal("authority lease accepted a manifest epoch that cannot be safely advanced")
 	}
 }
 
