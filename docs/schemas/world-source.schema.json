@@ -67,6 +67,12 @@
           },
           "additionalProperties": false
         },
+        "maxPackageBytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 17179869184,
+          "description": "Optional aggregate size limit for all unique world assets, in bytes. Conversion, node validation, and the browser enforce the limit before publication or download."
+        },
         "requiredFeatures": {
           "type": "array",
           "maxItems": 64,

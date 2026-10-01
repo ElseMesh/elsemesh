@@ -135,6 +135,37 @@ func TestWorldManifestValidatesDeterministicMovementRules(t *testing.T) {
 	}
 }
 
+func TestWorldManifestEnforcesAggregatePackageByteBudget(t *testing.T) {
+	key, _, err := crypto.GenerateEd25519Key(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ownerID, err := peer.IDFromPublicKey(key.GetPublic())
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifest := newStarterManifest("Package budget", ownerID.String())
+	manifest.WorldID = "tw-world:package-budget"
+	budget := int64(3)
+	manifest.Rules.MaxPackageBytes = &budget
+	manifest.Assets = []assetRef{
+		{ID: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", Bytes: 2, Kind: "glb", Priority: "visible"},
+		{ID: "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", Bytes: 2, Kind: "glb", Priority: "nearby"},
+	}
+	if err := validateManifest(manifest, ownerID.String(), time.Now()); err == nil {
+		t.Fatal("package larger than its signed aggregate byte budget accepted")
+	}
+	budget = 4
+	if err := validateManifest(manifest, ownerID.String(), time.Now()); err != nil {
+		t.Fatalf("package at its signed aggregate byte budget rejected: %v", err)
+	}
+	budget = 16 << 30
+	manifest.Assets[0].Bytes = maxAssetBytes + 1
+	if err := validateManifest(manifest, ownerID.String(), time.Now()); err == nil {
+		t.Fatal("asset larger than per-asset limit accepted under aggregate budget")
+	}
+}
+
 func TestWorldManifestValidatesEnabledObjectCollisionBounds(t *testing.T) {
 	key, _, err := crypto.GenerateEd25519Key(rand.Reader)
 	if err != nil {

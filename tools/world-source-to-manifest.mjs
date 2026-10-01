@@ -47,6 +47,10 @@ async function main() {
 		const rank = [ 'portal-preview', 'visible', 'nearby', 'background' ];
 		if ( rank.indexOf( priority ) < rank.indexOf( ref.priority ) ) ref.priority = priority;
 	}
+	if ( source.rules.maxPackageBytes !== undefined ) {
+		const packageBytes = [ ...assets.values() ].reduce( ( total, asset ) => total + asset.bytes, 0 );
+		if ( packageBytes > source.rules.maxPackageBytes ) throw new Error( `World package uses ${packageBytes} bytes, over its declared ${source.rules.maxPackageBytes}-byte budget` );
+	}
 	const manifest = {
 		protocol: 'tidewater.world/1',
 		worldId: source.worldId,

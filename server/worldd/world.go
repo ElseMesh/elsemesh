@@ -87,6 +87,7 @@ type worldRules struct {
 	AvatarComplexity uint32         `json:"avatarComplexity"`
 	PhysicsProfile   string         `json:"physicsProfile"`
 	Movement         *movementRules `json:"movement,omitempty"`
+	MaxPackageBytes  *int64         `json:"maxPackageBytes,omitempty"`
 	StyleGuide       string         `json:"styleGuide,omitempty"`
 	RequiredFeatures []string       `json:"requiredFeatures,omitempty"`
 }
@@ -188,10 +189,20 @@ func validateManifest(manifest worldManifest, localPeerID string, now time.Time)
 	if !permitted {
 		return errors.New("this node has no unexpired owner grant for the world")
 	}
+	if budget := manifest.Rules.MaxPackageBytes; budget != nil && (*budget < 1 || *budget > 16<<30) {
+		return errors.New("world package byte budget is outside the supported range")
+	}
 	seenAssets := make(map[string]bool, len(manifest.Assets))
+	var totalAssetBytes int64
 	for _, asset := range manifest.Assets {
 		if !assetIDPattern.MatchString(asset.ID) || seenAssets[asset.ID] || asset.Bytes < 0 || asset.Bytes > maxAssetBytes {
 			return fmt.Errorf("invalid or duplicate asset %q", asset.ID)
+		}
+		if manifest.Rules.MaxPackageBytes != nil {
+			if asset.Bytes > *manifest.Rules.MaxPackageBytes-totalAssetBytes {
+				return errors.New("world package exceeds its declared byte budget")
+			}
+			totalAssetBytes += asset.Bytes
 		}
 		if asset.Priority != "portal-preview" && asset.Priority != "visible" && asset.Priority != "nearby" && asset.Priority != "background" {
 			return fmt.Errorf("invalid priority for asset %s", asset.ID)

@@ -7,6 +7,7 @@ export const SUPPORTED_WORLD_FEATURES = new Set( [
 ] );
 export const SUPPORTED_PHYSICS_PROFILES = new Set( [ 'default', 'tidewater-default' ] );
 export const DEFAULT_WORLD_MOVEMENT = Object.freeze( { walkSpeed: 3, sprintSpeed: 6.2, jumpSpeed: 4.6 } );
+export const MAX_WORLD_PACKAGE_BYTES = 16 * 1024 * 1024 * 1024;
 
 const FEATURE_ID = /^tidewater\.[a-z0-9.-]+\/\d+$/;
 
@@ -16,6 +17,7 @@ export function validateWorldRequirements( manifest ) {
 		throw new Error( 'World manifest contains invalid runtime rules' );
 	}
 	movementParameters( rules );
+	validateWorldPackageBudget( manifest );
 	const required = rules.requiredFeatures ?? [];
 	if ( ! Array.isArray( required ) || required.length > 64 ) throw new Error( 'World manifest contains an invalid requiredFeatures list' );
 	const seen = new Set();
@@ -23,6 +25,18 @@ export function validateWorldRequirements( manifest ) {
 		if ( typeof feature !== 'string' || feature.length > 96 || ! FEATURE_ID.test( feature ) || seen.has( feature ) ) throw new Error( 'World manifest contains an invalid or duplicate required feature' );
 		if ( ! SUPPORTED_WORLD_FEATURES.has( feature ) ) throw new Error( `This client does not support required world feature: ${feature}` );
 		seen.add( feature );
+	}
+	return manifest;
+}
+
+export function validateWorldPackageBudget( manifest ) {
+	const maximum = manifest?.rules?.maxPackageBytes;
+	if ( maximum === undefined ) return manifest;
+	if ( ! Number.isSafeInteger( maximum ) || maximum < 1 || maximum > MAX_WORLD_PACKAGE_BYTES || ! Array.isArray( manifest.assets ) ) throw new Error( 'World package byte budget is invalid' );
+	let declaredBytes = 0;
+	for ( const asset of manifest.assets ) {
+		if ( ! Number.isSafeInteger( asset?.bytes ) || asset.bytes < 0 || declaredBytes > maximum - asset.bytes ) throw new Error( 'World package exceeds its declared byte budget' );
+		declaredBytes += asset.bytes;
 	}
 	return manifest;
 }
