@@ -2,6 +2,8 @@ package main
 
 import (
 	"crypto/rand"
+	"encoding/json"
+	"strings"
 	"testing"
 	"time"
 
@@ -144,6 +146,24 @@ func TestWorldManifestValidatesProceduralComponents(t *testing.T) {
 	if err := validateManifest(manifest, ownerID.String(), time.Now()); err != nil {
 		t.Fatalf("valid procedural component rejected: %v", err)
 	}
+	manifest.Rules.RequiredFeatures = append(manifest.Rules.RequiredFeatures, "tidewater.island-ocean/1")
+	manifest.Components = append(manifest.Components, worldComponent{ID: "tw-component:island-ocean", Type: "tidewater.island-ocean/1", Priority: "portal-preview"})
+	if err := validateManifest(manifest, ownerID.String(), time.Now()); err != nil {
+		t.Fatalf("valid island ocean component rejected: %v", err)
+	}
+	oceanJSON, err := json.Marshal(manifest.Components[1])
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(oceanJSON), `"seed"`) {
+		t.Fatalf("island ocean serialization includes a vegetation-only field: %s", oceanJSON)
+	}
+	manifest.Components = append(manifest.Components, worldComponent{ID: "tw-component:island-ocean-copy", Type: "tidewater.island-ocean/1"})
+	if err := validateManifest(manifest, ownerID.String(), time.Now()); err == nil {
+		t.Fatal("duplicate island ocean components accepted")
+	}
+	manifest.Components = manifest.Components[:1]
+	manifest.Rules.RequiredFeatures = manifest.Rules.RequiredFeatures[:1]
 	manifest.Components[0].PlacementAssetID = "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
 	if err := validateManifest(manifest, ownerID.String(), time.Now()); err == nil {
 		t.Fatal("procedural component referencing an undeclared placement asset accepted")

@@ -64,11 +64,12 @@ try {
 	assert.equal( primitive.mode, 4, 'terrain export must use triangle lists' );
 	assert.ok( primitive.attributes.COLOR_0, 'terrain export must carry its deterministic vertex colors' );
 	assert.equal( primitive.indices.length, 512 * 512 * 6, 'terrain export must cover the full configured grid' );
-	assert.deepEqual( source.rules.requiredFeatures, [ 'tidewater.static-glb/1', 'tidewater.static-glb-quaternion/1', 'tidewater.procedural-island-vegetation/1' ], 'GLB transforms and procedural vegetation declare their runtime capabilities' );
-	assert.equal( source.components.length, 1, 'portable island declares one vegetation component' );
+	assert.deepEqual( source.rules.requiredFeatures, [ 'tidewater.static-glb/1', 'tidewater.static-glb-quaternion/1', 'tidewater.procedural-island-vegetation/1', 'tidewater.island-ocean/1' ], 'GLB transforms, procedural vegetation, and the example ocean declare runtime capabilities' );
+	assert.equal( source.components.length, 2, 'portable island declares vegetation and ocean components' );
 	assert.equal( source.components[ 0 ].type, 'tidewater.procedural-island-vegetation/1', 'portable island uses the versioned deterministic vegetation renderer' );
 	assert.match( source.components[ 0 ].placementAssetId, /^sha256:[0-9a-f]{64}$/, 'vegetation placement data is content addressed' );
 	assert.equal( source.components[ 0 ].priority, 'portal-preview', 'vegetation records are available for open portal previews' );
+	assert.deepEqual( source.components[ 1 ], { id: 'tw-component:island-ocean', type: 'tidewater.island-ocean/1', priority: 'portal-preview' }, 'portable island declares its versioned ocean renderer for early portal previews' );
 	assert.ok( source.rules.maxPackageBytes >= [ ...firstAssets.values() ].reduce( ( total, bytes ) => total + bytes.length, 0 ), 'signed package byte budget covers every unique asset' );
 	assert.deepEqual( [ source.objects[ 0 ].collision.columns, source.objects[ 0 ].collision.rows ], [ 513, 513 ], 'terrain source declares the grid used for collision extraction' );
 	const villageObject = source.objects.find( ( object ) => object.id === 'tw-object:island-village' );

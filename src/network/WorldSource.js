@@ -54,8 +54,12 @@ export function validateWorldSource( source ) {
 		if ( typeof portal.id !== 'string' || ! /^tw-portal:[\w.-]{1,128}$/.test( portal.id ) || ids.has( portal.id ) || ! /^tw-world:[\w.-]{1,128}$/.test( portal.destinationWorldId || '' ) || typeof portal.destinationPeerId !== 'string' || portal.destinationPeerId.length < 20 || portal.destinationPeerId.length > 128 || ( portal.destinationGateway !== undefined && ! validGateway( portal.destinationGateway ) ) || ! portal.entry || ! validVector( portal.entry.position ) || ! Number.isFinite( portal.entry.yaw ) || portal.entry.rotation !== undefined || ! portal.exit || ! validVector( portal.exit.position ) || ! Number.isFinite( portal.exit.yaw ) || portal.exit.rotation !== undefined || typeof portal.openView !== 'boolean' || typeof portal.enabled !== 'boolean' ) throw new Error( 'Invalid or duplicate portal record' );
 		ids.add( portal.id );
 	}
+	let islandOceanCount = 0;
 	for ( const component of source.components || [] ) {
-		if ( ! component || typeof component.id !== 'string' || ! /^tw-component:[\w.-]{1,128}$/.test( component.id ) || ids.has( component.id ) || component.type !== 'tidewater.procedural-island-vegetation/1' || component.seed !== 7 || component.priority !== undefined && ! [ 'portal-preview', 'visible', 'nearby', 'background' ].includes( component.priority ) || component.placementAssetId !== undefined && ! /^sha256:[0-9a-f]{64}$/.test( component.placementAssetId ) ) throw new Error( 'Invalid or duplicate world component' );
+		const vegetation = component?.type === 'tidewater.procedural-island-vegetation/1' && component.seed === 7 && ( component.placementAssetId === undefined || /^sha256:[0-9a-f]{64}$/.test( component.placementAssetId ) );
+		const islandOcean = component?.type === 'tidewater.island-ocean/1';
+		if ( ! component || typeof component.id !== 'string' || ! /^tw-component:[\w.-]{1,128}$/.test( component.id ) || ids.has( component.id ) || ( ! vegetation && ! islandOcean ) || component.priority !== undefined && ! [ 'portal-preview', 'visible', 'nearby', 'background' ].includes( component.priority ) || islandOcean && Object.keys( component ).some( ( key ) => ! [ 'id', 'type', 'priority' ].includes( key ) ) ) throw new Error( 'Invalid or duplicate world component' );
+		if ( islandOcean && ++ islandOceanCount > 1 ) throw new Error( 'A world may declare only one island ocean component' );
 		if ( ! source.rules.requiredFeatures?.includes( component.type ) ) throw new Error( `World component ${component.type} must be listed in requiredFeatures` );
 		ids.add( component.id );
 	}

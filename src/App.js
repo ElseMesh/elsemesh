@@ -704,12 +704,9 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 
 	installWorldComponents( root, connector ) {
 		const installed = [];
-		if ( ! this.vegetationEnabled ) {
-			root.userData.worldComponents = installed;
-			return;
-		}
 		for ( const component of connector.manifest.components || [] ) {
 			if ( component.type === 'tidewater.procedural-island-vegetation/1' ) {
+				if ( ! this.vegetationEnabled ) continue;
 				const placementRecords = component.placementAssetId ? readVegetationPlacements( connector, component ) : null;
 				if ( ! this.remoteWorldActive && this.vegetation && this.vegetation.group.parent !== root && ( ! placementRecords || sameVegetationPlacements( this.vegetation.records, placementRecords ) ) ) {
 					root.add( this.vegetation.group );
@@ -717,13 +714,23 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 				} else {
 					installed.push( new Vegetation( { scene: root, terrain: this.terrainData, village: this.village, placementRecords } ) );
 				}
+			} else if ( component.type === 'tidewater.island-ocean/1' ) {
+				const lod = new CDLOD( { gridSize: Number( qs.get( 'G' ) || 32 ), leafSize: 8, levels: 12, minY: - 25, maxY: 25 } );
+				const mesh = new Mesh( lod.geometry, this.waterMaterial );
+				mesh.frustumCulled = false;
+				mesh.receiveShadow = true;
+				mesh.layers.set( LAYERS.WATER );
+				root.add( mesh );
+				installed.push( { islandOcean: true, update: ( _dt, camera ) => lod.update( camera ), dispose: () => { root.remove( mesh ); lod.geometry.dispose(); } } );
 			}
 		}
 		root.userData.worldComponents = installed;
 	}
 
 	updateWorldComponents( root, dt, camera ) {
-		for ( const component of root?.userData?.worldComponents || [] ) component.update( dt, camera );
+		const components = root?.userData?.worldComponents || [];
+		if ( dt > 0 && components.some( ( component ) => component.islandOcean ) ) this.fft.update( dt );
+		for ( const component of components ) component.update( dt, camera );
 	}
 
 	updateWorldStreaming() {
@@ -992,6 +999,7 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 			G.cameraWaterHeight.value = 0;
 			if ( this.clouds ) this.clouds.update( dt, this.camera );
 			this.environment.update( dt );
+			this.updateWorldComponents( this.linkedWorldRoot, dt, this.camera );
 
 		} else {
 
@@ -1030,7 +1038,6 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 		this.reef.update( dt, this.camera.position );
 		this.village.update( dt );
 		if ( this.vegetation && ! this.remoteWorldActive ) this.vegetation.update( dt, this.camera );
-		if ( this.remoteWorldActive ) this.updateWorldComponents( this.linkedWorldRoot, dt, this.camera );
 		if ( this.whale ) this.whale.update( dt, this.camera );
 		this.boat.update( dt );
 		this.wildlife.update( dt, this.camera, this.freeCam ? null : this.player );

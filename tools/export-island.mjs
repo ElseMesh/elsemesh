@@ -79,7 +79,7 @@ const source = {
 		gravity: 1,
 		avatarComplexity: 20000,
 		physicsProfile: 'tidewater-default',
-		requiredFeatures: [ 'tidewater.static-glb/1', 'tidewater.static-glb-quaternion/1', 'tidewater.procedural-island-vegetation/1' ],
+		requiredFeatures: [ 'tidewater.static-glb/1', 'tidewater.static-glb-quaternion/1', 'tidewater.procedural-island-vegetation/1', 'tidewater.island-ocean/1' ],
 		maxPackageBytes: 64 * 1024 * 1024,
 	},
 	hosts: [],
@@ -118,7 +118,10 @@ const source = {
 			collision: { shape: 'none', enabled: false },
 		};
 	} ) ],
-	components: [ { id: 'tw-component:island-vegetation', type: 'tidewater.procedural-island-vegetation/1', seed: 7, priority: 'portal-preview', placementAssetId: vegetationAssetId } ],
+	components: [
+		{ id: 'tw-component:island-vegetation', type: 'tidewater.procedural-island-vegetation/1', seed: 7, priority: 'portal-preview', placementAssetId: vegetationAssetId },
+		{ id: 'tw-component:island-ocean', type: 'tidewater.island-ocean/1', priority: 'portal-preview' },
+	],
 	portals: [],
 	updatedAt,
 };

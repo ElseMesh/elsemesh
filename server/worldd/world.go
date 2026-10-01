@@ -98,7 +98,7 @@ type portal struct {
 type worldComponent struct {
 	ID               string `json:"id"`
 	Type             string `json:"type"`
-	Seed             uint32 `json:"seed"`
+	Seed             uint32 `json:"seed,omitempty"`
 	Priority         string `json:"priority,omitempty"`
 	PlacementAssetID string `json:"placementAssetId,omitempty"`
 }
@@ -348,12 +348,18 @@ func validateManifest(manifest worldManifest, localPeerID string, now time.Time)
 		seenPortals[p.ID] = true
 	}
 	seenComponents := make(map[string]bool, len(manifest.Components))
+	islandOceanCount := 0
 	assetRefs := make(map[string]assetRef, len(manifest.Assets))
 	for _, asset := range manifest.Assets {
 		assetRefs[asset.ID] = asset
 	}
 	for _, component := range manifest.Components {
-		if !componentIDPattern.MatchString(component.ID) || seenComponents[component.ID] || seenObjects[component.ID] || seenPortals[component.ID] || component.Type != "tidewater.procedural-island-vegetation/1" || component.Seed != 7 || component.Priority != "" && component.Priority != "portal-preview" && component.Priority != "visible" && component.Priority != "nearby" && component.Priority != "background" || !seenFeatures[component.Type] {
+		vegetation := component.Type == "tidewater.procedural-island-vegetation/1" && component.Seed == 7
+		islandOcean := component.Type == "tidewater.island-ocean/1" && component.Seed == 0 && component.PlacementAssetID == ""
+		if islandOcean {
+			islandOceanCount++
+		}
+		if !componentIDPattern.MatchString(component.ID) || seenComponents[component.ID] || seenObjects[component.ID] || seenPortals[component.ID] || (!vegetation && !islandOcean) || islandOceanCount > 1 || component.Priority != "" && component.Priority != "portal-preview" && component.Priority != "visible" && component.Priority != "nearby" && component.Priority != "background" || !seenFeatures[component.Type] {
 			return fmt.Errorf("invalid or unsupported world component %q", component.ID)
 		}
 		if component.PlacementAssetID != "" {

@@ -7,6 +7,7 @@ import { buildMeshShader } from '../src/engine/render/MeshShader.js';
 import { validateWorldSource } from '../src/network/WorldSource.js';
 import { validateWorldComponents, validateWorldPortals } from '../src/network/WorldConnector.js';
 import { worldLinkFromLocation, WorldConnector } from '../src/network/WorldConnector.js';
+import { validateWorldRequirements } from '../src/network/WorldRules.js';
 
 const portal = { entry: { position: [ 0, 1, 0 ], yaw: 0 } };
 assert.equal( crossedPortalPlane( { x: 0, y: 1, z: 1 }, { x: 0, y: 1, z: - 0.1 }, portal ), true, 'front-to-back crossing transfers' );
@@ -57,6 +58,11 @@ assert.doesNotThrow( () => validateWorldPortals( [ runtimePortal ], runtimeIDs )
 assert.throws( () => validateWorldPortals( [ { ...runtimePortal, id: 'tw-object:asset' } ], new Set( [ 'tw-object:asset' ] ) ), /duplicate portal ID/, 'browser rejects cross-kind entity ID collisions' );
 assert.throws( () => validateWorldPortals( [ { ...runtimePortal, destinationGateway: 'http://world.example' } ] ), /destination gateway/, 'browser rejects insecure portal gateways' );
 assert.throws( () => validateWorldComponents( [ { id: 'tw-component:duplicate', type: 'tidewater.procedural-island-vegetation/1', seed: 7 } ], { requiredFeatures: [ 'tidewater.procedural-island-vegetation/1' ] }, new Set( [ 'tw-component:duplicate' ] ) ), /duplicate component ID/, 'browser rejects duplicate IDs across entity kinds' );
+const islandOcean = { id: 'tw-component:island-ocean', type: 'tidewater.island-ocean/1', priority: 'portal-preview' };
+assert.doesNotThrow( () => validateWorldComponents( [ islandOcean ], { requiredFeatures: [ islandOcean.type ] } ), 'browser accepts the versioned example-island ocean component' );
+assert.doesNotThrow( () => validateWorldRequirements( { rules: { gravity: 1, avatarComplexity: 1, physicsProfile: 'default', requiredFeatures: [ islandOcean.type ] } } ), 'browser recognizes the example-ocean runtime capability' );
+assert.throws( () => validateWorldComponents( [ { ...islandOcean, seaLevel: 3 } ], { requiredFeatures: [ islandOcean.type ] } ), /Unsupported or invalid world component/, 'browser rejects undeclared island-ocean parameters' );
+assert.throws( () => validateWorldComponents( [ islandOcean, { ...islandOcean, id: 'tw-component:island-ocean-copy' } ], { requiredFeatures: [ islandOcean.type ] } ), /only one island ocean/, 'browser rejects duplicate infinite ocean components' );
 const placementAssetId = `sha256:${'a'.repeat( 64 )}`;
 const vegetationComponent = { id: 'tw-component:portable-vegetation', type: 'tidewater.procedural-island-vegetation/1', seed: 7, placementAssetId };
 const placementAsset = [ { id: placementAssetId, kind: 'vegetation-placement/1', priority: 'portal-preview' } ];
