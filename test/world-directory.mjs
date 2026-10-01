@@ -64,6 +64,7 @@ let authorityLease = await signedDocument( 'tidewater.authority/2', {
 	worldId: 'tw-world:directory-test', authorityPeerId: first.peerId, epoch: 2, grantEpoch,
 	notBefore: failoverAfter, expiresAt: Math.min( expiresAt, failoverAfter + failoverSeconds ),
 }, first );
+const validAuthorityLease = authorityLease;
 
 const oldFetch = globalThis.fetch;
 const OldWebSocket = globalThis.WebSocket;
@@ -84,7 +85,10 @@ globalThis.WebSocket = class extends EventTarget {
 	}
 	send( value ) {
 		const request = JSON.parse( value );
-		if ( request.type === 'connect' ) emit( this, 'message', JSON.stringify( { type: 'connected', worldId: request.worldId } ) );
+		if ( request.type === 'connect' ) {
+			if ( this.url.includes( 'offline.example' ) || request.targetPeerId === first.peerId ) emit( this, 'message', JSON.stringify( { type: 'error', error: 'world_unreachable' } ) );
+			else emit( this, 'message', JSON.stringify( { type: 'connected', worldId: request.worldId } ) );
+		}
 		else emit( this, 'message', JSON.stringify( { type: 'manifest', worldId: request.worldId, requestId: request.requestId, document: manifest, authorityLease } ) );
 	}
 	close() { this.readyState = WebSocket.CLOSED; emit( this, 'close' ); }
@@ -105,6 +109,15 @@ try {
 	const stale = new WorldConnector( { worldId: 'tw-world:directory-test', nodeId: second.peerId, gateway: 'https://online.example' } );
 	await assert.rejects( stale.getManifest(), /no matching owner grant/, 'browser rejects a validly signed but stale grant epoch' );
 	stale.close();
+	authorityLease = validAuthorityLease;
+	globalThis.fetch = async ( input ) => {
+		assert.equal( new URL( input ).pathname, '/api/lookup' );
+		return { ok: true, json: async () => ( { worldId: 'tw-world:directory-test', providers: [ first.peerId, second.peerId ] } ) };
+	};
+	const dhtFallback = new WorldConnector( { worldId: 'tw-world:directory-test', gateway: 'https://bootstrap.example' } );
+	assert.equal( ( await dhtFallback.getManifest() ).worldId, 'tw-world:directory-test' );
+	assert.equal( dhtFallback.nodeId, second.peerId, 'DHT lookup should fall through from an unreachable cache to another provider without a directory' );
+	dhtFallback.close();
 	console.log( 'ok directory node signatures, provider fallback, and owner-signed manifest verification' );
 } finally {
 	globalThis.fetch = oldFetch;

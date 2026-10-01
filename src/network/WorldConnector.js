@@ -44,32 +44,34 @@ export class WorldConnector {
 			try {
 				return await this.#fetchManifest();
 			} catch ( error ) {
-				if ( ! this.directory ) throw error;
 				lastError = error;
 				this.close();
 				this.nodeId = '';
 			}
 		}
-		if ( this.directory ) {
-			const providers = await this.#discoverDirectoryProviders();
-			for ( const provider of providers ) {
-				const key = `${provider.nodeId}\n${provider.gateway}`;
-				if ( attempted.has( key ) ) continue;
-				attempted.add( key );
-				this.nodeId = provider.nodeId;
-				this.gateway = provider.gateway;
-				try {
-					return await this.#fetchManifest();
-				} catch ( error ) {
-					lastError = error;
-					this.close();
-					this.nodeId = '';
-				}
-			}
-			throw lastError || new Error( 'Directory providers could not serve this world' );
+		let providers;
+		try {
+			providers = this.directory ? await this.#discoverDirectoryProviders() : await this.#discoverGatewayProviders();
+		} catch ( error ) {
+			throw lastError || error;
 		}
-		if ( ! this.nodeId ) this.nodeId = await this.#discoverProvider();
-		return this.#fetchManifest();
+		for ( const provider of providers ) {
+			const nodeId = typeof provider === 'string' ? provider : provider.nodeId;
+			const gateway = typeof provider === 'string' ? this.gateway : provider.gateway;
+			const key = `${nodeId}\n${gateway}`;
+			if ( attempted.has( key ) ) continue;
+			attempted.add( key );
+			this.nodeId = nodeId;
+			this.gateway = gateway;
+			try {
+				return await this.#fetchManifest();
+			} catch ( error ) {
+				lastError = error;
+				this.close();
+				this.nodeId = '';
+			}
+		}
+		throw lastError || new Error( 'No available provider could serve this world' );
 	}
 
 	async #fetchManifest() {
@@ -95,14 +97,16 @@ export class WorldConnector {
 		return this.manifest;
 	}
 
-	async #discoverProvider() {
+	async #discoverGatewayProviders() {
 		const url = new URL( '/api/lookup', this.#httpBaseURL() );
 		url.searchParams.set( 'worldId', this.worldId );
 		const response = await fetch( url, { credentials: 'omit', cache: 'no-store' } );
 		if ( ! response.ok ) throw new Error( `World lookup failed (${response.status})` );
 		const result = await response.json();
-		invariant( Array.isArray( result.providers ) && result.providers.length > 0, 'No node currently advertises this world' );
-		return result.providers[ 0 ];
+		invariant( result.worldId === this.worldId && Array.isArray( result.providers ) && result.providers.length > 0, 'No node currently advertises this world' );
+		const peerIDs = [ ...new Set( result.providers.filter( ( peerId ) => typeof peerId === 'string' && /^[A-Za-z0-9]{20,256}$/.test( peerId ) ) ) ];
+		invariant( peerIDs.length > 0, 'World lookup returned no valid provider identities' );
+		return peerIDs;
 	}
 
 	async #discoverDirectoryProviders() {
