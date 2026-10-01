@@ -51,6 +51,8 @@ const PATHS = {
 	foam: '<circle cx="8.5" cy="14.5" r="4"/><circle cx="16.5" cy="9" r="2.5"/><circle cx="16" cy="17" r="1.6"/><circle cx="9.5" cy="6" r="1.4"/>',
 	mountain: '<path d="m3 19 6.5-11 4 6.5 2.5-3.5L21 19z"/>',
 	compass: '<circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2.2 4.8-4.8 2.2 2.2-4.8z"/>',
+	globe: '<circle cx="12" cy="12" r="9"/><path d="M3.5 12h17M12 3c2.4 2.5 3.5 5.5 3.5 9S14.4 18.5 12 21M12 3c-2.4 2.5-3.5 5.5-3.5 9S9.6 18.5 12 21"/>',
+	link: '<path d="M10 13.5 14 9.5M8.5 15H7a4 4 0 0 1 0-8h4M15.5 9H17a4 4 0 0 1 0 8h-4"/>',
 	anchor: '<circle cx="12" cy="5" r="2"/><path d="M12 7v14M5 12H3a9 9 0 0 0 18 0h-2M8 10h8"/>',
 	fog: '<path d="M4 8h13M3 12h18M6 16h14M9 20h7"/>',
 

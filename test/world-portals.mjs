@@ -7,7 +7,7 @@ import { Material } from '../src/engine/render/Material.js';
 import { buildMeshShader } from '../src/engine/render/MeshShader.js';
 import { validateWorldSource } from '../src/network/WorldSource.js';
 import { validateWorldComponents, validateWorldHosts, validateWorldPortals } from '../src/network/WorldConnector.js';
-import { worldLinkFromLocation, WorldConnector } from '../src/network/WorldConnector.js';
+import { createWorldInviteURL, worldLinkFromLocation, WorldConnector } from '../src/network/WorldConnector.js';
 import { validateWorldRequirements } from '../src/network/WorldRules.js';
 import { VEGETATION_PLACEMENT_KINDS, decodeVegetationPlacements, encodeVegetationPlacements } from '../src/network/VegetationPlacements.js';
 
@@ -126,4 +126,19 @@ assert.throws( () => validateWorldSource( { ...source, rules: { ...source.rules,
 const directoryLink = worldLinkFromLocation( { search: '?worldId=tw-world:coast&directory=https%3A%2F%2Fthruhold.org', origin: 'https://rebroad.github.io' } );
 assert.equal( directoryLink.directory, 'https://thruhold.org', 'browser link can opt into the community directory' );
 assert.throws( () => new WorldConnector( { worldId: 'tw-world:coast', directory: 'http://thruhold.org' } ), 'directory endpoints must use HTTPS' );
+const invite = createWorldInviteURL( {
+	pageURL: 'https://rebroad.github.io/tidewater/?noVeg=1',
+	worldId: 'tw-world:coast',
+	nodeId: '12D3KooWAbcdefghijk1234567890123456',
+	gateway: 'https://coast.example',
+	directory: 'https://thruhold.org',
+} );
+const inviteURL = new URL( invite );
+assert.equal( inviteURL.pathname, '/tidewater/', 'world invitations preserve the game base path' );
+assert.equal( inviteURL.searchParams.get( 'worldId' ), 'tw-world:coast', 'world invitations carry the stable world ID' );
+assert.equal( inviteURL.searchParams.get( 'nodeId' ), '12D3KooWAbcdefghijk1234567890123456', 'world invitations pin a signed provider identity' );
+assert.equal( inviteURL.searchParams.get( 'gateway' ), 'https://coast.example', 'world invitations carry the provider gateway' );
+assert.equal( inviteURL.searchParams.get( 'directory' ), 'https://thruhold.org', 'world invitations retain optional decentralized discovery' );
+assert.equal( inviteURL.searchParams.get( 'noVeg' ), '1', 'world invitations preserve unrelated client options' );
+assert.throws( () => createWorldInviteURL( { pageURL: 'https://rebroad.github.io/tidewater/', worldId: 'tw-world:coast', gateway: 'http://coast.example' } ), /secure HTTPS\/WSS/, 'world invitations reject an insecure gateway' );
 console.log( 'ok   portal crossing geometry and orientation handoff' );

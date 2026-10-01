@@ -37,6 +37,26 @@ export function worldLinkFromLocation( location = globalThis.location ) {
 	};
 }
 
+export function createWorldInviteURL( { pageURL = globalThis.location?.href, worldId, nodeId, gateway, directory = '' } = {} ) {
+	invariant( /^tw-world:[\w.-]{1,128}$/.test( worldId || '' ), 'A valid worldId is required for an invite' );
+	const url = new URL( pageURL );
+	invariant( url.protocol === 'https:' || url.protocol === 'http:', 'Invite page URL must use HTTP(S)' );
+	url.searchParams.set( 'worldId', worldId );
+	if ( nodeId ) {
+		invariant( /^[A-Za-z0-9]{20,256}$/.test( nodeId ), 'Invalid invite node PeerID' );
+		url.searchParams.set( 'nodeId', nodeId );
+	} else url.searchParams.delete( 'nodeId' );
+	if ( gateway ) {
+		invariant( validSecureGateway( gateway ), 'Invite gateway must be a secure HTTPS/WSS origin' );
+		url.searchParams.set( 'gateway', gateway );
+	} else url.searchParams.delete( 'gateway' );
+	if ( directory ) {
+		invariant( validSecureOrigin( directory ), 'Invite directory must be an HTTPS origin' );
+		url.searchParams.set( 'directory', directory );
+	} else url.searchParams.delete( 'directory' );
+	return url.href;
+}
+
 export class WorldConnector {
 	constructor( { worldId, nodeId, gateway = globalThis.location?.origin, directory = '', chunkBytes = ASSET_CHUNK_BYTES } = {} ) {
 		invariant( /^tw-world:[\w.-]{1,128}$/.test( worldId || '' ), 'A valid worldId is required' );

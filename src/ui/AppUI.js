@@ -2,6 +2,7 @@ import * as THREE from '../engine/index.js';
 import { UI } from './UI.js';
 import { G } from '../core/Globals.js';
 import { GroundBounce } from '../materials/GroundBounce.js';
+import { createWorldInviteURL } from '../network/WorldConnector.js';
 
 // Binds the ElseMesh UI (panel + HUD) to the running app.
 const SEA = {
@@ -93,6 +94,36 @@ export class AppUI {
 			G.waterScattering.value.set( 0.012, 0.018, 0.024 ).multiplyScalar( k * k );
 
 		};
+
+		// ---------------------------------------------------------------- World invites
+		const worldTab = ui.addTab( 'world', 'World', 'globe' );
+		worldTab.addInfo( { label: 'Current world', get: () => app.worldConnector?.manifest?.title || 'Built-in island' } );
+		worldTab.addButton( { label: 'Share world invite', icon: 'link', onClick: async () => {
+
+			const connector = app.worldConnector;
+			if ( ! connector?.manifest ) {
+				ui.toast( 'Enter a linked world to create an invite', 3200 );
+				return;
+			}
+			const url = createWorldInviteURL( {
+				pageURL: location.href,
+				worldId: connector.worldId,
+				nodeId: connector.nodeId,
+				gateway: connector.gateway,
+				directory: connector.directory,
+			} );
+			try {
+				if ( navigator.share ) await navigator.share( { title: connector.manifest.title, text: `Visit ${connector.manifest.title} in ElseMesh`, url } );
+				else {
+					if ( ! navigator.clipboard?.writeText ) throw new Error( 'This browser does not allow sharing or copying links' );
+					await navigator.clipboard.writeText( url );
+					ui.toast( 'World invite copied', 2600 );
+				}
+			} catch ( error ) {
+				if ( error.name !== 'AbortError' ) ui.toast( `Could not share invite: ${error.message}`, 3600 );
+			}
+
+		} } );
 
 		// ---------------------------------------------------------------- Ocean
 		const ocean = ui.addTab( 'ocean', 'Ocean', 'ocean' );
