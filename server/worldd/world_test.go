@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/json"
+	"math"
 	"strings"
 	"testing"
 	"time"
@@ -289,6 +290,33 @@ func TestWorldManifestValidatesDeterministicMovementRules(t *testing.T) {
 	manifest.Rules.Movement = nil
 	if err := validateManifest(manifest, ownerID.String(), time.Now()); err != nil {
 		t.Fatalf("legacy manifest without movement fields rejected: %v", err)
+	}
+}
+
+func TestWorldManifestValidatesOptionalEnvironmentLevels(t *testing.T) {
+	key := testKey(t)
+	ownerID, err := peer.IDFromPublicKey(key.GetPublic())
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifest := newStarterManifest("Environment levels", ownerID.String())
+	manifest.WorldID = "tw-world:environment-levels"
+	if err := validateManifest(manifest, ownerID.String(), time.Now()); err != nil {
+		t.Fatalf("omitted environment levels should preserve legacy worlds: %v", err)
+	}
+	sea, atmosphere := -3.5, 12000.0
+	manifest.Rules.SeaLevel = &sea
+	manifest.Rules.AtmosphereLevel = &atmosphere
+	if err := validateManifest(manifest, ownerID.String(), time.Now()); err != nil {
+		t.Fatalf("valid optional environment levels rejected: %v", err)
+	}
+	atmosphere = math.Inf(1)
+	if err := validateManifest(manifest, ownerID.String(), time.Now()); err == nil {
+		t.Fatal("non-finite atmosphere level accepted")
+	}
+	atmosphere = 1e6 + 1
+	if err := validateManifest(manifest, ownerID.String(), time.Now()); err == nil {
+		t.Fatal("out-of-bounds atmosphere level accepted")
 	}
 }
 

@@ -148,6 +148,8 @@ type hostingGrant struct {
 
 type worldRules struct {
 	Gravity          float64        `json:"gravity"`
+	SeaLevel         *float64       `json:"seaLevel,omitempty"`
+	AtmosphereLevel  *float64       `json:"atmosphereLevel,omitempty"`
 	AvatarComplexity uint32         `json:"avatarComplexity"`
 	PhysicsProfile   string         `json:"physicsProfile"`
 	Movement         *movementRules `json:"movement,omitempty"`
@@ -189,6 +191,11 @@ func validateManifest(manifest worldManifest, localPeerID string, now time.Time)
 	}
 	if manifest.Rules.Gravity < 0.2 || manifest.Rules.Gravity > 2 || math.IsNaN(manifest.Rules.Gravity) || math.IsInf(manifest.Rules.Gravity, 0) {
 		return errors.New("gravity is outside the supported range")
+	}
+	for name, level := range map[string]*float64{"sea level": manifest.Rules.SeaLevel, "atmosphere level": manifest.Rules.AtmosphereLevel} {
+		if level != nil && (math.IsNaN(*level) || math.IsInf(*level, 0) || math.Abs(*level) > 1e6) {
+			return fmt.Errorf("world %s is outside the supported range", name)
+		}
 	}
 	if manifest.Rules.AvatarComplexity == 0 || manifest.Rules.AvatarComplexity > 100000 || len(manifest.Rules.PhysicsProfile) > 64 || len(manifest.Rules.StyleGuide) > 512 {
 		return errors.New("invalid world rules")

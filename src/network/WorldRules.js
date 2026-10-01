@@ -20,6 +20,7 @@ export function validateWorldRequirements( manifest ) {
 	if ( ! rules || ! Number.isFinite( rules.gravity ) || rules.gravity < 0.2 || rules.gravity > 2 || ! Number.isInteger( rules.avatarComplexity ) || rules.avatarComplexity < 1 || rules.avatarComplexity > 100000 || ! SUPPORTED_PHYSICS_PROFILES.has( rules.physicsProfile ) ) {
 		throw new Error( 'World manifest contains invalid runtime rules' );
 	}
+	validateWorldLevels( rules );
 	movementParameters( rules );
 	validateWorldPackageBudget( manifest );
 	const required = rules.requiredFeatures ?? [];
@@ -31,6 +32,13 @@ export function validateWorldRequirements( manifest ) {
 		seen.add( feature );
 	}
 	return manifest;
+}
+
+export function validateWorldLevels( rules ) {
+	for ( const key of [ 'seaLevel', 'atmosphereLevel' ] ) {
+		if ( rules?.[ key ] !== undefined && ( ! Number.isFinite( rules[ key ] ) || Math.abs( rules[ key ] ) > 1e6 ) ) throw new Error( `World ${key} must be a finite world-space Y coordinate within +/- 1,000,000 meters` );
+	}
+	return rules;
 }
 
 export function validateWorldPackageBudget( manifest ) {

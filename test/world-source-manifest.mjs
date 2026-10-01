@@ -28,7 +28,7 @@ try {
 		title: 'Manifest test',
 		coordinateSystem: 'right-handed-y-up-meters',
 		styleGuide: '',
-		rules: { gravity: 1, avatarComplexity: 20000, physicsProfile: 'default', movement: { walkSpeed: 2.5, sprintSpeed: 7, jumpSpeed: 4.2 }, maxPackageBytes: 1024, requiredFeatures: [ 'tidewater.portal-handoff/1', 'tidewater.procedural-island-vegetation/1', 'tidewater.static-vegetation/1', 'tidewater.island-ocean/1' ] },
+		rules: { gravity: 1, seaLevel: -4.5, atmosphereLevel: 18000, avatarComplexity: 20000, physicsProfile: 'default', movement: { walkSpeed: 2.5, sprintSpeed: 7, jumpSpeed: 4.2 }, maxPackageBytes: 1024, requiredFeatures: [ 'tidewater.portal-handoff/1', 'tidewater.procedural-island-vegetation/1', 'tidewater.static-vegetation/1', 'tidewater.island-ocean/1' ] },
 		hosts: [ { peerId: '12D3KooWAbcdefghijk1234567890123456', scopes: [ 'content-cache', 'failover-authority' ], expiresAt: 1900000000, epoch: 3, failoverAfter: 1800000000, failoverSeconds: 300 } ],
 		objects: [ { id: 'tw-object:bounded', kind: 'asset-instance', label: 'Bounded', assetId: boundedAssetID, priority: 'nearby', streamingBounds: { center: [ 1, 2, 3 ], radius: 4 }, transform: { position: [ 0, 0, 0 ], yaw: 0 }, scale: [ 1, 1, 1 ], collision: { shape: 'none', enabled: false } } ],
 		components: [ { id: 'tw-component:test-vegetation', type: 'tidewater.procedural-island-vegetation/1', seed: 7, priority: 'portal-preview', placementAssetId: placementAssetID }, { id: 'tw-component:static-plants', type: 'tidewater.static-vegetation/1', priority: 'portal-preview', placementAssetId: placementAssetID }, { id: 'tw-component:test-ocean', type: 'tidewater.island-ocean/1', priority: 'portal-preview' } ],
@@ -58,6 +58,8 @@ try {
 	assert.ok( manifest.assets.some( ( asset ) => asset.id === placementAssetID && asset.kind === 'vegetation-placement/1' && asset.priority === 'portal-preview' ), 'component placement data is included as a hash-verified early-stream asset' );
 	assert.deepEqual( manifest.rules.movement, { walkSpeed: 2.5, sprintSpeed: 7, jumpSpeed: 4.2 }, 'world movement rules survive deterministic conversion' );
 	assert.equal( manifest.rules.maxPackageBytes, 1024, 'aggregate content budget survives deterministic conversion' );
+	assert.equal( manifest.rules.seaLevel, -4.5, 'authored sea level survives deterministic conversion' );
+	assert.equal( manifest.rules.atmosphereLevel, 18000, 'authored atmosphere boundary survives deterministic conversion' );
 	assert.deepEqual( manifest.objects[ 0 ].streamingBounds, { center: [ 1, 2, 3 ], radius: 4 }, 'object streaming bounds survive deterministic conversion' );
 	assert.equal( manifest.objects[ 0 ].priority, 'nearby', 'per-object streaming priority survives deterministic conversion' );
 	const oversizedBytes = Buffer.from( 'over budget' );
@@ -77,6 +79,10 @@ try {
 	}
 	assert.equal( converterRejectedBudget, true, 'source converter refuses to publish assets over the declared byte budget' );
 	assert.doesNotThrow( () => validateWorldRequirements( manifest ), 'client accepts requirements it implements' );
+	assert.doesNotThrow( () => validateWorldRequirements( { ...manifest, rules: { ...manifest.rules, seaLevel: undefined } } ), 'atmosphere boundary works without a sea-level declaration' );
+	assert.doesNotThrow( () => validateWorldRequirements( { ...manifest, rules: { ...manifest.rules, atmosphereLevel: undefined } } ), 'sea level works without an atmosphere declaration' );
+	assert.throws( () => validateWorldRequirements( { ...manifest, rules: { ...manifest.rules, seaLevel: Infinity } } ), /seaLevel must be a finite/, 'client rejects non-finite sea levels' );
+	assert.throws( () => validateWorldRequirements( { ...manifest, rules: { ...manifest.rules, atmosphereLevel: 1000001 } } ), /atmosphereLevel must be a finite/, 'client rejects out-of-bounds atmosphere levels' );
 	assert.throws( () => validateWorldRequirements( { ...manifest, rules: { ...manifest.rules, requiredFeatures: [ 'tidewater.water-simulation/2' ] } } ), /does not support required world feature/, 'client must not silently ignore an unsupported required feature' );
 	assert.throws( () => validateWorldRequirements( { ...manifest, rules: { ...manifest.rules, physicsProfile: 'custom-physics' } } ), /invalid runtime rules/, 'client rejects a physics profile without implemented semantics' );
 	assert.throws( () => validateWorldSource( { protocol: 'tidewater.world-source/1', worldId: 'tw-world:duplicate-feature', title: 'Rules', coordinateSystem: 'right-handed-y-up-meters', styleGuide: '', rules: { gravity: 1, avatarComplexity: 100, physicsProfile: 'default', requiredFeatures: [ 'tidewater.portal-handoff/1', 'tidewater.portal-handoff/1' ] }, objects: [], portals: [], updatedAt: '2026-09-30T12:00:00Z' } ), /required world features/, 'authoring source rejects duplicate required features' );
@@ -92,6 +98,7 @@ try {
 	assert.throws( () => movementParameters( { movement: { walkSpeed: 5, sprintSpeed: 4, jumpSpeed: 2 } } ), /movement speeds/, 'sprint speed cannot be lower than walk speed' );
 	assert.throws( () => validateWorldRequirements( { ...manifest, assets: [ { bytes: 1025 } ] } ), /exceeds its declared byte budget/, 'client rejects a package larger than its signed byte budget before downloading' );
 	assert.throws( () => validateWorldSource( { protocol: 'tidewater.world-source/1', worldId: 'tw-world:bad-budget', title: 'Budget', coordinateSystem: 'right-handed-y-up-meters', styleGuide: '', rules: { gravity: 1, avatarComplexity: 100, physicsProfile: 'default', maxPackageBytes: 0 }, objects: [], portals: [], updatedAt: '2026-09-30T12:00:00Z' } ), /byte budget/, 'authoring source rejects an invalid package budget' );
+	assert.throws( () => validateWorldSource( { protocol: 'tidewater.world-source/1', worldId: 'tw-world:bad-sea', title: 'Sea', coordinateSystem: 'right-handed-y-up-meters', styleGuide: '', rules: { gravity: 1, avatarComplexity: 100, physicsProfile: 'default', seaLevel: NaN }, objects: [], portals: [], updatedAt: '2026-09-30T12:00:00Z' } ), /sea or atmosphere level/, 'authoring source rejects non-finite environment levels' );
 	const quaternionSource = { protocol: 'tidewater.world-source/1', worldId: 'tw-world:quaternion', title: 'Quaternion', coordinateSystem: 'right-handed-y-up-meters', styleGuide: '', rules: { gravity: 1, avatarComplexity: 100, physicsProfile: 'default' }, objects: [ { id: 'tw-object:rotated', kind: 'asset-instance', label: 'Rotated', transform: { position: [ 0, 0, 0 ], yaw: 0, rotation: [ 0, 0, 0, 1 ] }, scale: [ 1, 1, 1 ], collision: { shape: 'none', enabled: false } } ], portals: [], updatedAt: '2026-09-30T12:00:00Z' };
 	assert.doesNotThrow( () => validateWorldSource( quaternionSource ), 'collision-free objects accept normalized quaternion transforms' );
 	const boundedSource = structuredClone( quaternionSource );

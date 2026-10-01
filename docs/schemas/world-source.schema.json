@@ -48,6 +48,18 @@
           "minimum": 0.2,
           "maximum": 2
         },
+        "seaLevel": {
+          "type": "number",
+          "minimum": -1000000,
+          "maximum": 1000000,
+          "description": "Optional world-space Y coordinate in meters for the sea surface. Omission means the world does not declare a sea level."
+        },
+        "atmosphereLevel": {
+          "type": "number",
+          "minimum": -1000000,
+          "maximum": 1000000,
+          "description": "Optional world-space Y coordinate in meters for the upper atmosphere boundary. Omission means the world does not declare an atmosphere boundary."
+        },
         "avatarComplexity": {
           "type": "integer",
           "minimum": 1,
