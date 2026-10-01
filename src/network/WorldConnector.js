@@ -30,6 +30,7 @@ export class WorldConnector {
 		this.chunkBytes = chunkBytes;
 		this.manifest = null;
 		this.assets = new Map();
+		this.assetDownloads = new Map();
 		this.socket = null;
 		this.webTransport = null;
 		this.webTransportFailed = false;
@@ -137,6 +138,22 @@ export class WorldConnector {
 		invariant( asset && /^sha256:[0-9a-f]{64}$/.test( asset.id ), 'Asset is not declared by this world' );
 		invariant( Number.isSafeInteger( asset.bytes ) && asset.bytes >= 0 && asset.bytes <= MAX_ASSET_BYTES, 'Asset size is outside the supported range' );
 		if ( this.assets.has( assetId ) ) return this.assets.get( assetId );
+		let pending = this.assetDownloads.get( assetId );
+		if ( ! pending || pending.controller.signal.aborted ) {
+			pending = { controller: new AbortController(), waiters: 0, settled: false };
+			pending.promise = this.#downloadAsset( assetId, asset, pending.controller.signal ).then( ( bytes ) => {
+				this.assets.set( assetId, bytes );
+				pending.settled = true;
+				return bytes;
+			}, ( error ) => { pending.settled = true; throw error; } ).finally( () => {
+				if ( this.assetDownloads.get( assetId ) === pending ) this.assetDownloads.delete( assetId );
+			} );
+			this.assetDownloads.set( assetId, pending );
+		}
+		return waitForAssetDownload( pending, signal );
+	}
+
+	async #downloadAsset( assetId, asset, signal ) {
 		const parts = [];
 		for ( let offset = 0; offset < asset.bytes; offset += this.chunkBytes ) {
 			if ( signal?.aborted ) throw signal.reason || new DOMException( 'Aborted', 'AbortError' );
@@ -150,7 +167,6 @@ export class WorldConnector {
 		const bytes = concatenate( parts, asset.bytes );
 		const digest = hex( await crypto.subtle.digest( 'SHA-256', bytes ) );
 		invariant( `sha256:${digest}` === assetId, 'Downloaded asset failed its content hash check' );
-		this.assets.set( assetId, bytes );
 		return bytes;
 	}
 
@@ -376,6 +392,25 @@ function validSecureGateway( value ) {
 	} catch {
 		return false;
 	}
+}
+
+function waitForAssetDownload( pending, signal ) {
+	if ( signal?.aborted ) return Promise.reject( signal.reason || new DOMException( 'Aborted', 'AbortError' ) );
+	pending.waiters ++;
+	return new Promise( ( resolve, reject ) => {
+		let finished = false;
+		const finish = ( callback, value ) => {
+			if ( finished ) return;
+			finished = true;
+			signal?.removeEventListener( 'abort', abort );
+			pending.waiters --;
+			if ( pending.waiters === 0 && ! pending.settled ) pending.controller.abort( new DOMException( 'No asset consumers remain', 'AbortError' ) );
+			callback( value );
+		};
+		const abort = () => finish( reject, signal.reason || new DOMException( 'Aborted', 'AbortError' ) );
+		signal?.addEventListener( 'abort', abort, { once: true } );
+		pending.promise.then( ( bytes ) => finish( resolve, bytes ), ( error ) => finish( reject, error ) );
+	} );
 }
 
 async function requestWebTransport( session, message, signal ) {

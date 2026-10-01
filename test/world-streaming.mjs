@@ -59,6 +59,7 @@ const assetId = `sha256:${createHash( 'sha256' ).update( bytes ).digest( 'hex' )
 const webTransportRequests = [];
 const webSocketRequests = [];
 let transportMode = 'interrupted-chunk';
+let releaseSharedChunk;
 const jsonReadable = ( value ) => new ReadableStream( { start( controller ) { controller.enqueue( new TextEncoder().encode( JSON.stringify( value ) ) ); controller.close(); } } );
 let transportStream = 0;
 class FakeWebTransport {
@@ -69,17 +70,19 @@ class FakeWebTransport {
 		let written = '';
 		let readableController;
 		const readable = new ReadableStream( { start( controller ) { readableController = controller; } } );
-		const writable = new WritableStream( { write( chunk ) { written += new TextDecoder().decode( chunk ); }, close() {
+		const writable = new WritableStream( { write( chunk ) { written += new TextDecoder().decode( chunk ); }, async close() {
 			const request = JSON.parse( written );
 			if ( index > 0 ) webTransportRequests.push( request );
+			if ( index === 1 && transportMode === 'shared-download' ) await new Promise( ( resolve ) => { releaseSharedChunk = resolve; } );
 			if ( index === 2 && transportMode === 'interrupted-chunk' ) readableController.error( new Error( 'stream reset' ) );
 			else if ( index === 0 ) readableController.enqueue( new TextEncoder().encode( JSON.stringify( { type: 'connected', worldId: 'tw-world:retry-test' } ) ) );
 			else if ( index === 1 && transportMode === 'gateway-error' ) readableController.enqueue( new TextEncoder().encode( JSON.stringify( { type: 'error', requestId: request.requestId, error: 'asset is not available' } ) ) );
 			else {
-				const response = { type: 'asset.chunk', requestId: request.requestId, assetId, offset: 0, total: bytes.length, chunk: btoa( String.fromCharCode( ...bytes.slice( 0, 3 ) ) ) };
+				const chunk = bytes.slice( request.offset, request.offset + request.length );
+				const response = { type: 'asset.chunk', requestId: request.requestId, assetId, offset: request.offset, total: bytes.length, chunk: btoa( String.fromCharCode( ...chunk ) ) };
 				readableController.enqueue( new TextEncoder().encode( JSON.stringify( response ) ) );
 			}
-			if ( index !== 2 ) readableController.close();
+			if ( index !== 2 || transportMode !== 'interrupted-chunk' ) readableController.close();
 		} } );
 		return { writable, readable };
 	}
@@ -109,6 +112,23 @@ try {
 	assert.deepEqual( webSocketRequests.map( ( request ) => request.offset ), [ 3 ], 'WebSocket retries only the interrupted chunk' );
 	assert.equal( webSocketRequests[ 0 ].requestId, webTransportRequests[ 1 ].requestId, 'transport fallback preserves the original idempotent request id' );
 	retryConnector.close();
+	transportStream = 0;
+	webTransportRequests.length = 0;
+	transportMode = 'shared-download';
+	const sharedConnector = new WorldConnector( { worldId: 'tw-world:retry-test', nodeId: 'peer', gateway: 'https://example.test', chunkBytes: 3 } );
+	sharedConnector.manifest = { assets: [ { id: assetId, bytes: bytes.length } ] };
+	const firstCallerAbort = new AbortController();
+	const firstCaller = sharedConnector.getAsset( assetId, { signal: firstCallerAbort.signal } );
+	const secondCaller = sharedConnector.getAsset( assetId );
+	await new Promise( ( resolve ) => setTimeout( resolve, 0 ) );
+	assert.equal( webTransportRequests.filter( ( request ) => request.type === 'asset.get' ).length, 1, 'overlapping consumers share one in-flight asset request' );
+	firstCallerAbort.abort( new DOMException( 'View changed', 'AbortError' ) );
+	await assert.rejects( firstCaller, { name: 'AbortError' }, 'a canceled consumer stops waiting for the shared asset' );
+	releaseSharedChunk();
+	assert.deepEqual( await secondCaller, bytes, 'remaining consumers keep the shared transfer alive to completion' );
+	assert.equal( webTransportRequests.filter( ( request ) => request.type === 'asset.get' ).length, 2, 'the shared transfer requests each asset chunk once' );
+	assert.equal( webSocketRequests.length, 1, 'a remaining consumer completes over the shared WebTransport session' );
+	sharedConnector.close();
 	transportStream = 0;
 	transportMode = 'gateway-error';
 	const requestCount = webSocketRequests.length;
