@@ -62,6 +62,10 @@ type daemon struct {
 	directoryURL     string
 	assetCheckMu     sync.Mutex
 	verifiedAssets   map[string]assetFileStamp
+	roleStateMu      sync.RWMutex
+	roleState        signedDocument
+	roleStateSerial  uint64
+	roleStatePath    string
 }
 
 func main() {
@@ -258,7 +262,10 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("world manifest: %w", err)
 	}
-	d := &daemon{ctx: ctx, host: p2pHost, dht: router, discovery: routing.NewRoutingDiscovery(router), manifest: manifest, world: world, key: key, assetsDir: filepath.Join(*dataDir, "assets"), webRoot: *webRoot, publicGateway: *publicGateway, directoryURL: *directoryURL, authorityChanged: make(chan struct{}, 1), verifiedAssets: make(map[string]assetFileStamp)}
+	d := &daemon{ctx: ctx, host: p2pHost, dht: router, discovery: routing.NewRoutingDiscovery(router), manifest: manifest, world: world, key: key, assetsDir: filepath.Join(*dataDir, "assets"), webRoot: *webRoot, publicGateway: *publicGateway, directoryURL: *directoryURL, authorityChanged: make(chan struct{}, 1), verifiedAssets: make(map[string]assetFileStamp), roleStatePath: roleRevocationStatePath(*dataDir, world.WorldID)}
+	if err := d.loadRoleRevocations(); err != nil {
+		return fmt.Errorf("load persisted role revocations: %w", err)
+	}
 	if world.OwnerPeerID != localPeerID {
 		go d.maintainFailoverAuthority()
 	}
@@ -291,6 +298,7 @@ func run() error {
 	mux.HandleFunc("/.well-known/tidewater/node", d.handleNodeRecord)
 	mux.HandleFunc("/api/lookup", d.handleLookup)
 	mux.HandleFunc("/api/world/manifest", d.handleManifest)
+	mux.HandleFunc("/api/world/roles/revocations", d.handleRoleRevocations)
 	mux.HandleFunc("/api/assets/", d.handleAsset)
 	mux.HandleFunc("/gateway", d.handleBrowserGateway)
 	var wtServer *webtransport.Server

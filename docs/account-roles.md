@@ -34,7 +34,7 @@ The owner issues a versioned, owner-signed `tidewater.world-role/1` grant that b
 
 Role grants cannot change the manifest, alter host grants, or grant ownership. `visitor` and read-only access require no role grant. `builder` and other future roles authorize only explicit actions defined by a versioned world capability; clients and nodes reject unknown scopes. The grant is not authority for concurrent simulation writes.
 
-The owner publishes signed revocation state with a monotonically increasing serial and an expiry. Nodes persist the highest accepted serial and reject state below it, revoked grants, and grants past expiry. The validator requires revocation state to be fresh for at most 15 minutes; role-gated actions fail closed if it expires. Guest reads do not depend on role-state availability. A new owner key must explicitly transfer world ownership and reissue or revoke roles; a Google account cannot transfer a world.
+The owner publishes signed revocation state with a monotonically increasing serial and an expiry. A `worldd` gateway accepts an owner-signed state at `PUT /api/world/roles/revocations`, persists the complete signed document with mode `0600`, and rejects serial rollback. `GET /api/world/roles/revocations` returns the node's current document. State is local to each node: operators must distribute updates to every node enforcing roles; automatic peer replication is not implemented. A persisted document remains a rollback floor after its 15-minute freshness window expires, but consumers must reject it for authorization until a fresh document arrives. Guest reads do not depend on role-state availability. Role-gated world actions are not implemented yet, so this endpoint establishes durable revocation state but does not itself authorize edits. A new owner key must explicitly transfer world ownership and reissue or revoke roles; a Google account cannot transfer a world.
 
 ## Revocation, deletion, and recovery
 
@@ -48,7 +48,7 @@ The owner publishes signed revocation state with a monotonically increasing seri
 
 1. Implement and test the owner-signed role-grant and revocation document formats, with bounded fields, exact-world binding, key fingerprints, and safe-integer timestamps. This validation foundation is present in `server/worldd/roles.go`; no role-gated actions consume it yet.
 2. Implement the optional browser integration for the `accountd` broker. Server-side Google ID-token verification, nonce replay prevention, key proof-of-possession, private account-key mapping, short-lived sessions, exact-origin CORS, unlink, and deletion are implemented. The client UI and local key storage are also implemented; a production OAuth client ID and domain deployment remain operator configuration.
-3. Add node-side verification of owner grants/revocations before any role-gated action. Keep asset reads and guest travel available without login.
+3. Persist owner-signed revocation state at each node and enforce increasing serials. This gateway storage API is implemented; automatic replication is not. Add node-side verification of grants/revocations before any role-gated action. Keep asset reads and guest travel available without login.
 4. Deploy no Google client ID or account broker by default. Each operator opts in and configures their own Google OAuth web client.
 
 Until an operator configures an account broker and OAuth web client, Google sign-in is unavailable. World-role authorization is unavailable until nodes enforce owner grants and fresh revocation state.
