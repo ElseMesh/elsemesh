@@ -526,9 +526,10 @@ export function validateWorldComponents( components = [], rules, ids = new Set()
 		invariant( component && typeof component.id === 'string' && /^tw-component:[\w.-]{1,128}$/.test( component.id ) && ! ids.has( component.id ), 'World manifest has an invalid or duplicate component ID' );
 		const vegetation = component.type === 'tidewater.procedural-island-vegetation/1' && component.seed === 7 && Object.keys( component ).every( ( key ) => [ 'id', 'type', 'seed', 'priority', 'placementAssetId', 'streamingBounds' ].includes( key ) );
 		const staticVegetation = component.type === 'tidewater.static-vegetation/1' && Object.keys( component ).every( ( key ) => [ 'id', 'type', 'priority', 'placementAssetId', 'streamingBounds' ].includes( key ) );
+		const staticReef = component.type === 'tidewater.static-reef/1' && component.streamingBounds !== undefined && Object.keys( component ).every( ( key ) => [ 'id', 'type', 'priority', 'placementAssetId', 'streamingBounds' ].includes( key ) );
 		const islandOcean = component.type === 'tidewater.island-ocean/1' && Object.keys( component ).every( ( key ) => [ 'id', 'type', 'priority', 'streamingBounds' ].includes( key ) );
 		const waterBody = component.type === 'tidewater.water-body/1' && ( component.profile === undefined || [ 'deep-ocean', 'calm-lagoon', 'storm' ].includes( component.profile ) ) && Array.isArray( component.center ) && component.center.length === 2 && Number.isFinite( component.extent ) && component.extent >= 8 && component.extent <= 100000 && component.center.every( ( n ) => Number.isFinite( n ) && Math.abs( n ) + component.extent <= 1e6 ) && Object.keys( component ).every( ( key ) => [ 'id', 'type', 'priority', 'center', 'extent', 'profile', 'streamingBounds' ].includes( key ) );
-		invariant( ( vegetation || staticVegetation || islandOcean || waterBody ) && ( component.priority === undefined || [ 'portal-preview', 'visible', 'nearby', 'background' ].includes( component.priority ) ), `Unsupported or invalid world component ${component.id}` );
+		invariant( ( vegetation || staticVegetation || staticReef || islandOcean || waterBody ) && ( component.priority === undefined || [ 'portal-preview', 'visible', 'nearby', 'background' ].includes( component.priority ) ), `Unsupported or invalid world component ${component.id}` );
 		if ( islandOcean ) invariant( ++ islandOceanCount === 1, 'World manifest may declare only one island ocean component' );
 		if ( waterBody ) invariant( ++ waterBodyCount <= 4 && rules.seaLevel !== undefined && islandOceanCount === 0, 'Portable water requires seaLevel, allows at most four bodies, and cannot be combined with island-ocean' );
 		if ( islandOcean ) invariant( waterBodyCount === 0, 'A world cannot combine portable water and island-ocean components' );
@@ -538,8 +539,12 @@ export function validateWorldComponents( components = [], rules, ids = new Set()
 		}
 		invariant( rules.requiredFeatures?.includes( component.type ), `World component ${component.type} is missing from requiredFeatures` );
 		if ( component.streamingBounds !== undefined ) invariant( validComponentStreamingBounds( component.streamingBounds ), `World component ${component.id} has invalid streaming bounds` );
-		if ( component.placementAssetId !== undefined ) invariant( /^sha256:[0-9a-f]{64}$/.test( component.placementAssetId ) && assetRefs.get( component.placementAssetId )?.kind === 'vegetation-placement/1' && assetRefs.get( component.placementAssetId )?.priority === ( component.priority || 'portal-preview' ), `World component ${component.id} has an invalid placement asset reference` );
+		if ( component.placementAssetId !== undefined ) {
+			const expectedKind = staticReef ? 'reef-placement/1' : 'vegetation-placement/1';
+			invariant( /^sha256:[0-9a-f]{64}$/.test( component.placementAssetId ) && assetRefs.get( component.placementAssetId )?.kind === expectedKind && assetRefs.get( component.placementAssetId )?.priority === ( component.priority || 'portal-preview' ), `World component ${component.id} has an invalid placement asset reference` );
+		}
 		if ( component.type === 'tidewater.static-vegetation/1' ) invariant( typeof component.placementAssetId === 'string', `Static vegetation component ${component.id} requires placement data` );
+		if ( staticReef ) invariant( typeof component.placementAssetId === 'string', `Static reef component ${component.id} requires placement data` );
 		ids.add( component.id );
 	}
 	return ids;

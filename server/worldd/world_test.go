@@ -284,6 +284,30 @@ func TestWorldManifestValidatesStaticVegetationComponent(t *testing.T) {
 	}
 }
 
+func TestWorldManifestValidatesStaticReefComponent(t *testing.T) {
+	owner, _, err := crypto.GenerateEd25519Key(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ownerID, err := peer.IDFromPublicKey(owner.GetPublic())
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifest := newStarterManifest("Portable reef", ownerID.String())
+	manifest.WorldID = "tw-world:portable-reef"
+	manifest.Rules.RequiredFeatures = []string{"tidewater.static-reef/1"}
+	placementID := "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+	manifest.Assets = []assetRef{{ID: placementID, Bytes: 1, Kind: "reef-placement/1", Priority: "visible"}}
+	manifest.Components = []worldComponent{{ID: "tw-component:reef-tile", Type: "tidewater.static-reef/1", Priority: "visible", PlacementAssetID: placementID, StreamingBounds: &streamingBounds{Center: vector3{0, -4, 0}, Radius: 32}}}
+	if err := validateManifest(manifest, ownerID.String(), time.Now()); err != nil {
+		t.Fatalf("valid bounded static reef component rejected: %v", err)
+	}
+	manifest.Assets[0].Kind = "vegetation-placement/1"
+	if err := validateManifest(manifest, ownerID.String(), time.Now()); err == nil {
+		t.Fatal("static reef component accepted a vegetation placement asset")
+	}
+}
+
 func TestWorldManifestValidatesDeterministicMovementRules(t *testing.T) {
 	key, _, err := crypto.GenerateEd25519Key(rand.Reader)
 	if err != nil {

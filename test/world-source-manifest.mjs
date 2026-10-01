@@ -21,16 +21,19 @@ try {
 	const placementBytes = Buffer.from( encodeVegetationPlacements( emptyVegetation, 7 ) );
 	const placementAssetID = `sha256:${createHashForTest( placementBytes )}`;
 	await writeFile( path.join( assetsPath, placementAssetID.slice( 'sha256:'.length ) ), placementBytes );
+	const reefPlacementBytes = Buffer.from( 'reef placements test payload' );
+	const reefPlacementAssetID = `sha256:${createHashForTest( reefPlacementBytes )}`;
+	await writeFile( path.join( assetsPath, reefPlacementAssetID.slice( 'sha256:'.length ) ), reefPlacementBytes );
 	await writeFile( sourcePath, JSON.stringify( {
 		protocol: 'tidewater.world-source/1',
 		worldId: 'tw-world:manifest-test',
 		title: 'Manifest test',
 		coordinateSystem: 'right-handed-y-up-meters',
 		styleGuide: '',
-		rules: { gravity: 1, seaLevel: -4.5, atmosphereLevel: 18000, avatarComplexity: 20000, physicsProfile: 'default', movement: { walkSpeed: 2.5, sprintSpeed: 7, jumpSpeed: 4.2 }, maxPackageBytes: 1024, requiredFeatures: [ 'tidewater.portal-handoff/1', 'tidewater.procedural-island-vegetation/1', 'tidewater.static-vegetation/1', 'tidewater.island-ocean/1' ] },
+		rules: { gravity: 1, seaLevel: -4.5, atmosphereLevel: 18000, avatarComplexity: 20000, physicsProfile: 'default', movement: { walkSpeed: 2.5, sprintSpeed: 7, jumpSpeed: 4.2 }, maxPackageBytes: 1024, requiredFeatures: [ 'tidewater.portal-handoff/1', 'tidewater.procedural-island-vegetation/1', 'tidewater.static-vegetation/1', 'tidewater.static-reef/1', 'tidewater.island-ocean/1' ] },
 		hosts: [ { peerId: '12D3KooWAbcdefghijk1234567890123456', scopes: [ 'content-cache', 'failover-authority' ], expiresAt: 1900000000, epoch: 3, failoverAfter: 1800000000, failoverSeconds: 300 } ],
 		objects: [ { id: 'tw-object:bounded', kind: 'asset-instance', label: 'Bounded', assetId: boundedAssetID, priority: 'nearby', streamingBounds: { center: [ 1, 2, 3 ], radius: 4 }, transform: { position: [ 0, 0, 0 ], yaw: 0 }, scale: [ 1, 1, 1 ], collision: { shape: 'none', enabled: false } } ],
-		components: [ { id: 'tw-component:test-vegetation', type: 'tidewater.procedural-island-vegetation/1', seed: 7, priority: 'portal-preview', placementAssetId: placementAssetID }, { id: 'tw-component:static-plants', type: 'tidewater.static-vegetation/1', priority: 'portal-preview', placementAssetId: placementAssetID }, { id: 'tw-component:test-ocean', type: 'tidewater.island-ocean/1', priority: 'portal-preview' } ],
+		components: [ { id: 'tw-component:test-vegetation', type: 'tidewater.procedural-island-vegetation/1', seed: 7, priority: 'portal-preview', placementAssetId: placementAssetID }, { id: 'tw-component:static-plants', type: 'tidewater.static-vegetation/1', priority: 'portal-preview', placementAssetId: placementAssetID }, { id: 'tw-component:reef-tile', type: 'tidewater.static-reef/1', priority: 'visible', placementAssetId: reefPlacementAssetID, streamingBounds: { center: [ 0, -4, 0 ], radius: 32 } }, { id: 'tw-component:test-ocean', type: 'tidewater.island-ocean/1', priority: 'portal-preview' } ],
 		portals: [],
 		updatedAt: '2026-09-30T12:34:56Z',
 	} ) );
@@ -52,9 +55,10 @@ try {
 	assert.equal( manifest.updatedAt, 1790771696, 'runtime timestamp must come from the source snapshot' );
 	assert.equal( manifest.discoverable, false, 'world publication is private by default' );
 	assert.deepEqual( manifest.hosts, [ { peerId: '12D3KooWAbcdefghijk1234567890123456', scopes: [ 'content-cache', 'failover-authority' ], expiresAt: 1900000000, epoch: 3, failoverAfter: 1800000000, failoverSeconds: 300 } ], 'owner-granted cache and failover authority survive conversion' );
-	assert.deepEqual( manifest.rules.requiredFeatures, [ 'tidewater.portal-handoff/1', 'tidewater.procedural-island-vegetation/1', 'tidewater.static-vegetation/1', 'tidewater.island-ocean/1' ], 'runtime feature requirements survive deterministic conversion' );
-	assert.deepEqual( manifest.components, [ { id: 'tw-component:test-vegetation', type: 'tidewater.procedural-island-vegetation/1', seed: 7, priority: 'portal-preview', placementAssetId: placementAssetID }, { id: 'tw-component:static-plants', type: 'tidewater.static-vegetation/1', priority: 'portal-preview', placementAssetId: placementAssetID }, { id: 'tw-component:test-ocean', type: 'tidewater.island-ocean/1', priority: 'portal-preview' } ], 'versioned runtime components and their data survive conversion' );
+	assert.deepEqual( manifest.rules.requiredFeatures, [ 'tidewater.portal-handoff/1', 'tidewater.procedural-island-vegetation/1', 'tidewater.static-vegetation/1', 'tidewater.static-reef/1', 'tidewater.island-ocean/1' ], 'runtime feature requirements survive deterministic conversion' );
+	assert.deepEqual( manifest.components, [ { id: 'tw-component:test-vegetation', type: 'tidewater.procedural-island-vegetation/1', seed: 7, priority: 'portal-preview', placementAssetId: placementAssetID }, { id: 'tw-component:static-plants', type: 'tidewater.static-vegetation/1', priority: 'portal-preview', placementAssetId: placementAssetID }, { id: 'tw-component:reef-tile', type: 'tidewater.static-reef/1', priority: 'visible', placementAssetId: reefPlacementAssetID, streamingBounds: { center: [ 0, -4, 0 ], radius: 32 } }, { id: 'tw-component:test-ocean', type: 'tidewater.island-ocean/1', priority: 'portal-preview' } ], 'versioned runtime components and their data survive conversion' );
 	assert.ok( manifest.assets.some( ( asset ) => asset.id === placementAssetID && asset.kind === 'vegetation-placement/1' && asset.priority === 'portal-preview' ), 'component placement data is included as a hash-verified early-stream asset' );
+	assert.ok( manifest.assets.some( ( asset ) => asset.id === reefPlacementAssetID && asset.kind === 'reef-placement/1' && asset.priority === 'visible' ), 'reef placement data is content-addressed and keeps its view streaming priority' );
 	assert.deepEqual( manifest.rules.movement, { walkSpeed: 2.5, sprintSpeed: 7, jumpSpeed: 4.2 }, 'world movement rules survive deterministic conversion' );
 	assert.equal( manifest.rules.maxPackageBytes, 1024, 'aggregate content budget survives deterministic conversion' );
 	assert.equal( manifest.rules.seaLevel, -4.5, 'authored sea level survives deterministic conversion' );

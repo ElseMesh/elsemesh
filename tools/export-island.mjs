@@ -17,6 +17,8 @@ import { DebrisPlacer } from '../src/world/debris/DebrisPlacement.js';
 import { SCAN_ASSETS } from '../src/world/debris/ScannedDebris.js';
 import { createVegetationPlacement } from '../src/world/vegetation/Scatter.js';
 import { encodeVegetationPlacements } from '../src/network/VegetationPlacements.js';
+import { Reef } from '../src/world/Reef.js';
+import { encodeReefPlacements } from '../src/network/ReefPlacements.js';
 
 const REPO = path.resolve( path.dirname( fileURLToPath( import.meta.url ) ), '..' );
 const args = process.argv.slice( 2 );
@@ -58,6 +60,32 @@ const debris = generated.debris;
 const vegetationDocument = Buffer.from( encodeVegetationPlacements( generated.vegetation, 7 ) );
 const vegetationAssetId = `sha256:${createHash( 'sha256' ).update( vegetationDocument ).digest( 'hex' )}`;
 staticAssets.set( vegetationAssetId, vegetationDocument );
+const reefLayout = new Reef( { terrain, layoutOnly: true } );
+const reefRecords = reefLayout.placements();
+const reefModelRadius = Math.max( ...[ ...reefLayout.kinds.hard, ...reefLayout.kinds.soft ].filter( ( kind ) => kind.lod === 0 ).map( ( kind ) => {
+	const bounds = kind.geometry.boundingBox;
+	return Math.max( ...[ bounds.min.x, bounds.max.x ].flatMap( ( x ) => [ bounds.min.y, bounds.max.y ].flatMap( ( y ) => [ bounds.min.z, bounds.max.z ].map( ( z ) => Math.hypot( x, y, z ) ) ) ) );
+} ) );
+if ( ! Number.isFinite( reefModelRadius ) || reefModelRadius <= 0 ) throw new Error( 'Reef model catalog has no valid placement bounds' );
+const reefTiles = tileReefPlacements( reefRecords, 64, reefModelRadius );
+if ( reefTiles.length > 128 ) throw new Error( `Reef export produced ${reefTiles.length} tiles; maximum is 128` );
+const reefComponents = [];
+let reefAssetBytes = 0;
+for ( const tile of reefTiles ) {
+	const bytes = Buffer.from( encodeReefPlacements( tile.records, 20260923 ) );
+	if ( bytes.length > 16 * 1024 * 1024 ) throw new Error( `Reef tile ${tile.x},${tile.z} exceeds the 16 MiB asset limit` );
+	const id = `sha256:${createHash( 'sha256' ).update( bytes ).digest( 'hex' )}`;
+	staticAssets.set( id, bytes );
+	reefAssetBytes += bytes.length;
+	reefComponents.push( {
+		id: `tw-component:reef-tile-${tile.x}-${tile.z}`,
+		type: 'tidewater.static-reef/1',
+		priority: 'visible',
+		placementAssetId: id,
+		streamingBounds: tile.bounds,
+	} );
+}
+if ( reefComponents.length + 2 > 128 ) throw new Error( 'Island world exceeds the 128 component limit after adding reef tiles' );
 const debrisAssetIDs = new Map();
 const debrisAssetBounds = new Map();
 for ( const assetName of SCAN_ASSETS ) {
@@ -86,7 +114,7 @@ const source = {
 		gravity: 1,
 		avatarComplexity: 20000,
 		physicsProfile: 'tidewater-default',
-		requiredFeatures: [ 'tidewater.static-glb/1', 'tidewater.static-glb-quaternion/1', 'tidewater.static-vegetation/1', 'tidewater.island-ocean/1' ],
+		requiredFeatures: [ 'tidewater.static-glb/1', 'tidewater.static-glb-quaternion/1', 'tidewater.static-vegetation/1', 'tidewater.static-reef/1', 'tidewater.island-ocean/1' ],
 		maxPackageBytes: 64 * 1024 * 1024,
 	},
 	hosts: [],
@@ -148,6 +176,7 @@ const source = {
 	} ) ],
 	components: [
 		{ id: 'tw-component:island-vegetation', type: 'tidewater.static-vegetation/1', priority: 'portal-preview', placementAssetId: vegetationAssetId },
+		...reefComponents,
 		{ id: 'tw-component:island-ocean', type: 'tidewater.island-ocean/1', priority: 'portal-preview' },
 	],
 	portals: [],
@@ -157,6 +186,35 @@ await writeFile( sourcePath, `${JSON.stringify( source, null, 2 )}\n` );
 console.log( `Wrote ${sourcePath}` );
 const boatTriangles = generated.boatBatches.reduce( ( count, { batch } ) => count + batch.idx.length / 3, 0 );
 console.log( `Wrote ${staticAssets.size} content-addressed assets (${generated.villageTriangles} village triangles, ${boatTriangles} boat triangles, ${debris.length} scanned debris instances)` );
+console.log( `Reef export: ${reefRecords.length} records, ${reefTiles.length} tiles, ${reefAssetBytes} encoded bytes` );
+
+function tileReefPlacements( records, tileSize, modelRadius ) {
+	const tiles = new Map();
+	for ( const record of records ) {
+		const x = Math.floor( record.x / tileSize ), z = Math.floor( record.z / tileSize );
+		const key = `${x},${z}`;
+		let tile = tiles.get( key );
+		if ( ! tile ) tiles.set( key, tile = { x, z, records: [] } );
+		tile.records.push( record );
+	}
+	return [ ...tiles.values() ].sort( ( a, b ) => a.z - b.z || a.x - b.x ).map( ( tile ) => {
+		const min = [ Infinity, Infinity, Infinity ], max = [ - Infinity, - Infinity, - Infinity ];
+		for ( const record of tile.records ) {
+			// The maximum LOD0 geometry radius is measured from all eight bounding-box
+			// corners above, so it encloses every species vertex; max scale covers the
+			// nonuniform stretch and the renderer's reciprocal-X bound for narrow forms.
+			const scale = record.s * Math.max( record.sx, 1 / record.sx, record.sy, record.sz );
+			const extent = modelRadius * scale;
+			for ( const [ axis, value ] of [ record.x, record.y, record.z ].entries() ) {
+				min[ axis ] = Math.min( min[ axis ], value - extent );
+				max[ axis ] = Math.max( max[ axis ], value + extent );
+			}
+		}
+		const center = min.map( ( value, axis ) => ( value + max[ axis ] ) * 0.5 );
+		const radius = Math.max( 0.01, Math.hypot( ...max.map( ( value, axis ) => ( value - min[ axis ] ) * 0.5 ) ) );
+		return { ...tile, bounds: { center, radius } };
+	} );
+}
 
 function buildIslandProceduralContent( terrainData ) {
 	const scene = { add() {}, remove() {} };

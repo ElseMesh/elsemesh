@@ -199,6 +199,11 @@ const TYPES = {
 		c1: [ 0x8a6a2a, 0x9a7a32, 0x7a5e26, 0xa08036, 0x806228 ], c2: [ 0x6a5a26 ] },
 };
 
+// Type IDs in tidewater.reef-placement/1 follow this order. Only append names;
+// changing an existing type's meaning requires a new placement protocol version.
+export const REEF_TYPE_NAMES = Object.freeze( Object.keys( TYPES ) );
+export const REEF_TYPE_VARIANT_COUNTS = Object.freeze( Object.fromEntries( REEF_TYPE_NAMES.map( ( type ) => [ type, MODELS[ TYPES[ type ].model ].variants ] ) ) );
+
 // Relative abundance of each type per zone and layer:
 //   [ crest, fore reef (spurs and grooves), back reef (lagoon flats), patch reefs, deep slope ]
 const LAYERS = [
@@ -255,35 +260,53 @@ const _m = new THREE.Matrix4(), _frustum = new THREE.Frustum(), _box = new THREE
 
 export class Reef {
 
-	constructor( { scene, terrain, shoreField = null } ) {
+	constructor( { scene, terrain, shoreField = null, layoutOnly = false, placementRecords = null, maxInstances = null } ) {
+
+		if ( layoutOnly && placementRecords !== null ) throw new Error( 'Reef layoutOnly and placementRecords modes are mutually exclusive' );
+		if ( maxInstances !== null && ( ! Number.isInteger( maxInstances ) || maxInstances < 1 || maxInstances > 200000 ) ) throw new Error( 'Reef maxInstances must be an integer from 1 to 200000' );
+		if ( maxInstances !== null && placementRecords === null ) throw new Error( 'Reef maxInstances is only valid with placementRecords' );
 
 		const t0 = performance.now();
 		this.terrain = terrain;
+		this.layoutOnly = layoutOnly;
+		this.staticPlacement = placementRecords !== null;
+		this.maxInstances = this.staticPlacement ? maxInstances ?? Math.max( 1, placementRecords.length ) : null;
 		this.center = WORLD.reef.center.clone();
 		this.radius = WORLD.reef.radius;
 		this.group = new THREE.Group();
 		this.group.name = 'Reef';
-		scene.add( this.group );
-		this.rng = mulberry32( 20260923 );
-		this.noise = new Noise2D( 4242 );
-		this.noise2 = new Noise2D( 977 );
+		if ( ! layoutOnly ) {
+			if ( ! scene ) throw new Error( 'A scene is required to render the reef' );
+			scene.add( this.group );
+		}
+		this.seed = 20260923;
+		this.rng = layoutOnly || ! this.staticPlacement ? mulberry32( this.seed ) : null;
+		this.noise = layoutOnly || ! this.staticPlacement ? new Noise2D( 4242 ) : null;
+		this.noise2 = layoutOnly || ! this.staticPlacement ? new Noise2D( 977 ) : null;
 		this.fft = null;
 		this.timings = {};
 
 		this.buildKinds();
-		this.initFields();
 		this.items = { hard: [], soft: [] };
-		this.placeLayers();
-		this.timings.place = performance.now() - t0;
-		this.buildBatches();
-		this.buildCells();
-
-		this.fish = new FishSchools( {
-			parent: this.group, terrain, center: this.center, radius: this.radius + 10,
-			floorAt: ( x, z ) => this.floorHeightAt( x, z ),
-			anchors: this.anchors,
-			shoreField, // keeps the bay fish out of the breakers
-		} );
+		if ( this.staticPlacement ) {
+			this.loadPlacements( placementRecords );
+		} else {
+			this.initFields();
+			this.placeLayers();
+			this.timings.place = performance.now() - t0;
+		}
+		if ( ! layoutOnly ) {
+			this.buildBatches();
+			this.buildCells();
+			this.fish = this.staticPlacement ? null : new FishSchools( {
+				parent: this.group, terrain, center: this.center, radius: this.radius + 10,
+				floorAt: ( x, z ) => this.floorHeightAt( x, z ),
+				anchors: this.anchors,
+				shoreField, // keeps the bay fish out of the breakers
+			} );
+		} else {
+			this.fish = null;
+		}
 
 		this.camera = null; // the main camera (seen in onBeforeRender)
 		this._cullPos = new THREE.Vector3( Infinity, 0, 0 );
@@ -291,6 +314,68 @@ export class Reef {
 		this._cullFrame = - 1;
 		this.frame = 0;
 		this.timings.total = performance.now() - t0;
+
+	}
+
+	appendPlacements( records ) {
+
+		if ( ! this.staticPlacement || this.layoutOnly ) throw new Error( 'appendPlacements requires a rendered placementRecords reef' );
+		if ( ! Array.isArray( records ) || this.items.hard.length + this.items.soft.length + records.length > this.maxInstances ) throw new Error( 'Reef placement capacity exceeded' );
+		const oldHard = this.items.hard.length, oldSoft = this.items.soft.length;
+		this.loadPlacements( records );
+		this.writeBatchRange( 'hard', oldHard );
+		this.writeBatchRange( 'soft', oldSoft );
+		this.buildCells();
+		return records.length;
+
+	}
+
+	// Deterministic world-space snapshot for the explicit portable reef component.
+	placements() {
+
+		const records = [];
+		for ( const which of [ 'hard', 'soft' ] ) for ( const item of this.items[ which ] ) {
+			const type = item.name;
+			const variant = this.models[ TYPES[ type ].model ].indexOf( item.model );
+			if ( variant < 0 ) throw new Error( `Reef placement refers to an unknown model variant: ${type}` );
+			records.push( {
+				type, variant, x: item.x, y: item.y, z: item.z, s: item.s, sx: item.sx, sy: item.sy, sz: item.sz,
+				q: item.q.toArray(), c1: item.c1, c2: item.c2, seed: item.seed, flex: item.flex,
+			} );
+		}
+		return records;
+
+	}
+
+	loadPlacements( records ) {
+
+		if ( ! Array.isArray( records ) || records.length > 200000 ) throw new Error( 'Invalid or oversized reef placement records' );
+		if ( this.items.hard.length + this.items.soft.length + records.length > this.maxInstances ) throw new Error( 'Reef placement capacity exceeded' );
+		const additions = { hard: [], soft: [] };
+		for ( const record of records ) {
+			const allowed = [ 'type', 'variant', 'x', 'y', 'z', 's', 'sx', 'sy', 'sz', 'q', 'c1', 'c2', 'seed', 'flex' ];
+			if ( ! record || typeof record !== 'object' || Array.isArray( record ) || Object.keys( record ).length !== allowed.length || allowed.some( ( key ) => ! Object.hasOwn( record, key ) ) || Object.keys( record ).some( ( key ) => ! allowed.includes( key ) ) || ! Object.hasOwn( TYPES, record.type ) ) throw new Error( 'Invalid reef placement record' );
+			const type = TYPES[ record.type ], models = this.models[ type.model ];
+			if ( ! Number.isInteger( record.variant ) || record.variant < 0 || record.variant >= models.length ) throw new Error( `Invalid reef model variant for ${record.type}` );
+			for ( const field of [ 'x', 'y', 'z' ] ) if ( ! Number.isFinite( record[ field ] ) || Math.abs( record[ field ] ) > 10000 ) throw new Error( `Invalid reef placement ${field}` );
+			for ( const field of [ 's', 'sx', 'sy', 'sz' ] ) if ( ! Number.isFinite( record[ field ] ) || record[ field ] <= 0 || record[ field ] > 100 ) throw new Error( `Invalid reef placement ${field}` );
+			if ( ! Array.isArray( record.q ) || record.q.length !== 4 || ! record.q.every( Number.isFinite ) || Math.abs( record.q.reduce( ( sum, value ) => sum + value * value, 0 ) - 1 ) > 0.002 ) throw new Error( 'Invalid reef placement quaternion' );
+			for ( const field of [ 'c1', 'c2' ] ) if ( ! Number.isInteger( record[ field ] ) || record[ field ] < 0 || record[ field ] > 0xffffff ) throw new Error( `Invalid reef placement ${field}` );
+			if ( ! Number.isFinite( record.seed ) || record.seed < 0 || record.seed > 1 || ! Number.isFinite( record.flex ) || Math.abs( record.flex ) > 2 ) throw new Error( 'Invalid reef placement seed or flex' );
+			const model = models[ record.variant ];
+			const sx = record.sx, sz = record.sz;
+			const which = MODELS[ type.model ].soft ? 'soft' : 'hard';
+			const item = {
+				name: record.type, model, x: record.x, y: record.y, z: record.z, s: record.s, sx, sy: record.sy, sz,
+				q: new THREE.Quaternion().fromArray( record.q ), c1: record.c1, c2: record.c2, seed: record.seed, flex: record.flex,
+				radius: model.radius * record.s * Math.max( sx, 1 / sx, record.sy, sz ),
+			};
+			item.range = this.drawDistance( item, which );
+			additions[ which ].push( item );
+		}
+		for ( const item of additions.hard ) this.items.hard.push( item );
+		for ( const item of additions.soft ) this.items.soft.push( item );
+		this.counts = {};
 
 	}
 
@@ -304,14 +389,14 @@ export class Reef {
 	// Spray (fx/Spray.js): splashes of leaping fish and the whale's white water.
 	setSpray( spray ) {
 
-		this.fish.spray = spray;
+		if ( this.fish ) this.fish.spray = spray;
 
 	}
 
 	// The humpback (world/marine/Whale.js): its escort of fish and its marks on the water.
 	setWhale( whale ) {
 
-		this.fish.setWhale( whale );
+		if ( this.fish ) this.fish.setWhale( whale );
 
 	}
 
@@ -1136,32 +1221,10 @@ export class Reef {
 		for ( const which of [ 'hard', 'soft' ] ) {
 
 			const items = this.items[ which ];
-			const batch = new ReefBatch( 'Reef.' + which, this.kinds[ which ], { maxInstances: items.length + 1, fade: true } );
-			const d = batch.data;
-			items.forEach( ( it, i ) => {
-
-				const t = TYPES[ it.name ];
-				it.range = this.drawDistance( it, which );
-				d[ i * 16 ] = it.x;
-				d[ i * 16 + 1 ] = it.y;
-				d[ i * 16 + 2 ] = it.z;
-				d[ i * 16 + 3 ] = it.s;
-				d[ i * 16 + 4 ] = it.q.x;
-				d[ i * 16 + 5 ] = it.q.y;
-				d[ i * 16 + 6 ] = it.q.z;
-				d[ i * 16 + 7 ] = it.q.w;
-				d[ i * 16 + 8 ] = it.c1;
-				d[ i * 16 + 9 ] = it.c2;
-				d[ i * 16 + 10 ] = it.range + it.seed; // draw distance (integer m) + seed
-				d[ i * 16 + 11 ] = t.surface;
-				d[ i * 16 + 12 ] = it.sx;
-				d[ i * 16 + 13 ] = it.sy;
-				d[ i * 16 + 14 ] = it.sz;
-				d[ i * 16 + 15 ] = it.flex;
-
-			} );
-			batch.upload();
+			const batch = new ReefBatch( 'Reef.' + which, this.kinds[ which ], { maxInstances: this.maxInstances ?? items.length + 1, fade: true } );
 			this.batches[ which ] = batch;
+			this.writeBatchData( which, 0 );
+			batch.upload();
 
 		}
 
@@ -1197,6 +1260,44 @@ export class Reef {
 			this.group.add( mesh );
 
 		}
+
+	}
+
+	writeBatchData( which, start ) {
+
+		const batch = this.batches?.[ which ];
+		const items = this.items[ which ];
+		const data = batch.data;
+		for ( let i = start; i < items.length; i ++ ) {
+			const item = items[ i ];
+			const t = TYPES[ item.name ];
+			item.range = this.drawDistance( item, which );
+			data[ i * 16 ] = item.x;
+			data[ i * 16 + 1 ] = item.y;
+			data[ i * 16 + 2 ] = item.z;
+			data[ i * 16 + 3 ] = item.s;
+			data[ i * 16 + 4 ] = item.q.x;
+			data[ i * 16 + 5 ] = item.q.y;
+			data[ i * 16 + 6 ] = item.q.z;
+			data[ i * 16 + 7 ] = item.q.w;
+			data[ i * 16 + 8 ] = item.c1;
+			data[ i * 16 + 9 ] = item.c2;
+			data[ i * 16 + 10 ] = item.range + item.seed; // draw distance (integer m) + seed
+			data[ i * 16 + 11 ] = t.surface;
+			data[ i * 16 + 12 ] = item.sx;
+			data[ i * 16 + 13 ] = item.sy;
+			data[ i * 16 + 14 ] = item.sz;
+			data[ i * 16 + 15 ] = item.flex;
+		}
+
+	}
+
+	writeBatchRange( which, start ) {
+
+		if ( start >= this.items[ which ].length ) return;
+		const batch = this.batches[ which ];
+		this.writeBatchData( which, start );
+		batch.instanceBuffer.write( batch.data.subarray( start * 16, this.items[ which ].length * 16 ), start * 64 );
 
 	}
 
@@ -1274,8 +1375,9 @@ export class Reef {
 	// Per frame: fish simulation, culling and levels of detail.
 	update( dt, cameraPosition ) {
 
+		if ( this.layoutOnly ) return;
 		this.frame ++;
-		this.fish.update( dt, cameraPosition ?? null );
+		if ( this.fish ) this.fish.update( dt, cameraPosition ?? null );
 		if ( ! cameraPosition ) return;
 		const p = cameraPosition;
 		const e = this.extent;
@@ -1301,7 +1403,7 @@ export class Reef {
 
 		}
 
-		if ( camera && fish.mesh.visible ) {
+		if ( camera && fish?.mesh.visible ) {
 
 			fish.cull( camera );
 			fish.mesh.visible = fish.batch.visibleInstances > 0;
@@ -1314,7 +1416,7 @@ export class Reef {
 	// from update(), or from the first render before the camera is known).
 	cull( camera ) {
 
-		if ( this._cullFrame === this.frame ) return;
+		if ( ! this.staticPlacement && this._cullFrame === this.frame ) return;
 		this._cullFrame = this.frame;
 		const p = camera.position;
 		// nothing changes while the camera is still
@@ -1397,27 +1499,31 @@ export class Reef {
 
 	get stats() {
 
+		if ( this.layoutOnly ) return {
+			instances: { hard: this.items.hard.length, soft: this.items.soft.length },
+			counts: this.counts, timings: this.timings, fish: 0,
+		};
 		const b = this.batches;
 		return {
 			instances: { hard: this.items.hard.length, soft: this.items.soft.length },
 			visible: { hard: b.hard.visibleInstances, soft: b.soft.visibleInstances },
 			triangles: b.hard.visibleTriangles + b.soft.visibleTriangles,
 			shadowTriangles: b.hard.shadowTriangles,
-			drawCalls: ( b.hard.mesh.visible ? 1 : 0 ) + ( b.soft.mesh.visible ? 1 : 0 ) + ( this.fish.mesh.visible ? 1 : 0 ),
+			drawCalls: ( b.hard.mesh.visible ? 1 : 0 ) + ( b.soft.mesh.visible ? 1 : 0 ) + ( this.fish?.mesh.visible ? 1 : 0 ),
 			subDraws: b.hard.mainOffsets.length + b.soft.mainOffsets.length,
 			shadowSubDraws: b.hard.shadowOffsets.length,
 			kinds: { hard: this.kinds.hard.length, soft: this.kinds.soft.length },
-			counts: this.counts, timings: this.timings, fish: this.fish.fishCount,
+			counts: this.counts, timings: this.timings, fish: this.fish?.fishCount || 0,
 		};
 
 	}
 
 	dispose() {
 
-		for ( const b of Object.values( this.batches ) ) b.dispose();
-		for ( const m of [ ...Object.values( this.materials ), ...Object.values( this.fadeMaterials ) ] ) m.dispose();
-		this.noise3D.destroy();
-		this.fish.dispose();
+		for ( const b of Object.values( this.batches || {} ) ) b.dispose();
+		for ( const m of [ ...Object.values( this.materials || {} ), ...Object.values( this.fadeMaterials || {} ) ] ) m.dispose();
+		this.noise3D?.destroy();
+		this.fish?.dispose();
 		this.group.removeFromParent();
 
 	}

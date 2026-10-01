@@ -123,6 +123,8 @@ func (component *worldComponent) UnmarshalJSON(data []byte) error {
 		allowed["seed"], allowed["placementAssetId"] = true, true
 	case "tidewater.static-vegetation/1":
 		allowed["placementAssetId"] = true
+	case "tidewater.static-reef/1":
+		allowed["placementAssetId"] = true
 	case "tidewater.island-ocean/1":
 	case "tidewater.water-body/1":
 		allowed["center"], allowed["extent"], allowed["profile"] = true, true, true
@@ -447,6 +449,7 @@ func validateManifest(manifest worldManifest, localPeerID string, now time.Time)
 	for _, component := range manifest.Components {
 		vegetation := component.Type == "tidewater.procedural-island-vegetation/1" && component.Seed == 7
 		staticVegetation := component.Type == "tidewater.static-vegetation/1" && component.Seed == 0 && component.PlacementAssetID != ""
+		staticReef := component.Type == "tidewater.static-reef/1" && component.Seed == 0 && component.PlacementAssetID != "" && component.StreamingBounds != nil
 		islandOcean := component.Type == "tidewater.island-ocean/1" && component.Seed == 0 && component.PlacementAssetID == ""
 		waterBody := component.Type == "tidewater.water-body/1" && component.Seed == 0 && component.PlacementAssetID == "" && len(component.Center) == 2 && component.Extent >= 8 && component.Extent <= 100000 && (component.Profile == "" || component.Profile == "deep-ocean" || component.Profile == "calm-lagoon" || component.Profile == "storm")
 		if waterBody {
@@ -463,7 +466,7 @@ func validateManifest(manifest worldManifest, localPeerID string, now time.Time)
 		if islandOcean {
 			islandOceanCount++
 		}
-		if !componentIDPattern.MatchString(component.ID) || seenComponents[component.ID] || seenObjects[component.ID] || seenPortals[component.ID] || (!vegetation && !staticVegetation && !islandOcean && !waterBody) || islandOceanCount > 1 || waterBodyCount > 4 || component.Priority != "" && component.Priority != "portal-preview" && component.Priority != "visible" && component.Priority != "nearby" && component.Priority != "background" || !seenFeatures[component.Type] {
+		if !componentIDPattern.MatchString(component.ID) || seenComponents[component.ID] || seenObjects[component.ID] || seenPortals[component.ID] || (!vegetation && !staticVegetation && !staticReef && !islandOcean && !waterBody) || islandOceanCount > 1 || waterBodyCount > 4 || component.Priority != "" && component.Priority != "portal-preview" && component.Priority != "visible" && component.Priority != "nearby" && component.Priority != "background" || !seenFeatures[component.Type] {
 			return fmt.Errorf("invalid or unsupported world component %q", component.ID)
 		}
 		if waterBody && (manifest.Rules.SeaLevel == nil || islandOceanCount > 0) || islandOcean && waterBodyCount > 0 {
@@ -483,7 +486,11 @@ func validateManifest(manifest worldManifest, localPeerID string, now time.Time)
 			if priority == "" {
 				priority = "portal-preview"
 			}
-			if !assetIDPattern.MatchString(component.PlacementAssetID) || !exists || asset.Kind != "vegetation-placement/1" || asset.Priority != priority {
+			kind := "vegetation-placement/1"
+			if staticReef {
+				kind = "reef-placement/1"
+			}
+			if !assetIDPattern.MatchString(component.PlacementAssetID) || !exists || asset.Kind != kind || asset.Priority != priority {
 				return fmt.Errorf("invalid placement asset reference on world component %q", component.ID)
 			}
 		}

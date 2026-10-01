@@ -9,6 +9,7 @@ import { appendWorldPackageAssets, disposeWorldPackage, loadWorldPackage, regist
 import { validateWorldSource } from '../src/network/WorldSource.js';
 import { Colliders } from '../src/world/Colliders.js';
 import { decodeVegetationPlacements } from '../src/network/VegetationPlacements.js';
+import { decodeReefPlacements } from '../src/network/ReefPlacements.js';
 
 const temporaryRoot = process.env.PREFIX ? path.join( process.env.PREFIX, 'tmp' ) : '/var/tmp';
 const output = await mkdtemp( path.join( temporaryRoot, 'elsemesh-island-export-' ) );
@@ -43,19 +44,19 @@ try {
 	const checkedInVegetation = decodeVegetationPlacements( new Uint8Array( checkedInVegetationBytes ) );
 	assert.ok( Object.values( checkedInVegetation ).filter( Array.isArray ).reduce( ( count, records ) => count + records.length, 0 ) > 100, 'checked-in component asset contains portable individual vegetation placements' );
 	const sourcePath = path.join( output, 'world-source.json' );
-	execFileSync( process.execPath, [ 'tools/export-island.mjs', '--out', output ], { stdio: 'inherit' } );
+	const firstExportOutput = execFileSync( process.execPath, [ 'tools/export-island.mjs', '--out', output ], { encoding: 'utf8' } );
 	const sourceFirst = await readFile( sourcePath );
 	const firstDocument = JSON.parse( sourceFirst );
 	const assetPath = path.join( output, 'assets', firstDocument.objects[ 0 ].assetId.slice( 'sha256:'.length ) );
 	const assetFirst = await readFile( assetPath );
 	const firstAssets = new Map();
 	for ( const id of new Set( [ ...firstDocument.objects.map( ( object ) => object.assetId ), ...firstDocument.components.map( ( component ) => component.placementAssetId ).filter( Boolean ) ] ) ) firstAssets.set( id, await readFile( path.join( output, 'assets', id.slice( 'sha256:'.length ) ) ) );
-	execFileSync( process.execPath, [ 'tools/export-island.mjs', '--out', output ], { stdio: 'inherit' } );
+	const secondExportOutput = execFileSync( process.execPath, [ 'tools/export-island.mjs', '--out', output ], { encoding: 'utf8' } );
 	const sourceBytes = await readFile( sourcePath );
 	const source = validateWorldSource( JSON.parse( sourceBytes ) );
 	const assetBytes = await readFile( path.join( output, 'assets', source.objects[ 0 ].assetId.slice( 'sha256:'.length ) ) );
 	assert.deepEqual( sourceBytes, sourceFirst, 'repeated source generation must be byte-identical' );
-	assert.deepEqual( sourceBytes, checkedInSourceBytes, 'checked-in world source must match a clean deterministic export' );
+	assert.deepEqual( sourceBytes, checkedInSourceBytes, 'checked-in world source must match the clean deterministic export' );
 	assert.deepEqual( assetBytes, assetFirst, 'repeated GLB generation must be byte-identical' );
 	const placementID = source.components[ 0 ].placementAssetId;
 	const placementBytes = await readFile( path.join( output, 'assets', placementID.slice( 'sha256:'.length ) ) );
@@ -80,12 +81,36 @@ try {
 	assert.equal( source.objects[ 0 ].replacesObjectId, terrainPreview.id, 'full terrain replaces the lightweight portal terrain' );
 	const previewGLB = parseGLB( firstAssets.get( terrainPreview.assetId ) );
 	assert.equal( previewGLB.meshes[ 0 ][ 0 ].indices.length, 128 * 128 * 6, 'portal terrain preview uses one sixteenth as many grid cells as full terrain' );
-	assert.deepEqual( source.rules.requiredFeatures, [ 'tidewater.static-glb/1', 'tidewater.static-glb-quaternion/1', 'tidewater.static-vegetation/1', 'tidewater.island-ocean/1' ], 'GLB transforms, portable vegetation, and the example ocean declare runtime capabilities' );
-	assert.equal( source.components.length, 2, 'portable island declares vegetation and ocean components' );
+	assert.deepEqual( source.rules.requiredFeatures, [ 'tidewater.static-glb/1', 'tidewater.static-glb-quaternion/1', 'tidewater.static-vegetation/1', 'tidewater.static-reef/1', 'tidewater.island-ocean/1' ], 'GLB transforms, portable vegetation and reef, and the example ocean declare runtime capabilities' );
+	assert.equal( source.components.length, 2 + source.components.filter( ( component ) => component.type === 'tidewater.static-reef/1' ).length, 'portable island declares vegetation, reef tiles, and ocean components' );
 	assert.equal( source.components[ 0 ].type, 'tidewater.static-vegetation/1', 'portable island uses terrain-independent, authored world-space vegetation placements' );
 	assert.match( source.components[ 0 ].placementAssetId, /^sha256:[0-9a-f]{64}$/, 'vegetation placement data is content addressed' );
 	assert.equal( source.components[ 0 ].priority, 'portal-preview', 'vegetation records are available for open portal previews' );
-	assert.deepEqual( source.components[ 1 ], { id: 'tw-component:island-ocean', type: 'tidewater.island-ocean/1', priority: 'portal-preview' }, 'portable island declares its versioned ocean renderer for early portal previews' );
+	assert.deepEqual( source.components.at( -1 ), { id: 'tw-component:island-ocean', type: 'tidewater.island-ocean/1', priority: 'portal-preview' }, 'portable island declares its versioned ocean renderer for early portal previews' );
+	const reefComponents = source.components.filter( ( component ) => component.type === 'tidewater.static-reef/1' );
+	assert.ok( reefComponents.length > 0 && reefComponents.length <= 128, 'portable reef is divided into at most 128 nonempty tiles' );
+	assert.equal( new Set( reefComponents.map( ( component ) => component.id ) ).size, reefComponents.length, 'every reef tile has a unique deterministic component ID' );
+	let reefRecordCount = 0, reefAssetByteCount = 0;
+	for ( const component of reefComponents ) {
+		assert.equal( component.priority, 'visible', 'reef tile is requested at visible priority' );
+		assert.match( component.placementAssetId, /^sha256:[0-9a-f]{64}$/, 'reef tile references a content-addressed placement asset' );
+		assert.ok( Number.isFinite( component.streamingBounds.radius ) && component.streamingBounds.radius > 0, 'reef tile has bounded view-streaming metadata' );
+		const bytes = firstAssets.get( component.placementAssetId );
+		assert.ok( bytes?.length > 0 && bytes.length <= 16 * 1024 * 1024, 'each encoded reef tile fits the 16 MiB server asset limit' );
+		const decoded = decodeReefPlacements( new Uint8Array( bytes ) );
+		assert.equal( decoded.seed, 20260923, 'reef placement file records the stable procedural seed' );
+		assert.ok( decoded.records.length > 0, 'reef tile assets are nonempty' );
+		reefRecordCount += decoded.records.length;
+		reefAssetByteCount += bytes.length;
+	}
+	const reefRunSummary = ( output ) => {
+		const match = output.match( /Reef export: (\d+) records, (\d+) tiles, (\d+) encoded bytes/ );
+		assert.ok( match, 'island exporter reports reef record, tile, and byte totals' );
+		return match.slice( 1 ).map( Number );
+	};
+	assert.deepEqual( reefRunSummary( firstExportOutput ), [ reefRecordCount, reefComponents.length, reefAssetByteCount ], 'export summary counts match the actual reef tile assets' );
+	assert.deepEqual( reefRunSummary( secondExportOutput ), reefRunSummary( firstExportOutput ), 'repeated exports report identical reef counts and bytes' );
+	assert.ok( reefRecordCount > 1000, 'reef export contains its full procedural population' );
 	assert.ok( source.rules.maxPackageBytes >= [ ...firstAssets.values() ].reduce( ( total, bytes ) => total + bytes.length, 0 ), 'signed package byte budget covers every unique asset' );
 	assert.deepEqual( [ source.objects[ 0 ].collision.columns, source.objects[ 0 ].collision.rows ], [ 513, 513 ], 'terrain source declares the grid used for collision extraction' );
 	const villageObject = source.objects.find( ( object ) => object.id === 'tw-object:island-village' );

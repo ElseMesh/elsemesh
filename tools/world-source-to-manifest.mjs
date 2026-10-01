@@ -51,6 +51,7 @@ async function main() {
 		if ( ! component.placementAssetId ) continue; // Legacy seed-only component.
 		const id = component.placementAssetId;
 		const priority = component.priority || 'portal-preview';
+		const kind = component.type === 'tidewater.static-reef/1' ? 'reef-placement/1' : 'vegetation-placement/1';
 		let ref = assets.get( id );
 		if ( ! ref ) {
 			const assetPath = path.join( args.assets, id.slice( 'sha256:'.length ) );
@@ -59,9 +60,9 @@ async function main() {
 			const hasher = createHash( 'sha256' );
 			for await ( const chunk of createReadStream( assetPath ) ) hasher.update( chunk );
 			if ( `sha256:${hasher.digest( 'hex' )}` !== id ) throw new Error( `Hash mismatch for component data ${id}` );
-			ref = { id, bytes: info.size, kind: 'vegetation-placement/1', priority };
+			ref = { id, bytes: info.size, kind, priority };
 			assets.set( id, ref );
-		} else if ( ref.kind !== 'vegetation-placement/1' || ref.priority !== priority ) {
+		} else if ( ref.kind !== kind || ref.priority !== priority ) {
 			throw new Error( `Component data ${id} conflicts with another asset kind or streaming priority` );
 		}
 	}

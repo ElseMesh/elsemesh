@@ -65,6 +65,7 @@ import { BoatSpray } from './player/BoatSpray.js';
 import { WakeSim } from './ocean/WakeSim.js';
 import { Vegetation } from './world/Vegetation.js';
 import { decodeVegetationPlacements } from './network/VegetationPlacements.js';
+import { decodeReefPlacements, MAX_REEF_PLACEMENTS, REEF_PLACEMENT_HEADER_BYTES, REEF_PLACEMENT_RECORD_BYTES } from './network/ReefPlacements.js';
 import { SoundScape } from './audio/SoundScape.js';
 import { updateCameraVelocity, useStaticVelocity } from './post/CameraVelocity.js';
 import { Group } from './engine/scene/Group.js';
@@ -723,6 +724,25 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 				} else {
 					installed.push( new Vegetation( { scene: root, terrain: staticVegetation ? null : this.terrainData, village: staticVegetation ? null : this.village, includeGrass: ! staticVegetation, placementRecords } ) );
 				}
+			} else if ( component.type === 'tidewater.static-reef/1' ) {
+				const { records } = readReefPlacements( connector, component );
+				let reef = root.userData.staticReef;
+				if ( reef ) {
+					reef.appendPlacements( records );
+				} else {
+					reef = new Reef( { scene: root, terrain: null, placementRecords: records, maxInstances: reefPlacementCapacity( connector ) } );
+					reef.setOcean( this.fft );
+					root.userData.staticReef = reef;
+					installed.push( {
+						reef: true,
+						update: ( dt, camera ) => reef.update( dt, camera?.position ),
+						dispose: () => {
+							if ( root.userData.staticReef === reef ) delete root.userData.staticReef;
+							reef.dispose();
+						},
+					} );
+				}
+				installedIDs.add( component.id );
 			} else if ( component.type === 'tidewater.island-ocean/1' ) {
 				const lod = new CDLOD( { gridSize: Number( this.qs.get( 'G' ) || 32 ), leafSize: 8, levels: 12, minY: - 25, maxY: 25 } );
 				const mesh = new Mesh( lod.geometry, this.waterMaterial );
@@ -759,9 +779,9 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 
 	updateWorldComponents( root, dt, camera ) {
 		const components = root?.userData?.worldComponents || [];
-		const activeWater = components.some( ( component ) => component.islandOcean || component.waterBody );
+		const activeWater = components.some( ( component ) => component.islandOcean || component.waterBody || component.reef );
 		const previewRoot = this.portalPreviewId ? this.portalPreparations.get( this.portalPreviewId )?.root : null;
-		const previewWater = ( previewRoot?.userData?.worldComponents || [] ).some( ( component ) => component.islandOcean || component.waterBody );
+		const previewWater = ( previewRoot?.userData?.worldComponents || [] ).some( ( component ) => component.islandOcean || component.waterBody || component.reef );
 		if ( dt > 0 && ( activeWater || previewWater ) ) this.fft.update( dt );
 		for ( const component of components ) component.update( dt, camera );
 	}
@@ -1172,6 +1192,25 @@ function readVegetationPlacements( connector, component ) {
 	const bytes = connector.assets.get( component.placementAssetId );
 	if ( ! bytes ) throw new Error( `Vegetation component ${component.id} is missing its placement asset` );
 	return decodeVegetationPlacements( bytes, component.seed );
+}
+
+function readReefPlacements( connector, component ) {
+	const bytes = connector.assets.get( component.placementAssetId );
+	if ( ! bytes ) throw new Error( `Reef component ${component.id} is missing its placement asset` );
+	return decodeReefPlacements( bytes );
+}
+
+function reefPlacementCapacity( connector ) {
+	const assets = new Map( connector.manifest.assets.map( ( asset ) => [ asset.id, asset ] ) );
+	let capacity = 0;
+	for ( const component of connector.manifest.components || [] ) {
+		if ( component.type !== 'tidewater.static-reef/1' ) continue;
+		const asset = assets.get( component.placementAssetId );
+		if ( ! asset || ! Number.isSafeInteger( asset.bytes ) || asset.bytes < REEF_PLACEMENT_HEADER_BYTES || ( asset.bytes - REEF_PLACEMENT_HEADER_BYTES ) % REEF_PLACEMENT_RECORD_BYTES !== 0 ) throw new Error( `Reef component ${component.id} has an invalid placement asset size` );
+		capacity += ( asset.bytes - REEF_PLACEMENT_HEADER_BYTES ) / REEF_PLACEMENT_RECORD_BYTES;
+		if ( capacity > MAX_REEF_PLACEMENTS ) throw new Error( 'World reef placements exceed the supported instance capacity' );
+	}
+	return Math.max( 1, capacity );
 }
 
 function componentsThroughPriority( connector, through, vegetationEnabled ) {

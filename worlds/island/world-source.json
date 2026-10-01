@@ -12,6 +12,7 @@
       "tidewater.static-glb/1",
       "tidewater.static-glb-quaternion/1",
       "tidewater.static-vegetation/1",
+      "tidewater.static-reef/1",
       "tidewater.island-ocean/1"
     ],
     "maxPackageBytes": 67108864
@@ -11428,6 +11429,412 @@
       "type": "tidewater.static-vegetation/1",
       "priority": "portal-preview",
       "placementAssetId": "sha256:e9ead2780768e0dabea07317da0c020497137472e6adc1cb3f166611fb0fbae6"
+    },
+    {
+      "id": "tw-component:reef-tile--3--1",
+      "type": "tidewater.static-reef/1",
+      "priority": "visible",
+      "placementAssetId": "sha256:ba43c618854cc2f1055f5f7d3e09154bef8dae6b3822afd48c3c92b3409de144",
+      "streamingBounds": {
+        "center": [
+          -146.26987981907746,
+          -0.7974792742556946,
+          -19.11424616451447
+        ],
+        "radius": 30.485124022999237
+      }
+    },
+    {
+      "id": "tw-component:reef-tile--2--1",
+      "type": "tidewater.static-reef/1",
+      "priority": "visible",
+      "placementAssetId": "sha256:c86011a9d6427f6577ddebbce24bd5436aacac038774951c1450f03b538cdf34",
+      "streamingBounds": {
+        "center": [
+          -95.27328677060707,
+          -1.8422292185758748,
+          -19.12249584390025
+        ],
+        "radius": 42.27409413766623
+      }
+    },
+    {
+      "id": "tw-component:reef-tile--1--1",
+      "type": "tidewater.static-reef/1",
+      "priority": "visible",
+      "placementAssetId": "sha256:92cdd6f611d76139891a1440cd2deeb4ae88159a899989593127eb0630b28ae4",
+      "streamingBounds": {
+        "center": [
+          -32.958182511635435,
+          -1.586291611475026,
+          -16.334005391296333
+        ],
+        "radius": 39.858279008436696
+      }
+    },
+    {
+      "id": "tw-component:reef-tile-0--1",
+      "type": "tidewater.static-reef/1",
+      "priority": "visible",
+      "placementAssetId": "sha256:1a8c7863673e686dce0cb700445aa2794ab497fc9271d49b2902eb2207f25708",
+      "streamingBounds": {
+        "center": [
+          32.5260751463076,
+          -2.0055940595826627,
+          -16.058036467906614
+        ],
+        "radius": 40.188158025386784
+      }
+    },
+    {
+      "id": "tw-component:reef-tile-1--1",
+      "type": "tidewater.static-reef/1",
+      "priority": "visible",
+      "placementAssetId": "sha256:e13f70baba76b98878edf6e17bd8d5d4673e0036d18cfd110b3f8acdbdb50d70",
+      "streamingBounds": {
+        "center": [
+          96.77101299463314,
+          -1.5443290768014974,
+          -20.83192804096315
+        ],
+        "radius": 42.75910308222066
+      }
+    },
+    {
+      "id": "tw-component:reef-tile-2--1",
+      "type": "tidewater.static-reef/1",
+      "priority": "visible",
+      "placementAssetId": "sha256:cc0df7d87d245c8c7dab51eb2a29f0e5ffb03b3fa06b83b07ccde6c993b61c12",
+      "streamingBounds": {
+        "center": [
+          131.99431390493876,
+          -1.2109245490813771,
+          -20.155003919562525
+        ],
+        "radius": 22.374473429324514
+      }
+    },
+    {
+      "id": "tw-component:reef-tile--3-0",
+      "type": "tidewater.static-reef/1",
+      "priority": "visible",
+      "placementAssetId": "sha256:346b801cf6eb4300bb00e59a0abfb6876d34285464154f80dc2a3efaa5ae15ef",
+      "streamingBounds": {
+        "center": [
+          -147.34365681186264,
+          -2.4436274410679326,
+          35.10383305879403
+        ],
+        "radius": 46.33913812311311
+      }
+    },
+    {
+      "id": "tw-component:reef-tile--2-0",
+      "type": "tidewater.static-reef/1",
+      "priority": "visible",
+      "placementAssetId": "sha256:defd2926880ce19a837e7895ae14b38fe09940b4b87960ee60be6686ff8d798f",
+      "streamingBounds": {
+        "center": [
+          -95.38526393432183,
+          -2.434975138732562,
+          33.82879427717645
+        ],
+        "radius": 57.22920454695858
+      }
+    },
+    {
+      "id": "tw-component:reef-tile--1-0",
+      "type": "tidewater.static-reef/1",
+      "priority": "visible",
+      "placementAssetId": "sha256:a57e9503967a8bb1e21ea64964cf0d4945c4656948ae76bc0ff19af83cfb5cdf",
+      "streamingBounds": {
+        "center": [
+          -34.76076084422529,
+          -3.821697072917036,
+          32.58109519488144
+        ],
+        "radius": 54.32580121153753
+      }
+    },
+    {
+      "id": "tw-component:reef-tile-0-0",
+      "type": "tidewater.static-reef/1",
+      "priority": "visible",
+      "placementAssetId": "sha256:773bcb401d4971f2b841fedb7b0ffbb4e92cbb52aace26fc29422c1bb1aa4303",
+      "streamingBounds": {
+        "center": [
+          32.76096265978246,
+          -4.111545680407986,
+          33.76432851610088
+        ],
+        "radius": 52.26641300429508
+      }
+    },
+    {
+      "id": "tw-component:reef-tile-1-0",
+      "type": "tidewater.static-reef/1",
+      "priority": "visible",
+      "placementAssetId": "sha256:7185467fad9a6ea3a00efac62755739dbca7cfd5d533eb189080cd8ba963a43b",
+      "streamingBounds": {
+        "center": [
+          95.52532842304909,
+          -2.8113172680299376,
+          31.27533024557325
+        ],
+        "radius": 51.88218379100515
+      }
+    },
+    {
+      "id": "tw-component:reef-tile-2-0",
+      "type": "tidewater.static-reef/1",
+      "priority": "visible",
+      "placementAssetId": "sha256:aff37b865ada64170a1d23e8cb790c57f1d160875089efe2abb6813cc2cbfe08",
+      "streamingBounds": {
+        "center": [
+          130.5006163370847,
+          -2.3153620162191864,
+          32.67923464698607
+        ],
+        "radius": 34.82907773785151
+      }
+    },
+    {
+      "id": "tw-component:reef-tile--3-1",
+      "type": "tidewater.static-reef/1",
+      "priority": "visible",
+      "placementAssetId": "sha256:219d199fd3bbe7401276f72ea1e5c4e5cf0b4d3c5a9ce371e4e236c94338d0f5",
+      "streamingBounds": {
+        "center": [
+          -152.79136096675666,
+          -3.7672068900164426,
+          93.72651798761896
+        ],
+        "radius": 51.09448101486896
+      }
+    },
+    {
+      "id": "tw-component:reef-tile--2-1",
+      "type": "tidewater.static-reef/1",
+      "priority": "visible",
+      "placementAssetId": "sha256:a9b8bc0971279ec4d8dab4324705c3a65d629e599681a6bd61b6624b6cc3a1a6",
+      "streamingBounds": {
+        "center": [
+          -96.37474537134685,
+          -6.9340701686553725,
+          96.46456656976923
+        ],
+        "radius": 58.61083298427145
+      }
+    },
+    {
+      "id": "tw-component:reef-tile--1-1",
+      "type": "tidewater.static-reef/1",
+      "priority": "visible",
+      "placementAssetId": "sha256:e1ecc47d9a7140c15398464ffa06201d24b0aa6f585803d7abdffb4ca987553d",
+      "streamingBounds": {
+        "center": [
+          -31.622399913589685,
+          -9.083522978081097,
+          96.28518454106721
+        ],
+        "radius": 58.585469934009595
+      }
+    },
+    {
+      "id": "tw-component:reef-tile-0-1",
+      "type": "tidewater.static-reef/1",
+      "priority": "visible",
+      "placementAssetId": "sha256:163164d9f22321dba99a7e2a428d24733e61e98a2086da66f0c24a428f6164c4",
+      "streamingBounds": {
+        "center": [
+          29.567121862116114,
+          -11.728634111807144,
+          94.99860196047
+        ],
+        "radius": 52.75815575950244
+      }
+    },
+    {
+      "id": "tw-component:reef-tile-1-1",
+      "type": "tidewater.static-reef/1",
+      "priority": "visible",
+      "placementAssetId": "sha256:cc15ff66701be8812ccbddd991b73f9d06401cb49db687bafb1531babab914e3",
+      "streamingBounds": {
+        "center": [
+          96.56700225660458,
+          -5.935010579713515,
+          95.99744770280071
+        ],
+        "radius": 51.75837522470666
+      }
+    },
+    {
+      "id": "tw-component:reef-tile-2-1",
+      "type": "tidewater.static-reef/1",
+      "priority": "visible",
+      "placementAssetId": "sha256:5aa859968dcde2074dd8ff465c7cdf14df34ae0756b07aba659b253444212de9",
+      "streamingBounds": {
+        "center": [
+          131.00239664979102,
+          -2.6675085654272905,
+          95.55616100826336
+        ],
+        "radius": 36.46343422281371
+      }
+    },
+    {
+      "id": "tw-component:reef-tile--4-2",
+      "type": "tidewater.static-reef/1",
+      "priority": "visible",
+      "placementAssetId": "sha256:a554f32e4b3a6202daa8d09ae3783cf4adb7ecf0100bd497e7c744b9d30b061a",
+      "streamingBounds": {
+        "center": [
+          -195.07422409398868,
+          -1.1756795207211028,
+          165.51213167476857
+        ],
+        "radius": 7.541122655556636
+      }
+    },
+    {
+      "id": "tw-component:reef-tile--3-2",
+      "type": "tidewater.static-reef/1",
+      "priority": "visible",
+      "placementAssetId": "sha256:64aca198e94b45f918c403ddf795a5fe8889beed9f0e3c7bb31ec1ba4d08e52c",
+      "streamingBounds": {
+        "center": [
+          -157.8229795479633,
+          -3.472704305898698,
+          158.524786477889
+        ],
+        "radius": 48.67200490119624
+      }
+    },
+    {
+      "id": "tw-component:reef-tile--2-2",
+      "type": "tidewater.static-reef/1",
+      "priority": "visible",
+      "placementAssetId": "sha256:87fd006add6e78ffc58b44d8c0dcc0f388cb199951f98689413a0da8bbcda17d",
+      "streamingBounds": {
+        "center": [
+          -93.91457929687074,
+          -10.764133739177334,
+          156.48729263348844
+        ],
+        "radius": 53.30767759505895
+      }
+    },
+    {
+      "id": "tw-component:reef-tile--1-2",
+      "type": "tidewater.static-reef/1",
+      "priority": "visible",
+      "placementAssetId": "sha256:af604d8e0a9e8b1a53c341413a959dc21c225e6c5356328e9b01ea86f64b892c",
+      "streamingBounds": {
+        "center": [
+          -35.352397802937936,
+          -12.608287738001142,
+          150.13142168181773
+        ],
+        "radius": 49.48382265874207
+      }
+    },
+    {
+      "id": "tw-component:reef-tile-0-2",
+      "type": "tidewater.static-reef/1",
+      "priority": "visible",
+      "placementAssetId": "sha256:66bb8f0dff1bd01607b666f52a916a08bad9f46ae67139ed2d8a1448bbe405b2",
+      "streamingBounds": {
+        "center": [
+          31.303349459616868,
+          -14.909680309435197,
+          152.06174372213223
+        ],
+        "radius": 47.28897444085688
+      }
+    },
+    {
+      "id": "tw-component:reef-tile-1-2",
+      "type": "tidewater.static-reef/1",
+      "priority": "visible",
+      "placementAssetId": "sha256:45d39e5f33a8521fb955b0c25e70776d0bc01bbb54e08d583c3158ae5af8ea61",
+      "streamingBounds": {
+        "center": [
+          95.21621140365399,
+          -9.16884706838513,
+          158.3515466012728
+        ],
+        "radius": 50.64662531928503
+      }
+    },
+    {
+      "id": "tw-component:reef-tile-2-2",
+      "type": "tidewater.static-reef/1",
+      "priority": "visible",
+      "placementAssetId": "sha256:915b9b99134d08eeb0d6e42945f162758960432bcb20b3944cd3ce0d01a1addb",
+      "streamingBounds": {
+        "center": [
+          132.21436203639018,
+          -4.277660745026612,
+          150.87217350288324
+        ],
+        "radius": 29.76872123960937
+      }
+    },
+    {
+      "id": "tw-component:reef-tile--3-3",
+      "type": "tidewater.static-reef/1",
+      "priority": "visible",
+      "placementAssetId": "sha256:3fb717c7e0e600723de4b87d94855a5e31bb64785318bd8747a005e80727e025",
+      "streamingBounds": {
+        "center": [
+          -137.5928575125632,
+          -6.354103733706517,
+          206.33868267944405
+        ],
+        "radius": 12.521945436951919
+      }
+    },
+    {
+      "id": "tw-component:reef-tile--2-3",
+      "type": "tidewater.static-reef/1",
+      "priority": "visible",
+      "placementAssetId": "sha256:d6a3b46ff6710a3c3f241e9af098f3fdbacdeab3366dae9b7de7d3f74330558c",
+      "streamingBounds": {
+        "center": [
+          -120.70647032124157,
+          -7.2884427729179695,
+          196.60332797040832
+        ],
+        "radius": 6.591737430697553
+      }
+    },
+    {
+      "id": "tw-component:reef-tile-1-3",
+      "type": "tidewater.static-reef/1",
+      "priority": "visible",
+      "placementAssetId": "sha256:1e6d46e7be708e382f2b8018c1224daf13671020087ffc2505adcfbe49f016fe",
+      "streamingBounds": {
+        "center": [
+          118.96061192818962,
+          -7.2094909094498,
+          201.40356751399918
+        ],
+        "radius": 14.816024182151672
+      }
+    },
+    {
+      "id": "tw-component:reef-tile-2-3",
+      "type": "tidewater.static-reef/1",
+      "priority": "visible",
+      "placementAssetId": "sha256:f9dfbd9eab64e24254837c585f1ed8ceddce1392aeaea477e1aaea03d36e0143",
+      "streamingBounds": {
+        "center": [
+          129.06967876695404,
+          -5.646507930979893,
+          205.96850199316057
+        ],
+        "radius": 5.634802590025045
+      }
     },
     {
       "id": "tw-component:island-ocean",

@@ -1,6 +1,6 @@
 # Example Island Package
 
-`world-source.json` and `assets/<sha256>` are the checked-in, deterministic static package generated from the same terrain, village layout, rock placement, and debris placement code used by the playable island.
+`world-source.json` and `assets/<sha256>` are the checked-in, deterministic package generated from the same terrain, village layout, rock placement, reef placement, and debris placement code used by the playable island.
 
 Regenerate it with:
 
@@ -16,6 +16,8 @@ The package contains:
 - Deterministically placed debris instances from the existing `DebrisPlacer`, including full collision-free quaternion transforms. The exporter shares the playable world's CPU vegetation-placement records, so litter, logs, and other debris keep clear of the same plant trunks.
 
 The source declares `tidewater.static-vegetation/1` with a hash-addressed binary placement asset using `tidewater.vegetation-placement/1`. The compact asset carries deterministic plant records, streams at `portal-preview` priority, and is rendered by the client's existing geometry and shader pipeline; it contains no executable code. These records are absolute world-space placements and omit grass. The original playable island keeps its procedural vegetation and terrain-mask grass path, with `?noVeg` as an opt-out. Placement records are portable with this island package, but this fixed plant taxonomy is not yet a general vegetation or terrain authoring format.
+
+The exporter writes reef placements as versioned `tidewater.static-reef/1` components backed by content-addressed `reef-placement/1` binary assets. Records are grouped into aligned 64 m XZ tiles with conservative streaming bounds; every asset is limited to 16 MiB and the package to 128 reef tiles. The installed Tidewater runtime supplies the deterministic coral meshes and shaders, while the package supplies the full seeded placements, rotations, colors, and motion parameters. Fish and whale simulation are not part of these static reef records.
 
 The source also declares `tidewater.island-ocean/1` at `portal-preview` priority. It reuses the existing FFT waves, water material, and a world-local CDLOD mesh when this package is hosted. The component is limited to the reference island's sea level and terrain interaction. The lobster boat is present as a static visual preview only: boat movement, boarding, water-hull masking, wildlife, fishing behavior, village GPU-baked tile textures, moving sign/lantern details, and GPU-only fish props are still not packaged.
 
