@@ -1,7 +1,7 @@
 // Binary glTF (.glb) reader for skinned, animated characters (engine side of loaders; the debris
 // scans use the smaller world/debris/GLB.js). Returns plain data, no GPU objects:
 //
-//   const gltf = await loadGLB( url )            // or parseGLB( arrayBuffer )
+//   const gltf = await loadGLB( url )            // or parseGLB( arrayBuffer | ArrayBufferView )
 //   gltf.nodes[ i ]  = { name, children: [ ... ], t: [ x, y, z ], r: [ x, y, z, w ], s: [ x, y, z ], mesh, skin }
 //   gltf.roots       = scene root node indices
 //   gltf.meshes[ i ] = [ { attributes: { POSITION: { array, itemSize, normalized }, ... }, indices, material } ]
@@ -40,6 +40,8 @@ export async function loadGLB( url ) {
 }
 
 export function parseGLB( buffer ) {
+
+	if ( ArrayBuffer.isView( buffer ) ) buffer = buffer.buffer.slice( buffer.byteOffset, buffer.byteOffset + buffer.byteLength );
 
 	const dv = new DataView( buffer );
 	if ( dv.getUint32( 0, true ) !== 0x46546C67 ) throw new Error( 'GLB: bad magic' );

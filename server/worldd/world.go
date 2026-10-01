@@ -108,10 +108,22 @@ func (component *worldComponent) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(data, &fields); err != nil {
 		return err
 	}
+	var typeName string
+	if err := json.Unmarshal(fields["type"], &typeName); err != nil {
+		return errors.New("world component has no valid type")
+	}
+	allowed := map[string]bool{"id": true, "type": true, "priority": true}
+	switch typeName {
+	case "tidewater.procedural-island-vegetation/1":
+		allowed["seed"], allowed["placementAssetId"] = true, true
+	case "tidewater.static-vegetation/1":
+		allowed["placementAssetId"] = true
+	case "tidewater.island-ocean/1":
+	default:
+		return fmt.Errorf("unsupported world component type %q", typeName)
+	}
 	for key := range fields {
-		switch key {
-		case "id", "type", "seed", "priority", "placementAssetId":
-		default:
+		if !allowed[key] {
 			return fmt.Errorf("unknown field %q in world component", key)
 		}
 	}
@@ -376,11 +388,12 @@ func validateManifest(manifest worldManifest, localPeerID string, now time.Time)
 	}
 	for _, component := range manifest.Components {
 		vegetation := component.Type == "tidewater.procedural-island-vegetation/1" && component.Seed == 7
+		staticVegetation := component.Type == "tidewater.static-vegetation/1" && component.Seed == 0 && component.PlacementAssetID != ""
 		islandOcean := component.Type == "tidewater.island-ocean/1" && component.Seed == 0 && component.PlacementAssetID == ""
 		if islandOcean {
 			islandOceanCount++
 		}
-		if !componentIDPattern.MatchString(component.ID) || seenComponents[component.ID] || seenObjects[component.ID] || seenPortals[component.ID] || (!vegetation && !islandOcean) || islandOceanCount > 1 || component.Priority != "" && component.Priority != "portal-preview" && component.Priority != "visible" && component.Priority != "nearby" && component.Priority != "background" || !seenFeatures[component.Type] {
+		if !componentIDPattern.MatchString(component.ID) || seenComponents[component.ID] || seenObjects[component.ID] || seenPortals[component.ID] || (!vegetation && !staticVegetation && !islandOcean) || islandOceanCount > 1 || component.Priority != "" && component.Priority != "portal-preview" && component.Priority != "visible" && component.Priority != "nearby" && component.Priority != "background" || !seenFeatures[component.Type] {
 			return fmt.Errorf("invalid or unsupported world component %q", component.ID)
 		}
 		if component.PlacementAssetID != "" {

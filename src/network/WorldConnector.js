@@ -467,7 +467,7 @@ export class WorldConnector {
 	}
 }
 
-function validateWorldObjects( objects ) {
+export function validateWorldObjects( objects ) {
 	invariant( Array.isArray( objects ) && objects.length <= 10000, 'World manifest has an invalid object list' );
 	const ids = new Set();
 	for ( const object of objects ) {
@@ -486,7 +486,8 @@ function validateWorldObjects( objects ) {
 		if ( collision?.enabled !== true ) continue;
 		const box = collision.shape === 'box' && validVector( collision.center ) && validVector( collision.halfExtents ) && collision.halfExtents.every( ( value ) => value > 0 && value <= 1000 ) && typeof collision.walkable === 'boolean' && typeof collision.solid === 'boolean';
 		const heightfield = collision.shape === 'heightfield' && Number.isInteger( collision.columns ) && Number.isInteger( collision.rows ) && collision.columns >= 2 && collision.rows >= 2 && collision.columns <= 4097 && collision.rows <= 4097 && collision.columns * collision.rows <= 4194304 && collision.walkable === true && collision.solid === true;
-		invariant( box || heightfield, `World object ${object.id || '(unknown)'} has invalid collision bounds` );
+		const compound = collision.shape === 'compound' && Array.isArray( collision.boxes ) && collision.boxes.length > 0 && collision.boxes.length <= 2048 && collision.boxes.every( ( item ) => item && validVector( item.center ) && item.center.every( ( value ) => Math.abs( value ) <= 1e6 ) && validVector( item.halfExtents ) && item.halfExtents.every( ( value ) => value > 0 && value <= 1000 ) && Number.isFinite( item.yaw ) && Math.abs( item.yaw ) <= 360 && typeof item.walkable === 'boolean' && typeof item.solid === 'boolean' );
+		invariant( box || heightfield || compound, `World object ${object.id || '(unknown)'} has invalid collision bounds` );
 	}
 	return ids;
 }
@@ -513,11 +514,13 @@ export function validateWorldComponents( components = [], rules, ids = new Set()
 	for ( const component of components ) {
 		invariant( component && typeof component.id === 'string' && /^tw-component:[\w.-]{1,128}$/.test( component.id ) && ! ids.has( component.id ), 'World manifest has an invalid or duplicate component ID' );
 		const vegetation = component.type === 'tidewater.procedural-island-vegetation/1' && component.seed === 7 && Object.keys( component ).every( ( key ) => [ 'id', 'type', 'seed', 'priority', 'placementAssetId' ].includes( key ) );
+		const staticVegetation = component.type === 'tidewater.static-vegetation/1' && Object.keys( component ).every( ( key ) => [ 'id', 'type', 'priority', 'placementAssetId' ].includes( key ) );
 		const islandOcean = component.type === 'tidewater.island-ocean/1' && Object.keys( component ).every( ( key ) => [ 'id', 'type', 'priority' ].includes( key ) );
-		invariant( ( vegetation || islandOcean ) && ( component.priority === undefined || [ 'portal-preview', 'visible', 'nearby', 'background' ].includes( component.priority ) ), `Unsupported or invalid world component ${component.id}` );
+		invariant( ( vegetation || staticVegetation || islandOcean ) && ( component.priority === undefined || [ 'portal-preview', 'visible', 'nearby', 'background' ].includes( component.priority ) ), `Unsupported or invalid world component ${component.id}` );
 		if ( islandOcean ) invariant( ++ islandOceanCount === 1, 'World manifest may declare only one island ocean component' );
 		invariant( rules.requiredFeatures?.includes( component.type ), `World component ${component.type} is missing from requiredFeatures` );
 		if ( component.placementAssetId !== undefined ) invariant( /^sha256:[0-9a-f]{64}$/.test( component.placementAssetId ) && assetRefs.get( component.placementAssetId )?.kind === 'vegetation-placement/1' && assetRefs.get( component.placementAssetId )?.priority === 'portal-preview', `World component ${component.id} has an invalid placement asset reference` );
+		if ( component.type === 'tidewater.static-vegetation/1' ) invariant( typeof component.placementAssetId === 'string', `Static vegetation component ${component.id} requires placement data` );
 		ids.add( component.id );
 	}
 	return ids;

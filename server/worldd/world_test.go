@@ -202,6 +202,41 @@ func TestWorldComponentRejectsUnknownFields(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), `unknown field "extra"`) {
 		t.Fatalf("unknown component field should be rejected, got %v", err)
 	}
+	err = json.Unmarshal([]byte(`{"id":"tw-component:vegetation","type":"tidewater.static-vegetation/1","seed":7,"placementAssetId":"sha256:0000000000000000000000000000000000000000000000000000000000000000"}`), &component)
+	if err == nil || !strings.Contains(err.Error(), `unknown field "seed"`) {
+		t.Fatalf("island-only seed should be rejected on static vegetation, got %v", err)
+	}
+}
+
+func TestWorldManifestValidatesStaticVegetationComponent(t *testing.T) {
+	owner, _, err := crypto.GenerateEd25519Key(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ownerID, err := peer.IDFromPublicKey(owner.GetPublic())
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifest := newStarterManifest("Portable foliage", ownerID.String())
+	manifest.WorldID = "tw-world:portable-foliage"
+	manifest.Rules.RequiredFeatures = []string{"tidewater.static-vegetation/1"}
+	placementID := "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+	manifest.Assets = []assetRef{{ID: placementID, Bytes: 1, Kind: "vegetation-placement/1", Priority: "portal-preview"}}
+	manifest.Components = []worldComponent{{ID: "tw-component:portable-foliage", Type: "tidewater.static-vegetation/1", PlacementAssetID: placementID}}
+	if err := validateManifest(manifest, ownerID.String(), time.Now()); err != nil {
+		t.Fatalf("valid static vegetation component rejected: %v", err)
+	}
+	document, err := signDocument(manifestProtocol, manifest, owner)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := decodeManifest(document, ownerID.String(), time.Now()); err != nil {
+		t.Fatalf("signed static vegetation component failed runtime decoding: %v", err)
+	}
+	manifest.Components[0].PlacementAssetID = ""
+	if err := validateManifest(manifest, ownerID.String(), time.Now()); err == nil {
+		t.Fatal("static vegetation without placement data accepted")
+	}
 }
 
 func TestWorldManifestValidatesDeterministicMovementRules(t *testing.T) {

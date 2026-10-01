@@ -31,8 +31,15 @@ try {
 	}
 	assert.ok( checkedInBytes <= checkedInSource.rules.maxPackageBytes, 'checked-in assets fit the world package budget' );
 	assert.ok( checkedInSource.objects.some( ( object ) => object.id === 'tw-object:island-village' ), 'checked-in island source contains the static village GLB instance' );
+	const checkedInBoat = checkedInSource.objects.find( ( object ) => object.id === 'tw-object:moored-lobster-boat' );
+	assert.ok( checkedInBoat, 'checked-in island package includes its moored boat as a static visual asset' );
+	assert.deepEqual( checkedInBoat.transform.position, [ 64.5, 0, 36.5 ], 'static boat instance matches the playable world dock location' );
+	assert.equal( checkedInBoat.collision.enabled, false, 'static preview boat does not imply unsupported boat physics' );
+	const checkedInBoatGLB = parseGLB( await readFile( path.join( checkedInDir, 'assets', checkedInBoat.assetId.slice( 'sha256:'.length ) ) ) );
+	assert.ok( checkedInBoatGLB.meshes[ 0 ]?.length >= 10, 'static boat GLB includes the generated hull, cabin, deck gear, and fittings' );
+	assert.ok( checkedInBoatGLB.meshes.every( ( mesh ) => mesh.every( ( primitive ) => primitive.attributes.COLOR_0 && primitive.indices?.length > 0 ) ), 'static boat GLB keeps vertex colors and indexed geometry' );
 	const checkedInVegetationBytes = await readFile( path.join( checkedInDir, 'assets', checkedInSource.components[ 0 ].placementAssetId.slice( 'sha256:'.length ) ) );
-	const checkedInVegetation = decodeVegetationPlacements( new Uint8Array( checkedInVegetationBytes ), 7 );
+	const checkedInVegetation = decodeVegetationPlacements( new Uint8Array( checkedInVegetationBytes ) );
 	assert.ok( Object.values( checkedInVegetation ).filter( Array.isArray ).reduce( ( count, records ) => count + records.length, 0 ) > 100, 'checked-in component asset contains portable individual vegetation placements' );
 	const sourcePath = path.join( output, 'world-source.json' );
 	execFileSync( process.execPath, [ 'tools/export-island.mjs', '--out', output ], { stdio: 'inherit' } );
@@ -53,7 +60,7 @@ try {
 	const placementBytes = await readFile( path.join( output, 'assets', placementID.slice( 'sha256:'.length ) ) );
 	assert.equal( `sha256:${createHash( 'sha256' ).update( placementBytes ).digest( 'hex' )}`, placementID, 'vegetation placement asset is content addressed' );
 	assert.ok( placementBytes.length < 3 * 1024 * 1024, 'compact binary placement encoding stays below three MiB' );
-	assert.deepEqual( decodeVegetationPlacements( new Uint8Array( placementBytes ), 7 ), checkedInVegetation, 'exported placements match the checked-in portable vegetation data' );
+	assert.deepEqual( decodeVegetationPlacements( new Uint8Array( placementBytes ) ), checkedInVegetation, 'exported placements match the checked-in portable vegetation data' );
 	for ( const [ id, bytes ] of firstAssets ) {
 		assert.deepEqual( await readFile( path.join( output, 'assets', id.slice( 'sha256:'.length ) ) ), bytes, `repeated generation must preserve bytes for ${id}` );
 		assert.equal( `sha256:${createHash( 'sha256' ).update( bytes ).digest( 'hex' )}`, id, `content-addressed asset bytes must match ${id}` );
@@ -62,14 +69,14 @@ try {
 	const assetFiles = ( await readdir( path.join( output, 'assets' ) ) ).sort();
 	assert.deepEqual( assetFiles, [ ...firstAssets.keys() ].map( ( id ) => id.slice( 'sha256:'.length ) ).sort(), 'package asset directory contains exactly the referenced unique assets' );
 	assert.equal( `sha256:${createHash( 'sha256' ).update( assetBytes ).digest( 'hex' )}`, source.objects[ 0 ].assetId, 'exported asset path and source hash must match' );
-	const parsed = parseGLB( assetBytes.buffer.slice( assetBytes.byteOffset, assetBytes.byteOffset + assetBytes.byteLength ) );
+	const parsed = parseGLB( assetBytes );
 	const primitive = parsed.meshes[ 0 ][ 0 ];
 	assert.equal( primitive.mode, 4, 'terrain export must use triangle lists' );
 	assert.ok( primitive.attributes.COLOR_0, 'terrain export must carry its deterministic vertex colors' );
 	assert.equal( primitive.indices.length, 512 * 512 * 6, 'terrain export must cover the full configured grid' );
-	assert.deepEqual( source.rules.requiredFeatures, [ 'tidewater.static-glb/1', 'tidewater.static-glb-quaternion/1', 'tidewater.procedural-island-vegetation/1', 'tidewater.island-ocean/1' ], 'GLB transforms, procedural vegetation, and the example ocean declare runtime capabilities' );
+	assert.deepEqual( source.rules.requiredFeatures, [ 'tidewater.static-glb/1', 'tidewater.static-glb-quaternion/1', 'tidewater.static-vegetation/1', 'tidewater.island-ocean/1' ], 'GLB transforms, portable vegetation, and the example ocean declare runtime capabilities' );
 	assert.equal( source.components.length, 2, 'portable island declares vegetation and ocean components' );
-	assert.equal( source.components[ 0 ].type, 'tidewater.procedural-island-vegetation/1', 'portable island uses the versioned deterministic vegetation renderer' );
+	assert.equal( source.components[ 0 ].type, 'tidewater.static-vegetation/1', 'portable island uses terrain-independent, authored world-space vegetation placements' );
 	assert.match( source.components[ 0 ].placementAssetId, /^sha256:[0-9a-f]{64}$/, 'vegetation placement data is content addressed' );
 	assert.equal( source.components[ 0 ].priority, 'portal-preview', 'vegetation records are available for open portal previews' );
 	assert.deepEqual( source.components[ 1 ], { id: 'tw-component:island-ocean', type: 'tidewater.island-ocean/1', priority: 'portal-preview' }, 'portable island declares its versioned ocean renderer for early portal previews' );
@@ -79,7 +86,7 @@ try {
 	assert.ok( villageObject, 'export includes the procedural village and pier as portable content' );
 	const villageBytes = firstAssets.get( villageObject.assetId );
 	assert.ok( villageBytes?.length > 0, 'village object references its content-addressed GLB' );
-	const villageGLB = parseGLB( villageBytes.buffer.slice( villageBytes.byteOffset, villageBytes.byteOffset + villageBytes.byteLength ) );
+	const villageGLB = parseGLB( villageBytes );
 	assert.ok( villageGLB.meshes[ 0 ].length >= 8, 'village export preserves its separate authored material batches' );
 	assert.ok( villageGLB.meshes[ 0 ].reduce( ( count, primitive ) => count + primitive.indices.length, 0 ) > 300000, 'village export includes the complete deterministic structural geometry' );
 	assert.ok( villageGLB.meshes[ 0 ].every( ( primitive ) => primitive.attributes.COLOR_0 ), 'village export carries authored per-vertex tint' );
@@ -93,13 +100,13 @@ try {
 	assert.equal( scannedAssetIDs.size, 4, 'all four scanned debris assets are included once each' );
 	for ( const id of scannedAssetIDs ) {
 		const bytes = firstAssets.get( id );
-		const parsed = parseGLB( bytes.buffer.slice( bytes.byteOffset, bytes.byteOffset + bytes.byteLength ) );
+		const parsed = parseGLB( bytes );
 		assert.equal( parsed.meshes.length, 1, 'scanned asset export keeps a single LOD mesh' );
 		assert.ok( parsed.materials[ 0 ]?.pbrMetallicRoughness?.baseColorTexture, 'scanned asset has a base-color texture' );
 		assert.equal( parsed.images[ 0 ]?.mimeType, 'image/jpeg', 'scanned albedo is embedded in the GLB' );
 		assert.ok( parsed.images[ 0 ]?.bytes?.length > 0, 'scanned GLB contains embedded image bytes' );
 	}
-	const payload = assetBytes.buffer.slice( assetBytes.byteOffset, assetBytes.byteOffset + assetBytes.byteLength );
+	const payload = assetBytes;
 	const connector = { worldId: source.worldId, manifest: { assets: [ { id: source.objects[ 0 ].assetId, priority: 'visible' } ], objects: source.objects } };
 	const root = await loadWorldPackage( connector, { assets: new Map( [ [ source.objects[ 0 ].assetId, payload ] ] ) } );
 	let runtimeMeshes = 0;

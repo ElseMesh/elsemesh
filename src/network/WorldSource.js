@@ -57,9 +57,10 @@ export function validateWorldSource( source ) {
 	let islandOceanCount = 0;
 	for ( const component of source.components || [] ) {
 		const vegetation = component?.type === 'tidewater.procedural-island-vegetation/1' && component.seed === 7 && ( component.placementAssetId === undefined || /^sha256:[0-9a-f]{64}$/.test( component.placementAssetId ) );
+		const staticVegetation = component?.type === 'tidewater.static-vegetation/1' && /^sha256:[0-9a-f]{64}$/.test( component.placementAssetId || '' );
 		const islandOcean = component?.type === 'tidewater.island-ocean/1';
-		const allowedKeys = vegetation ? [ 'id', 'type', 'seed', 'priority', 'placementAssetId' ] : islandOcean ? [ 'id', 'type', 'priority' ] : [];
-		if ( ! component || typeof component.id !== 'string' || ! /^tw-component:[\w.-]{1,128}$/.test( component.id ) || ids.has( component.id ) || ( ! vegetation && ! islandOcean ) || component.priority !== undefined && ! [ 'portal-preview', 'visible', 'nearby', 'background' ].includes( component.priority ) || Object.keys( component ).some( ( key ) => ! allowedKeys.includes( key ) ) ) throw new Error( 'Invalid or duplicate world component' );
+		const allowedKeys = vegetation ? [ 'id', 'type', 'seed', 'priority', 'placementAssetId' ] : staticVegetation ? [ 'id', 'type', 'priority', 'placementAssetId' ] : islandOcean ? [ 'id', 'type', 'priority' ] : [];
+		if ( ! component || typeof component.id !== 'string' || ! /^tw-component:[\w.-]{1,128}$/.test( component.id ) || ids.has( component.id ) || ( ! vegetation && ! staticVegetation && ! islandOcean ) || component.priority !== undefined && ! [ 'portal-preview', 'visible', 'nearby', 'background' ].includes( component.priority ) || Object.keys( component ).some( ( key ) => ! allowedKeys.includes( key ) ) ) throw new Error( 'Invalid or duplicate world component' );
 		if ( islandOcean && ++ islandOceanCount > 1 ) throw new Error( 'A world may declare only one island ocean component' );
 		if ( ! source.rules.requiredFeatures?.includes( component.type ) ) throw new Error( `World component ${component.type} must be listed in requiredFeatures` );
 		ids.add( component.id );

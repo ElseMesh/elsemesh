@@ -1,5 +1,7 @@
 # ElseMesh
 
+The archived `loz/main` build is also published at [rebroad.github.io/tidewater/loz](https://rebroad.github.io/tidewater/loz/).
+
 An island fishing game for the browser. Cast from the pier, the beach or your own boat, fight the fish,
 sell your catch to Joe at the fish stand, and spend it on better gear at Marta's chandlery. Around it is a
 real-time tropical island and ocean: swim the reef, drive the boat out to deep water, and watch a humpback

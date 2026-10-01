@@ -213,7 +213,10 @@ func importWorldPackage(packageAssetsDir, assetsDir string, manifest worldManife
 		}
 		filename := strings.TrimPrefix(asset.ID, "sha256:")
 		destination := filepath.Join(assetsDir, filename)
-		if err := os.Link(staged[asset.ID], destination); err != nil {
+		// Staged files live under assetsDir on the same filesystem. Rename is
+		// atomic and supported by Android app-private filesystems that prohibit
+		// hard links (including Termux's default storage).
+		if err := os.Rename(staged[asset.ID], destination); err != nil {
 			if !errors.Is(err, os.ErrExist) {
 				return 0, 0, err
 			}

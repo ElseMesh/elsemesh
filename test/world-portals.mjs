@@ -8,6 +8,7 @@ import { validateWorldSource } from '../src/network/WorldSource.js';
 import { validateWorldComponents, validateWorldPortals } from '../src/network/WorldConnector.js';
 import { worldLinkFromLocation, WorldConnector } from '../src/network/WorldConnector.js';
 import { validateWorldRequirements } from '../src/network/WorldRules.js';
+import { VEGETATION_PLACEMENT_KINDS, decodeVegetationPlacements, encodeVegetationPlacements } from '../src/network/VegetationPlacements.js';
 
 const portal = { entry: { position: [ 0, 1, 0 ], yaw: 0 } };
 assert.equal( crossedPortalPlane( { x: 0, y: 1, z: 1 }, { x: 0, y: 1, z: - 0.1 }, portal ), true, 'front-to-back crossing transfers' );
@@ -70,6 +71,13 @@ assert.doesNotThrow( () => validateWorldComponents( [ vegetationComponent ], { r
 assert.throws( () => validateWorldComponents( [ vegetationComponent ], { requiredFeatures: [ vegetationComponent.type ] }, new Set(), [] ), /placement asset reference/, 'browser rejects a component that points at undeclared placement data' );
 assert.throws( () => validateWorldComponents( [ { ...vegetationComponent, extra: true } ], { requiredFeatures: [ vegetationComponent.type ] }, new Set(), placementAsset ), /Unsupported or invalid world component/, 'browser rejects unknown fields on signed vegetation components' );
 assert.throws( () => validateWorldSource( { ...source, rules: { ...source.rules, requiredFeatures: [ vegetationComponent.type ] }, components: [ { ...vegetationComponent, extra: true } ] } ), /Invalid or duplicate world component/, 'authoring rejects unknown fields on vegetation components' );
+const portablePlacements = { villagePalms: 0, ...Object.fromEntries( VEGETATION_PLACEMENT_KINDS.map( ( kind ) => [ kind, [] ] ) ) };
+const portablePlacementBytes = encodeVegetationPlacements( portablePlacements, 12345 );
+assert.deepEqual( decodeVegetationPlacements( portablePlacementBytes ), portablePlacements, 'terrain-independent placement data accepts its own deterministic embedded seed' );
+const staticVegetation = { id: 'tw-component:static-foliage', type: 'tidewater.static-vegetation/1', placementAssetId };
+assert.doesNotThrow( () => validateWorldComponents( [ staticVegetation ], { requiredFeatures: [ staticVegetation.type ] }, new Set(), placementAsset ), 'browser accepts portable world-space foliage placements' );
+assert.throws( () => validateWorldComponents( [ { id: staticVegetation.id, type: staticVegetation.type } ], { requiredFeatures: [ staticVegetation.type ] } ), /requires placement data/, 'browser requires a placement asset for static vegetation' );
+assert.doesNotThrow( () => validateWorldSource( { ...source, rules: { ...source.rules, requiredFeatures: [ staticVegetation.type ] }, components: [ staticVegetation ] } ), 'authoring accepts portable static vegetation without island-only seed fields' );
 const directoryLink = worldLinkFromLocation( { search: '?worldId=tw-world:coast&directory=https%3A%2F%2Fthruhold.org', origin: 'https://rebroad.github.io' } );
 assert.equal( directoryLink.directory, 'https://thruhold.org', 'browser link can opt into the community directory' );
 assert.throws( () => new WorldConnector( { worldId: 'tw-world:coast', directory: 'http://thruhold.org' } ), 'directory endpoints must use HTTPS' );

@@ -82,7 +82,7 @@ export class Vegetation {
 
 		const t0 = performance.now();
 		const placement = placementRecords ? null : createVegetationPlacement( terrain, village );
-		const site = placement?.site || createVegetationSite( terrain, village );
+		const site = placement?.site || ( includeGrass ? createVegetationSite( terrain, village ) : null );
 		this.site = site;
 		const recs = placementRecords || placement.records;
 		this.records = recs;

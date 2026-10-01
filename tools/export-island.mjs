@@ -7,6 +7,8 @@ import { TerrainData } from '../src/world/TerrainData.js';
 import { parseGLB } from '../src/engine/loaders/GLTF.js';
 import { Euler, Quaternion } from '../src/engine/index.js';
 import { Village } from '../src/world/Village.js';
+import { BoatModel } from '../src/world/BoatModel.js';
+import { WORLD } from '../src/world/WorldLayout.js';
 import { Rocks } from '../src/world/Rocks.js';
 import { Colliders } from '../src/world/Colliders.js';
 import { Builder } from '../src/world/village/GeoBuilder.js';
@@ -43,10 +45,13 @@ const glb = exportTerrain( terrain, 512 );
 const assetId = `sha256:${createHash( 'sha256' ).update( glb ).digest( 'hex' )}`;
 const staticAssets = new Map( [ [ assetId, glb ] ] );
 const generated = buildIslandProceduralContent( terrain );
-const villageGLB = exportVillageGLB( generated.villageBatches );
+const villageGLB = exportBatchGLB( generated.villageBatches, 'Procedural village' );
 const villageAssetId = `sha256:${createHash( 'sha256' ).update( villageGLB ).digest( 'hex' )}`;
 const villageBounds = boundsForGLB( villageGLB );
 staticAssets.set( villageAssetId, villageGLB );
+const boatGLB = exportBatchGLB( generated.boatBatches, 'Moored lobster boat' );
+const boatAssetId = `sha256:${createHash( 'sha256' ).update( boatGLB ).digest( 'hex' )}`;
+staticAssets.set( boatAssetId, boatGLB );
 const debris = generated.debris;
 const vegetationDocument = Buffer.from( encodeVegetationPlacements( generated.vegetation, 7 ) );
 const vegetationAssetId = `sha256:${createHash( 'sha256' ).update( vegetationDocument ).digest( 'hex' )}`;
@@ -79,7 +84,7 @@ const source = {
 		gravity: 1,
 		avatarComplexity: 20000,
 		physicsProfile: 'tidewater-default',
-		requiredFeatures: [ 'tidewater.static-glb/1', 'tidewater.static-glb-quaternion/1', 'tidewater.procedural-island-vegetation/1', 'tidewater.island-ocean/1' ],
+		requiredFeatures: [ 'tidewater.static-glb/1', 'tidewater.static-glb-quaternion/1', 'tidewater.static-vegetation/1', 'tidewater.island-ocean/1' ],
 		maxPackageBytes: 64 * 1024 * 1024,
 	},
 	hosts: [],
@@ -103,6 +108,16 @@ const source = {
 		transform: { position: [ 0, 0, 0 ], yaw: 0 },
 		scale: [ 1, 1, 1 ],
 		collision: { shape: 'compound', enabled: true, boxes: generated.villageColliders },
+	}, {
+		id: 'tw-object:moored-lobster-boat',
+		kind: 'asset-instance',
+		label: 'Moored lobster boat (static preview)',
+		assetId: boatAssetId,
+		priority: 'visible',
+		streamingBounds: { center: [ WORLD.boatDock.position.x, WORLD.boatDock.position.y, WORLD.boatDock.position.z ], radius: 8 },
+		transform: { position: [ WORLD.boatDock.position.x, WORLD.boatDock.position.y, WORLD.boatDock.position.z ], yaw: WORLD.boatDock.heading },
+		scale: [ 1, 1, 1 ],
+		collision: { shape: 'none', enabled: false },
 	}, ...debris.map( ( instance, index ) => {
 		const assetName = SCAN_ASSETS[ instance.asset ];
 		const rotation = new Quaternion().setFromEuler( new Euler( instance.roll || 0, instance.yaw, instance.pitch || 0, 'YXZ' ) ).toArray();
@@ -119,7 +134,7 @@ const source = {
 		};
 	} ) ],
 	components: [
-		{ id: 'tw-component:island-vegetation', type: 'tidewater.procedural-island-vegetation/1', seed: 7, priority: 'portal-preview', placementAssetId: vegetationAssetId },
+		{ id: 'tw-component:island-vegetation', type: 'tidewater.static-vegetation/1', priority: 'portal-preview', placementAssetId: vegetationAssetId },
 		{ id: 'tw-component:island-ocean', type: 'tidewater.island-ocean/1', priority: 'portal-preview' },
 	],
 	portals: [],
@@ -127,7 +142,8 @@ const source = {
 };
 await writeFile( sourcePath, `${JSON.stringify( source, null, 2 )}\n` );
 console.log( `Wrote ${sourcePath}` );
-console.log( `Wrote ${staticAssets.size} content-addressed assets (${generated.villageTriangles} village triangles, ${debris.length} scanned debris instances)` );
+const boatTriangles = generated.boatBatches.reduce( ( count, { batch } ) => count + batch.idx.length / 3, 0 );
+console.log( `Wrote ${staticAssets.size} content-addressed assets (${generated.villageTriangles} village triangles, ${boatTriangles} boat triangles, ${debris.length} scanned debris instances)` );
 
 function buildIslandProceduralContent( terrainData ) {
 	const scene = { add() {}, remove() {} };
@@ -158,12 +174,38 @@ function buildIslandProceduralContent( terrainData ) {
 		villageBatches: batches,
 		villageTriangles: batches.reduce( ( total, { batch } ) => total + batch.triangles, 0 ),
 		villageColliders,
+		boatBatches: buildBoatBatches(),
 		debris: placer.scanned,
 		vegetation: vegetation.records,
 	};
 }
 
-function exportVillageGLB( batches ) {
+function buildBoatBatches() {
+
+	const boat = new BoatModel();
+	boat.group.updateWorldMatrix( true, true );
+	const batches = [];
+	boat.group.traverse( ( object ) => {
+
+		if ( ! object.isMesh || ! object.geometry.index ) return;
+		const geometry = object.geometry.clone().applyMatrix4( object.matrixWorld );
+		const attribute = ( name ) => geometry.attributes[ name ].array;
+		const batch = {
+			pos: Float32Array.from( attribute( 'position' ) ),
+			nrm: Float32Array.from( attribute( 'normal' ) ),
+			uv: Float32Array.from( attribute( 'uv' ) ),
+			tint: Float32Array.from( attribute( 'color' ) ),
+			idx: Uint32Array.from( geometry.index.array ),
+		};
+		batches.push( { name: `boat-${object.name.replace( 'boat-', '' )}`, batch } );
+
+	} );
+	if ( batches.length === 0 ) throw new Error( 'Procedural lobster boat produced no exportable geometry' );
+	return batches;
+
+}
+
+function exportBatchGLB( batches, sceneName ) {
 	const chunks = [], bufferViews = [], accessors = [];
 	let byteLength = 0;
 	const append = ( typed, target ) => {
@@ -187,8 +229,8 @@ function exportVillageGLB( batches ) {
 	for ( const { name, batch } of batches ) {
 		const material = materials.length;
 		materials.push( {
-			name: `Island village ${name}`,
-			pbrMetallicRoughness: { baseColorFactor: [ 1, 1, 1, 1 ], metallicFactor: 0, roughnessFactor: name.includes( 'roofMetal' ) ? 0.72 : 0.9 },
+			name: `${sceneName} ${name}`,
+			pbrMetallicRoughness: { baseColorFactor: [ 1, 1, 1, 1 ], metallicFactor: 0, roughnessFactor: name.includes( 'roofMetal' ) ? 0.72 : name.includes( 'boat-glass' ) ? 0.35 : 0.82 },
 			doubleSided: true,
 		} );
 		primitives.push( {

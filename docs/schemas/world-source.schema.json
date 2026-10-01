@@ -320,6 +320,16 @@
             "priority": { "enum": ["portal-preview", "visible", "nearby", "background"] }
           },
           "additionalProperties": false
+        },
+        {
+          "required": ["id", "type", "placementAssetId"],
+          "properties": {
+            "id": { "type": "string", "pattern": "^tw-component:[\\w.-]{1,128}$" },
+            "type": { "const": "tidewater.static-vegetation/1" },
+            "priority": { "enum": ["portal-preview", "visible", "nearby", "background"] },
+            "placementAssetId": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" }
+          },
+          "additionalProperties": false
         }
       ]
     },

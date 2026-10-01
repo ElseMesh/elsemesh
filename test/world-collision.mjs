@@ -3,6 +3,7 @@ import { Colliders } from '../src/world/Colliders.js';
 import { Vector3 } from '../src/engine/math/Vector3.js';
 import { registerWorldPackageCollisions, unregisterWorldPackageCollisions } from '../src/network/WorldPackage.js';
 import { validateWorldSource } from '../src/network/WorldSource.js';
+import { validateWorldObjects } from '../src/network/WorldConnector.js';
 
 const collision = { shape: 'box', enabled: true, center: [ 1, 1, 1 ], halfExtents: [ 1, 2, 3 ], walkable: true, solid: true };
 const object = {
@@ -41,7 +42,9 @@ const compoundObject = {
 	] },
 };
 assert.doesNotThrow( () => validateWorldSource( { ...source, objects: [ compoundObject ] } ), 'bounded compound collision is valid' );
+assert.doesNotThrow( () => validateWorldObjects( [ compoundObject ] ), 'browser accepts the validated compound collision used by exported world packages' );
 assert.throws( () => validateWorldSource( { ...source, objects: [ { ...compoundObject, collision: { ...compoundObject.collision, boxes: [] } } ] } ), /bounded box, compound, or heightfield data/, 'empty compound collision is rejected' );
+assert.throws( () => validateWorldObjects( [ { ...compoundObject, collision: { ...compoundObject.collision, boxes: [] } } ] ), /invalid collision bounds/, 'browser rejects empty compound collision data' );
 const compoundRoot = { children: [ { userData: { worldObjectId: compoundObject.id } } ], userData: { worldPackage: {
 	connector: { manifest: { objects: [ compoundObject ] } }, loadedObjects: new Set( [ compoundObject.id ] ),
 } } };

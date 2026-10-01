@@ -29,7 +29,7 @@ export function decodeVegetationPlacements( bytes, expectedSeed ) {
 	if ( ! ( bytes instanceof Uint8Array ) || bytes.byteLength < HEADER_BYTES || MAGIC.some( ( value, index ) => bytes[ index ] !== value ) ) throw new Error( 'Invalid vegetation placement asset header' );
 	const view = new DataView( bytes.buffer, bytes.byteOffset, bytes.byteLength );
 	const seed = view.getUint32( 4, true ), villagePalms = view.getUint32( 8, true ), kindCount = view.getUint32( 12, true );
-	if ( seed !== expectedSeed || kindCount !== VEGETATION_PLACEMENT_KINDS.length || villagePalms > 10 ) throw new Error( 'Unsupported vegetation placement asset version or seed' );
+	if ( ( expectedSeed !== undefined && seed !== expectedSeed ) || kindCount !== VEGETATION_PLACEMENT_KINDS.length || villagePalms > 10 ) throw new Error( 'Unsupported vegetation placement asset version or seed' );
 	const counts = [];
 	let total = 0, offset = 16;
 	for ( let index = 0; index < kindCount; index ++ ) { const count = view.getUint32( offset, true ); offset += 4; if ( count > 100000 ) throw new Error( 'Vegetation placement asset exceeds the per-kind limit' ); counts.push( count ); total += count; }

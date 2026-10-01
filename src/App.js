@@ -705,17 +705,18 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 	installWorldComponents( root, connector ) {
 		const installed = [];
 		for ( const component of connector.manifest.components || [] ) {
-			if ( component.type === 'tidewater.procedural-island-vegetation/1' ) {
+			if ( component.type === 'tidewater.procedural-island-vegetation/1' || component.type === 'tidewater.static-vegetation/1' ) {
 				if ( ! this.vegetationEnabled ) continue;
 				const placementRecords = component.placementAssetId ? readVegetationPlacements( connector, component ) : null;
-				if ( ! this.remoteWorldActive && this.vegetation && this.vegetation.group.parent !== root && ( ! placementRecords || sameVegetationPlacements( this.vegetation.records, placementRecords ) ) ) {
+				const staticVegetation = component.type === 'tidewater.static-vegetation/1';
+				if ( ! staticVegetation && ! this.remoteWorldActive && this.vegetation && this.vegetation.group.parent !== root && ( ! placementRecords || sameVegetationPlacements( this.vegetation.records, placementRecords ) ) ) {
 					root.add( this.vegetation.group );
 					installed.push( this.vegetation );
 				} else {
-					installed.push( new Vegetation( { scene: root, terrain: this.terrainData, village: this.village, placementRecords } ) );
+					installed.push( new Vegetation( { scene: root, terrain: staticVegetation ? null : this.terrainData, village: staticVegetation ? null : this.village, includeGrass: ! staticVegetation, placementRecords } ) );
 				}
 			} else if ( component.type === 'tidewater.island-ocean/1' ) {
-				const lod = new CDLOD( { gridSize: Number( qs.get( 'G' ) || 32 ), leafSize: 8, levels: 12, minY: - 25, maxY: 25 } );
+				const lod = new CDLOD( { gridSize: Number( this.qs.get( 'G' ) || 32 ), leafSize: 8, levels: 12, minY: - 25, maxY: 25 } );
 				const mesh = new Mesh( lod.geometry, this.waterMaterial );
 				mesh.frustumCulled = false;
 				mesh.receiveShadow = true;
