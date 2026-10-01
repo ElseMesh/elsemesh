@@ -22,6 +22,9 @@ async function main() {
 	const version = args.version === undefined ? 1 : Number( args.version );
 	if ( ! Number.isSafeInteger( version ) || version < 1 ) throw new Error( '--version must be a positive integer' );
 	if ( source.styleGuide.length > 512 ) throw new Error( 'styleGuide exceeds the runtime manifest limit of 512 characters' );
+	const updatedAt = Date.parse( source.updatedAt );
+	const validTimestamp = typeof source.updatedAt === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/.test( source.updatedAt ) && Number.isFinite( updatedAt );
+	if ( ! validTimestamp ) throw new Error( 'source updatedAt must be a valid ISO date-time' );
 	const assets = new Map();
 	for ( const object of source.objects ) {
 		if ( ! object.assetId ) throw new Error( `Object ${object.id} has no assetId; add/export its GLB and import it with worldd --import-asset` );
@@ -57,7 +60,7 @@ async function main() {
 		objects: source.objects.map( ( { id, kind, label, assetId, transform, scale, collision } ) => ( { id, kind, label, assetId, transform, scale, collision } ) ),
 		portals: source.portals,
 		hosts: [],
-		updatedAt: Math.floor( Date.now() / 1000 ),
+		updatedAt: Math.floor( updatedAt / 1000 ),
 	};
 	await writeFile( args.out, `${JSON.stringify( manifest, null, 2 )}\n`, { flag: 'wx' } );
 	console.log( `Wrote unsigned manifest for ${manifest.worldId} with ${manifest.objects.length} objects, ${manifest.portals.length} portals and ${manifest.assets.length} assets.` );

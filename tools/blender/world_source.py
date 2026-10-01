@@ -6,6 +6,7 @@ The source document is retained in a Blender text block named ElseMeshThruHoldSo
 """
 import json
 import math
+import os
 import pathlib
 import sys
 import bpy
@@ -94,8 +95,18 @@ def export_source(path):
             item["entry"]["position"] = position
             # Preserve portal yaw from the record; Blender portal markers currently expose location only.
             portals.append(item)
+    changed = objects != source["objects"] or portals != source["portals"]
     source["objects"], source["portals"] = objects, portals
-    source["updatedAt"] = __import__("datetime").datetime.now(__import__("datetime").timezone.utc).isoformat().replace("+00:00", "Z")
+    if changed:
+        epoch = os.environ.get("SOURCE_DATE_EPOCH")
+        if epoch is not None:
+            try:
+                timestamp = __import__("datetime").datetime.fromtimestamp(int(epoch), __import__("datetime").timezone.utc)
+            except (ValueError, OverflowError, OSError) as error:
+                raise ValueError("SOURCE_DATE_EPOCH must be a valid Unix timestamp") from error
+        else:
+            timestamp = __import__("datetime").datetime.now(__import__("datetime").timezone.utc)
+        source["updatedAt"] = timestamp.isoformat().replace("+00:00", "Z")
     validate(source)
     path.write_text(json.dumps(source, indent=2) + "\n", encoding="utf-8")
     print("Exported %d objects and %d portals to %s" % (len(objects), len(portals), path))

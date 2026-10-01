@@ -35,7 +35,7 @@ blender --background island.blend --python tools/blender/world_source.py -- expo
 
 The helper creates editable metadata empties in a dedicated collection and keeps the full JSON in a Blender text block. Mesh assets remain normal Blender objects/files and should be exported to GLB/glTF and content-addressed separately. Review source diffs after export; Blender saves are not automatically trusted or published.
 
-To produce a runtime document, import each GLB into the node's content store with `worldd --import-asset`, set the resulting ID on the matching source object, then run `tools/world-source-to-manifest.mjs`. Finally, use `worldd --sign-manifest` with the world's persistent owner identity. Runtime signing keys stay on the owner node; the AI service must only return unsigned proposals.
+To produce a runtime document, import each GLB into the node's content store with `worldd --import-asset`, set the resulting ID on the matching source object, then run `tools/world-source-to-manifest.mjs`. The converter carries the versioned source document's `updatedAt` into the runtime manifest so the same source and assets produce byte-stable unsigned manifest content. Blender export preserves `updatedAt` when metadata is unchanged; when it changes metadata, set `SOURCE_DATE_EPOCH` for reproducible timestamps. Finally, use `worldd --sign-manifest` with the world's persistent owner identity. Runtime signing keys stay on the owner node; the AI service must only return unsigned proposals.
 
 ## AI editor service
 
