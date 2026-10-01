@@ -70,6 +70,7 @@ import { SoundScape } from './audio/SoundScape.js';
 import { updateCameraVelocity, useStaticVelocity } from './post/CameraVelocity.js';
 import { Group } from './engine/scene/Group.js';
 import { WorldConnector, worldLinkFromLocation } from './network/WorldConnector.js';
+import { rememberWorldVisit } from './network/WorldLauncher.js';
 import { worldSeaLevel } from './network/WorldRules.js';
 import { appendWorldPackageAssets, disposeWorldPackage, loadWorldPackage, registerWorldPackageCollisions, unregisterWorldPackageCollisions } from './network/WorldPackage.js';
 import { selectWorldComponentsForView, selectWorldObjectsForView } from './network/WorldStreaming.js';
@@ -435,6 +436,14 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 			this.remoteWorldActive = true;
 			this.refraction.enabled = false;
 			this.portalPreviousPosition = this.camera.position.clone();
+			rememberWorldVisit( {
+				pageURL: location.href,
+				worldId: connector.worldId,
+				nodeId: connector.nodeId,
+				gateway: connector.gateway,
+				directory: connector.directory,
+				title: connector.manifest.title,
+			} );
 
 		}
 		installDebugViews( this );
@@ -1010,6 +1019,14 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 		url.searchParams.set( 'nodeId', destinationConnector.nodeId );
 		url.searchParams.set( 'gateway', destinationConnector.gateway );
 		history.replaceState( null, '', url );
+		rememberWorldVisit( {
+			pageURL: location.href,
+			worldId: destinationConnector.worldId,
+			nodeId: destinationConnector.nodeId,
+			gateway: destinationConnector.gateway,
+			directory: destinationConnector.directory,
+			title: destinationConnector.manifest.title,
+		} );
 		document.title = `${destinationConnector.manifest.title} · ElseMesh`;
 		this.ui?.ui?.toast( `Entered ${destinationConnector.manifest.title}`, 2600 );
 

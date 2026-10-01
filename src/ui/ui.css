@@ -2530,6 +2530,7 @@ body {
 	z-index: 25;
 	display: grid;
 	place-items: center;
+	overflow-y: auto;
 	padding: var(--tw-5);
 	background: radial-gradient(ellipse 80% 70% at 50% 55%, rgba(3, 10, 16, 0.12), rgba(3, 10, 16, 0.7));
 	cursor: pointer;
@@ -2644,6 +2645,122 @@ body {
 	font-size: var(--tw-fs-sm);
 	text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
 }
+
+.tw-start-world-toggle,
+.tw-world-picker-close {
+	padding: 8px 12px;
+	border: 1px solid rgba(255, 255, 255, 0.34);
+	border-radius: 999px;
+	background: rgba(8, 14, 22, 0.52);
+	color: var(--tw-ink);
+	font-size: var(--tw-fs-sm);
+	text-shadow: 0 1px 4px rgba(0, 0, 0, 0.75);
+	cursor: pointer;
+}
+
+.tw-start-world-toggle:hover,
+.tw-world-picker-close:hover {
+	background: rgba(8, 14, 22, 0.78);
+	border-color: rgba(255, 255, 255, 0.62);
+}
+
+.tw-world-picker {
+	width: min(560px, calc(100vw - 32px));
+	max-height: min(54vh, 460px);
+	display: grid;
+	overflow-y: auto;
+	gap: 10px;
+	box-sizing: border-box;
+	padding: 16px;
+	border: 1px solid rgba(255, 255, 255, 0.18);
+	border-radius: 16px;
+	background: rgba(8, 14, 22, 0.88);
+	box-shadow: 0 18px 54px rgba(0, 0, 0, 0.4);
+	backdrop-filter: blur(14px) saturate(1.15);
+	-webkit-backdrop-filter: blur(14px) saturate(1.15);
+	color: var(--tw-ink);
+	text-align: left;
+	text-shadow: none;
+	cursor: default;
+}
+
+.tw-world-picker[hidden] { display: none; }
+
+.tw-world-picker h2 {
+	margin: 0;
+	font-size: var(--tw-fs-lg);
+	font-weight: 600;
+}
+
+.tw-world-options {
+	display: grid;
+	gap: 6px;
+	max-height: 22vh;
+	overflow-y: auto;
+}
+
+.tw-world-option {
+	display: grid;
+	gap: 3px;
+	width: 100%;
+	padding: 10px 12px;
+	border: 1px solid rgba(255, 255, 255, 0.12);
+	border-radius: 10px;
+	background: rgba(255, 255, 255, 0.07);
+	color: var(--tw-ink);
+	text-align: left;
+	cursor: pointer;
+}
+
+.tw-world-option:hover,
+.tw-world-option:focus-visible {
+	background: rgba(85, 220, 205, 0.16);
+	border-color: rgba(85, 220, 205, 0.65);
+	outline: none;
+}
+
+.tw-world-option span { font-weight: 600; }
+.tw-world-option small,
+.tw-world-empty { color: var(--tw-ink-2); font-size: var(--tw-fs-xs); }
+.tw-world-empty { margin: 0; }
+
+.tw-world-invite-form {
+	display: grid;
+	gap: 6px;
+	margin-top: 2px;
+}
+
+.tw-world-invite-form label { font-size: var(--tw-fs-sm); font-weight: 600; }
+
+.tw-world-invite-row {
+	display: flex;
+	gap: 7px;
+}
+
+.tw-world-invite-row input {
+	min-width: 0;
+	flex: 1;
+	padding: 9px 10px;
+	border: 1px solid rgba(255, 255, 255, 0.22);
+	border-radius: 8px;
+	background: rgba(0, 0, 0, 0.32);
+	color: var(--tw-ink);
+	font: inherit;
+}
+
+.tw-world-invite-row input:focus-visible { outline: 2px solid #55dccd; outline-offset: 1px; }
+
+.tw-world-invite-row button {
+	padding: 0 16px;
+	border-radius: 8px;
+	background: #55dccd;
+	color: #03201c;
+	font-weight: 600;
+	cursor: pointer;
+}
+
+.tw-world-invite-error { min-height: 1em; margin: 0; color: #ff9da6; font-size: var(--tw-fs-xs); }
+.tw-world-picker-close { justify-self: end; }
 
 @media (pointer: coarse) {
 	.tw-start-keys {

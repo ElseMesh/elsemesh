@@ -1,4 +1,5 @@
 import { icon, brandMark } from './icons.js';
+import { builtInWorldURL, listVisitedWorlds, parseWorldInviteURL } from '../network/WorldLauncher.js';
 
 // ElseMesh UI: settings panel (tabs → folders → controls), HUD, help,
 // photo mode, start overlay and loader. Plain DOM, no dependencies.
@@ -2192,6 +2193,20 @@ export class UI {
 				${ brandMark( 'tw-start-mark' ) }
 				<div class="tw-start-title">ELSEMESH</div>
 				<button type="button" class="tw-start-cta"><span class="tw-start-pulse" aria-hidden="true"></span>${ icon( 'mouse' ) }<span>Tap or click to explore</span></button>
+				<button type="button" class="tw-start-world-toggle" aria-expanded="false" aria-controls="tw-world-picker">Choose a ThruHold</button>
+				<section id="tw-world-picker" class="tw-world-picker" aria-label="Choose a ThruHold" hidden>
+					<h2>Choose a world</h2>
+					<div class="tw-world-options">
+						<button type="button" class="tw-world-option tw-world-default"><span>Example Island</span><small>Built-in procedural world</small></button>
+					</div>
+					<p class="tw-world-empty" hidden>No hosted worlds saved yet. Open an invite to add one here.</p>
+					<form class="tw-world-invite-form">
+						<label for="tw-world-invite-url">Open an invite</label>
+						<div class="tw-world-invite-row"><input id="tw-world-invite-url" name="invite" type="url" inputmode="url" autocomplete="url" placeholder="Paste a ThruHold invite URL" required /><button type="submit">Open</button></div>
+						<p class="tw-world-invite-error" role="status" aria-live="polite"></p>
+					</form>
+					<button type="button" class="tw-world-picker-close">Done</button>
+				</section>
 				<div class="tw-start-touch-hint">Left stick moves · right stick looks · tap action prompts</div>
 				<div class="tw-start-keys">
 					<span><span class="tw-wasd"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></span>Move</span>
@@ -2203,6 +2218,68 @@ export class UI {
 				</div>
 			</div>`;
 		this.root.append( el );
+		this.startWorldPicker = el.querySelector( '.tw-world-picker' );
+		this.startWorldToggle = el.querySelector( '.tw-start-world-toggle' );
+		this.startWorldOptions = el.querySelector( '.tw-world-options' );
+		this.startWorldEmpty = el.querySelector( '.tw-world-empty' );
+		this.startWorldInviteForm = el.querySelector( '.tw-world-invite-form' );
+		this.startWorldInviteInput = el.querySelector( '#tw-world-invite-url' );
+		this.startWorldInviteError = el.querySelector( '.tw-world-invite-error' );
+		this.startWorldToggle.addEventListener( 'click', () => {
+
+			const open = this.startWorldPicker.hidden;
+			this.startWorldPicker.hidden = ! open;
+			this.startWorldToggle.setAttribute( 'aria-expanded', String( open ) );
+			if ( open ) this._refreshWorldPicker();
+
+		} );
+		el.querySelector( '.tw-world-default' ).addEventListener( 'click', () => { window.location.assign( builtInWorldURL() ); } );
+		el.querySelector( '.tw-world-picker-close' ).addEventListener( 'click', () => {
+
+			this.startWorldPicker.hidden = true;
+			this.startWorldToggle.setAttribute( 'aria-expanded', 'false' );
+			this.startWorldToggle.focus();
+
+		} );
+		this.startWorldPicker.addEventListener( 'keydown', ( event ) => {
+
+			if ( event.key !== 'Escape' ) return;
+			this.startWorldPicker.hidden = true;
+			this.startWorldToggle.setAttribute( 'aria-expanded', 'false' );
+			this.startWorldToggle.focus();
+
+		} );
+		this.startWorldInviteForm.addEventListener( 'submit', ( event ) => {
+
+			event.preventDefault();
+			this.startWorldInviteError.textContent = '';
+			try {
+
+				window.location.assign( parseWorldInviteURL( this.startWorldInviteInput.value ) );
+
+			} catch ( error ) {
+
+				this.startWorldInviteError.textContent = error.message;
+
+			}
+
+		} );
+
+	}
+
+	_refreshWorldPicker() {
+
+		for ( const option of [ ...this.startWorldOptions.querySelectorAll( '.tw-world-option:not(.tw-world-default)' ) ] ) option.remove();
+		const visited = listVisitedWorlds();
+		this.startWorldEmpty.hidden = visited.length > 0;
+		for ( const world of visited ) {
+
+			const option = h( 'button', 'tw-world-option', { type: 'button' } );
+			option.append( h( 'span', '', { text: world.title } ), h( 'small', '', { text: world.worldId } ) );
+			option.addEventListener( 'click', () => { window.location.assign( world.url ); } );
+			this.startWorldOptions.append( option );
+
+		}
 
 	}
 
@@ -3182,6 +3259,18 @@ export class UI {
 		this._startPromise = new Promise( ( resolve ) => {
 
 			const go = ( e ) => {
+
+				if ( this.startWorldPicker.contains( e.target ) ) return;
+				if ( e.type === 'click' && ! this.startWorldPicker.hidden && ! e.target.closest?.( '.tw-start-cta, .tw-start-world-toggle' ) ) {
+
+					this.startWorldPicker.hidden = true;
+					this.startWorldToggle.setAttribute( 'aria-expanded', 'false' );
+					this.startWorldToggle.focus();
+					return;
+
+				}
+				if ( e.type === 'click' && e.target.closest?.( 'button, input, form, a' ) && ! e.target.closest( '.tw-start-cta' ) ) return;
+				if ( e.type === 'keydown' && e.target.closest?.( 'button, input, form, a' ) && ! e.target.closest( '.tw-start-cta' ) ) return;
 
 				if ( e.type === 'keydown' ) {
 
