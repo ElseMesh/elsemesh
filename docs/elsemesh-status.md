@@ -59,8 +59,8 @@ Graphics comparisons can use the named and captured camera URL parameters docume
 
 ### 6. Add optional account features without changing world ownership
 
-- If Google sign-in is added, treat it as an optional account-to-world-role mapping, not as the source of cryptographic world identity.
-- Keep worlds and node identities usable without a Google account; specify consent, revocation, and recovery before adding a role API.
+- The account and role security contract is recorded in [account-roles.md](account-roles.md); no Google login, broker, or role API is implemented yet.
+- Keep worlds and node identities usable without a Google account. Implement owner-signed expiring role grants and revocation before adding Google sign-in or role-gated actions.
 
 ## Completion standard
 
