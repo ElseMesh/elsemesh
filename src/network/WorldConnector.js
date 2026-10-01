@@ -32,6 +32,7 @@ export class WorldConnector {
 		this.assets = new Map();
 		this.socket = null;
 		this.webTransport = null;
+		this.webTransportFailed = false;
 		this.socketPromise = null;
 		this.pending = new Map();
 	}
@@ -205,9 +206,10 @@ export class WorldConnector {
 		if ( this.socketPromise ) return this.socketPromise;
 		const promise = ( async () => {
 			const base = this.#httpBaseURL();
-			if ( base.protocol === 'https:' && typeof globalThis.WebTransport === 'function' ) {
+			if ( ! this.webTransportFailed && base.protocol === 'https:' && typeof globalThis.WebTransport === 'function' ) {
 				try { return await this.#openWebTransport( base ); }
 				catch ( error ) {
+					this.webTransportFailed = true;
 					this.webTransport?.close();
 					this.webTransport = null;
 					console.info( 'WebTransport unavailable; using the WebSocket gateway.', error );
@@ -287,10 +289,21 @@ export class WorldConnector {
 	}
 
 	async #request( message, { signal } = {} ) {
-		const connection = await this.#connection();
 		if ( signal?.aborted ) throw signal.reason || new DOMException( 'Aborted', 'AbortError' );
 		const requestId = globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`;
-		if ( connection.kind === 'webtransport' ) return requestWebTransport( connection.session, { ...message, requestId }, signal );
+		let connection = await this.#connection();
+		if ( connection.kind === 'webtransport' ) {
+			try { return await requestWebTransport( connection.session, { ...message, requestId }, signal ); }
+			catch ( error ) {
+				if ( signal?.aborted ) throw signal.reason || error;
+				if ( error.gatewayResponse ) throw error;
+				this.webTransportFailed = true;
+				connection.session.close();
+				if ( this.webTransport === connection.session ) this.webTransport = null;
+				console.info( 'WebTransport request failed; retrying through the WebSocket gateway.', error );
+				connection = await this.#connection();
+			}
+		}
 		const socket = connection.socket;
 		return new Promise( ( resolve, reject ) => {
 			const cleanup = () => { clearTimeout( timeout ); signal?.removeEventListener( 'abort', abort ); };
@@ -308,6 +321,7 @@ export class WorldConnector {
 		this.webTransport?.close();
 		this.socket = null;
 		this.webTransport = null;
+		this.webTransportFailed = false;
 	}
 }
 
@@ -372,7 +386,11 @@ async function requestWebTransport( session, message, signal ) {
 	try {
 		await writeJSONStream( stream.writable, message );
 		const response = await withTimeout( readJSONStream( stream.readable ), 30000, 'World request timed out' );
-		if ( response.type === 'error' ) throw new Error( response.error || response.code || 'World request failed' );
+		if ( response.type === 'error' ) {
+			const error = new Error( response.error || response.code || 'World request failed' );
+			error.gatewayResponse = true;
+			throw error;
+		}
 		invariant( response.requestId === message.requestId, 'World response does not match its request' );
 		return response;
 	} finally { signal?.removeEventListener( 'abort', abort ); }

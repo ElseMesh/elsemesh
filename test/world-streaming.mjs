@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { WorldConnector } from '../src/network/WorldConnector.js';
 import { selectWorldObjectsForView } from '../src/network/WorldStreaming.js';
 import { PerspectiveCamera } from '../src/engine/scene/Camera.js';
@@ -50,4 +51,74 @@ const objects = [
 ];
 const viewIDs = selectWorldObjectsForView( { assets: [], objects }, camera, { nearbyDistance: 5 } ).map( ( object ) => object.id );
 assert.deepEqual( viewIDs, [ 'front', 'near', 'legacy' ], 'view selection includes visible and nearby bounds, excludes behind/outside bounds, and preserves legacy unbounded objects' );
-console.log( 'ok   view-driven object streaming, staged priorities, and bounded concurrency' );
+
+const originalWebTransport = globalThis.WebTransport;
+const originalWebSocket = globalThis.WebSocket;
+const bytes = new Uint8Array( [ 11, 22, 33, 44, 55, 66 ] );
+const assetId = `sha256:${createHash( 'sha256' ).update( bytes ).digest( 'hex' )}`;
+const webTransportRequests = [];
+const webSocketRequests = [];
+let transportMode = 'interrupted-chunk';
+const jsonReadable = ( value ) => new ReadableStream( { start( controller ) { controller.enqueue( new TextEncoder().encode( JSON.stringify( value ) ) ); controller.close(); } } );
+let transportStream = 0;
+class FakeWebTransport {
+	constructor() { this.state = 'connected'; this.ready = Promise.resolve(); this.closed = new Promise( () => {} ); }
+	close() { this.state = 'closed'; }
+	async createBidirectionalStream() {
+		const index = transportStream ++;
+		let written = '';
+		let readableController;
+		const readable = new ReadableStream( { start( controller ) { readableController = controller; } } );
+		const writable = new WritableStream( { write( chunk ) { written += new TextDecoder().decode( chunk ); }, close() {
+			const request = JSON.parse( written );
+			if ( index > 0 ) webTransportRequests.push( request );
+			if ( index === 2 && transportMode === 'interrupted-chunk' ) readableController.error( new Error( 'stream reset' ) );
+			else if ( index === 0 ) readableController.enqueue( new TextEncoder().encode( JSON.stringify( { type: 'connected', worldId: 'tw-world:retry-test' } ) ) );
+			else if ( index === 1 && transportMode === 'gateway-error' ) readableController.enqueue( new TextEncoder().encode( JSON.stringify( { type: 'error', requestId: request.requestId, error: 'asset is not available' } ) ) );
+			else {
+				const response = { type: 'asset.chunk', requestId: request.requestId, assetId, offset: 0, total: bytes.length, chunk: btoa( String.fromCharCode( ...bytes.slice( 0, 3 ) ) ) };
+				readableController.enqueue( new TextEncoder().encode( JSON.stringify( response ) ) );
+			}
+			if ( index !== 2 ) readableController.close();
+		} } );
+		return { writable, readable };
+	}
+}
+class FakeWebSocket {
+	static OPEN = 1;
+	constructor() { this.readyState = FakeWebSocket.OPEN; this.listeners = new Map(); queueMicrotask( () => this.#dispatch( 'open' ) ); }
+	addEventListener( type, callback ) { const listeners = this.listeners.get( type ) || []; listeners.push( callback ); this.listeners.set( type, listeners ); }
+	send( message ) {
+		const request = JSON.parse( message );
+		if ( request.type === 'connect' ) { queueMicrotask( () => this.#dispatch( 'message', { data: JSON.stringify( { type: 'connected', worldId: request.worldId } ) } ) ); return; }
+		webSocketRequests.push( request );
+		const chunk = bytes.slice( request.offset, request.offset + request.length );
+		queueMicrotask( () => this.#dispatch( 'message', { data: JSON.stringify( { type: 'asset.chunk', requestId: request.requestId, assetId, offset: request.offset, total: bytes.length, chunk: btoa( String.fromCharCode( ...chunk ) ) } ) } ) );
+	}
+	close() { this.readyState = 3; this.#dispatch( 'close' ); }
+	#dispatch( type, event = {} ) { for ( const callback of this.listeners.get( type ) || [] ) callback( event ); }
+}
+try {
+	globalThis.WebTransport = FakeWebTransport;
+	globalThis.WebSocket = FakeWebSocket;
+	const retryConnector = new WorldConnector( { worldId: 'tw-world:retry-test', nodeId: 'peer', gateway: 'https://example.test', chunkBytes: 3 } );
+	retryConnector.manifest = { assets: [ { id: assetId, bytes: bytes.length } ] };
+	const downloaded = await retryConnector.getAsset( assetId );
+	assert.deepEqual( downloaded, bytes, 'interrupted WebTransport asset chunks recover over WebSocket' );
+	assert.deepEqual( webTransportRequests.filter( ( request ) => request.type === 'asset.get' ).map( ( request ) => request.offset ), [ 0, 3 ], 'WebTransport delivered the first chunk before failing on the second' );
+	assert.deepEqual( webSocketRequests.map( ( request ) => request.offset ), [ 3 ], 'WebSocket retries only the interrupted chunk' );
+	assert.equal( webSocketRequests[ 0 ].requestId, webTransportRequests[ 1 ].requestId, 'transport fallback preserves the original idempotent request id' );
+	retryConnector.close();
+	transportStream = 0;
+	transportMode = 'gateway-error';
+	const requestCount = webSocketRequests.length;
+	const errorConnector = new WorldConnector( { worldId: 'tw-world:retry-test', nodeId: 'peer', gateway: 'https://example.test', chunkBytes: 3 } );
+	errorConnector.manifest = { assets: [ { id: assetId, bytes: bytes.length } ] };
+	await assert.rejects( errorConnector.getAsset( assetId ), /asset is not available/, 'a gateway error response remains an application error' );
+	assert.equal( webSocketRequests.length, requestCount, 'gateway errors do not trigger transport fallback' );
+	errorConnector.close();
+} finally {
+	if ( originalWebTransport === undefined ) delete globalThis.WebTransport; else globalThis.WebTransport = originalWebTransport;
+	if ( originalWebSocket === undefined ) delete globalThis.WebSocket; else globalThis.WebSocket = originalWebSocket;
+}
+console.log( 'ok   view-driven streaming priorities and interrupted WebTransport recovery' );
