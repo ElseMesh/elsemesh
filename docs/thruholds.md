@@ -42,6 +42,16 @@ worldd --data ./world-data --sign-manifest ./world-data/unsigned.json --manifest
 worldd --data ./world-data --manifest ./world-data/world.signed.json --webtransport :5201 --webtransport-tls-cert fullchain.pem --webtransport-tls-key privkey.pem
 ```
 
+Back up a node identity before migrating its world data. Export creates a new file with mode `0600` and refuses to overwrite an existing file; store that key offline in a protected location, never in shared Android storage or Git. Restore accepts only a `0600` backup and refuses to replace an existing `node.key`. Both commands print the PeerID so you can confirm the restored identity matches:
+
+```sh
+worldd --data ./world-data --export-node-key ./offline-backup/node.key
+worldd --data ./new-world-data --import-node-key ./offline-backup/node.key
+worldd --data ./new-world-data --print-node-id
+```
+
+These commands copy the raw libp2p private-key encoding; protect the backup as a signing credential. Identity rotation is distinct from recovery and still needs a signed ownership-transfer protocol before old PeerIDs can be safely retired.
+
 To publish a discoverable node in an optional directory such as `https://thruhold.org`, create its runtime manifest with `tools/world-source-to-manifest.mjs --discoverable true`, then sign it. Public discovery is off by default. Set the node's externally reachable browser gateway and directory URL:
 
 ```sh

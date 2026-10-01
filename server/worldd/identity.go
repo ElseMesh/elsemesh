@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 
 	crypto "github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/peer"
@@ -126,6 +127,47 @@ func loadIdentity(path string) (crypto.PrivKey, error) {
 		return nil, err
 	}
 	return key, nil
+}
+
+func exportIdentity(sourcePath, backupPath string) (string, error) {
+	encoded, err := readPrivateKey(sourcePath)
+	if err != nil {
+		return "", fmt.Errorf("read node identity: %w", err)
+	}
+	key, err := crypto.UnmarshalPrivateKey(encoded)
+	if err != nil {
+		return "", fmt.Errorf("decode node identity: %w", err)
+	}
+	if err := writePrivateKey(backupPath, encoded); err != nil {
+		return "", fmt.Errorf("write identity backup: %w", err)
+	}
+	id, err := peerIDForKey(key.GetPublic())
+	if err != nil {
+		return "", err
+	}
+	return id.String(), nil
+}
+
+func importIdentity(backupPath, destinationPath string) (string, error) {
+	encoded, err := readPrivateKey(backupPath)
+	if err != nil {
+		return "", fmt.Errorf("read identity backup: %w", err)
+	}
+	key, err := crypto.UnmarshalPrivateKey(encoded)
+	if err != nil {
+		return "", fmt.Errorf("decode identity backup: %w", err)
+	}
+	id, err := peerIDForKey(key.GetPublic())
+	if err != nil {
+		return "", err
+	}
+	if err := writePrivateKey(destinationPath, encoded); err != nil {
+		if errors.Is(err, os.ErrExist) {
+			return "", errors.New("destination already has a node identity; refusing to overwrite it")
+		}
+		return "", fmt.Errorf("install node identity: %w", err)
+	}
+	return id.String(), nil
 }
 
 func assetHash(bytes []byte) string {

@@ -83,6 +83,8 @@ func run() error {
 	importAssetPath := flag.String("import-asset", "", "import one asset into the content-addressed store, print its sha256 ID, then exit")
 	importPackagePath := flag.String("import-package", "", "verify and import all assets referenced by --manifest from this hash-named assets directory, then exit")
 	printNodeID := flag.Bool("print-node-id", false, "print this data directory's persistent node PeerID, then exit")
+	exportNodeKey := flag.String("export-node-key", "", "write this data directory's private identity key to a new 0600 file, then exit")
+	importNodeKey := flag.String("import-node-key", "", "install a 0600 private identity key if node.key does not exist, then exit")
 	worldName := flag.String("world-name", "My ThruHold", "create a local starter world when none is supplied")
 	listenPort := flag.Int("p2p-port", 42901, "libp2p TCP and QUIC listen port")
 	httpAddress := flag.String("http", "127.0.0.1:5200", "HTTP/WebSocket gateway listen address; place behind TLS for public browser access")
@@ -109,13 +111,13 @@ func run() error {
 		return nil
 	}
 	operationCount := 0
-	for _, requested := range []bool{*printNodeID, *importAssetPath != "", *importPackagePath != "", *signManifestPath != ""} {
+	for _, requested := range []bool{*printNodeID, *exportNodeKey != "", *importNodeKey != "", *importAssetPath != "", *importPackagePath != "", *signManifestPath != ""} {
 		if requested {
 			operationCount++
 		}
 	}
 	if operationCount > 1 || (*manifestOut != "" && *signManifestPath == "") {
-		return errors.New("use only one of --print-node-id, --import-asset, --import-package, or --sign-manifest; --manifest-out requires --sign-manifest")
+		return errors.New("choose only one one-shot identity, asset, package, or signing operation; --manifest-out requires --sign-manifest")
 	}
 	if *listenPort < 1 || *listenPort > 65535 {
 		return errors.New("p2p-port must be between 1 and 65535")
@@ -142,6 +144,14 @@ func run() error {
 	if err := os.MkdirAll(*dataDir, 0700); err != nil {
 		return err
 	}
+	if *importNodeKey != "" {
+		id, importErr := importIdentity(*importNodeKey, filepath.Join(*dataDir, "node.key"))
+		if importErr != nil {
+			return importErr
+		}
+		fmt.Println(id)
+		return nil
+	}
 	key, err := loadIdentity(filepath.Join(*dataDir, "node.key"))
 	if err != nil {
 		return err
@@ -152,6 +162,14 @@ func run() error {
 	}
 	if *printNodeID {
 		fmt.Println(localID.String())
+		return nil
+	}
+	if *exportNodeKey != "" {
+		id, exportErr := exportIdentity(filepath.Join(*dataDir, "node.key"), *exportNodeKey)
+		if exportErr != nil {
+			return exportErr
+		}
+		fmt.Println(id)
 		return nil
 	}
 	if *importAssetPath != "" {
