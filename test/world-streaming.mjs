@@ -26,6 +26,14 @@ requested.length = 0;
 await connector.preload( { through: 'background', assetIDs: new Set( [ connector.manifest.assets[ 6 ].id ] ) } );
 assert.deepEqual( requested, [ connector.manifest.assets[ 6 ].id ], 'view-driven asset selection can request one asset without fetching unrelated tiers' );
 
+const getAssetMock = connector.getAsset;
+connector.getAsset = ( id, { signal } ) => new Promise( ( resolve, reject ) => signal.addEventListener( 'abort', () => reject( signal.reason ), { once: true } ) );
+const abortController = new AbortController();
+const abortedPreload = connector.preload( { assetIDs: [ connector.manifest.assets[ 0 ].id ], signal: abortController.signal } );
+abortController.abort( new DOMException( 'View changed', 'AbortError' ) );
+await assert.rejects( abortedPreload, { name: 'AbortError' }, 'view changes can cancel pending asset requests' );
+connector.getAsset = getAssetMock;
+
 requested.length = 0;
 const remainder = await connector.preload( { after: 'visible', concurrency: 2 } );
 assert.equal( remainder.size, 4, 'background load contains nearby and background tiers only' );

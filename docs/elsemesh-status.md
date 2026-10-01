@@ -10,7 +10,7 @@ This document tracks the agreed ElseMesh direction against the current code. It 
 | Persistent cryptographic node identity and signed world documents | `server/worldd/identity.go`, `server/worldd/world.go` | Identity recovery and rotation tooling remain limited. |
 | Node discovery and optional directory | `server/worldd`, `server/directoryd`, `src/network/WorldConnector.js` | `thruhold.org` is an optional deployment target; this repository does not operate that service or domain. |
 | Browser WebTransport with WSS fallback | `server/worldd/webtransport.go`, `src/network/WorldConnector.js` | Requires a reachable HTTP/3 UDP endpoint and a browser that supports the deployed WebTransport version. |
-| Signed portals and staged asset delivery | `src/network/PortalHandoff.js`, `src/network/WorldConnector.js`, `src/network/WorldStreaming.js`, `src/App.js` | Bounded objects stream when in view or nearby; portal preview still uses authored tiers and distance. Bandwidth adaptation and cancellation after view changes remain. |
+| Signed portals and staged asset delivery | `src/network/PortalHandoff.js`, `src/network/WorldConnector.js`, `src/network/WorldStreaming.js`, `src/App.js` | Bounded objects stream when in view or nearby; obsolete batches are canceled and higher-priority view work can preempt them. Portal preview still uses authored tiers and distance. Bandwidth adaptation remains. |
 | Owner-scoped immutable neighbor caching | `server/worldd/cache.go`, `server/worldd/cache_integration_test.go` | Cache grants do not authorize edits or simulation writes. |
 | Bounded delegated authority lease | `server/worldd/world.go`, `server/worldd/main.go` | Concurrent simulation, split-brain recovery, and shared write conflict resolution are not implemented. |
 | Replaceable static world package | `src/network/WorldPackage.js`, `tools/world-source-to-manifest.mjs` | Renderer currently supports static GLB triangle meshes with embedded base-color textures and authored collision. |
@@ -29,7 +29,7 @@ This document tracks the agreed ElseMesh direction against the current code. It 
 ### 2. Stream content by actual need
 
 - Use signed object bounds to request assets as they enter the view or nearby buffer, while keeping portal preview assets ready before a crossing.
-- Adapt background work to bandwidth and cancel or deprioritize requests after the player turns away or changes worlds.
+- Adapt background work to bandwidth and refine cancellation so useful shared-asset transfers are not restarted unnecessarily.
 - Keep portal preview assets available before crossing, hash-check every completed asset, and cancel or deprioritize requests after the player turns away or changes worlds.
 - Add tests for frustum entry/exit, portal approach, interrupted transfer, provider fallback, and device/network limits.
 

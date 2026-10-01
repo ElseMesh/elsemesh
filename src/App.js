@@ -693,7 +693,7 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 		this.worldBackgroundLoads.get( connector.worldId )?.abort();
 		const controller = new AbortController();
 		this.worldBackgroundLoads.set( connector.worldId, controller );
-		this.worldStreamState.set( connector.worldId, { connector, root, controller, lastUpdate: 0, loading: false } );
+		this.worldStreamState.set( connector.worldId, { connector, root, controller, lastUpdate: 0, loading: false, loadingController: null, loadingObjectIDs: new Set(), loadingRank: Infinity } );
 
 	}
 
@@ -701,20 +701,44 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 
 		const connector = this.worldConnector, root = this.linkedWorldRoot;
 		const state = connector && this.worldStreamState.get( connector.worldId );
-		if ( ! this.remoteWorldActive || ! state || state.root !== root || state.controller.signal.aborted || state.loading || performance.now() - state.lastUpdate < 400 ) return;
+		if ( ! this.remoteWorldActive || ! state || state.root !== root || state.controller.signal.aborted || performance.now() - state.lastUpdate < 400 ) return;
 		state.lastUpdate = performance.now();
 		const loaded = root.userData.worldPackage?.loadedObjects || new Set();
 		const objects = selectWorldObjectsForView( connector.manifest, this.camera ).filter( ( object ) => ! loaded.has( object.id ) );
+		const wantedObjectIDs = new Set( objects.map( ( object ) => object.id ) );
+		const assetPriorities = new Map( connector.manifest.assets.map( ( asset ) => [ asset.id, asset.priority ] ) );
+		const rank = { 'portal-preview': 0, visible: 1, nearby: 2, background: 3 };
+		const wantedRank = objects.reduce( ( best, object ) => Math.min( best, rank[ object.priority || assetPriorities.get( object.assetId ) ] ?? 1 ), Infinity );
+		if ( state.loading ) {
+			const allStillNeeded = [ ...state.loadingObjectIDs ].every( ( objectID ) => wantedObjectIDs.has( objectID ) );
+			if ( ! allStillNeeded || wantedRank < state.loadingRank ) state.loadingController?.abort( new DOMException( 'View priority changed', 'AbortError' ) );
+			return;
+		}
 		if ( objects.length === 0 ) return;
 		const objectIDs = new Set( objects.map( ( object ) => object.id ) );
 		const assetIDs = new Set( objects.map( ( object ) => object.assetId ) );
+		const loadController = new AbortController();
+		const abortForWorldChange = () => loadController.abort( state.controller.signal.reason );
+		if ( state.controller.signal.aborted ) abortForWorldChange();
+		else state.controller.signal.addEventListener( 'abort', abortForWorldChange, { once: true } );
 		state.loading = true;
-		connector.preload( { assetIDs, signal: state.controller.signal, concurrency: 2 } ).then( ( assets ) => {
-			if ( state.controller.signal.aborted || this.linkedWorldRoot !== root ) return;
-			return appendWorldPackageAssets( connector, root, assets, { signal: state.controller.signal, objectIDs } ).then( () => registerWorldPackageCollisions( root, this.colliders ) );
+		state.loadingController = loadController;
+		state.loadingObjectIDs = objectIDs;
+		state.loadingRank = wantedRank;
+		connector.preload( { assetIDs, signal: loadController.signal, concurrency: 2 } ).then( ( assets ) => {
+			if ( loadController.signal.aborted || state.controller.signal.aborted || this.linkedWorldRoot !== root ) return;
+			return appendWorldPackageAssets( connector, root, assets, { signal: loadController.signal, objectIDs } ).then( () => registerWorldPackageCollisions( root, this.colliders ) );
 		} ).catch( ( error ) => {
-			if ( ! state.controller.signal.aborted ) console.warn( `View-driven world asset load failed for ${connector.worldId}`, error );
-		} ).finally( () => { state.loading = false; } );
+			if ( ! loadController.signal.aborted && ! state.controller.signal.aborted ) console.warn( `View-driven world asset load failed for ${connector.worldId}`, error );
+		} ).finally( () => {
+			state.controller.signal.removeEventListener( 'abort', abortForWorldChange );
+			if ( state.loadingController === loadController ) {
+				state.loading = false;
+				state.loadingController = null;
+				state.loadingObjectIDs = new Set();
+				state.loadingRank = Infinity;
+			}
+		} );
 
 	}
 
