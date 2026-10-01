@@ -74,6 +74,63 @@ func TestDirectoryAnnounceRequiresNodeSignatureAndWorldGrant(t *testing.T) {
 	}
 }
 
+func TestDirectoryAnnounceAcceptsActiveFailoverAuthorityWithoutCacheRights(t *testing.T) {
+	owner, ownerID := testIdentity(t)
+	delegate, delegateID := testIdentity(t)
+	now := time.Now()
+	failoverAfter := now.Add(-time.Minute).Unix()
+	grantExpires := now.Add(time.Hour).Unix()
+	leaseExpires := now.Add(28 * time.Minute).Unix()
+	manifest := testSignedDocument(t, manifestProtocol, map[string]any{
+		"protocol": manifestProtocol, "worldId": "tw-world:failover", "ownerPeerId": ownerID,
+		"authorityPeerId": ownerID, "authorityEpoch": 7, "discoverable": true,
+		"hosts": []any{map[string]any{"peerId": delegateID, "scopes": []string{"failover-authority"}, "expiresAt": grantExpires, "epoch": 3, "failoverAfter": failoverAfter, "failoverSeconds": 1800}},
+	}, owner)
+	node := testSignedDocument(t, nodeProtocol, map[string]any{
+		"protocol": nodeProtocol, "nodeId": delegateID, "gateway": "https://delegate.example",
+		"worldIds": []string{"tw-world:failover"}, "issuedAt": now.Unix(), "expiresAt": now.Add(24 * time.Hour).Unix(),
+	}, delegate)
+	lease := testSignedDocument(t, authorityProtocol, map[string]any{
+		"worldId": "tw-world:failover", "authorityPeerId": delegateID, "epoch": 8, "grantEpoch": 3,
+		"notBefore": failoverAfter, "expiresAt": leaseExpires,
+	}, delegate)
+	entry, _, err := validateAnnouncement(announcement{Node: node, Manifest: manifest, AuthorityLease: &lease}, now)
+	if err != nil {
+		t.Fatalf("valid failover-only provider rejected: %v", err)
+	}
+	if entry.ExpiresAt != min(now.Add(24*time.Hour).Unix(), leaseExpires) {
+		t.Fatalf("failover provider expiry = %d; want lease expiry %d", entry.ExpiresAt, leaseExpires)
+	}
+	store := &directory{path: filepath.Join(t.TempDir(), "providers.json"), entries: make(map[string]provider)}
+	body, err := json.Marshal(announcement{Node: node, Manifest: manifest, AuthorityLease: &lease})
+	if err != nil {
+		t.Fatal(err)
+	}
+	response := httptest.NewRecorder()
+	store.handleAnnounce(response, httptest.NewRequest(http.MethodPost, "/v1/announce", bytes.NewReader(body)))
+	if response.Code != http.StatusAccepted {
+		t.Fatalf("directory rejected active failover-only provider: %d %s", response.Code, response.Body.String())
+	}
+	lookup := httptest.NewRecorder()
+	store.handleWorld(lookup, httptest.NewRequest(http.MethodGet, "/v1/worlds/tw-world:failover", nil))
+	var result struct {
+		Providers []signedDocument `json:"providers"`
+	}
+	if err := json.Unmarshal(lookup.Body.Bytes(), &result); err != nil || len(result.Providers) != 1 || result.Providers[0].Signer != delegateID {
+		t.Fatalf("directory lookup omitted failover-only provider: %+v, %v", result, err)
+	}
+	badLease := testSignedDocument(t, authorityProtocol, map[string]any{
+		"worldId": "tw-world:failover", "authorityPeerId": delegateID, "epoch": 9, "grantEpoch": 3,
+		"notBefore": failoverAfter, "expiresAt": leaseExpires,
+	}, delegate)
+	if _, _, err := validateAnnouncement(announcement{Node: node, Manifest: manifest, AuthorityLease: &badLease}, now); err == nil {
+		t.Fatal("lease that skips the next authority epoch was accepted")
+	}
+	if _, _, err := validateAnnouncement(announcement{Node: node, Manifest: manifest}, now); err == nil {
+		t.Fatal("failover-only provider without a signed active lease was accepted")
+	}
+}
+
 func TestDirectoryRejectsUntrustedWorldClaims(t *testing.T) {
 	owner, ownerID := testIdentity(t)
 	node, nodeID := testIdentity(t)

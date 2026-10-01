@@ -119,8 +119,6 @@ export class WorldConnector {
 		validateWorldHosts( reply.document.payload.hosts );
 		this.manifest = reply.document.payload;
 		invariant( Number.isSafeInteger( this.manifest.authorityEpoch ) && this.manifest.authorityEpoch > 0, 'Manifest authority epoch is outside the supported range' );
-		const hostGrant = this.manifest.hosts?.find( ( entry ) => entry.peerId === this.nodeId && entry.scopes?.includes( 'content-cache' ) && entry.expiresAt > Date.now() / 1000 );
-		invariant( this.manifest.ownerPeerId === this.nodeId || hostGrant, 'Selected node is not authorized by the world owner to serve content' );
 		this.authorityLease = null;
 		if ( reply.authorityLease ) {
 			await verifySignedDocument( reply.authorityLease, 'tidewater.authority/2' );
@@ -130,6 +128,9 @@ export class WorldConnector {
 			invariant( grant, 'Authority lease has no matching owner grant' );
 			this.authorityLease = lease;
 		}
+		const hostGrant = this.manifest.hosts?.find( ( entry ) => entry.peerId === this.nodeId && entry.scopes?.includes( 'content-cache' ) && entry.expiresAt > Date.now() / 1000 );
+		const failoverAuthority = this.authorityLease?.authorityPeerId === this.nodeId;
+		invariant( this.manifest.ownerPeerId === this.nodeId || hostGrant || failoverAuthority, 'Selected node is not authorized to serve this world manifest' );
 		return this.manifest;
 	}
 

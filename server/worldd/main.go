@@ -46,21 +46,22 @@ func (s *stringFlags) String() string         { return strings.Join(*s, ",") }
 func (s *stringFlags) Set(value string) error { *s = append(*s, value); return nil }
 
 type daemon struct {
-	ctx            context.Context
-	host           host.Host
-	dht            *dht.IpfsDHT
-	discovery      *routing.RoutingDiscovery
-	manifest       signedDocument
-	authorityMu    sync.RWMutex
-	authority      *signedDocument
-	world          worldManifest
-	key            crypto.PrivKey
-	assetsDir      string
-	webRoot        string
-	publicGateway  string
-	directoryURL   string
-	assetCheckMu   sync.Mutex
-	verifiedAssets map[string]assetFileStamp
+	ctx              context.Context
+	host             host.Host
+	dht              *dht.IpfsDHT
+	discovery        *routing.RoutingDiscovery
+	manifest         signedDocument
+	authorityMu      sync.RWMutex
+	authority        *signedDocument
+	authorityChanged chan struct{}
+	world            worldManifest
+	key              crypto.PrivKey
+	assetsDir        string
+	webRoot          string
+	publicGateway    string
+	directoryURL     string
+	assetCheckMu     sync.Mutex
+	verifiedAssets   map[string]assetFileStamp
 }
 
 func main() {
@@ -257,7 +258,7 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("world manifest: %w", err)
 	}
-	d := &daemon{ctx: ctx, host: p2pHost, dht: router, discovery: routing.NewRoutingDiscovery(router), manifest: manifest, world: world, key: key, assetsDir: filepath.Join(*dataDir, "assets"), webRoot: *webRoot, publicGateway: *publicGateway, directoryURL: *directoryURL, verifiedAssets: make(map[string]assetFileStamp)}
+	d := &daemon{ctx: ctx, host: p2pHost, dht: router, discovery: routing.NewRoutingDiscovery(router), manifest: manifest, world: world, key: key, assetsDir: filepath.Join(*dataDir, "assets"), webRoot: *webRoot, publicGateway: *publicGateway, directoryURL: *directoryURL, authorityChanged: make(chan struct{}, 1), verifiedAssets: make(map[string]assetFileStamp)}
 	if world.OwnerPeerID != localPeerID {
 		go d.maintainFailoverAuthority()
 	}
@@ -465,27 +466,28 @@ func newStarterManifest(title, owner string) worldManifest {
 }
 
 func (d *daemon) advertiseWorld() {
-	if !d.world.Discoverable || !d.canServeAssets(time.Now()) {
+	if !d.waitForWorldAnnouncement() {
 		return
 	}
 	for {
-		if d.ctx.Err() != nil || !d.canServeAssets(time.Now()) {
+		if d.ctx.Err() != nil || !d.canAnnounceWorld(time.Now()) {
 			return
 		}
-		if d.hasCompleteAssets() {
-			break
+		if d.canServeAssets(time.Now()) && !d.hasCompleteAssets() && d.currentAuthorityLease() == nil {
+			timer := time.NewTimer(5 * time.Second)
+			select {
+			case <-d.ctx.Done():
+				timer.Stop()
+				return
+			case <-timer.C:
+			}
+			continue
 		}
-		timer := time.NewTimer(5 * time.Second)
-		select {
-		case <-d.ctx.Done():
-			timer.Stop()
-			return
-		case <-timer.C:
-		}
+		break
 	}
 	namespace := "tidewater-world-v1:" + d.world.WorldID
 	for {
-		if !d.canServeAssets(time.Now()) || !d.hasCompleteAssets() {
+		if !d.canAnnounceWorld(time.Now()) || d.canServeAssets(time.Now()) && !d.hasCompleteAssets() && d.currentAuthorityLease() == nil {
 			return
 		}
 		ctx, cancel := context.WithTimeout(d.ctx, 75*time.Second)
@@ -534,15 +536,18 @@ func (d *daemon) handleHealth(w http.ResponseWriter, _ *http.Request) {
 func (d *daemon) maintainFailoverAuthority() {
 	for d.ctx.Err() == nil {
 		now := time.Now()
+		changed := false
 		d.authorityMu.Lock()
 		if d.authority != nil {
 			if _, err := validateAuthorityLease(*d.authority, d.world, now); err != nil {
 				d.authority = nil
+				changed = true
 			}
 		}
 		if d.authority == nil {
 			if lease, err := activateFailover(d.world, d.host.ID().String(), d.key, now); err == nil {
 				d.authority = &lease
+				changed = true
 				log.Printf("temporary failover authority active for %s at epoch %d", d.world.WorldID, d.world.AuthorityEpoch+1)
 			}
 		}
@@ -552,6 +557,12 @@ func (d *daemon) maintainFailoverAuthority() {
 			active = &lease
 		}
 		d.authorityMu.Unlock()
+		if changed {
+			select {
+			case d.authorityChanged <- struct{}{}:
+			default:
+			}
+		}
 
 		delay := failoverCheckDelay(d.world, d.host.ID().String(), active, now)
 		if delay <= 0 {
@@ -565,6 +576,32 @@ func (d *daemon) maintainFailoverAuthority() {
 		case <-timer.C:
 		}
 	}
+}
+
+func (d *daemon) waitForWorldAnnouncement() bool {
+	for d.ctx.Err() == nil {
+		now := time.Now()
+		if d.canAnnounceWorld(now) {
+			return true
+		}
+		delay := failoverCheckDelay(d.world, d.host.ID().String(), nil, now)
+		if delay <= 0 {
+			if !d.world.Discoverable || !d.canServeAssets(now) || d.hasCompleteAssets() {
+				return false
+			}
+			delay = 5 * time.Second
+		}
+		timer := time.NewTimer(delay)
+		select {
+		case <-d.ctx.Done():
+			timer.Stop()
+			return false
+		case <-d.authorityChanged:
+			timer.Stop()
+		case <-timer.C:
+		}
+	}
+	return false
 }
 
 func (d *daemon) currentAuthorityLease() *signedDocument {
@@ -597,13 +634,16 @@ func (d *daemon) publishDirectory() {
 		log.Printf("directory publishing skipped: world %s is not marked discoverable", d.world.WorldID)
 		return
 	}
+	if !d.waitForWorldAnnouncement() {
+		return
+	}
 	client := &http.Client{Timeout: 15 * time.Second}
 	for d.ctx.Err() == nil {
-		if !d.canServeAssets(time.Now()) {
-			log.Printf("directory publishing stopped: node is no longer authorized to serve %s", d.world.WorldID)
+		if !d.canAnnounceWorld(time.Now()) {
+			log.Printf("directory publishing stopped: node is no longer authorized to announce %s", d.world.WorldID)
 			return
 		}
-		if !d.hasCompleteAssets() {
+		if d.canServeAssets(time.Now()) && !d.hasCompleteAssets() && d.currentAuthorityLease() == nil {
 			timer := time.NewTimer(5 * time.Minute)
 			select {
 			case <-d.ctx.Done():
@@ -618,7 +658,7 @@ func (d *daemon) publishDirectory() {
 		nodeRecord := map[string]any{"protocol": "tidewater.node/1", "nodeId": d.host.ID().String(), "addresses": d.peerAddresses(), "worldIds": []string{d.world.WorldID}, "gateway": d.publicGateway, "issuedAt": now.Unix(), "expiresAt": now.Add(24 * time.Hour).Unix()}
 		nodeDocument, err := signDocument("tidewater.node/1", nodeRecord, d.key)
 		if err == nil {
-			body, marshalErr := json.Marshal(map[string]any{"node": nodeDocument, "manifest": d.manifest})
+			body, marshalErr := json.Marshal(map[string]any{"node": nodeDocument, "manifest": d.manifest, "authorityLease": d.currentAuthorityLease()})
 			if marshalErr == nil {
 				ctx, cancel := context.WithTimeout(d.ctx, 15*time.Second)
 				request, requestErr := http.NewRequestWithContext(ctx, http.MethodPost, strings.TrimRight(d.directoryURL, "/")+"/v1/announce", bytes.NewReader(body))
@@ -681,6 +721,10 @@ func (d *daemon) handleManifest(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
+	if !d.canServeWorldManifest(time.Now()) {
+		http.Error(w, "this node is not authorized to serve the world manifest", http.StatusForbidden)
+		return
+	}
 	w.Header().Set("Cache-Control", "public, max-age=30, must-revalidate")
 	writeJSON(w, http.StatusOK, map[string]any{"document": d.manifest, "authorityLease": d.currentAuthorityLease()})
 }
@@ -695,13 +739,13 @@ func (d *daemon) handleLookup(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid worldId", http.StatusBadRequest)
 		return
 	}
-	localCanServe := worldID == d.world.WorldID && d.canServeAssets(time.Now()) && d.hasCompleteAssets()
+	localCanServe := worldID == d.world.WorldID && d.canServeWorldDiscovery(time.Now())
 	ctx, cancel := context.WithTimeout(r.Context(), 8*time.Second)
 	defer cancel()
 	peers, err := d.discovery.FindPeers(ctx, "tidewater-world-v1:"+worldID)
 	if err != nil {
 		if localCanServe {
-			writeJSON(w, http.StatusOK, map[string]any{"worldId": worldID, "providers": []string{d.host.ID().String()}, "authority": d.world.OwnerPeerID})
+			writeJSON(w, http.StatusOK, map[string]any{"worldId": worldID, "providers": []string{d.host.ID().String()}, "authority": d.currentAuthorityIdentity()})
 			return
 		}
 		http.Error(w, "discovery unavailable", http.StatusServiceUnavailable)
@@ -722,7 +766,7 @@ func (d *daemon) handleLookup(w http.ResponseWriter, r *http.Request) {
 	}
 	result := map[string]any{"worldId": worldID, "providers": providers}
 	if worldID == d.world.WorldID {
-		result["authority"] = d.world.OwnerPeerID
+		result["authority"] = d.currentAuthorityIdentity()
 	}
 	writeJSON(w, http.StatusOK, result)
 }
@@ -949,6 +993,42 @@ func (d *daemon) hasCompleteAssets() bool {
 
 func (d *daemon) canServeAssets(now time.Time) bool {
 	return canServeWorldAssets(d.world, d.host.ID().String(), now)
+}
+
+func (d *daemon) canServeWorldManifest(now time.Time) bool {
+	return canServeWorldManifest(d.world, d.host.ID().String(), d.currentAuthorityLease(), now)
+}
+
+func canServeWorldManifest(manifest worldManifest, localID string, lease *signedDocument, now time.Time) bool {
+	if canServeWorldAssets(manifest, localID, now) {
+		return true
+	}
+	if lease == nil {
+		return false
+	}
+	_, err := validateAuthorityLease(*lease, manifest, now)
+	return err == nil && lease.Signer == localID
+}
+
+func (d *daemon) canAnnounceWorld(now time.Time) bool {
+	return d.world.Discoverable && d.canServeWorldDiscovery(now)
+}
+
+func (d *daemon) canServeWorldDiscovery(now time.Time) bool {
+	if d.canServeAssets(now) && d.hasCompleteAssets() {
+		return true
+	}
+	return d.currentAuthorityLease() != nil
+}
+
+func (d *daemon) currentAuthorityIdentity() string {
+	if lease := d.currentAuthorityLease(); lease != nil {
+		var payload authorityLease
+		if json.Unmarshal(lease.Payload, &payload) == nil {
+			return payload.AuthorityPeerID
+		}
+	}
+	return d.world.AuthorityPeerID
 }
 
 func canServeWorldAssets(manifest worldManifest, localID string, now time.Time) bool {

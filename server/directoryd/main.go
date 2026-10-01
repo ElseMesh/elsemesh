@@ -26,11 +26,12 @@ import (
 )
 
 const (
-	nodeProtocol     = "tidewater.node/1"
-	manifestProtocol = "tidewater.world/1"
-	maxRecordBytes   = 1 << 20
-	maxDirectorySize = 1024
-	maxRegistryBytes = 64 << 20
+	nodeProtocol      = "tidewater.node/1"
+	manifestProtocol  = "tidewater.world/1"
+	authorityProtocol = "tidewater.authority/2"
+	maxRecordBytes    = 1 << 20
+	maxDirectorySize  = 1024
+	maxRegistryBytes  = 64 << 20
 )
 
 var worldIDPattern = regexp.MustCompile(`^tw-world:[a-zA-Z0-9._-]{1,128}$`)
@@ -62,22 +63,36 @@ type nodePayload struct {
 }
 
 type hostGrant struct {
-	PeerID    string   `json:"peerId"`
-	Scopes    []string `json:"scopes"`
-	ExpiresAt int64    `json:"expiresAt"`
+	PeerID          string   `json:"peerId"`
+	Scopes          []string `json:"scopes"`
+	ExpiresAt       int64    `json:"expiresAt"`
+	Epoch           uint64   `json:"epoch"`
+	FailoverAfter   int64    `json:"failoverAfter,omitempty"`
+	FailoverSeconds int64    `json:"failoverSeconds,omitempty"`
 }
 
 type manifestPayload struct {
-	Protocol     string      `json:"protocol"`
-	WorldID      string      `json:"worldId"`
-	OwnerPeerID  string      `json:"ownerPeerId"`
-	Discoverable bool        `json:"discoverable"`
-	Hosts        []hostGrant `json:"hosts"`
+	Protocol       string      `json:"protocol"`
+	WorldID        string      `json:"worldId"`
+	OwnerPeerID    string      `json:"ownerPeerId"`
+	AuthorityEpoch uint64      `json:"authorityEpoch"`
+	Discoverable   bool        `json:"discoverable"`
+	Hosts          []hostGrant `json:"hosts"`
+}
+
+type authorityLeasePayload struct {
+	WorldID         string `json:"worldId"`
+	AuthorityPeerID string `json:"authorityPeerId"`
+	Epoch           uint64 `json:"epoch"`
+	GrantEpoch      uint64 `json:"grantEpoch"`
+	NotBefore       int64  `json:"notBefore"`
+	ExpiresAt       int64  `json:"expiresAt"`
 }
 
 type announcement struct {
-	Node     signedDocument `json:"node"`
-	Manifest signedDocument `json:"manifest"`
+	Node           signedDocument  `json:"node"`
+	Manifest       signedDocument  `json:"manifest"`
+	AuthorityLease *signedDocument `json:"authorityLease,omitempty"`
 }
 
 type provider struct {
@@ -227,7 +242,7 @@ func validateAnnouncement(record announcement, now time.Time) (provider, string,
 	if err := json.Unmarshal(record.Manifest.Payload, &manifest); err != nil {
 		return provider{}, "", err
 	}
-	if manifest.Protocol != manifestProtocol || !manifest.Discoverable || manifest.WorldID != worldID || manifest.OwnerPeerID != record.Manifest.Signer {
+	if manifest.Protocol != manifestProtocol || !manifest.Discoverable || manifest.WorldID != worldID || manifest.OwnerPeerID != record.Manifest.Signer || manifest.AuthorityEpoch == 0 || manifest.AuthorityEpoch > 9007199254740991 {
 		return provider{}, "", errors.New("manifest does not authorize a discoverable world record")
 	}
 	if _, err := peer.Decode(manifest.OwnerPeerID); err != nil {
@@ -247,10 +262,41 @@ func validateAnnouncement(record announcement, now time.Time) (provider, string,
 			}
 		}
 	}
+	if authorizedUntil <= now.Unix() && record.AuthorityLease != nil {
+		lease, err := validateDirectoryAuthorityLease(*record.AuthorityLease, node.NodeID, worldID, manifest, now)
+		if err != nil {
+			return provider{}, "", err
+		}
+		authorizedUntil = lease.ExpiresAt
+	}
 	if authorizedUntil <= now.Unix() {
-		return provider{}, "", errors.New("node has no active content-serving authorization")
+		return provider{}, "", errors.New("node has no active content-serving or failover-authority authorization")
 	}
 	return provider{Node: record.Node, Manifest: record.Manifest, WorldID: worldID, ExpiresAt: min(node.ExpiresAt, authorizedUntil)}, node.NodeID, nil
+}
+
+func validateDirectoryAuthorityLease(document signedDocument, nodeID, worldID string, manifest manifestPayload, now time.Time) (authorityLeasePayload, error) {
+	var lease authorityLeasePayload
+	if err := verifyDocument(document, authorityProtocol); err != nil {
+		return lease, fmt.Errorf("authority lease: %w", err)
+	}
+	if err := json.Unmarshal(document.Payload, &lease); err != nil {
+		return lease, err
+	}
+	if lease.WorldID != worldID || lease.AuthorityPeerID != nodeID || lease.AuthorityPeerID != document.Signer || lease.Epoch != manifest.AuthorityEpoch+1 || lease.Epoch > 9007199254740991 || lease.GrantEpoch == 0 || lease.GrantEpoch > 9007199254740991 || lease.NotBefore <= 0 || lease.ExpiresAt <= lease.NotBefore || now.Unix() < lease.NotBefore || now.Unix() >= lease.ExpiresAt {
+		return lease, errors.New("authority lease is not active for the announced world")
+	}
+	for _, grant := range manifest.Hosts {
+		if grant.PeerID != nodeID || grant.Epoch != lease.GrantEpoch || grant.FailoverAfter != lease.NotBefore || grant.FailoverAfter > 9007199254740991 || grant.ExpiresAt < lease.ExpiresAt || grant.FailoverSeconds < 1 || grant.FailoverSeconds > 3600 || grant.FailoverAfter > grant.ExpiresAt-grant.FailoverSeconds || lease.ExpiresAt > grant.FailoverAfter+grant.FailoverSeconds {
+			continue
+		}
+		for _, scope := range grant.Scopes {
+			if scope == "failover-authority" {
+				return lease, nil
+			}
+		}
+	}
+	return lease, errors.New("authority lease has no matching owner grant")
 }
 
 func (d *directory) handleHealth(w http.ResponseWriter, r *http.Request) {

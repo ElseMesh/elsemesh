@@ -77,6 +77,7 @@ const validAuthorityLease = authorityLease;
 const oldFetch = globalThis.fetch;
 const OldWebSocket = globalThis.WebSocket;
 let staleSecondAssets = new Set();
+let failoverProviderReachable = false;
 globalThis.fetch = async () => ( { ok: true, json: async () => ( { worldId: 'tw-world:directory-test', providers } ) } );
 globalThis.WebSocket = class extends EventTarget {
 	static OPEN = 1;
@@ -89,7 +90,7 @@ globalThis.WebSocket = class extends EventTarget {
 		this.targetPeerId = '';
 		this.readyState = WebSocket.CONNECTING;
 		queueMicrotask( () => {
-			if ( this.url.includes( 'offline.example' ) ) emit( this, 'error' );
+			if ( this.url.includes( 'offline.example' ) && ! failoverProviderReachable ) emit( this, 'error' );
 			else { this.readyState = WebSocket.OPEN; emit( this, 'open' ); }
 		} );
 	}
@@ -97,10 +98,11 @@ globalThis.WebSocket = class extends EventTarget {
 		const request = JSON.parse( value );
 		if ( request.type === 'connect' ) {
 			this.targetPeerId = request.targetPeerId;
-			if ( this.url.includes( 'offline.example' ) || request.targetPeerId === first.peerId ) emit( this, 'message', JSON.stringify( { type: 'error', error: 'world_unreachable' } ) );
+			if ( this.url.includes( 'offline.example' ) && ! failoverProviderReachable || request.targetPeerId === first.peerId && ! failoverProviderReachable ) emit( this, 'message', JSON.stringify( { type: 'error', error: 'world_unreachable' } ) );
 			else emit( this, 'message', JSON.stringify( { type: 'connected', worldId: request.worldId } ) );
 		}
 		else if ( request.type === 'manifest.get' ) emit( this, 'message', JSON.stringify( { type: 'manifest', worldId: request.worldId, requestId: request.requestId, document: manifest, authorityLease } ) );
+		else if ( request.type === 'asset.get' && this.targetPeerId === first.peerId ) emit( this, 'message', JSON.stringify( { type: 'error', requestId: request.requestId, code: 'asset_not_found', error: 'failover delegate has no content-cache grant' } ) );
 		else if ( request.type === 'asset.get' && this.targetPeerId === second.peerId && staleSecondAssets.has( request.assetId ) ) {
 			staleSecondAssets.delete( request.assetId );
 			emit( this, 'message', JSON.stringify( { type: 'error', requestId: request.requestId, code: 'asset_not_found', error: 'cached asset is stale' } ) );
@@ -122,6 +124,15 @@ try {
 	assert.equal( connector.gateway, 'https://online.example' );
 	assert.equal( connector.authorityLease.grantEpoch, grantEpoch, 'signed temporary authority lease binds to its owner grant revision' );
 	connector.close();
+	failoverProviderReachable = true;
+	const failoverConnector = new WorldConnector( { worldId: 'tw-world:directory-test', nodeId: first.peerId, gateway: 'https://offline.example', directory: 'https://thruhold.org' } );
+	await failoverConnector.getManifest();
+	assert.equal( failoverConnector.nodeId, first.peerId, 'an active failover-only delegate may serve the signed world manifest' );
+	assert.equal( failoverConnector.authorityLease.authorityPeerId, first.peerId, 'the browser records the delegate as current authority' );
+	assert.deepEqual( await failoverConnector.getAsset( assetIDs.get( 'mesh' ) ), assetBytes.get( 'mesh' ), 'a failover-only gateway falls back to a separate authorized asset provider' );
+	assert.equal( failoverConnector.nodeId, second.peerId, 'asset fallback selects the owner after the failover node denies content access' );
+	failoverConnector.close();
+	failoverProviderReachable = false;
 	authorityLease = await signedDocument( 'tidewater.authority/2', {
 		worldId: 'tw-world:directory-test', authorityPeerId: first.peerId, epoch: 2, grantEpoch: grantEpoch - 1,
 		notBefore: failoverAfter, expiresAt: Math.min( expiresAt, failoverAfter + failoverSeconds ),

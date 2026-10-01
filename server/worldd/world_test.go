@@ -1,12 +1,14 @@
 package main
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/json"
 	"strings"
 	"testing"
 	"time"
 
+	libp2p "github.com/libp2p/go-libp2p"
 	crypto "github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/peer"
 )
@@ -428,7 +430,7 @@ func TestTemporaryFailoverAuthorityRequiresOwnerWindow(t *testing.T) {
 	start := time.Now().Add(time.Minute).Unix()
 	manifest := newStarterManifest("Island", ownerID.String())
 	manifest.WorldID = "tw-world:failover"
-	manifest.Hosts = []hostingGrant{{PeerID: delegateID.String(), Scopes: []string{"content-cache", "failover-authority"}, Epoch: 4, FailoverAfter: start, FailoverSeconds: 120, ExpiresAt: start + 300}}
+	manifest.Hosts = []hostingGrant{{PeerID: delegateID.String(), Scopes: []string{"failover-authority"}, Epoch: 4, FailoverAfter: start, FailoverSeconds: 120, ExpiresAt: start + 300}}
 	if _, err := activateFailover(manifest, delegateID.String(), delegate, time.Unix(start-1, 0)); err == nil {
 		t.Fatal("failover started before owner-granted window")
 	}
@@ -442,6 +444,15 @@ func TestTemporaryFailoverAuthorityRequiresOwnerWindow(t *testing.T) {
 	}
 	if lease.AuthorityPeerID != delegateID.String() || lease.Epoch != manifest.AuthorityEpoch+1 || lease.GrantEpoch != manifest.Hosts[0].Epoch || lease.ExpiresAt != start+120 {
 		t.Fatalf("unexpected bounded authority lease: %+v", lease)
+	}
+	if canServeWorldAssets(manifest, delegateID.String(), time.Unix(start+1, 0)) {
+		t.Fatal("failover authority implicitly granted content-cache rights")
+	}
+	if !canServeWorldManifest(manifest, delegateID.String(), &document, time.Unix(start+1, 0)) {
+		t.Fatal("active failover authority should permit serving the signed world manifest")
+	}
+	if canServeWorldManifest(manifest, delegateID.String(), nil, time.Unix(start+1, 0)) {
+		t.Fatal("failover-only delegate served a world manifest without an active lease")
 	}
 	manifest.Hosts[0].Epoch++
 	if _, err := validateAuthorityLease(document, manifest, time.Unix(start+1, 0)); err == nil {
@@ -463,6 +474,49 @@ func TestTemporaryFailoverAuthorityRequiresOwnerWindow(t *testing.T) {
 	}
 	if _, err := validateAuthorityLease(document, manifest, time.Unix(start+1, 0)); err == nil {
 		t.Fatal("authority lease accepted a manifest epoch that cannot be safely advanced")
+	}
+}
+
+func TestFailoverProviderWaitsForOwnerWindowBeforeDiscovery(t *testing.T) {
+	owner, _, err := crypto.GenerateEd25519Key(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ownerID, _ := peer.IDFromPublicKey(owner.GetPublic())
+	delegate, _, err := crypto.GenerateEd25519Key(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	h, err := libp2p.New(libp2p.Identity(delegate), libp2p.NoListenAddrs)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer h.Close()
+	now := time.Now()
+	start := now.Add(2 * time.Second).Unix()
+	manifest := newStarterManifest("Failover discovery", ownerID.String())
+	manifest.WorldID = "tw-world:failover-discovery"
+	manifest.Discoverable = true
+	manifest.Hosts = []hostingGrant{{PeerID: h.ID().String(), Scopes: []string{"failover-authority"}, Epoch: 2, FailoverAfter: start, FailoverSeconds: 60, ExpiresAt: start + 120}}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	daemon := &daemon{ctx: ctx, host: h, world: manifest, key: delegate, authorityChanged: make(chan struct{}, 1)}
+	maintained := make(chan struct{})
+	go func() { daemon.maintainFailoverAuthority(); close(maintained) }()
+	if daemon.canAnnounceWorld(now) {
+		t.Fatal("failover provider advertised before its owner-authorized window")
+	}
+	if !daemon.waitForWorldAnnouncement() {
+		t.Fatal("failover provider did not become discoverable when its owner-authorized window opened")
+	}
+	if daemon.currentAuthorityLease() == nil {
+		t.Fatal("failover provider became discoverable without an active lease")
+	}
+	cancel()
+	select {
+	case <-maintained:
+	case <-time.After(time.Second):
+		t.Fatal("failover authority maintainer did not stop after cancellation")
 	}
 }
 
