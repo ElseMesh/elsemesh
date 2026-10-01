@@ -11,6 +11,7 @@ import { Texture, generateMipmaps } from '../engine/webgpu.js';
 import { Color } from '../engine/math/Color.js';
 import { SRGBColorSpace } from '../engine/constants.js';
 import { standard } from '../materials/Materials.js';
+import { Vector3 } from '../engine/math/Vector3.js';
 
 const COMPONENTS = Object.freeze( {
 	POSITION: [ 'position', 3 ],
@@ -25,7 +26,7 @@ export async function loadWorldPackage( connector, { signal, assets: preloadedAs
 	const assets = preloadedAssets || await connector.preload();
 	const root = new Group();
 	root.name = `world:${connector.worldId}`;
-	root.userData.worldPackage = { parsed: new Map(), loadedObjects: new Set() };
+	root.userData.worldPackage = { parsed: new Map(), loadedObjects: new Set(), connector };
 	await appendWorldPackageAssets( connector, root, assets, { signal } );
 	return root;
 
@@ -73,6 +74,39 @@ export function cloneWorldPackageAssets( root, connector, assetIDs ) {
 		if ( assetIDs.has( objectAssets.get( objectId ) ) ) preview.add( child.clone( true ) );
 	}
 	return preview;
+}
+
+export function registerWorldPackageCollisions( root, colliders ) {
+	if ( ! colliders ) return;
+	const state = root.userData.worldPackage;
+	if ( ! state ) return;
+	state.activeColliders ||= new Map();
+	for ( const object of state.connector?.manifest?.objects || [] ) {
+		const collision = object.collision;
+		if ( ! state.loadedObjects.has( object.id ) || ! collision?.enabled || state.activeColliders.has( object.id ) ) continue;
+		if ( collision.shape !== 'box' || ! Array.isArray( collision.center ) || collision.center.length !== 3 || ! collision.center.every( Number.isFinite ) || ! Array.isArray( collision.halfExtents ) || collision.halfExtents.length !== 3 || ! collision.halfExtents.every( ( value ) => Number.isFinite( value ) && value > 0 ) ) throw new Error( `World object ${object.id} has invalid collision bounds` );
+		const instance = root.children.find( ( child ) => child.userData.worldObjectId === object.id );
+		if ( ! instance ) continue;
+		const scale = object.scale || [ 1, 1, 1 ];
+		const yaw = object.transform?.yaw || 0;
+		const cos = Math.cos( yaw ), sin = Math.sin( yaw );
+		const localX = collision.center[ 0 ] * scale[ 0 ], localY = collision.center[ 1 ] * scale[ 1 ], localZ = collision.center[ 2 ] * scale[ 2 ];
+		const center = new Vector3(
+			object.transform.position[ 0 ] + localX * cos + localZ * sin,
+			object.transform.position[ 1 ] + localY,
+			object.transform.position[ 2 ] - localX * sin + localZ * cos,
+		);
+		const half = new Vector3( collision.halfExtents[ 0 ] * scale[ 0 ], collision.halfExtents[ 1 ] * scale[ 1 ], collision.halfExtents[ 2 ] * scale[ 2 ] );
+		const box = colliders.addBox( center, half, yaw, { walkable: collision.walkable, solid: collision.solid, tag: `world:${object.id}` } );
+		state.activeColliders.set( object.id, box );
+	}
+}
+
+export function unregisterWorldPackageCollisions( root, colliders ) {
+	const active = root?.userData?.worldPackage?.activeColliders;
+	if ( ! active || ! colliders ) return;
+	for ( const box of active.values() ) colliders.removeBox( box );
+	active.clear();
 }
 
 async function buildGLTF( gltf ) {

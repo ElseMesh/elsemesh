@@ -97,6 +97,38 @@ func TestWorldManifestValidatesRequiredFeatureIdentifiers(t *testing.T) {
 	}
 }
 
+func TestWorldManifestValidatesEnabledObjectCollisionBounds(t *testing.T) {
+	key, _, err := crypto.GenerateEd25519Key(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ownerID, err := peer.IDFromPublicKey(key.GetPublic())
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifest := newStarterManifest("Collision", ownerID.String())
+	manifest.WorldID = "tw-world:collision"
+	assetID := "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+	manifest.Assets = []assetRef{{ID: assetID, Bytes: 1, Kind: "glb", Priority: "visible"}}
+	object := worldObject{ID: "tw-object:platform", Kind: "asset-instance", Label: "Platform", AssetID: assetID, Transform: transform{Position: vector3{0, 0, 0}}, Scale: vector3{1, 1, 1}}
+	object.Collision.Shape = "box"
+	object.Collision.Enabled = true
+	object.Collision.HalfExtents = vector3{1, 2, 3}
+	manifest.Objects = []worldObject{object}
+	if err := validateManifest(manifest, ownerID.String(), time.Now()); err != nil {
+		t.Fatalf("valid collision bounds rejected: %v", err)
+	}
+	manifest.Objects[0].Collision.HalfExtents[1] = 0
+	if err := validateManifest(manifest, ownerID.String(), time.Now()); err == nil {
+		t.Fatal("zero collision extent accepted")
+	}
+	manifest.Objects[0].Collision.HalfExtents = vector3{1, 2, 3}
+	manifest.Objects[0].Collision.Shape = "none"
+	if err := validateManifest(manifest, ownerID.String(), time.Now()); err == nil {
+		t.Fatal("enabled collision with no shape accepted")
+	}
+}
+
 func TestTemporaryFailoverAuthorityRequiresOwnerWindow(t *testing.T) {
 	owner, _, err := crypto.GenerateEd25519Key(rand.Reader)
 	if err != nil {

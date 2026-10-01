@@ -67,7 +67,7 @@ import { SoundScape } from './audio/SoundScape.js';
 import { updateCameraVelocity, useStaticVelocity } from './post/CameraVelocity.js';
 import { Group } from './engine/scene/Group.js';
 import { WorldConnector, worldLinkFromLocation } from './network/WorldConnector.js';
-import { appendWorldPackageAssets, cloneWorldPackageAssets, loadWorldPackage } from './network/WorldPackage.js';
+import { appendWorldPackageAssets, cloneWorldPackageAssets, loadWorldPackage, registerWorldPackageCollisions, unregisterWorldPackageCollisions } from './network/WorldPackage.js';
 import { alignPortalPreview, crossedPortalPlane, rotatePortalVelocity } from './network/PortalHandoff.js';
 
 const _up = new Vector3( 0, 1, 0 );
@@ -407,6 +407,7 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 			await connector.getManifest();
 			const visibleAssets = await connector.preload( { through: 'visible' } );
 			this.linkedWorldRoot = await loadWorldPackage( connector, { assets: visibleAssets } );
+			registerWorldPackageCollisions( this.linkedWorldRoot, this.colliders );
 			this.linkedWorldRoot.name = `hosted-world:${worldLink.worldId}`;
 			scene.add( this.linkedWorldRoot );
 			this.remoteWorlds.set( worldLink.worldId, { connector, root: this.linkedWorldRoot } );
@@ -689,7 +690,7 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 		this.worldBackgroundLoads.set( connector.worldId, controller );
 		connector.preload( { after: 'visible', signal: controller.signal } ).then( ( assets ) => {
 			if ( controller.signal.aborted || this.linkedWorldRoot !== root ) return;
-			return appendWorldPackageAssets( connector, root, assets, { signal: controller.signal } );
+			return appendWorldPackageAssets( connector, root, assets, { signal: controller.signal } ).then( () => registerWorldPackageCollisions( root, this.colliders ) );
 		} ).catch( ( error ) => {
 			if ( ! controller.signal.aborted ) console.warn( `Background world asset load failed for ${connector.worldId}`, error );
 		} );
@@ -803,7 +804,9 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 		this.worldBackgroundLoads.get( sourceConnector.worldId )?.abort();
 		this.worldBackgroundLoads.delete( sourceConnector.worldId );
 		this.scene.remove( this.linkedWorldRoot );
+		unregisterWorldPackageCollisions( this.linkedWorldRoot, this.colliders );
 		this.linkedWorldRoot = destinationRoot;
+		registerWorldPackageCollisions( destinationRoot, this.colliders );
 		this.scene.add( destinationRoot );
 		this.worldConnector = destinationConnector;
 		this.remoteWorlds.set( destinationConnector.worldId, { connector: destinationConnector, root: destinationRoot } );

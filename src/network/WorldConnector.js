@@ -78,6 +78,7 @@ export class WorldConnector {
 		await verifySignedDocument( reply.document, 'tidewater.world/1' );
 		invariant( reply.document.payload.protocol === 'tidewater.world/1' && reply.document.payload.worldId === this.worldId, 'Manifest belongs to another world or protocol' );
 		validateWorldRequirements( reply.document.payload );
+		validateWorldObjects( reply.document.payload.objects );
 		this.manifest = reply.document.payload;
 		const hostGrant = this.manifest.hosts?.find( ( entry ) => entry.peerId === this.nodeId && entry.scopes?.includes( 'content-cache' ) && entry.expiresAt > Date.now() / 1000 );
 		invariant( this.manifest.ownerPeerId === this.nodeId || hostGrant, 'Selected node is not authorized by the world owner to serve content' );
@@ -301,6 +302,19 @@ export class WorldConnector {
 		this.socket = null;
 		this.webTransport = null;
 	}
+}
+
+function validateWorldObjects( objects ) {
+	invariant( Array.isArray( objects ) && objects.length <= 10000, 'World manifest has an invalid object list' );
+	for ( const object of objects ) {
+		const collision = object?.collision;
+		if ( collision?.enabled !== true ) continue;
+		invariant( collision.shape === 'box' && validVector( collision.center ) && validVector( collision.halfExtents ) && collision.halfExtents.every( ( value ) => value > 0 && value <= 1000 ) && typeof collision.walkable === 'boolean' && typeof collision.solid === 'boolean', `World object ${object.id || '(unknown)'} has invalid collision bounds` );
+	}
+}
+
+function validVector( value ) {
+	return Array.isArray( value ) && value.length === 3 && value.every( ( item ) => Number.isFinite( item ) && Math.abs( item ) <= 1e6 );
 }
 
 function validSecureOrigin( value ) {

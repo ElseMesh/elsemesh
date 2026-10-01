@@ -158,15 +158,24 @@
         "scale": {
           "$ref": "#/$defs/vector3"
         },
-      "collision": {
-        "type": "object",
-        "required": ["shape", "enabled"],
-        "properties": {
-          "shape": { "enum": ["box", "none"] },
-          "enabled": { "type": "boolean" }
+        "collision": {
+          "type": "object",
+          "required": ["shape", "enabled"],
+          "properties": {
+            "shape": { "enum": ["box", "none"] },
+            "enabled": { "type": "boolean" },
+            "center": { "$ref": "#/$defs/vector3" },
+            "halfExtents": {
+              "type": "array",
+              "minItems": 3,
+              "maxItems": 3,
+              "items": { "type": "number", "exclusiveMinimum": 0, "maximum": 1000 }
+            },
+            "walkable": { "type": "boolean" },
+            "solid": { "type": "boolean" }
+          },
+          "additionalProperties": true
         },
-        "additionalProperties": true
-      },
         "priority": {
           "type": "string",
           "enum": [
@@ -177,7 +186,22 @@
           ]
         }
       },
-      "additionalProperties": true
+      "additionalProperties": true,
+      "allOf": [
+        {
+          "if": {
+            "properties": { "collision": { "properties": { "enabled": { "const": true } } } }
+          },
+          "then": {
+            "properties": {
+              "collision": {
+                "required": ["shape", "enabled", "center", "halfExtents", "walkable", "solid"],
+                "properties": { "shape": { "const": "box" } }
+              }
+            }
+          }
+        }
+      ]
     },
     "portal": {
       "type": "object",

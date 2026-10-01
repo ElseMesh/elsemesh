@@ -49,8 +49,12 @@ type worldObject struct {
 	Transform transform `json:"transform"`
 	Scale     vector3   `json:"scale"`
 	Collision struct {
-		Shape   string `json:"shape"`
-		Enabled bool   `json:"enabled"`
+		Shape       string  `json:"shape"`
+		Enabled     bool    `json:"enabled"`
+		Center      vector3 `json:"center"`
+		HalfExtents vector3 `json:"halfExtents"`
+		Walkable    bool    `json:"walkable"`
+		Solid       bool    `json:"solid"`
 	} `json:"collision"`
 }
 
@@ -195,6 +199,21 @@ func validateManifest(manifest worldManifest, localPeerID string, now time.Time)
 		}
 		if object.Collision.Shape != "box" && object.Collision.Shape != "none" {
 			return errors.New("unsupported object collision shape")
+		}
+		if object.Collision.Enabled {
+			if object.Collision.Shape != "box" {
+				return errors.New("enabled object collision must use box shape")
+			}
+			for _, extent := range object.Collision.HalfExtents {
+				if math.IsNaN(extent) || math.IsInf(extent, 0) || extent <= 0 || extent > 1000 {
+					return errors.New("object collision half extents out of bounds")
+				}
+			}
+			for _, coordinate := range object.Collision.Center {
+				if math.IsNaN(coordinate) || math.IsInf(coordinate, 0) || math.Abs(coordinate) > 1e6 {
+					return errors.New("object collision center out of bounds")
+				}
+			}
 		}
 		seenObjects[object.ID] = true
 	}

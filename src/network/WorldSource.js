@@ -25,6 +25,7 @@ export function validateWorldSource( source ) {
 	const ids = new Set();
 	for ( const object of source.objects ) {
 		if ( typeof object.id !== 'string' || ! /^tw-object:[\w.-]{1,128}$/.test( object.id ) || ids.has( object.id ) || object.kind !== 'asset-instance' || typeof object.label !== 'string' || object.label.length > 160 || ! object.transform || ! validVector( object.transform.position ) || ! Number.isFinite( object.transform.yaw ) || ! validVector( object.scale ) || object.scale.some( ( n ) => n <= 0 || n > 1000 ) || ! object.collision || ! [ 'box', 'none' ].includes( object.collision.shape ) || typeof object.collision.enabled !== 'boolean' ) throw new Error( 'Invalid or duplicate object record' );
+		if ( object.collision.enabled && ( object.collision.shape !== 'box' || ! validVector( object.collision.center ) || ! validVector( object.collision.halfExtents ) || object.collision.halfExtents.some( ( n ) => n <= 0 || n > 1000 ) || typeof object.collision.walkable !== 'boolean' || typeof object.collision.solid !== 'boolean' ) ) throw new Error( 'Enabled object collision requires bounded box data' );
 		if ( object.assetId !== null && object.assetId !== undefined && ! /^sha256:[0-9a-f]{64}$/.test( object.assetId ) ) throw new Error( 'Invalid object assetId' );
 		if ( object.priority !== undefined && ! [ 'portal-preview', 'visible', 'nearby', 'background' ].includes( object.priority ) ) throw new Error( 'Invalid object streaming priority' );
 		ids.add( object.id );

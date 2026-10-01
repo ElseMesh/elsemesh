@@ -27,6 +27,13 @@ export class Colliders {
 
 	}
 
+	removeBox( box ) {
+		const index = this.boxes.indexOf( box );
+		if ( index === - 1 ) return false;
+		this.boxes.splice( index, 1 );
+		return true;
+	}
+
 	addCylinder( x, z, radius, yMin, yMax, { tag = '' } = {} ) {
 
 		const c = { x, z, radius, yMin, yMax, tag };
