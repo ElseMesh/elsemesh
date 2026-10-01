@@ -8,6 +8,36 @@ The daemon is a transport and content service. The world owner controls the mani
 
 Run `npm run test:world-gateway` for a local owner/cache integration check. It builds temporary `worldd` nodes, signs a world manifest, syncs an owner-authorized cache over libp2p, connects the production `WorldConnector` through a trusted temporary HTTPS/WSS proxy, and verifies content-hash recovery after the owner is stopped. The test exercises Node's native WebSocket implementation with a test-scoped trusted certificate; it does not replace browser-engine or WebTransport testing.
 
+## Hosting a checked-in world profile
+
+`tools/serve-world-profile.mjs` provisions an immutable world package into one named owner profile, signs its runtime manifest with that profile's persistent node key, verifies and installs all package assets, then starts `worldd`. Give every simultaneously running profile its own P2P and HTTP ports. The helper refuses to overwrite an existing profile manifest; once provisioned, the same command can restart it without `--source` or `--assets`.
+
+Build `worldd` for the host first, then run (from the repository root):
+
+```sh
+node tools/serve-world-profile.mjs \
+  --worldd /path/to/worldd \
+  --worlds-dir "$HOME/.config/elsemesh/worlds" \
+  --profile island-example \
+  --source worlds/island/world-source.json \
+  --assets worlds/island/assets \
+  --http 127.0.0.1:5200 --p2p-port 42901
+```
+
+To run another world at the same time, use a second profile and distinct ports:
+
+```sh
+node tools/serve-world-profile.mjs \
+  --worldd /path/to/worldd \
+  --worlds-dir "$HOME/.config/elsemesh/worlds" \
+  --profile second-world \
+  --source worlds/second/world-source.json \
+  --assets worlds/second/assets \
+  --http 127.0.0.1:5202 --p2p-port 42903
+```
+
+On Android/Termux, the helper places temporary manifest files under `$PREFIX/tmp`; on Linux it uses `/var/tmp`. The persistent identity, signed `world.json`, and installed content-addressed assets stay under `<worlds-dir>/<profile>`. For public browser invites, configure a reachable HTTPS/WSS gateway with `--public-gateway`; add `--directory-url` to publish a discoverable world. A directory URL requires a public gateway. Android hosting may need explicit reachable addresses; pass each as `--announce-address /ip4/.../tcp/...` (or the documented QUIC form). Repeat `--bootstrap`, `--relay`, and `--announce-address` for additional values.
+
 ## Connectivity and links
 
 Node-to-node connections use libp2p TCP/QUIC, DHT discovery on the existing Tidewater-prefixed protocol namespace, optional static bootstrap peers, NAT traversal, and opt-in circuit relays. Browser clients cannot use native TCP/QUIC directly, so the node exposes a WebSocket gateway intended to sit behind HTTPS. An optional WebTransport HTTP/3 gateway can be enabled for browsers that support the pinned draft; clients prefer it on HTTPS and fall back to WSS if connection setup fails. Keep WSS available because WebTransport draft support varies by browser and deployment. Public deployment must configure TLS, reachable UDP for HTTP/3, request limits, rate limits, and a trusted bootstrap/DHT mesh.
