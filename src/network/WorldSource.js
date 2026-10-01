@@ -10,6 +10,7 @@ export function createWorldSource( { worldId = `tw-world:local-${ crypto.randomU
 		coordinateSystem: 'right-handed-y-up-meters',
 		styleGuide: '',
 		rules: { gravity: 1, avatarComplexity: 20000, physicsProfile: 'tidewater-default' },
+		hosts: [],
 		objects: [],
 		portals: [],
 		updatedAt: new Date().toISOString(),
@@ -23,7 +24,14 @@ export function validateWorldSource( source ) {
 	if ( source.coordinateSystem !== 'right-handed-y-up-meters' ) throw new Error( 'Unsupported world coordinate system' );
 	if ( typeof source.styleGuide !== 'string' || source.styleGuide.length > 10000 || ! source.rules || ! Number.isFinite( source.rules.gravity ) || source.rules.gravity < 0.2 || source.rules.gravity > 2 || ! Number.isInteger( source.rules.avatarComplexity ) || source.rules.avatarComplexity < 1 || source.rules.avatarComplexity > 100000 || ! SUPPORTED_PHYSICS_PROFILES.has( source.rules.physicsProfile ) ) throw new Error( 'Invalid or unsupported world rules or style guide' );
 	if ( source.rules.requiredFeatures !== undefined && ( ! Array.isArray( source.rules.requiredFeatures ) || source.rules.requiredFeatures.length > 64 || new Set( source.rules.requiredFeatures ).size !== source.rules.requiredFeatures.length || source.rules.requiredFeatures.some( ( feature ) => typeof feature !== 'string' || feature.length > 96 || ! /^tidewater\.[a-z0-9.-]+\/\d+$/.test( feature ) ) ) ) throw new Error( 'Invalid required world features' );
-	if ( ! Array.isArray( source.objects ) || ! Array.isArray( source.portals ) || source.objects.length > 10000 || source.portals.length > 1024 ) throw new Error( 'Invalid world object or portal list' );
+	if ( ! Array.isArray( source.objects ) || ! Array.isArray( source.portals ) || source.objects.length > 10000 || source.portals.length > 1024 || source.hosts !== undefined && ( ! Array.isArray( source.hosts ) || source.hosts.length > 256 ) ) throw new Error( 'Invalid world object, portal, or host grant list' );
+	const hosts = new Set();
+	for ( const grant of source.hosts || [] ) {
+		if ( ! grant || typeof grant !== 'object' || Array.isArray( grant ) || typeof grant.peerId !== 'string' || grant.peerId.length < 20 || grant.peerId.length > 256 || ! /^[A-Za-z0-9]+$/.test( grant.peerId ) || hosts.has( grant.peerId ) || ! Number.isSafeInteger( grant.epoch ) || grant.epoch < 1 || ! Number.isSafeInteger( grant.expiresAt ) || grant.expiresAt < 1 || ! Array.isArray( grant.scopes ) || grant.scopes.length < 1 || grant.scopes.length > 2 || new Set( grant.scopes ).size !== grant.scopes.length || grant.scopes.some( ( scope ) => ! [ 'content-cache', 'failover-authority' ].includes( scope ) ) ) throw new Error( 'Invalid or duplicate owner host grant' );
+		const failover = grant.scopes.includes( 'failover-authority' );
+		if ( failover && ( ! Number.isSafeInteger( grant.failoverAfter ) || grant.failoverAfter < 1 || ! Number.isSafeInteger( grant.failoverSeconds ) || grant.failoverSeconds < 1 || grant.failoverSeconds > 3600 || grant.failoverAfter > grant.expiresAt - grant.failoverSeconds ) || ! failover && ( grant.failoverAfter !== undefined || grant.failoverSeconds !== undefined ) ) throw new Error( 'Invalid host grant failover window' );
+		hosts.add( grant.peerId );
+	}
 	const ids = new Set();
 	for ( const object of source.objects ) {
 		if ( typeof object.id !== 'string' || ! /^tw-object:[\w.-]{1,128}$/.test( object.id ) || ids.has( object.id ) || object.kind !== 'asset-instance' || typeof object.label !== 'string' || object.label.length > 160 || ! object.transform || ! validVector( object.transform.position ) || ! Number.isFinite( object.transform.yaw ) || ! validVector( object.scale ) || object.scale.some( ( n ) => n <= 0 || n > 1000 ) || ! object.collision || ! [ 'box', 'heightfield', 'none' ].includes( object.collision.shape ) || typeof object.collision.enabled !== 'boolean' ) throw new Error( 'Invalid or duplicate object record' );

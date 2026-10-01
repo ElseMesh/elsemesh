@@ -49,6 +49,7 @@ const source = {
 		physicsProfile: 'tidewater-default',
 		requiredFeatures: [ 'tidewater.static-glb/1' ],
 	},
+	hosts: [],
 	objects: [ {
 		id: 'tw-object:island-terrain',
 		kind: 'asset-instance',

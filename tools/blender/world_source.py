@@ -31,7 +31,33 @@ def validate(source):
         raise ValueError("missing worldId")
     if not isinstance(source.get("objects"), list) or not isinstance(source.get("portals"), list):
         raise ValueError("objects and portals must be arrays")
+    hosts = source.get("hosts", [])
+    if not isinstance(hosts, list) or len(hosts) > 256:
+        raise ValueError("hosts must be an array of at most 256 grants")
+    seen_hosts = set()
+    for grant in hosts:
+        if not isinstance(grant, dict):
+            raise ValueError("host grant must be an object")
+        peer_id = grant.get("peerId")
+        scopes = grant.get("scopes")
+        if (not isinstance(peer_id, str) or not 20 <= len(peer_id) <= 256 or not peer_id.isascii() or not peer_id.isalnum()
+                or peer_id in seen_hosts or not isinstance(scopes, list) or not 1 <= len(scopes) <= 2
+                or any(not isinstance(scope, str) or scope not in {"content-cache", "failover-authority"} for scope in scopes)
+                or len(set(scopes)) != len(scopes)
+                or not _positive_int(grant.get("epoch")) or not _positive_int(grant.get("expiresAt"))):
+            raise ValueError("invalid or duplicate owner host grant")
+        failover = "failover-authority" in scopes
+        after, duration = grant.get("failoverAfter"), grant.get("failoverSeconds")
+        if failover and (not _positive_int(after) or not _positive_int(duration) or duration > 3600 or after > grant["expiresAt"] - duration):
+            raise ValueError("invalid host grant failover window")
+        if not failover and (after is not None or duration is not None):
+            raise ValueError("failover window without failover permission")
+        seen_hosts.add(peer_id)
     return source
+
+
+def _positive_int(value):
+    return isinstance(value, int) and not isinstance(value, bool) and 0 < value <= 9007199254740991
 
 
 def to_blender(p):

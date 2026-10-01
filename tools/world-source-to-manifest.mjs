@@ -60,7 +60,7 @@ async function main() {
 		assets: [ ...assets.values() ],
 		objects: source.objects.map( ( { id, kind, label, assetId, transform, scale, collision } ) => ( { id, kind, label, assetId, transform, scale, collision } ) ),
 		portals: source.portals,
-		hosts: [],
+		hosts: ( source.hosts || [] ).map( ( grant ) => ( { ...grant, scopes: [ ...grant.scopes ] } ) ),
 		updatedAt: Math.floor( updatedAt / 1000 ),
 	};
 	await writeFile( args.out, `${JSON.stringify( manifest, null, 2 )}\n`, { flag: 'wx' } );

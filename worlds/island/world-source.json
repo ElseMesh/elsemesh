@@ -12,6 +12,7 @@
       "tidewater.static-glb/1"
     ]
   },
+  "hosts": [],
   "objects": [
     {
       "id": "tw-object:island-terrain",
