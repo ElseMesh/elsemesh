@@ -170,8 +170,9 @@ export class WorldConnector {
 		return loaded;
 	}
 
-	// Load the destination's portal-preview and visible tiers before allowing a handoff.
-	async preparePortal( portal ) {
+	// Load portal-preview content first so it can appear beyond an open doorway while
+	// the assets needed to enter the destination continue loading.
+	async preparePortal( portal, { onPreview } = {} ) {
 		invariant( portal && portal.enabled && portal.destinationWorldId && portal.destinationPeerId, 'Portal has no active destination' );
 		const destination = new WorldConnector( {
 			worldId: portal.destinationWorldId,
@@ -181,8 +182,10 @@ export class WorldConnector {
 			chunkBytes: this.chunkBytes,
 		} );
 		await destination.getManifest();
+		const previewAssets = await destination.preload( { through: 'portal-preview' } );
+		const preview = onPreview ? await onPreview( { connector: destination, assets: previewAssets } ) : null;
 		const assets = await destination.preload( { through: 'visible' } );
-		return { connector: destination, manifest: destination.manifest, assets };
+		return { connector: destination, manifest: destination.manifest, assets, previewAssetIDs: new Set( previewAssets.keys() ), preview };
 	}
 
 	async #connection() {

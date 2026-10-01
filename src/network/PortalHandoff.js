@@ -15,6 +15,18 @@ export function rotatePortalVelocity( velocity, entryYaw, exitYaw ) {
 	return { x: velocity.x * cos + velocity.z * sin, z: - velocity.x * sin + velocity.z * cos };
 }
 
+// Place destination-world geometry so its signed exit transform meets the local entry.
+export function alignPortalPreview( root, entry, exit ) {
+	const yaw = entry.yaw - exit.yaw;
+	const cos = Math.cos( yaw ), sin = Math.sin( yaw );
+	const [ x, y, z ] = exit.position;
+	const rotatedX = x * cos + z * sin;
+	const rotatedZ = - x * sin + z * cos;
+	root.rotation.y = yaw;
+	root.position.set( entry.position[ 0 ] - rotatedX, entry.position[ 1 ] - y, entry.position[ 2 ] - rotatedZ );
+	return root;
+}
+
 function localX( x, z, originX, originZ, yaw ) {
 	const dx = x - originX, dz = z - originZ;
 	return dx * Math.cos( yaw ) - dz * Math.sin( yaw );

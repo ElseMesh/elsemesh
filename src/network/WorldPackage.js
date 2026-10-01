@@ -63,6 +63,18 @@ export async function appendWorldPackageAssets( connector, root, assets, { signa
 
 }
 
+export function cloneWorldPackageAssets( root, connector, assetIDs ) {
+	const preview = new Group();
+	preview.name = `${root.name}:portal-preview`;
+	if ( ! assetIDs?.size ) return preview;
+	const objectAssets = new Map( connector.manifest.objects.map( ( object ) => [ object.id, object.assetId ] ) );
+	for ( const child of root.children ) {
+		const objectId = child.userData.worldObjectId;
+		if ( assetIDs.has( objectAssets.get( objectId ) ) ) preview.add( child.clone( true ) );
+	}
+	return preview;
+}
+
 async function buildGLTF( gltf ) {
 
 	const root = new Group();

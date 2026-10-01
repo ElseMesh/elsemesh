@@ -67,8 +67,8 @@ import { SoundScape } from './audio/SoundScape.js';
 import { updateCameraVelocity, useStaticVelocity } from './post/CameraVelocity.js';
 import { Group } from './engine/scene/Group.js';
 import { WorldConnector, worldLinkFromLocation } from './network/WorldConnector.js';
-import { appendWorldPackageAssets, loadWorldPackage } from './network/WorldPackage.js';
-import { crossedPortalPlane, rotatePortalVelocity } from './network/PortalHandoff.js';
+import { appendWorldPackageAssets, cloneWorldPackageAssets, loadWorldPackage } from './network/WorldPackage.js';
+import { alignPortalPreview, crossedPortalPlane, rotatePortalVelocity } from './network/PortalHandoff.js';
 
 const _up = new Vector3( 0, 1, 0 );
 
@@ -94,6 +94,8 @@ export class App {
 		this._scaleAboveTarget = 0;
 		this.remoteWorlds = new Map();
 		this.portalPreparations = new Map();
+		this.portalPreviewId = null;
+		this.portalPreviewRoot = null;
 		this.worldBackgroundLoads = new Map();
 		this.portalPreviousPosition = null;
 		this.settings = {
@@ -697,7 +699,10 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 	updateWorldPortals() {
 
 		const connector = this.worldConnector;
-		if ( ! this.remoteWorldActive || ! connector?.manifest?.portals ) return;
+		if ( ! this.remoteWorldActive || ! connector?.manifest?.portals ) {
+			this.clearPortalPreview();
+			return;
+		}
 		const current = this.camera.position;
 		if ( ! this.portalPreviousPosition ) this.portalPreviousPosition = current.clone();
 		const previous = this.portalPreviousPosition.clone();
@@ -709,10 +714,15 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 				return { portal, distanceSq: dx * dx + dy * dy + dz * dz, crossed: crossedPortalPlane( previous, current, portal ) };
 			} );
 		const crossed = candidates.filter( ( candidate ) => candidate.crossed ).sort( ( a, b ) => a.distanceSq - b.distanceSq )[ 0 ];
-		const target = crossed || candidates.filter( ( candidate ) => candidate.distanceSq <= 32 * 32 ).sort( ( a, b ) => a.distanceSq - b.distanceSq )[ 0 ];
-		if ( ! target ) return;
+		const inRange = candidates.filter( ( candidate ) => candidate.distanceSq <= 32 * 32 );
+		const target = crossed || inRange.filter( ( candidate ) => candidate.portal.openView ).sort( ( a, b ) => a.distanceSq - b.distanceSq )[ 0 ] || inRange.sort( ( a, b ) => a.distanceSq - b.distanceSq )[ 0 ];
+		if ( ! target ) {
+			this.clearPortalPreview();
+			return;
+		}
 
 		const { portal } = target;
+		if ( ! portal.openView ) this.clearPortalPreview();
 		let preparation = this.portalPreparations.get( portal.id );
 		const attempt = preparation?.attempt || 0;
 		if ( preparation?.status === 'failed' && Date.now() >= preparation.retryAt ) {
@@ -721,14 +731,24 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 		}
 		if ( ! preparation && this.remoteWorlds.has( portal.destinationWorldId ) ) {
 			const cached = this.remoteWorlds.get( portal.destinationWorldId );
-			preparation = { status: 'ready', connector: cached.connector, root: cached.root };
+			const previewAssetIDs = new Set( cached.connector.manifest.assets.filter( ( asset ) => asset.priority === 'portal-preview' ).map( ( asset ) => asset.id ) );
+			preparation = { status: 'ready', connector: cached.connector, root: cached.root, previewRoot: cloneWorldPackageAssets( cached.root, cached.connector, previewAssetIDs ) };
 			this.portalPreparations.set( portal.id, preparation );
 		}
 		if ( ! preparation ) {
 			preparation = { status: 'loading', noticeShown: false, attempt };
 			this.portalPreparations.set( portal.id, preparation );
-			connector.preparePortal( portal ).then( async ( prepared ) => {
-				const root = await loadWorldPackage( prepared.connector, { assets: prepared.assets } );
+			connector.preparePortal( portal, { onPreview: async ( { connector: destination, assets } ) => {
+				if ( ! portal.openView ) return null;
+				const root = await loadWorldPackage( destination, { assets } );
+				root.name = `hosted-world:${portal.destinationWorldId}`;
+				const previewAssetIDs = new Set( assets.keys() );
+				const previewRoot = cloneWorldPackageAssets( root, destination, previewAssetIDs );
+				Object.assign( preparation, { connector: destination, root, previewRoot } );
+				return { root };
+			} } ).then( async ( prepared ) => {
+				const root = prepared.preview?.root || await loadWorldPackage( prepared.connector, { assets: prepared.assets } );
+				await appendWorldPackageAssets( prepared.connector, root, prepared.assets );
 				root.name = `hosted-world:${portal.destinationWorldId}`;
 				Object.assign( preparation, { status: 'ready', connector: prepared.connector, root } );
 				this.remoteWorlds.set( portal.destinationWorldId, { connector: prepared.connector, root } );
@@ -737,6 +757,15 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 				Object.assign( preparation, { status: 'failed', error, attempt: preparation.attempt + 1 } );
 				console.warn( `Could not prepare portal ${portal.id}`, error );
 			} );
+		}
+		if ( portal.openView && preparation.previewRoot?.children.length ) {
+			if ( this.portalPreviewId !== portal.id ) this.clearPortalPreview();
+			this.portalPreviewId = portal.id;
+			this.portalPreviewRoot = preparation.previewRoot;
+			alignPortalPreview( preparation.previewRoot, portal.entry, portal.exit );
+			if ( preparation.previewRoot.parent !== this.scene ) this.scene.add( preparation.previewRoot );
+		} else {
+			this.clearPortalPreview();
 		}
 
 		if ( ! crossed ) return;
@@ -757,11 +786,20 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 
 	}
 
+	clearPortalPreview() {
+
+		if ( this.portalPreviewRoot ) this.scene?.remove( this.portalPreviewRoot );
+		this.portalPreviewRoot = null;
+		this.portalPreviewId = null;
+
+	}
+
 	enterWorldPortal( portal, preparation ) {
 
 		const sourceConnector = this.worldConnector;
 		const destinationConnector = preparation.connector;
 		const destinationRoot = preparation.root;
+		this.clearPortalPreview();
 		this.worldBackgroundLoads.get( sourceConnector.worldId )?.abort();
 		this.worldBackgroundLoads.delete( sourceConnector.worldId );
 		this.scene.remove( this.linkedWorldRoot );
