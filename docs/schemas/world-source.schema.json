@@ -144,6 +144,16 @@
       "minItems": 3,
       "maxItems": 3
     },
+    "streamingBounds": {
+      "type": "object",
+      "description": "Optional world-space bounding sphere used for view- and distance-driven component data requests.",
+      "required": ["center", "radius"],
+      "properties": {
+        "center": { "type": "array", "minItems": 3, "maxItems": 3, "items": { "type": "number", "minimum": -10000, "maximum": 10000 } },
+        "radius": { "type": "number", "exclusiveMinimum": 0, "maximum": 10000 }
+      },
+      "additionalProperties": false
+    },
     "transform": {
       "type": "object",
       "required": [
@@ -325,7 +335,8 @@
             "type": { "const": "tidewater.procedural-island-vegetation/1" },
             "seed": { "const": 7 },
             "priority": { "enum": ["portal-preview", "visible", "nearby", "background"] },
-            "placementAssetId": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" }
+            "placementAssetId": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+            "streamingBounds": { "$ref": "#/$defs/streamingBounds" }
           },
           "additionalProperties": false
         },
@@ -334,7 +345,8 @@
           "properties": {
             "id": { "type": "string", "pattern": "^tw-component:[\\w.-]{1,128}$" },
             "type": { "const": "tidewater.island-ocean/1" },
-            "priority": { "enum": ["portal-preview", "visible", "nearby", "background"] }
+            "priority": { "enum": ["portal-preview", "visible", "nearby", "background"] },
+            "streamingBounds": { "$ref": "#/$defs/streamingBounds" }
           },
           "additionalProperties": false
         },
@@ -346,7 +358,8 @@
             "center": { "type": "array", "items": { "type": "number", "minimum": -1000000, "maximum": 1000000 }, "minItems": 2, "maxItems": 2, "description": "Horizontal world-space [x,z] center in meters." },
             "extent": { "type": "number", "minimum": 8, "maximum": 100000, "description": "Half-width and half-depth of a square deep-water body, in meters." },
             "profile": { "enum": ["deep-ocean", "calm-lagoon", "storm"], "description": "Optional named rendering profile; omission selects deep-ocean." },
-            "priority": { "enum": ["portal-preview", "visible", "nearby", "background"] }
+            "priority": { "enum": ["portal-preview", "visible", "nearby", "background"] },
+            "streamingBounds": { "$ref": "#/$defs/streamingBounds" }
           },
           "additionalProperties": false
         },
@@ -356,7 +369,8 @@
             "id": { "type": "string", "pattern": "^tw-component:[\\w.-]{1,128}$" },
             "type": { "const": "tidewater.static-vegetation/1" },
             "priority": { "enum": ["portal-preview", "visible", "nearby", "background"] },
-            "placementAssetId": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" }
+            "placementAssetId": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+            "streamingBounds": { "$ref": "#/$defs/streamingBounds" }
           },
           "additionalProperties": false
         }

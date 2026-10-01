@@ -33,6 +33,27 @@ export function selectWorldObjectsForView( manifest, camera, { nearbyDistance = 
 	return selected.sort( ( a, b ) => ( VIEW_RANK[ a.priority || priorities.get( a.assetId ) ] ?? 1 ) - ( VIEW_RANK[ b.priority || priorities.get( b.assetId ) ] ?? 1 ) );
 }
 
+// Component bounds are already world-space, unlike object-local bounds. Legacy
+// unbounded components remain selected immediately for compatibility.
+export function selectWorldComponentsForView( manifest, camera, { nearbyDistance = 24, maxDistance = 500 } = {} ) {
+	if ( ! manifest || ! camera ) return [];
+	camera.updateMatrixWorld( true );
+	_viewProjection.multiplyMatrices( camera.projectionMatrix, camera.matrixWorldInverse );
+	_frustum.setFromProjectionMatrix( _viewProjection, camera.coordinateSystem, camera.reversedDepth );
+	const selected = [];
+	for ( const component of manifest.components || [] ) {
+		const bounds = component.streamingBounds;
+		if ( ! bounds ) { selected.push( component ); continue; }
+		_center.fromArray( bounds.center );
+		_sphere.center.copy( _center );
+		_sphere.radius = bounds.radius;
+		const distance = camera.position.distanceTo( _center );
+		if ( distance <= maxDistance && ( distance <= nearbyDistance || _frustum.intersectsSphere( _sphere ) ) ) selected.push( component );
+	}
+	const assets = new Map( ( manifest.assets || [] ).map( ( asset ) => [ asset.id, asset.priority ] ) );
+	return selected.sort( ( a, b ) => ( VIEW_RANK[ a.priority || assets.get( a.placementAssetId ) ] ?? 1 ) - ( VIEW_RANK[ b.priority || assets.get( b.placementAssetId ) ] ?? 1 ) );
+}
+
 function transformBoundsCenter( object, center, target ) {
 	const p = object.transform.position, scale = object.scale || [ 1, 1, 1 ];
 	let x = center[ 0 ] * scale[ 0 ], y = center[ 1 ] * scale[ 1 ], z = center[ 2 ] * scale[ 2 ];

@@ -112,6 +112,12 @@ const staticVegetation = { id: 'tw-component:static-foliage', type: 'tidewater.s
 assert.doesNotThrow( () => validateWorldComponents( [ staticVegetation ], { requiredFeatures: [ staticVegetation.type ] }, new Set(), placementAsset ), 'browser accepts portable world-space foliage placements' );
 assert.throws( () => validateWorldComponents( [ { id: staticVegetation.id, type: staticVegetation.type } ], { requiredFeatures: [ staticVegetation.type ] } ), /requires placement data/, 'browser requires a placement asset for static vegetation' );
 assert.doesNotThrow( () => validateWorldSource( { ...source, rules: { ...source.rules, requiredFeatures: [ staticVegetation.type ] }, components: [ staticVegetation ] } ), 'authoring accepts portable static vegetation without island-only seed fields' );
+const boundedStaticVegetation = { ...staticVegetation, priority: 'visible', streamingBounds: { center: [ 0, 2, -10 ], radius: 12 } };
+const visiblePlacementAsset = [ { ...placementAsset[ 0 ], priority: 'visible' } ];
+assert.doesNotThrow( () => validateWorldComponents( [ boundedStaticVegetation ], { requiredFeatures: [ staticVegetation.type ] }, new Set(), visiblePlacementAsset ), 'browser accepts bounded component data whose asset has the same staged priority' );
+assert.doesNotThrow( () => validateWorldSource( { ...source, rules: { ...source.rules, requiredFeatures: [ staticVegetation.type ] }, components: [ boundedStaticVegetation ] } ), 'authoring accepts signed world-space bounds on component data' );
+assert.throws( () => validateWorldSource( { ...source, rules: { ...source.rules, requiredFeatures: [ staticVegetation.type ] }, components: [ { ...boundedStaticVegetation, streamingBounds: { center: [ 0, 0 ], radius: 0 } } ] } ), /Invalid or duplicate world component/, 'authoring rejects malformed component bounds' );
+assert.throws( () => validateWorldComponents( [ boundedStaticVegetation ], { requiredFeatures: [ staticVegetation.type ] }, new Set(), placementAsset ), /placement asset reference/, 'browser rejects component data whose component and asset priorities disagree' );
 const directoryLink = worldLinkFromLocation( { search: '?worldId=tw-world:coast&directory=https%3A%2F%2Fthruhold.org', origin: 'https://rebroad.github.io' } );
 assert.equal( directoryLink.directory, 'https://thruhold.org', 'browser link can opt into the community directory' );
 assert.throws( () => new WorldConnector( { worldId: 'tw-world:coast', directory: 'http://thruhold.org' } ), 'directory endpoints must use HTTPS' );

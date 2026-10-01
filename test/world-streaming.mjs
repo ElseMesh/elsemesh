@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { assetConcurrencyForConnection, WorldConnector } from '../src/network/WorldConnector.js';
-import { selectWorldObjectsForView } from '../src/network/WorldStreaming.js';
+import { selectWorldComponentsForView, selectWorldObjectsForView } from '../src/network/WorldStreaming.js';
 import { PerspectiveCamera } from '../src/engine/scene/Camera.js';
 
 const connector = new WorldConnector( { worldId: 'tw-world:stream-test', nodeId: 'peer', gateway: 'https://example.test' } );
@@ -73,6 +73,14 @@ const objects = [
 ];
 const viewIDs = selectWorldObjectsForView( { assets: [], objects }, camera, { nearbyDistance: 5 } ).map( ( object ) => object.id );
 assert.deepEqual( viewIDs, [ 'front', 'near', 'legacy' ], 'view selection includes visible and nearby bounds, excludes behind/outside bounds, and preserves legacy unbounded objects' );
+const components = [
+	{ id: 'tw-component:front', type: 'tidewater.static-vegetation/1', placementAssetId: 'front', priority: 'visible', streamingBounds: { center: [ 0, 0, -10 ], radius: 1 } },
+	{ id: 'tw-component:behind', type: 'tidewater.static-vegetation/1', placementAssetId: 'behind', priority: 'nearby', streamingBounds: { center: [ 0, 0, 10 ], radius: 1 } },
+	{ id: 'tw-component:near', type: 'tidewater.static-vegetation/1', placementAssetId: 'near', priority: 'nearby', streamingBounds: { center: [ 0, 0, 3 ], radius: 0.5 } },
+	{ id: 'tw-component:legacy', type: 'tidewater.island-ocean/1', priority: 'portal-preview' },
+];
+const componentIDs = selectWorldComponentsForView( { assets: [], components }, camera, { nearbyDistance: 5 } ).map( ( component ) => component.id );
+assert.deepEqual( componentIDs, [ 'tw-component:legacy', 'tw-component:front', 'tw-component:near' ], 'component selection uses world-space bounds, priority ordering, and eager compatibility for unbounded components' );
 
 const originalWebTransport = globalThis.WebTransport;
 const originalWebSocket = globalThis.WebSocket;

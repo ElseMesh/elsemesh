@@ -73,8 +73,8 @@ export function validateWorldSource( source ) {
 		const staticVegetation = component?.type === 'tidewater.static-vegetation/1' && /^sha256:[0-9a-f]{64}$/.test( component.placementAssetId || '' );
 		const islandOcean = component?.type === 'tidewater.island-ocean/1';
 		const waterBody = component?.type === 'tidewater.water-body/1' && validWaterBody( component );
-		const allowedKeys = vegetation ? [ 'id', 'type', 'seed', 'priority', 'placementAssetId' ] : staticVegetation ? [ 'id', 'type', 'priority', 'placementAssetId' ] : islandOcean ? [ 'id', 'type', 'priority' ] : waterBody ? [ 'id', 'type', 'priority', 'center', 'extent', 'profile' ] : [];
-		if ( ! component || typeof component.id !== 'string' || ! /^tw-component:[\w.-]{1,128}$/.test( component.id ) || ids.has( component.id ) || ( ! vegetation && ! staticVegetation && ! islandOcean && ! waterBody ) || component.priority !== undefined && ! [ 'portal-preview', 'visible', 'nearby', 'background' ].includes( component.priority ) || Object.keys( component ).some( ( key ) => ! allowedKeys.includes( key ) ) ) throw new Error( 'Invalid or duplicate world component' );
+		const allowedKeys = vegetation ? [ 'id', 'type', 'seed', 'priority', 'placementAssetId', 'streamingBounds' ] : staticVegetation ? [ 'id', 'type', 'priority', 'placementAssetId', 'streamingBounds' ] : islandOcean ? [ 'id', 'type', 'priority', 'streamingBounds' ] : waterBody ? [ 'id', 'type', 'priority', 'center', 'extent', 'profile', 'streamingBounds' ] : [];
+		if ( ! component || typeof component.id !== 'string' || ! /^tw-component:[\w.-]{1,128}$/.test( component.id ) || ids.has( component.id ) || ( ! vegetation && ! staticVegetation && ! islandOcean && ! waterBody ) || component.priority !== undefined && ! [ 'portal-preview', 'visible', 'nearby', 'background' ].includes( component.priority ) || component.streamingBounds !== undefined && ! validStreamingBounds( component.streamingBounds ) || Object.keys( component ).some( ( key ) => ! allowedKeys.includes( key ) ) ) throw new Error( 'Invalid or duplicate world component' );
 		if ( islandOcean && ++ islandOceanCount > 1 ) throw new Error( 'A world may declare only one island ocean component' );
 		if ( waterBody && ++ waterBodyCount > 4 ) throw new Error( 'A world may declare at most four water body components' );
 		if ( waterBody && ( source.rules.seaLevel === undefined || islandOceanCount > 0 ) ) throw new Error( 'A portable water body requires seaLevel and cannot be combined with island-ocean' );
@@ -91,6 +91,10 @@ export function validateWorldSource( source ) {
 
 function validWaterBody( component ) {
 	return ( component.profile === undefined || [ 'deep-ocean', 'calm-lagoon', 'storm' ].includes( component.profile ) ) && Array.isArray( component.center ) && component.center.length === 2 && component.center.every( ( n ) => Number.isFinite( n ) && Math.abs( n ) + component.extent <= 1e6 ) && Number.isFinite( component.extent ) && component.extent >= 8 && component.extent <= 100000;
+}
+
+function validStreamingBounds( bounds ) {
+	return bounds && typeof bounds === 'object' && ! Array.isArray( bounds ) && Object.keys( bounds ).every( ( key ) => [ 'center', 'radius' ].includes( key ) ) && validVector( bounds.center ) && bounds.center.every( ( n ) => Math.abs( n ) <= 10000 ) && Number.isFinite( bounds.radius ) && bounds.radius > 0 && bounds.radius <= 10000;
 }
 
 function validVector( value ) {

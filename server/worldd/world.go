@@ -97,14 +97,15 @@ type portal struct {
 }
 
 type worldComponent struct {
-	ID               string    `json:"id"`
-	Type             string    `json:"type"`
-	Seed             uint32    `json:"seed,omitempty"`
-	Priority         string    `json:"priority,omitempty"`
-	PlacementAssetID string    `json:"placementAssetId,omitempty"`
-	Center           []float64 `json:"center,omitempty"`
-	Extent           float64   `json:"extent,omitempty"`
-	Profile          string    `json:"profile,omitempty"`
+	ID               string           `json:"id"`
+	Type             string           `json:"type"`
+	Seed             uint32           `json:"seed,omitempty"`
+	Priority         string           `json:"priority,omitempty"`
+	PlacementAssetID string           `json:"placementAssetId,omitempty"`
+	StreamingBounds  *streamingBounds `json:"streamingBounds,omitempty"`
+	Center           []float64        `json:"center,omitempty"`
+	Extent           float64          `json:"extent,omitempty"`
+	Profile          string           `json:"profile,omitempty"`
 }
 
 func (component *worldComponent) UnmarshalJSON(data []byte) error {
@@ -127,6 +128,24 @@ func (component *worldComponent) UnmarshalJSON(data []byte) error {
 		allowed["center"], allowed["extent"], allowed["profile"] = true, true, true
 	default:
 		return fmt.Errorf("unsupported world component type %q", typeName)
+	}
+	allowed["streamingBounds"] = true
+	if rawBounds, exists := fields["streamingBounds"]; exists {
+		var boundsFields map[string]json.RawMessage
+		if err := json.Unmarshal(rawBounds, &boundsFields); err != nil {
+			return errors.New("invalid component streaming bounds")
+		}
+		if len(boundsFields) != 2 || boundsFields["center"] == nil || boundsFields["radius"] == nil {
+			return errors.New("component streaming bounds must contain only center and radius")
+		}
+		var center []float64
+		var radius float64
+		if err := json.Unmarshal(boundsFields["center"], &center); err != nil || len(center) != 3 {
+			return errors.New("component streaming bounds center must have three coordinates")
+		}
+		if err := json.Unmarshal(boundsFields["radius"], &radius); err != nil {
+			return errors.New("component streaming bounds radius must be numeric")
+		}
 	}
 	for key := range fields {
 		if !allowed[key] {
@@ -460,8 +479,22 @@ func validateManifest(manifest worldManifest, localPeerID string, now time.Time)
 		}
 		if component.PlacementAssetID != "" {
 			asset, exists := assetRefs[component.PlacementAssetID]
-			if !assetIDPattern.MatchString(component.PlacementAssetID) || !exists || asset.Kind != "vegetation-placement/1" || asset.Priority != "portal-preview" {
+			priority := component.Priority
+			if priority == "" {
+				priority = "portal-preview"
+			}
+			if !assetIDPattern.MatchString(component.PlacementAssetID) || !exists || asset.Kind != "vegetation-placement/1" || asset.Priority != priority {
 				return fmt.Errorf("invalid placement asset reference on world component %q", component.ID)
+			}
+		}
+		if bounds := component.StreamingBounds; bounds != nil {
+			if math.IsNaN(bounds.Radius) || math.IsInf(bounds.Radius, 0) || bounds.Radius <= 0 || bounds.Radius > 10000 {
+				return errors.New("component streaming bounds radius out of bounds")
+			}
+			for _, coordinate := range bounds.Center {
+				if math.IsNaN(coordinate) || math.IsInf(coordinate, 0) || math.Abs(coordinate) > 10000 {
+					return errors.New("component streaming bounds center out of bounds")
+				}
 			}
 		}
 		seenComponents[component.ID] = true

@@ -71,7 +71,7 @@ import { Group } from './engine/scene/Group.js';
 import { WorldConnector, worldLinkFromLocation } from './network/WorldConnector.js';
 import { worldSeaLevel } from './network/WorldRules.js';
 import { appendWorldPackageAssets, disposeWorldPackage, loadWorldPackage, registerWorldPackageCollisions, unregisterWorldPackageCollisions } from './network/WorldPackage.js';
-import { selectWorldObjectsForView } from './network/WorldStreaming.js';
+import { selectWorldComponentsForView, selectWorldObjectsForView } from './network/WorldStreaming.js';
 import { crossedPortalPlane, rotatePortalVelocity } from './network/PortalHandoff.js';
 import { WorldPortalView } from './network/WorldPortalView.js';
 
@@ -417,12 +417,14 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 			this.camera.position.set( 0, 3, 8 );
 			this.player.setHostedWorldPose( this.camera.position, Math.PI, - 0.1 );
 			const initialObjects = selectWorldObjectsForView( connector.manifest, this.camera );
+			const initialComponents = selectWorldComponentsForView( connector.manifest, this.camera ).filter( ( component ) => this.vegetationEnabled || ! isVegetationComponent( component ) );
 			const initialObjectIDs = new Set( initialObjects.map( ( object ) => object.id ) );
+			const initialComponentIDs = new Set( initialComponents.map( ( component ) => component.id ) );
 			const initialAssetIDs = new Set( initialObjects.map( ( object ) => object.assetId ) );
-			for ( const component of connector.manifest.components || [] ) if ( component.placementAssetId ) initialAssetIDs.add( component.placementAssetId );
+			for ( const component of initialComponents ) if ( component.placementAssetId ) initialAssetIDs.add( component.placementAssetId );
 			const visibleAssets = await connector.preload( { through: 'background', assetIDs: initialAssetIDs } );
 			this.linkedWorldRoot = await loadWorldPackage( connector, { assets: visibleAssets, objectIDs: initialObjectIDs } );
-			this.installWorldComponents( this.linkedWorldRoot, connector );
+			this.installWorldComponents( this.linkedWorldRoot, connector, initialComponentIDs );
 			registerWorldPackageCollisions( this.linkedWorldRoot, this.colliders );
 			this.linkedWorldRoot.name = `hosted-world:${worldLink.worldId}`;
 			scene.add( this.linkedWorldRoot );
@@ -701,13 +703,16 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 		this.worldBackgroundLoads.get( connector.worldId )?.abort();
 		const controller = new AbortController();
 		this.worldBackgroundLoads.set( connector.worldId, controller );
-		this.worldStreamState.set( connector.worldId, { connector, root, controller, lastUpdate: 0, loading: false, loadingController: null, loadingObjectIDs: new Set(), loadingRank: Infinity } );
+		this.worldStreamState.set( connector.worldId, { connector, root, controller, lastUpdate: 0, loading: false, loadingController: null, loadingObjectIDs: new Set(), loadingComponentIDs: new Set(), loadingRank: Infinity } );
 
 	}
 
-	installWorldComponents( root, connector ) {
+	installWorldComponents( root, connector, componentIDs = null ) {
 		const installed = [];
+		const installedIDs = root.userData.installedWorldComponentIDs ||= new Set();
 		for ( const component of connector.manifest.components || [] ) {
+			if ( installedIDs.has( component.id ) || componentIDs && ! componentIDs.has( component.id ) || component.placementAssetId && ! connector.assets.has( component.placementAssetId ) ) continue;
+			const count = installed.length;
 			if ( component.type === 'tidewater.procedural-island-vegetation/1' || component.type === 'tidewater.static-vegetation/1' ) {
 				if ( ! this.vegetationEnabled ) continue;
 				const placementRecords = component.placementAssetId ? readVegetationPlacements( connector, component ) : null;
@@ -746,8 +751,10 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 				root.add( mesh );
 				installed.push( { waterBody: true, update: ( _dt, camera ) => lod.update( camera ), dispose: () => { root.remove( mesh ); lod.geometry.dispose(); material.dispose(); } } );
 			}
+			if ( installed.length > count ) installedIDs.add( component.id );
 		}
-		root.userData.worldComponents = installed;
+		root.userData.worldComponents ||= [];
+		root.userData.worldComponents.push( ...installed );
 	}
 
 	updateWorldComponents( root, dt, camera ) {
@@ -768,17 +775,23 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 		const loaded = root.userData.worldPackage?.loadedObjects || new Set();
 		const objects = selectWorldObjectsForView( connector.manifest, this.camera ).filter( ( object ) => ! loaded.has( object.id ) );
 		const wantedObjectIDs = new Set( objects.map( ( object ) => object.id ) );
+		const installedComponents = root.userData.installedWorldComponentIDs || new Set();
+		const components = selectWorldComponentsForView( connector.manifest, this.camera ).filter( ( component ) => ( this.vegetationEnabled || ! isVegetationComponent( component ) ) && ! installedComponents.has( component.id ) );
+		const wantedComponentIDs = new Set( components.map( ( component ) => component.id ) );
 		const assetPriorities = new Map( connector.manifest.assets.map( ( asset ) => [ asset.id, asset.priority ] ) );
 		const rank = { 'portal-preview': 0, visible: 1, nearby: 2, background: 3 };
 		const wantedRank = objects.reduce( ( best, object ) => Math.min( best, rank[ object.priority || assetPriorities.get( object.assetId ) ] ?? 1 ), Infinity );
+		const componentRank = components.reduce( ( best, component ) => Math.min( best, rank[ component.priority || assetPriorities.get( component.placementAssetId ) ] ?? 1 ), Infinity );
+		const loadRank = Math.min( wantedRank, componentRank );
 		if ( state.loading ) {
-			const allStillNeeded = [ ...state.loadingObjectIDs ].every( ( objectID ) => wantedObjectIDs.has( objectID ) );
-			if ( ! allStillNeeded || wantedRank < state.loadingRank ) state.loadingController?.abort( new DOMException( 'View priority changed', 'AbortError' ) );
+			const allStillNeeded = [ ...state.loadingObjectIDs ].every( ( objectID ) => wantedObjectIDs.has( objectID ) ) && [ ...state.loadingComponentIDs ].every( ( componentID ) => wantedComponentIDs.has( componentID ) );
+			if ( ! allStillNeeded || loadRank < state.loadingRank ) state.loadingController?.abort( new DOMException( 'View priority changed', 'AbortError' ) );
 			return;
 		}
-		if ( objects.length === 0 ) return;
+		if ( objects.length === 0 && components.length === 0 ) return;
 		const objectIDs = new Set( objects.map( ( object ) => object.id ) );
-		const assetIDs = new Set( objects.map( ( object ) => object.assetId ) );
+		const componentIDs = new Set( components.map( ( component ) => component.id ) );
+		const assetIDs = new Set( [ ...objects.map( ( object ) => object.assetId ), ...components.map( ( component ) => component.placementAssetId ).filter( Boolean ) ] );
 		const loadController = new AbortController();
 		const abortForWorldChange = () => loadController.abort( state.controller.signal.reason );
 		if ( state.controller.signal.aborted ) abortForWorldChange();
@@ -786,10 +799,14 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 		state.loading = true;
 		state.loadingController = loadController;
 		state.loadingObjectIDs = objectIDs;
-		state.loadingRank = wantedRank;
+		state.loadingComponentIDs = componentIDs;
+		state.loadingRank = loadRank;
 		connector.preload( { assetIDs, signal: loadController.signal, concurrency: 2 } ).then( ( assets ) => {
 			if ( loadController.signal.aborted || state.controller.signal.aborted || this.linkedWorldRoot !== root ) return;
-			return appendWorldPackageAssets( connector, root, assets, { signal: loadController.signal, objectIDs } ).then( () => registerWorldPackageCollisions( root, this.colliders ) );
+			return appendWorldPackageAssets( connector, root, assets, { signal: loadController.signal, objectIDs } ).then( () => {
+				this.installWorldComponents( root, connector, componentIDs );
+				return registerWorldPackageCollisions( root, this.colliders );
+			} );
 		} ).catch( ( error ) => {
 			if ( ! loadController.signal.aborted && ! state.controller.signal.aborted ) console.warn( `View-driven world asset load failed for ${connector.worldId}`, error );
 		} ).finally( () => {
@@ -798,6 +815,7 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 				state.loading = false;
 				state.loadingController = null;
 				state.loadingObjectIDs = new Set();
+				state.loadingComponentIDs = new Set();
 				state.loadingRank = Infinity;
 			}
 		} );
@@ -853,7 +871,7 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 				if ( ! portal.openView ) return null;
 				const root = await loadWorldPackage( destination, { assets, signal } );
 				if ( signal.aborted ) { disposeWorldPackage( root ); return null; }
-				this.installWorldComponents( root, destination );
+				this.installWorldComponents( root, destination, componentsThroughPriority( destination, 'portal-preview', this.vegetationEnabled ) );
 				root.name = `hosted-world:${portal.destinationWorldId}`;
 				Object.assign( preparation, { connector: destination, root } );
 				return { root };
@@ -862,7 +880,7 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 			const root = prepared.preview?.root || await loadWorldPackage( prepared.connector, { assets: prepared.assets, signal } );
 			preparation.root = root;
 			if ( signal.aborted ) { this.disposeUncommittedWorldComponents( root ); prepared.connector.close(); return; }
-			if ( ! prepared.preview?.root ) this.installWorldComponents( root, prepared.connector );
+			this.installWorldComponents( root, prepared.connector, componentsThroughPriority( prepared.connector, 'visible', this.vegetationEnabled ) );
 			await appendWorldPackageAssets( prepared.connector, root, prepared.assets, { signal } );
 			if ( signal.aborted ) { this.disposeUncommittedWorldComponents( root ); prepared.connector.close(); return; }
 				root.name = `hosted-world:${portal.destinationWorldId}`;
@@ -1154,6 +1172,18 @@ function readVegetationPlacements( connector, component ) {
 	const bytes = connector.assets.get( component.placementAssetId );
 	if ( ! bytes ) throw new Error( `Vegetation component ${component.id} is missing its placement asset` );
 	return decodeVegetationPlacements( bytes, component.seed );
+}
+
+function componentsThroughPriority( connector, through, vegetationEnabled ) {
+	const ranks = { 'portal-preview': 0, visible: 1, nearby: 2, background: 3 };
+	const end = ranks[ through ];
+	return new Set( ( connector.manifest.components || [] )
+		.filter( ( component ) => ( vegetationEnabled || ! isVegetationComponent( component ) ) && ( ranks[ component.priority || ( component.placementAssetId ? 'portal-preview' : 'visible' ) ] ?? 1 ) <= end )
+		.map( ( component ) => component.id ) );
+}
+
+function isVegetationComponent( component ) {
+	return component.type === 'tidewater.procedural-island-vegetation/1' || component.type === 'tidewater.static-vegetation/1';
 }
 
 function sameVegetationPlacements( left, right ) {

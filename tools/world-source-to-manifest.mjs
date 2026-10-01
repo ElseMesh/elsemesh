@@ -50,6 +50,7 @@ async function main() {
 	for ( const component of source.components || [] ) {
 		if ( ! component.placementAssetId ) continue; // Legacy seed-only component.
 		const id = component.placementAssetId;
+		const priority = component.priority || 'portal-preview';
 		let ref = assets.get( id );
 		if ( ! ref ) {
 			const assetPath = path.join( args.assets, id.slice( 'sha256:'.length ) );
@@ -58,10 +59,10 @@ async function main() {
 			const hasher = createHash( 'sha256' );
 			for await ( const chunk of createReadStream( assetPath ) ) hasher.update( chunk );
 			if ( `sha256:${hasher.digest( 'hex' )}` !== id ) throw new Error( `Hash mismatch for component data ${id}` );
-			ref = { id, bytes: info.size, kind: 'vegetation-placement/1', priority: 'portal-preview' };
+			ref = { id, bytes: info.size, kind: 'vegetation-placement/1', priority };
 			assets.set( id, ref );
-		} else if ( ref.kind !== 'vegetation-placement/1' ) {
-			throw new Error( `Component data ${id} conflicts with a GLB asset` );
+		} else if ( ref.kind !== 'vegetation-placement/1' || ref.priority !== priority ) {
+			throw new Error( `Component data ${id} conflicts with another asset kind or streaming priority` );
 		}
 	}
 	if ( source.rules.maxPackageBytes !== undefined ) {

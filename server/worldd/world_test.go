@@ -233,6 +233,14 @@ func TestWorldComponentRejectsUnknownFields(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), `unknown field "seed"`) {
 		t.Fatalf("island-only seed should be rejected on static vegetation, got %v", err)
 	}
+	err = json.Unmarshal([]byte(`{"id":"tw-component:vegetation","type":"tidewater.static-vegetation/1","placementAssetId":"sha256:0000000000000000000000000000000000000000000000000000000000000000","streamingBounds":{"center":[0,0,0],"radius":10,"extra":1}}`), &component)
+	if err == nil || !strings.Contains(err.Error(), "only center and radius") {
+		t.Fatalf("unknown component bound fields should be rejected, got %v", err)
+	}
+	err = json.Unmarshal([]byte(`{"id":"tw-component:vegetation","type":"tidewater.static-vegetation/1","placementAssetId":"sha256:0000000000000000000000000000000000000000000000000000000000000000","streamingBounds":{"center":[0,0],"radius":10}}`), &component)
+	if err == nil || !strings.Contains(err.Error(), "three coordinates") {
+		t.Fatalf("short component bound centers should be rejected, got %v", err)
+	}
 }
 
 func TestWorldManifestValidatesStaticVegetationComponent(t *testing.T) {
@@ -248,19 +256,29 @@ func TestWorldManifestValidatesStaticVegetationComponent(t *testing.T) {
 	manifest.WorldID = "tw-world:portable-foliage"
 	manifest.Rules.RequiredFeatures = []string{"tidewater.static-vegetation/1"}
 	placementID := "sha256:0000000000000000000000000000000000000000000000000000000000000000"
-	manifest.Assets = []assetRef{{ID: placementID, Bytes: 1, Kind: "vegetation-placement/1", Priority: "portal-preview"}}
-	manifest.Components = []worldComponent{{ID: "tw-component:portable-foliage", Type: "tidewater.static-vegetation/1", PlacementAssetID: placementID}}
+	manifest.Assets = []assetRef{{ID: placementID, Bytes: 1, Kind: "vegetation-placement/1", Priority: "visible"}}
+	manifest.Components = []worldComponent{{ID: "tw-component:portable-foliage", Type: "tidewater.static-vegetation/1", Priority: "visible", PlacementAssetID: placementID, StreamingBounds: &streamingBounds{Center: vector3{0, 2, -10}, Radius: 12}}}
 	if err := validateManifest(manifest, ownerID.String(), time.Now()); err != nil {
-		t.Fatalf("valid static vegetation component rejected: %v", err)
+		t.Fatalf("valid bounded static vegetation component rejected: %v", err)
 	}
 	document, err := signDocument(manifestProtocol, manifest, owner)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if _, err := decodeManifest(document, ownerID.String(), time.Now()); err != nil {
-		t.Fatalf("signed static vegetation component failed runtime decoding: %v", err)
+		t.Fatalf("signed bounded static vegetation component failed runtime decoding: %v", err)
+	}
+	manifest.Assets[0].Priority = "portal-preview"
+	if err := validateManifest(manifest, ownerID.String(), time.Now()); err == nil {
+		t.Fatal("component with mismatched asset streaming priority accepted")
+	}
+	manifest.Assets[0].Priority = "visible"
+	manifest.Components[0].StreamingBounds = &streamingBounds{Center: vector3{0, 0, 0}, Radius: 0}
+	if err := validateManifest(manifest, ownerID.String(), time.Now()); err == nil {
+		t.Fatal("component with invalid streaming bounds accepted")
 	}
 	manifest.Components[0].PlacementAssetID = ""
+	manifest.Components[0].StreamingBounds = nil
 	if err := validateManifest(manifest, ownerID.String(), time.Now()); err == nil {
 		t.Fatal("static vegetation without placement data accepted")
 	}
