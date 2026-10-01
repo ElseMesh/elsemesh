@@ -35,6 +35,8 @@ const (
 
 var worldIDPattern = regexp.MustCompile(`^tw-world:[a-zA-Z0-9._-]{1,128}$`)
 
+var buildRevision = "development"
+
 type signedDocument struct {
 	Protocol  string          `json:"protocol"`
 	Signer    string          `json:"signer"`
@@ -98,6 +100,7 @@ func main() {
 }
 
 func run() error {
+	version := flag.Bool("version", false, "print the build revision and exit")
 	configDir, err := os.UserConfigDir()
 	if err != nil {
 		return err
@@ -105,6 +108,10 @@ func run() error {
 	dataDir := flag.String("data", filepath.Join(configDir, "elsemesh", "directory"), "directory registry storage")
 	listen := flag.String("http", "127.0.0.1:5202", "HTTP listen address; place behind TLS for public browser access")
 	flag.Parse()
+	if *version {
+		fmt.Printf("directoryd %s\n", buildRevision)
+		return nil
+	}
 	if err := os.MkdirAll(*dataDir, 0700); err != nil {
 		return err
 	}

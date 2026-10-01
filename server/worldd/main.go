@@ -38,6 +38,8 @@ import (
 
 const worldProtocol protocol.ID = "/tidewater/world/1.0.0"
 
+var buildRevision = "development"
+
 type stringFlags []string
 
 func (s *stringFlags) String() string         { return strings.Join(*s, ",") }
@@ -68,6 +70,7 @@ func main() {
 }
 
 func run() error {
+	version := flag.Bool("version", false, "print the build revision and exit")
 	configDir, err := os.UserConfigDir()
 	if err != nil {
 		return err
@@ -101,6 +104,10 @@ func run() error {
 	flag.Var(&announceAddresses, "announce-address", "externally reachable IP multiaddr to advertise (repeatable; useful when Android blocks interface discovery)")
 	cacheSyncInterval := flag.Duration("cache-sync-interval", 5*time.Minute, "how often to retry missing owner-authorized cached assets")
 	flag.Parse()
+	if *version {
+		fmt.Printf("worldd %s\n", buildRevision)
+		return nil
+	}
 	operationCount := 0
 	for _, requested := range []bool{*printNodeID, *importAssetPath != "", *importPackagePath != "", *signManifestPath != ""} {
 		if requested {
