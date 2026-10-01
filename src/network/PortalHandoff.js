@@ -1,9 +1,12 @@
-import { Quaternion, Vector3 } from '../engine/math/index.js';
+import { Matrix4, Quaternion, Vector3, Vector4 } from '../engine/math/index.js';
 
 const _up = new Vector3( 0, 1, 0 );
 const _entry = new Vector3();
 const _exit = new Vector3();
 const _portalRotation = new Quaternion();
+const _portalPlane = new Vector4();
+const _portalFarCorner = new Vector4();
+const _transpose = new Matrix4();
 
 // Portal entries face local -Z. Only a front-to-back crossing inside the opening transfers worlds.
 export function crossedPortalPlane( previous, current, portal, { halfWidth = 1.25, halfHeight = 2.5 } = {} ) {
@@ -48,7 +51,33 @@ export function mapPortalCamera( sourceCamera, destinationCamera, entry, exit ) 
 	destinationCamera.aspect = 0.5;
 	destinationCamera.updateProjectionMatrix();
 	destinationCamera.updateMatrixWorld( true );
+	destinationCamera.userData.portalObliqueClipApplied = applyPortalObliqueClip( destinationCamera, portalExitClipPlane( exit ) );
 	return destinationCamera;
+}
+
+// Move the reversed-depth WebGPU near plane onto the portal exit plane. Plane
+// distances are positive on the virtual-camera side; retain only the destination
+// side. A false return leaves the regular projection intact for shader clipping.
+export function applyPortalObliqueClip( camera, worldPlane ) {
+	const [ x, y, z, w ] = worldPlane;
+	_portalPlane.set( x, y, z, w ).applyMatrix4( _transpose.copy( camera.matrixWorld ).transpose() );
+	if ( ! [ _portalPlane.x, _portalPlane.y, _portalPlane.z, _portalPlane.w ].every( Number.isFinite ) ) return false;
+
+	// WebGPU reversed depth places the far plane at clip-space z = 0.
+	_portalFarCorner.set( Math.sign( _portalPlane.x ) || 1, Math.sign( _portalPlane.y ) || 1, 0, 1 ).applyMatrix4( camera.projectionMatrixInverse );
+	const denominator = _portalPlane.dot( _portalFarCorner );
+	if ( ! Number.isFinite( denominator ) || denominator >= - 1e-7 ) return false;
+	const scale = 1 / denominator;
+	const plane = _portalPlane;
+	const e = camera.projectionMatrix.elements;
+	// Row 3 = row 4 - plane / dot(plane, farCorner). With reversed depth,
+	// the near clip inequality is w - z >= 0, which keeps plane distance <= 0.
+	e[ 2 ] = e[ 3 ] - plane.x * scale;
+	e[ 6 ] = e[ 7 ] - plane.y * scale;
+	e[ 10 ] = e[ 11 ] - plane.z * scale;
+	e[ 14 ] = e[ 15 ] - plane.w * scale;
+	camera.projectionMatrixInverse.copy( camera.projectionMatrix ).invert();
+	return true;
 }
 
 // Plane normal points toward the source-side of the exit. Portal rendering discards

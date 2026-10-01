@@ -61,7 +61,7 @@ export class WorldPortalView {
 		this.frameBlock.fields.portalClipPlane.value.set( ...portalExitClipPlane( portal.exit ) );
 		this.meshRenderer.render( root, {
 			label: 'portal destination view', kind: 'main', camera: this.camera, frameBlock: this.frameBlock,
-			defines: { PORTAL_CLIP: 1 },
+			defines: { PORTAL_CLIP: this.camera.userData.portalObliqueClipApplied ? 0 : 1 },
 			colorViews: this.target.textures.map( ( texture ) => texture.view() ), colorFormats: this.target.formats,
 			depthView: this.target.depthTexture.view(), depthFormat: DEPTH_FORMAT,
 			clearColors: [ [ 0, 0, 0, 1 ], [ 0, 0, 0, 0 ], [ 0, 0, 0, 0 ] ], clearDepth: 0,
