@@ -96,5 +96,5 @@ the island game runs without it. No private development history, internal
 service configuration, private voice samples or permission correspondence is
 included in this repository.
 
-ElseMesh is maintained by Lawrence Knowles with Agent Control development
-assistance. Original code and asset authorship notices are preserved.
+ElseMesh is maintained with Agent Control development assistance.
+Original code and asset authorship notices are preserved.
