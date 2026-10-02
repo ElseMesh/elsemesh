@@ -1,3 +1,5 @@
+![ElseMesh — worlds connected by imagination](public/images/elsemesh-splash.png)
+
 # ElseMesh
 
 An experimental WebGPU island exploration game. Walk, sail and fly between

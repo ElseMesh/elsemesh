@@ -23,6 +23,17 @@ jobs:
         with:
           node-version: 22
           cache: npm
+      - name: Install software Vulkan for headless WebGPU tests
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends libvulkan1 mesa-vulkan-drivers vulkan-tools
+          export VK_DRIVER_FILES="$(find /usr/share/vulkan/icd.d -maxdepth 1 -name 'lvp_icd*.json' -print -quit)"
+          test -n "$VK_DRIVER_FILES"
+          export XDG_RUNTIME_DIR="$RUNNER_TEMP/elsemesh-xdg"
+          install -d -m 700 "$XDG_RUNTIME_DIR"
+          echo "VK_DRIVER_FILES=$VK_DRIVER_FILES" >> "$GITHUB_ENV"
+          echo "XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR" >> "$GITHUB_ENV"
+          vulkaninfo --summary
       - run: npm ci
       - run: npm test && npm run test:network && npm run test:security && npm run test:cargo && npm run test:vehicle-steering && npm run test:vehicle-material && npm run test:graphics && npm run test:publication
       - run: npm run build
