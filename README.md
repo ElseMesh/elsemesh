@@ -1,13 +1,15 @@
 # ElseMesh
 
-The archived `loz/main` build is also published at [rebroad.github.io/tidewater/loz](https://rebroad.github.io/tidewater/loz/).
+The archived `loz/main` build is also published at [elsemesh.github.io/elsemesh/loz](https://elsemesh.github.io/elsemesh/loz/).
 
-An island fishing game for the browser. Cast from the pier, the beach or your own boat, fight the fish,
+A mesh of independently owned ThruHolds, connected through portals, with an island fishing game as its original example. Cast from the pier, the beach or your own boat, fight the fish,
 sell your catch to Joe at the fish stand, and spend it on better gear at Marta's chandlery. Around it is a
 real-time tropical island and ocean: swim the reef, drive the boat out to deep water, and watch a humpback
 breach. It runs directly on WebGPU and WGSL with its own small rendering engine, no framework.
 
-**Play it:** https://rebroad.github.io/tidewater/ (current Pages address; the repository slug has not changed)
+**Play it:** https://elsemesh.github.io/elsemesh/
+
+Hosting, selected-world URLs and the `elsemesh.org` DNS setup are documented in [Deployment](docs/deployment.md).
 
 ![Fishing off the pier at golden hour](docs/screenshot.jpg)
 

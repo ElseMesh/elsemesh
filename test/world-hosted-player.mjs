@@ -5,6 +5,7 @@ import { Player } from '../src/player/Player.js';
 import { App } from '../src/App.js';
 import { mapPortalPlayerState } from '../src/network/PortalHandoff.js';
 import { Colliders } from '../src/world/Colliders.js';
+import { keyboardLookDelta } from '../src/core/Input.js';
 
 const positions = new Float32Array( 11 * 11 * 3 );
 for ( let row = 0; row < 11; row ++ ) for ( let column = 0; column < 11; column ++ ) {
@@ -47,6 +48,26 @@ player.grounded = true;
 jumpPressed = true;
 Player.prototype.updateHostedWorld.call( player, 1 / 60 );
 assert.ok( player.velocity.y > 2.3 && player.velocity.y < 2.5, 'hosted jump impulse follows the signed world rule' );
+
+// The ocean spawn used to expose this: hosted swimmers returned before consuming look.
+// Exercise real swimming physics with combined mouse/arrow input while moving forward.
+const swimPlayer = Object.assign( Object.create( Player.prototype ), {
+	camera: { position: new Vector3( 0, 0.1, 0 ), quaternion: new Quaternion() },
+	input: { ...input }, colliders: new Colliders(), position: new Vector3( 0, - 1, 0 ),
+	velocity: new Vector3(), yaw: 0, pitch: 0, mode: 'swim', hostedSeaLevel: 0,
+	waterH: 0, waterMean: 0, floating: true, stepDist: 0, wasUnder: false,
+} );
+let consumed = 0;
+const arrowLook = keyboardLookDelta( new Set( [ 'ArrowRight', 'ArrowUp' ] ), 1 / 60, 260 );
+const swimLook = { x: arrowLook.x + 12, y: arrowLook.y - 8 };
+swimPlayer.input.consumeLook = () => { consumed ++; return swimLook; };
+axes = { x: 0, y: 1, sprint: 0 };
+swimPlayer.updateHostedWorld( 1 / 60 );
+assert.equal( consumed, 1, 'hosted swimming consumes mouse and arrow look once per frame' );
+assert.equal( swimPlayer.yaw, - swimLook.x * 0.0022 );
+assert.equal( swimPlayer.pitch, - swimLook.y * 0.0022 );
+assert.notEqual( swimPlayer.camera.quaternion.y, 0, 'hosted swimming rotates the actual camera' );
+assert.ok( swimPlayer.velocity.z < 0, 'hosted swimmer can move and change view simultaneously' );
 
 const boatDeck = { center: new Vector3( 0, 1, 0 ), half: new Vector3( 2, 0.1, 4 ), walkable: true, solid: true };
 const hostedBoat = {

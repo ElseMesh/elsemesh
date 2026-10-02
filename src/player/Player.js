@@ -126,6 +126,11 @@ export class Player {
 		this.prompt = null;
 		if ( this.mode === 'boat' ) { this.updateBoat( dt ); return; }
 		if ( this.mode === 'deck' ) { this.updateDeck( dt ); return; }
+		// Swimming uses look-relative movement and depends on its caller applying look input,
+		// just like the procedural controller. Consume once before either on-foot mode.
+		const look = inp.consumeLook( dt );
+		this.yaw -= look.x * 0.0022;
+		this.pitch = THREE.MathUtils.clamp( this.pitch - look.y * 0.0022, - 1.5, 1.5 );
 		if ( this.mode === 'swim' && this.hostedSeaLevel !== null ) {
 			this.updateSwim( dt );
 			this.camera.position.set( this.position.x, this.position.y + SWIM_EYE, this.position.z );
@@ -133,9 +138,6 @@ export class Player {
 			this._camY = this.camera.position.y;
 			return;
 		}
-		const look = inp.consumeLook( dt );
-		this.yaw -= look.x * 0.0022;
-		this.pitch = THREE.MathUtils.clamp( this.pitch - look.y * 0.0022, - 1.5, 1.5 );
 		const axes = inp.moveAxes();
 		_fwd.set( - Math.sin( this.yaw ), 0, - Math.cos( this.yaw ) );
 		_right.set( - _fwd.z, 0, _fwd.x );
