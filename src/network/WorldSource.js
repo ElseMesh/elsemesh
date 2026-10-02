@@ -20,6 +20,7 @@ export function createWorldSource( { worldId = `tw-world:local-${ crypto.randomU
 }
 
 export function validateWorldSource( source ) {
+	validateWorldSpawn( source?.spawn );
 	if ( ! source || source.protocol !== WORLD_SOURCE_PROTOCOL ) throw new Error( 'Unsupported world source format' );
 	if ( ! /^tw-world:[\w.-]{1,128}$/.test( source.worldId || '' ) ) throw new Error( 'Invalid worldId' );
 	if ( typeof source.title !== 'string' || ! source.title.trim() || source.title.length > 160 ) throw new Error( 'Invalid world title' );
@@ -158,4 +159,16 @@ export function validateObjectLODs( object, assets ) {
 		seen.add( level.assetId );
 		previous = level.maxScreenFraction;
 	}
+}
+
+// Positions describe the camera eye in world-space meters, like portal entry/exit poses.
+export function validateWorldSpawn( spawn ) {
+	if ( spawn === undefined ) return;
+	if ( ! spawn || typeof spawn !== 'object' || Array.isArray( spawn ) || ! validVector( spawn.position ) || spawn.position.some( ( value ) => Math.abs( value ) > 1e6 ) || ! Number.isFinite( spawn.yaw ) || Math.abs( spawn.yaw ) > 360 || ! Number.isFinite( spawn.pitch ) || Math.abs( spawn.pitch ) > 1.5 ) throw new Error( 'Invalid world spawn pose' );
+}
+
+export function worldSpawnPose( manifest ) {
+	validateWorldSpawn( manifest?.spawn );
+	const pose = manifest?.spawn ?? { position: [ 0, 3, 8 ], yaw: Math.PI, pitch: - 0.1 };
+	return { position: [ ...pose.position ], yaw: pose.yaw, pitch: pose.pitch };
 }

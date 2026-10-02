@@ -87,6 +87,7 @@ async function main() {
 		discoverable: args.discoverable === 'true',
 		version,
 		title: source.title,
+		...( source.spawn === undefined ? {} : { spawn: source.spawn } ),
 		rules: { ...source.rules, styleGuide: source.styleGuide },
 		assets: [ ...assets.values() ],
 		objects: source.objects.map( ( { id, kind, label, assetId, priority, streamingBounds, transform, scale, collision, replacesObjectId, lods } ) => ( { id, kind, label, assetId, priority, streamingBounds, transform, scale, collision, replacesObjectId, lods } ) ),

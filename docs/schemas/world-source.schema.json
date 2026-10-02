@@ -28,6 +28,17 @@
       "minLength": 1,
       "maxLength": 160
     },
+    "spawn": {
+      "type": "object",
+      "description": "Initial camera eye pose in world-space meters; yaw and pitch in radians. Omission uses the legacy entrance.",
+      "required": ["position", "yaw", "pitch"],
+      "properties": {
+        "position": { "type": "array", "minItems": 3, "maxItems": 3, "items": { "type": "number", "minimum": -1000000, "maximum": 1000000 } },
+        "yaw": { "type": "number", "minimum": -360, "maximum": 360 },
+        "pitch": { "type": "number", "minimum": -1.5, "maximum": 1.5 }
+      },
+      "additionalProperties": false
+    },
     "coordinateSystem": {
       "const": "right-handed-y-up-meters"
     },

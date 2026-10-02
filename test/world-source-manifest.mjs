@@ -4,7 +4,7 @@ import { createHash } from 'node:crypto';
 import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { gravityAcceleration, movementParameters, validateWorldRequirements, worldSeaLevel } from '../src/network/WorldRules.js';
-import { validateWorldSource } from '../src/network/WorldSource.js';
+import { validateWorldSource, validateWorldSpawn, worldSpawnPose } from '../src/network/WorldSource.js';
 import { encodeVegetationPlacements, VEGETATION_PLACEMENT_KINDS } from '../src/network/VegetationPlacements.js';
 
 const temporaryRoot = process.env.PREFIX ? path.join( process.env.PREFIX, 'tmp' ) : '/var/tmp';
@@ -34,6 +34,7 @@ try {
 		protocol: 'tidewater.world-source/1',
 		worldId: 'tw-world:manifest-test',
 		title: 'Manifest test',
+		spawn: { position: [ 53.6, 4.447713719743241, -77 ], yaw: Math.PI, pitch: -0.05 },
 		coordinateSystem: 'right-handed-y-up-meters',
 		styleGuide: '',
 		rules: { gravity: 1, seaLevel: -4.5, atmosphereLevel: 18000, avatarComplexity: 20000, physicsProfile: 'default', movement: { walkSpeed: 2.5, sprintSpeed: 7, jumpSpeed: 4.2 }, maxPackageBytes: 1024, requiredFeatures: [ 'tidewater.portal-handoff/1', 'tidewater.procedural-island-vegetation/1', 'tidewater.static-vegetation/1', 'tidewater.static-reef/1', 'tidewater.island-ocean/1', 'tidewater.downeast-boat/1', 'tidewater.ambient-audio/1', 'tidewater.static-glb-emissive-strength/1' ] },
@@ -58,6 +59,12 @@ try {
 	const [ first, second ] = await Promise.all( outputs.map( ( output ) => readFile( path.join( root, output ) ) ) );
 	assert.deepEqual( first, second, 'same source must produce byte-identical manifests' );
 	const manifest = JSON.parse( first );
+	assert.deepEqual( manifest.spawn, { position: [ 53.6, 4.447713719743241, -77 ], yaw: Math.PI, pitch: -0.05 }, 'authored spawn survives signed-manifest conversion' );
+	assert.deepEqual( worldSpawnPose( manifest ), manifest.spawn );
+	assert.deepEqual( worldSpawnPose( {} ), { position: [ 0, 3, 8 ], yaw: Math.PI, pitch: -0.1 }, 'legacy cave entrance remains compatible' );
+	for ( const spawn of [ null, [], { position: [ 1, 2 ], yaw: 0, pitch: 0 }, { position: [ 0, Infinity, 0 ], yaw: 0, pitch: 0 }, { position: [ 0, 1000001, 0 ], yaw: 0, pitch: 0 }, { position: [ 0, 3, 8 ], yaw: NaN, pitch: 0 }, { position: [ 0, 3, 8 ], yaw: 0, pitch: 1.6 }, { position: [ 0, 3, 8 ], yaw: 0 } ] ) assert.throws( () => validateWorldSpawn( spawn ), /spawn pose/ );
+	const copy = worldSpawnPose( manifest ); copy.position[ 0 ] = 999;
+	assert.equal( manifest.spawn.position[ 0 ], 53.6, 'runtime pose cannot mutate the signed document' );
 	assert.equal( manifest.updatedAt, 1790771696, 'runtime timestamp must come from the source snapshot' );
 	assert.equal( manifest.discoverable, false, 'world publication is private by default' );
 	assert.deepEqual( manifest.hosts, [ { peerId: '12D3KooWAbcdefghijk1234567890123456', scopes: [ 'content-cache', 'failover-authority' ], expiresAt: 1900000000, epoch: 3, failoverAfter: 1800000000, failoverSeconds: 300 } ], 'owner-granted cache and failover authority survive conversion' );

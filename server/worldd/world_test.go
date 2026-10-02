@@ -874,3 +874,50 @@ func TestWorldObjectLODContract(t *testing.T) {
 		t.Fatal("accepted non GLB variant")
 	}
 }
+
+func TestWorldSpawnValidation(t *testing.T) {
+	owner, _, err := crypto.GenerateEd25519Key(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ownerID, _ := peer.IDFromPublicKey(owner.GetPublic())
+	manifest := newStarterManifest("Spawn", ownerID.String())
+	if err := validateManifest(manifest, ownerID.String(), time.Now()); err != nil {
+		t.Fatal(err)
+	}
+	yaw, pitch := math.Pi, -0.05
+	manifest.Spawn = &worldSpawn{Position: []float64{53.6, 4.447713719743241, -77}, Yaw: &yaw, Pitch: &pitch}
+	document, err := signDocument(manifestProtocol, manifest, owner)
+	if err != nil {
+		t.Fatal(err)
+	}
+	decoded, err := decodeManifest(document, ownerID.String(), time.Now())
+	if err != nil || decoded.Spawn == nil || decoded.Spawn.Position[0] != 53.6 || *decoded.Spawn.Yaw != math.Pi {
+		t.Fatalf("signed spawn not preserved: %v", err)
+	}
+	if err := validateManifest(manifest, ownerID.String(), time.Now()); err != nil {
+		t.Fatal(err)
+	}
+	for _, position := range [][]float64{{1, 2}, {0, math.Inf(1), 0}, {0, math.NaN(), 0}, {0, 1000001, 0}} {
+		manifest.Spawn.Position = position
+		if err := validateManifest(manifest, ownerID.String(), time.Now()); err == nil {
+			t.Fatal("invalid spawn position accepted")
+		}
+	}
+	manifest.Spawn.Position = []float64{0, 3, 8}
+	for _, value := range []float64{math.NaN(), math.Inf(1), 361} {
+		yaw = value
+		if err := validateManifest(manifest, ownerID.String(), time.Now()); err == nil {
+			t.Fatal("invalid spawn yaw accepted")
+		}
+	}
+	yaw, pitch = 0, 1.6
+	if err := validateManifest(manifest, ownerID.String(), time.Now()); err == nil {
+		t.Fatal("invalid spawn pitch accepted")
+	}
+	pitch = 0
+	manifest.Spawn.Yaw = nil
+	if err := validateManifest(manifest, ownerID.String(), time.Now()); err == nil {
+		t.Fatal("missing spawn angle accepted")
+	}
+}

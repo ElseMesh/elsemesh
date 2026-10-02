@@ -135,6 +135,7 @@ const source = {
 	protocol: 'tidewater.world-source/1',
 	worldId: 'tw-world:example-island',
 	title: 'Example Island',
+	spawn: generated.spawn,
 	coordinateSystem: 'right-handed-y-up-meters',
 	styleGuide: 'Procedural volcanic island terrain. Preserve the coast, central bay, volcanic ridge, beaches, seabed, and terrain color regions.',
 	rules: {
@@ -280,6 +281,7 @@ function buildIslandProceduralContent( terrainData ) {
 		.map( ( [ name, batch ] ) => ( { name, batch } ) );
 	for ( const [ name, batch ] of Object.entries( village.signB?.batches || {} ) ) if ( batch.vcount > 0 ) batches.push( { name: `sign-${name}`, batch } );
 	return {
+		spawn: { position: [ WORLD.start.position.x, Math.max( terrainData.heightAt( WORLD.start.position.x, WORLD.start.position.z ), colliders.groundHeightAt( WORLD.start.position.x, WORLD.start.position.z, 50 ) ) + 1.62, WORLD.start.position.z ], yaw: WORLD.start.yaw, pitch: - 0.05 },
 		villageBatches: batches,
 		villageTriangles: batches.reduce( ( total, { batch } ) => total + batch.triangles, 0 ),
 		villageColliders,

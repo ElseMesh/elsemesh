@@ -3,10 +3,12 @@
 ## Links on the server computer
 
 - [Hosted example island](http://127.0.0.1:5200/?worldId=tw-world%3Aexample-island)
-- [UNDERNEATH / LOZ-derived basalt cavern](http://127.0.0.1:5202/?worldId=tw-world%3Aloz-underneath)
+- [UNDERNEATH / LOZ-derived basalt cavern](http://127.0.0.1:5200/?worldId=tw-world%3Aloz-underneath)
 
-Each server also serves the built ElseMesh client, so no separate Vite process is
-needed. The query selects the world; the same-origin gateway discovers its owner
+Both links use the island gateway on port 5200. It discovers the cave owner
+and forwards content over libp2p. The cave backend on port 5202 must remain
+running, but visitors do not need to use that port. Independent world servers
+retain their own ownership and storage. No separate Vite process is needed. The query selects the world; the same-origin gateway discovers its owner
 and the client verifies the signed manifest. Click **Tap or click to explore**
 after loading. WASD moves; arrows change the view; click the scene for mouse look.
 The bottom-right eight-digit hash identifies the client build.
@@ -16,7 +18,10 @@ reef and ambience components. It is still missing parts of the complete original
 procedural game, including wildlife and fishing, and some visual details. The
 cave is a portable static slice of LOZ's UNDERNEATH, not the complete Burning
 Horizons game. See `worlds/island/README.md` and `worlds/loz-underneath/README.md`.
-For the complete procedural example, use the published client with `?example=1`.
+The hosted island starts at the original boardwalk pose. The picker labels the
+complete procedural scene **Original island (offline)** and network worlds
+**Hosted ThruHold** to distinguish the two experiences. For the complete
+procedural example, use the published client with `?example=1`.
 
 ## Build on this Linux development machine
 
@@ -96,3 +101,18 @@ reachable HTTPS/WSS gateway serving the client, or a suitably configured local
 tunnel. Plain HTTP over a LAN address does not provide the secure context WebGPU
 requires. Public gateway and exact browser-origin configuration are documented
 in [ThruHold hosting](thruholds.md#hosting-a-checked-in-world-profile).
+
+## Supervised development servers
+
+The current development instance uses user services `elsemesh-island-test` and
+`elsemesh-cave-test`, with automatic restart on failure. Inspect or restart them:
+
+```sh
+systemctl --user status elsemesh-island-test elsemesh-cave-test
+systemctl --user restart elsemesh-island-test elsemesh-cave-test
+journalctl --user -u elsemesh-cave-test -n 30
+```
+
+These are transient services and do not survive a reboot. After reboot use the
+start commands above. After restarting the gateway, allow discovery to reconnect
+before opening a different world, or restart the cave service to reconnect it.

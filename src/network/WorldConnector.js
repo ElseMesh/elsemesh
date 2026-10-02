@@ -1,5 +1,5 @@
 import { validatePortalBack } from './PortalSideContract.js';
-import { validateObjectLODs } from './WorldSource.js';
+import { validateObjectLODs, validateWorldSpawn } from './WorldSource.js';
 import { validatePresencePose } from './PlayerPresence.js';
 import { validateWorldRequirements } from './WorldRules.js';
 
@@ -149,6 +149,7 @@ export class WorldConnector {
 		await verifySignedDocument( reply.document, 'tidewater.world/1' );
 		invariant( reply.document.payload.protocol === 'tidewater.world/1' && reply.document.payload.worldId === this.worldId, 'Manifest belongs to another world or protocol' );
 		validateWorldRequirements( reply.document.payload );
+		validateWorldSpawn( reply.document.payload.spawn );
 		const entityIDs = validateWorldObjects( reply.document.payload.objects, reply.document.payload.assets );
 		validateWorldPortals( reply.document.payload.portals, entityIDs, reply.document.payload.rules );
 		validateWorldComponents( reply.document.payload.components, reply.document.payload.rules, entityIDs, reply.document.payload.assets, reply.document.payload.objects );

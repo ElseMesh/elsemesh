@@ -155,3 +155,15 @@ The initial service boundary should stay separate from `worldd` so world hosting
 The worker should receive a capability-limited task bundle, not arbitrary world-server credentials. Its Blender adapter should expose named operations (create/edit mesh, place asset instance, position portal marker, export candidate GLB, render preview) and a bounded `bpy` subset; direct Python execution can be an early prototype only inside a disposable sandbox. Store audit events and artifact hashes, and delete private task bundles according to owner-configured retention.
 
 The service should be optional and deployable by a world owner or community operator. A hosted service must not become a mandatory discovery service, acquire world signing keys, or silently reuse authored worlds as training data. Keep a local CLI/worker path so authors can run the same validators without trusting a hosted AI service.
+
+## Initial arrival pose
+
+Set optional top-level `spawn` in `world-source.json` before publishing:
+
+```json
+"spawn": { "position": [53.6, 4.447713719743241, -77], "yaw": 3.141592653589793, "pitch": -0.05 }
+```
+
+`position` is the **camera eye**, in world-space meters (Y up). Allow 1.62 meters above the standing surface. `yaw` and `pitch` are radians; pitch must lie between -1.5 and 1.5, yaw between -360 and 360, and coordinates within ±1,000,000 meters. The island exporter derives this pose from the original boardwalk start and its collision height. Worlds without a spawn keep the previous `[0,3,8]` entrance. This only controls initial world visits: entering through a portal uses the portal's mapped arrival pose.
+
+Republish the source through the owner profile to update its signed manifest; changing the checked-in source does not change an already running server's published snapshot.

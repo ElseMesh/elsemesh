@@ -2197,7 +2197,7 @@ export class UI {
 				<section id="tw-world-picker" class="tw-world-picker" aria-label="Choose a ThruHold" hidden>
 					<h2>Choose a world</h2>
 					<div class="tw-world-options">
-						<button type="button" class="tw-world-option tw-world-default"><span>Example Island</span><small>Built-in procedural world</small></button>
+						<button type="button" class="tw-world-option tw-world-default"><span>Original island (offline)</span><small>Complete procedural example</small></button>
 					</div>
 					<p class="tw-world-empty" hidden>No hosted worlds saved yet. Open an invite to add one here.</p>
 					<form class="tw-world-invite-form">
@@ -2282,7 +2282,7 @@ export class UI {
 
 			const row = h( 'div', 'tw-world-option-row' );
 			const open = h( 'button', 'tw-world-option', { type: 'button' } );
-			open.append( h( 'span', '', { text: world.title } ), h( 'small', '', { text: world.worldId } ) );
+			open.append( h( 'span', '', { text: world.title } ), h( 'small', '', { text: `Hosted ThruHold · ${world.worldId}` } ) );
 			open.addEventListener( 'click', () => { window.location.assign( world.url ); } );
 			const isHome = home?.url === world.url;
 			const homeButton = h( 'button', 'tw-world-home', { type: 'button', text: isHome ? 'Clear home' : 'Set as home' } );

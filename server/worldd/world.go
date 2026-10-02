@@ -338,6 +338,12 @@ type movementRules struct {
 	JumpSpeed   float64 `json:"jumpSpeed"`
 }
 
+type worldSpawn struct {
+	Position []float64 `json:"position"`
+	Yaw      *float64  `json:"yaw"`
+	Pitch    *float64  `json:"pitch"`
+}
+
 type worldManifest struct {
 	Protocol        string           `json:"protocol"`
 	WorldID         string           `json:"worldId"`
@@ -348,6 +354,7 @@ type worldManifest struct {
 	Discoverable    bool             `json:"discoverable"`
 	Version         uint64           `json:"version"`
 	Title           string           `json:"title"`
+	Spawn           *worldSpawn      `json:"spawn,omitempty"`
 	Rules           worldRules       `json:"rules"`
 	Assets          []assetRef       `json:"assets"`
 	Objects         []worldObject    `json:"objects"`
@@ -358,6 +365,16 @@ type worldManifest struct {
 }
 
 func validateManifest(manifest worldManifest, localPeerID string, now time.Time) error {
+	if spawn := manifest.Spawn; spawn != nil {
+		if len(spawn.Position) != 3 || spawn.Yaw == nil || spawn.Pitch == nil || math.IsNaN(*spawn.Yaw) || math.IsInf(*spawn.Yaw, 0) || math.Abs(*spawn.Yaw) > 360 || math.IsNaN(*spawn.Pitch) || math.IsInf(*spawn.Pitch, 0) || math.Abs(*spawn.Pitch) > 1.5 {
+			return errors.New("invalid world spawn pose")
+		}
+		for _, value := range spawn.Position {
+			if math.IsNaN(value) || math.IsInf(value, 0) || math.Abs(value) > 1e6 {
+				return errors.New("invalid world spawn position")
+			}
+		}
+	}
 	if manifest.Protocol != manifestProtocol || !worldIDPattern.MatchString(manifest.WorldID) || manifest.Version == 0 || manifest.Version > maxSafeJSInteger {
 		return errors.New("invalid world identity or protocol")
 	}

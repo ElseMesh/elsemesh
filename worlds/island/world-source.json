@@ -2,6 +2,15 @@
   "protocol": "tidewater.world-source/1",
   "worldId": "tw-world:example-island",
   "title": "Example Island",
+  "spawn": {
+    "position": [
+      53.6,
+      4.447713719743241,
+      -77
+    ],
+    "yaw": 3.141592653589793,
+    "pitch": -0.05
+  },
   "coordinateSystem": "right-handed-y-up-meters",
   "styleGuide": "Procedural volcanic island terrain. Preserve the coast, central bay, volcanic ridge, beaches, seabed, and terrain color regions.",
   "rules": {
