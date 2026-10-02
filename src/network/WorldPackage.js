@@ -285,6 +285,7 @@ async function buildGLTF( gltf, packageState = null ) {
 	const root = new Group();
 	const textures = new Map();
 	const resolvedMaterials = [];
+	const villageMaterialRoles = [];
 	for ( let index = 0; index < gltf.materials.length; index ++ ) {
 
 		const source = gltf.materials[ index ];
@@ -301,6 +302,7 @@ async function buildGLTF( gltf, packageState = null ) {
 			material.userData ||= {};
 			material.userData.borrowedWorldMaterial = true;
 			resolvedMaterials.push( material );
+			villageMaterialRoles.push( role );
 			continue;
 		}
 		const textureInfo = pbr.baseColorTexture;
@@ -335,6 +337,7 @@ async function buildGLTF( gltf, packageState = null ) {
 			defines: { WORLD_HAS_ALBEDO: albedo ? 1 : 0 },
 			surface: `#if WORLD_HAS_ALBEDO\n\tlet baseColor = textureSample( worldAlbedo, smpAnisoRepeat, in.uv );\n\ts.albedo *= baseColor.rgb;\n\ts.alpha *= baseColor.a;\n#endif\n`,
 		} ) );
+		villageMaterialRoles.push( null );
 
 	}
 	const builtMeshes = gltf.meshes.map( ( primitives ) => primitives.map( ( primitive ) => {
@@ -346,6 +349,11 @@ async function buildGLTF( gltf, packageState = null ) {
 			if ( ! attribute ) continue;
 			const values = floatAttribute( attribute );
 			geometry.setAttribute( name, new BufferAttribute( values, gltfName === 'COLOR_0' ? attribute.itemSize : size ) );
+		}
+		if ( villageMaterialRoles[ primitive.material ] ) {
+			const tint = geometry.getAttribute( 'color' );
+			if ( ! tint ) throw new Error( `Village material ${villageMaterialRoles[ primitive.material ]} requires a COLOR_0 tint attribute` );
+			geometry.setAttribute( 'tint', tint );
 		}
 		if ( primitive.indices ) geometry.setIndex( new BufferAttribute( asIndexArray( primitive.indices ), 1 ) );
 		if ( ! geometry.getAttribute( 'position' ) ) throw new Error( 'GLB primitive has no POSITION attribute' );

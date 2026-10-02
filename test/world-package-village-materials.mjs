@@ -26,6 +26,8 @@ for ( const mesh of meshes ) {
 	if ( ! mesh.material.userData?.borrowedWorldMaterial ) continue;
 	assert.ok( mesh.geometry.getAttribute( 'vdata' )?.itemSize === 4 );
 	assert.ok( mesh.geometry.getAttribute( 'color' )?.itemSize === 3 );
+	assert.equal( mesh.geometry.getAttribute( 'tint' ), mesh.geometry.getAttribute( 'color' ), 'the original village shader consumes COLOR_0 as tint' );
+	assert.ok( mesh.geometry.getAttribute( 'tint' ).array.some( value => value > 0 ), 'tint values must be uploaded instead of the shader default' );
 	assert.ok( mesh.onBeforeRender );
 	mesh.onBeforeRender();
 	roles.add( mesh.material.name );
