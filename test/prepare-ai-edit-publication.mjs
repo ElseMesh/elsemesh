@@ -50,15 +50,21 @@ try {
 	await mkdir( candidatePath );
 	const baseAssetBytes = Buffer.from( 'base world asset' );
 	const newAssetBytes = Buffer.from( 'new candidate asset' );
+	const baseLODBytes = Buffer.from( 'base simplified asset' );
+	const newLODBytes = Buffer.from( 'candidate simplified asset' );
+	const baseLODId = hash( baseLODBytes );
+	const newLODId = hash( newLODBytes );
 	const baseAssetId = hash( baseAssetBytes );
 	const newAssetId = hash( newAssetBytes );
 	await writeFile( path.join( baseAssetsPath, baseAssetId.slice( 7 ) ), baseAssetBytes );
+	await writeFile( path.join( baseAssetsPath, baseLODId.slice( 7 ) ), baseLODBytes );
 	await mkdir( path.join( candidatePath, 'assets' ) );
 	await writeFile( path.join( candidatePath, 'assets', newAssetId.slice( 7 ) ), newAssetBytes );
+	await writeFile( path.join( candidatePath, 'assets', newLODId.slice( 7 ) ), newLODBytes );
 
 	const base = createWorldSource( { worldId: 'tw-world:prepare-publication-test', title: 'Owner world' } );
 	base.objects.push( {
-		id: 'tw-object:base-prop', kind: 'asset-instance', label: 'Existing prop', assetId: baseAssetId,
+		id: 'tw-object:base-prop', kind: 'asset-instance', label: 'Existing prop', assetId: baseAssetId, streamingBounds: { center: [ 0, 0, 0 ], radius: 2 }, lods: [ { assetId: baseLODId, maxScreenFraction: 0.1 } ],
 		transform: { position: [ 0, 0, 0 ], yaw: 0 }, scale: [ 1, 1, 1 ],
 		collision: { shape: 'none', enabled: false },
 	} );
@@ -68,7 +74,7 @@ try {
 	const candidate = structuredClone( base );
 	candidate.title = 'Owner world with a new prop';
 	candidate.objects.push( {
-		id: 'tw-object:ai-prop', kind: 'asset-instance', label: 'AI-created prop', assetId: newAssetId,
+		id: 'tw-object:ai-prop', kind: 'asset-instance', label: 'AI-created prop', assetId: newAssetId, streamingBounds: { center: [ 0, 0, 0 ], radius: 2 }, lods: [ { assetId: newLODId, maxScreenFraction: 0.1 } ],
 		transform: { position: [ 2, 0, 1 ], yaw: 0 }, scale: [ 1, 1, 1 ],
 		collision: { shape: 'none', enabled: false },
 	} );
@@ -81,7 +87,7 @@ try {
 	const workerReport = {
 		protocol: 'elsemesh.ai-edit-review/1', taskId: '58a44d6a-cd39-442d-bf47-d32a8a2e098d', worldId: base.worldId,
 		instruction: 'Add one prop', baseSourceHash: hash( baseSourceBytes ), candidateSourceHash: hash( candidateSourceBytes ),
-		generatedAssets: [ { id: newAssetId, bytes: newAssetBytes.length } ],
+		generatedAssets: [ { id: newAssetId, bytes: newAssetBytes.length }, { id: newLODId, bytes: newLODBytes.length } ],
 		preview: { file: 'review-preview.png', bytes: previewBytes.length, sha256: hash( previewBytes ) },
 		signed: false, published: false,
 	};
@@ -91,11 +97,13 @@ try {
 	const outputPath = path.join( temporaryRoot, 'prepared' );
 	const result = await prepareAIEditPublication( { baseSourcePath, baseAssetsPath, candidatePath, outputPath } );
 	assert.equal( result.worldId, base.worldId );
-	assert.equal( result.assets, 2 );
-	assert.equal( result.generatedAssets, 1 );
+	assert.equal( result.assets, 4 );
+	assert.equal( result.generatedAssets, 2 );
 	assert.equal( result.published, false );
 	assert.deepEqual( ( await readFile( path.join( outputPath, 'assets', baseAssetId.slice( 7 ) ) ) ), baseAssetBytes );
 	assert.deepEqual( ( await readFile( path.join( outputPath, 'assets', newAssetId.slice( 7 ) ) ) ), newAssetBytes );
+	assert.deepEqual( await readFile( path.join( outputPath, 'assets', baseLODId.slice( 7 ) ) ), baseLODBytes );
+	assert.deepEqual( await readFile( path.join( outputPath, 'assets', newLODId.slice( 7 ) ) ), newLODBytes );
 	assert.deepEqual( await readFile( path.join( outputPath, 'base.world-source.json' ) ), baseSourceBytes );
 	const preparedReport = JSON.parse( await readFile( path.join( outputPath, 'review.json' ), 'utf8' ) );
 	assert.equal( preparedReport.preview.sha256, hash( previewBytes ) );

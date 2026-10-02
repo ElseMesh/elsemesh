@@ -32,23 +32,24 @@ async function main() {
 	const assets = new Map();
 	for ( const object of source.objects ) {
 		if ( ! object.assetId ) throw new Error( `Object ${object.id} has no assetId; add/export its GLB and import it with worldd --import-asset` );
-		const id = object.assetId;
-		let ref = assets.get( id );
-		if ( ! ref ) {
-			const assetPath = path.join( args.assets, id.slice( 'sha256:'.length ) );
-			const info = await stat( assetPath );
-			if ( ! info.isFile() || info.size > 2 * 1024 * 1024 * 1024 ) throw new Error( `Invalid or oversized asset ${id}` );
-			const hasher = createHash( 'sha256' );
-			for await ( const chunk of createReadStream( assetPath ) ) hasher.update( chunk );
-			const digest = hasher.digest( 'hex' );
-			if ( `sha256:${digest}` !== id ) throw new Error( `Hash mismatch for imported asset ${id}` );
-			ref = { id, bytes: info.size, kind: 'glb', priority: 'background' };
-			assets.set( id, ref );
+		for ( const id of [ object.assetId, ...( object.lods || [] ).map( ( level ) => level.assetId ) ] ) {
+			let ref = assets.get( id );
+			if ( ! ref ) {
+				const assetPath = path.join( args.assets, id.slice( 'sha256:'.length ) );
+				const info = await stat( assetPath );
+				if ( ! info.isFile() || info.size > 2 * 1024 * 1024 * 1024 ) throw new Error( `Invalid or oversized asset ${id}` );
+				const hasher = createHash( 'sha256' );
+				for await ( const chunk of createReadStream( assetPath ) ) hasher.update( chunk );
+				const digest = hasher.digest( 'hex' );
+				if ( `sha256:${digest}` !== id ) throw new Error( `Hash mismatch for imported asset ${id}` );
+				ref = { id, bytes: info.size, kind: 'glb', priority: 'background' };
+				assets.set( id, ref );
+			}
+			const priority = object.priority || 'visible';
+			if ( ! [ 'portal-preview', 'visible', 'nearby', 'background' ].includes( priority ) ) throw new Error( `Invalid stream priority on ${object.id}` );
+			const rank = [ 'portal-preview', 'visible', 'nearby', 'background' ];
+			if ( rank.indexOf( priority ) < rank.indexOf( ref.priority ) ) ref.priority = priority;
 		}
-		const priority = object.priority || 'visible';
-		if ( ! [ 'portal-preview', 'visible', 'nearby', 'background' ].includes( priority ) ) throw new Error( `Invalid stream priority on ${object.id}` );
-		const rank = [ 'portal-preview', 'visible', 'nearby', 'background' ];
-		if ( rank.indexOf( priority ) < rank.indexOf( ref.priority ) ) ref.priority = priority;
 	}
 	for ( const component of source.components || [] ) {
 		const priority = component.priority || 'portal-preview';
@@ -88,7 +89,7 @@ async function main() {
 		title: source.title,
 		rules: { ...source.rules, styleGuide: source.styleGuide },
 		assets: [ ...assets.values() ],
-		objects: source.objects.map( ( { id, kind, label, assetId, priority, streamingBounds, transform, scale, collision, replacesObjectId } ) => ( { id, kind, label, assetId, priority, streamingBounds, transform, scale, collision, replacesObjectId } ) ),
+		objects: source.objects.map( ( { id, kind, label, assetId, priority, streamingBounds, transform, scale, collision, replacesObjectId, lods } ) => ( { id, kind, label, assetId, priority, streamingBounds, transform, scale, collision, replacesObjectId, lods } ) ),
 		components: source.components || [],
 		portals: source.portals,
 		hosts: ( source.hosts || [] ).map( ( grant ) => ( { ...grant, scopes: [ ...grant.scopes ] } ) ),

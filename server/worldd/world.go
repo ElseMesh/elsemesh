@@ -55,7 +55,25 @@ type assetRef struct {
 	Path     string `json:"path,omitempty"`
 }
 
+type objectLOD struct {
+	AssetID           string  `json:"assetId"`
+	MaxScreenFraction float64 `json:"maxScreenFraction"`
+}
+
+func (level *objectLOD) UnmarshalJSON(data []byte) error {
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(data, &fields); err != nil {
+		return err
+	}
+	if len(fields) != 2 || fields["assetId"] == nil || fields["maxScreenFraction"] == nil {
+		return errors.New("object LOD requires only assetId and maxScreenFraction")
+	}
+	type plainLOD objectLOD
+	return json.Unmarshal(data, (*plainLOD)(level))
+}
+
 type worldObject struct {
+	LODs             []objectLOD      `json:"lods,omitempty"`
 	ID               string           `json:"id"`
 	Kind             string           `json:"kind"`
 	Label            string           `json:"label"`
@@ -96,6 +114,19 @@ type portal struct {
 	Exit        transform `json:"exit"`
 	OpenView    bool      `json:"openView"`
 	Enabled     bool      `json:"enabled"`
+}
+
+// A present LOD declaration must be an array; null is not an absent declaration.
+func (object *worldObject) UnmarshalJSON(data []byte) error {
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(data, &fields); err != nil {
+		return err
+	}
+	if raw, present := fields["lods"]; present && strings.TrimSpace(string(raw)) == "null" {
+		return errors.New("object LOD list cannot be null")
+	}
+	type plainObject worldObject
+	return json.Unmarshal(data, (*plainObject)(object))
 }
 
 type worldComponent struct {
@@ -365,10 +396,28 @@ func validateManifest(manifest worldManifest, localPeerID string, now time.Time)
 		}
 		seenAssets[asset.ID] = true
 	}
+	assetKinds := make(map[string]string, len(manifest.Assets))
+	for _, asset := range manifest.Assets {
+		assetKinds[asset.ID] = asset.Kind
+	}
 	seenObjects := make(map[string]bool, len(manifest.Objects))
 	for _, object := range manifest.Objects {
 		if !objectIDPattern.MatchString(object.ID) || seenObjects[object.ID] || object.Kind != "asset-instance" || len(object.Label) > 160 || !assetIDPattern.MatchString(object.AssetID) || !seenAssets[object.AssetID] {
 			return fmt.Errorf("invalid or duplicate world object %q", object.ID)
+		}
+		if object.LODs != nil {
+			if len(object.LODs) < 1 || len(object.LODs) > 3 || object.StreamingBounds == nil || assetKinds[object.AssetID] != "glb" {
+				return errors.New("invalid object LOD list")
+			}
+			seen := map[string]bool{object.AssetID: true}
+			previous := 1.0
+			for _, level := range object.LODs {
+				if !assetIDPattern.MatchString(level.AssetID) || seen[level.AssetID] || assetKinds[level.AssetID] != "glb" || math.IsNaN(level.MaxScreenFraction) || math.IsInf(level.MaxScreenFraction, 0) || level.MaxScreenFraction <= 0 || level.MaxScreenFraction >= previous {
+					return errors.New("invalid object LOD variant")
+				}
+				seen[level.AssetID] = true
+				previous = level.MaxScreenFraction
+			}
 		}
 		for _, coordinate := range object.Transform.Position {
 			if math.IsNaN(coordinate) || math.IsInf(coordinate, 0) || math.Abs(coordinate) > 1e6 {

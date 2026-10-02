@@ -8,7 +8,7 @@ import { validateWorldSource } from '../src/network/WorldSource.js';
 const ROOT = path.resolve( path.dirname( fileURLToPath( import.meta.url ) ), '..' );
 const MAX_DOCUMENT_BYTES = 16 * 1024 * 1024;
 const MAX_OPERATIONS = 1000;
-const OBJECT_FIELDS = new Set( [ 'label', 'assetId', 'priority', 'streamingBounds', 'transform', 'scale', 'collision' ] );
+const OBJECT_FIELDS = new Set( [ 'label', 'assetId', 'lods', 'priority', 'streamingBounds', 'transform', 'scale', 'collision' ] );
 const PORTAL_FIELDS = new Set( [ 'destinationWorldId', 'destinationPeerId', 'destinationGateway', 'entry', 'exit', 'openView', 'enabled', 'visual' ] );
 const WORLD_FIELDS = new Set( [ 'title', 'styleGuide', 'updatedAt', 'rules', 'hosts' ] );
 

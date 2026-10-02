@@ -116,7 +116,7 @@ func TestWorldManifestAllowsPortalProviderDiscoveryByWorldID(t *testing.T) {
 	manifest.Portals = []portal{{
 		ID: "tw-portal:destination", Destination: "tw-world:other",
 		Visual: "timber",
-		Entry: transform{Position: vector3{1, 2, 3}}, Exit: transform{Position: vector3{4, 5, 6}},
+		Entry:  transform{Position: vector3{1, 2, 3}}, Exit: transform{Position: vector3{4, 5, 6}},
 		OpenView: true, Enabled: true,
 	}}
 	if err := validateManifest(manifest, ownerID.String(), time.Now()); err != nil {
@@ -840,5 +840,37 @@ func TestDirectoryURLMustBeSecureOrigin(t *testing.T) {
 		if validDirectoryURL(directory) {
 			t.Errorf("invalid directory URL accepted: %s", directory)
 		}
+	}
+}
+
+func TestWorldObjectLODContract(t *testing.T) {
+	owner, _, _ := crypto.GenerateEd25519Key(rand.Reader)
+	ownerID, _ := peer.IDFromPublicKey(owner.GetPublic())
+	manifest := newStarterManifest("LOD", ownerID.String())
+	base := "sha256:" + strings.Repeat("a", 64)
+	medium := "sha256:" + strings.Repeat("b", 64)
+	low := "sha256:" + strings.Repeat("c", 64)
+	manifest.Assets = []assetRef{{ID: base, Kind: "glb", Priority: "visible"}, {ID: medium, Kind: "glb", Priority: "visible"}, {ID: low, Kind: "glb", Priority: "visible"}}
+	object := worldObject{ID: "tw-object:lod", Kind: "asset-instance", AssetID: base, Scale: vector3{1, 1, 1}, StreamingBounds: &streamingBounds{Radius: 4}, LODs: []objectLOD{{medium, .2}, {low, .05}}}
+	object.Collision.Shape = "none"
+	manifest.Objects = []worldObject{object}
+	if err := validateManifest(manifest, ownerID.String(), time.Now()); err != nil {
+		t.Fatal(err)
+	}
+	for _, levels := range [][]objectLOD{{}, {{base, .2}}, {{medium, 1}}, {{medium, 0}}, {{medium, .2}, {low, .3}}, {{medium, .2}, {medium, .1}}, {{"sha256:" + strings.Repeat("d", 64), .2}}, {{medium, .2}, {low, .05}, {base, .01}, {low, .001}}} {
+		manifest.Objects[0].LODs = levels
+		if err := validateManifest(manifest, ownerID.String(), time.Now()); err == nil {
+			t.Fatalf("accepted invalid levels %+v", levels)
+		}
+	}
+	manifest.Objects[0] = object
+	manifest.Objects[0].StreamingBounds = nil
+	if err := validateManifest(manifest, ownerID.String(), time.Now()); err == nil {
+		t.Fatal("accepted LOD without bounds")
+	}
+	manifest.Objects[0] = object
+	manifest.Assets[1].Kind = "audio/ogg"
+	if err := validateManifest(manifest, ownerID.String(), time.Now()); err == nil {
+		t.Fatal("accepted non GLB variant")
 	}
 }

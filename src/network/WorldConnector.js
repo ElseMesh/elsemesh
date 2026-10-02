@@ -1,3 +1,4 @@
+import { validateObjectLODs } from './WorldSource.js';
 import { validatePresencePose } from './PlayerPresence.js';
 import { validateWorldRequirements } from './WorldRules.js';
 
@@ -147,7 +148,7 @@ export class WorldConnector {
 		await verifySignedDocument( reply.document, 'tidewater.world/1' );
 		invariant( reply.document.payload.protocol === 'tidewater.world/1' && reply.document.payload.worldId === this.worldId, 'Manifest belongs to another world or protocol' );
 		validateWorldRequirements( reply.document.payload );
-		const entityIDs = validateWorldObjects( reply.document.payload.objects );
+		const entityIDs = validateWorldObjects( reply.document.payload.objects, reply.document.payload.assets );
 		validateWorldPortals( reply.document.payload.portals, entityIDs );
 		validateWorldComponents( reply.document.payload.components, reply.document.payload.rules, entityIDs, reply.document.payload.assets, reply.document.payload.objects );
 		validateWorldHosts( reply.document.payload.hosts );
@@ -502,7 +503,7 @@ export class WorldConnector {
 	}
 }
 
-export function validateWorldObjects( objects ) {
+export function validateWorldObjects( objects, assets ) {
 	invariant( Array.isArray( objects ) && objects.length <= 10000, 'World manifest has an invalid object list' );
 	const ids = new Set();
 	for ( const object of objects ) {
@@ -518,6 +519,7 @@ export function validateWorldObjects( objects ) {
 			const rotation = object.transform.rotation;
 			invariant( Array.isArray( rotation ) && rotation.length === 4 && rotation.every( Number.isFinite ) && Math.abs( Math.hypot( ...rotation ) - 1 ) <= 1e-4 && object.collision?.enabled !== true, `World object ${object.id || '(unknown)'} has an invalid quaternion transform` );
 		}
+		validateObjectLODs( object, assets );
 		const collision = object?.collision;
 		if ( collision?.enabled !== true ) continue;
 		const box = collision.shape === 'box' && validVector( collision.center ) && validVector( collision.halfExtents ) && collision.halfExtents.every( ( value ) => value > 0 && value <= 1000 ) && typeof collision.walkable === 'boolean' && typeof collision.solid === 'boolean';

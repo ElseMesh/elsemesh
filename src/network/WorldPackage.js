@@ -2,6 +2,8 @@
 // Dynamic world extensions (terrain simulation, water, wildlife, gameplay) are deliberately not
 // inferred from a mesh export; they need explicit, versioned runtime components.
 
+import { LODLoadQueue, WorldObjectLOD } from './WorldObjectLOD.js';
+import { GPU } from '../engine/gpu/GPU.js';
 import { Group } from '../engine/scene/Group.js';
 import { Mesh } from '../engine/scene/Mesh.js';
 import { BoxGeometry } from '../engine/geometry/PrimitiveGeometries.js';
@@ -78,6 +80,7 @@ export async function appendWorldPackageAssets( connector, root, assets, { signa
 		else instance.rotation.y = t.yaw || 0;
 		instance.scale.set( ...( object.scale || [ 1, 1, 1 ] ) );
 		root.add( instance );
+		if ( object.lods?.length ) installObjectLOD( connector, root, instance, object );
 		state.loadedObjects.add( object.id );
 		if ( object.replacesObjectId ) {
 			const replaced = root.children.find( ( child ) => child.userData.worldObjectId === object.replacesObjectId );
@@ -88,6 +91,40 @@ export async function appendWorldPackageAssets( connector, root, assets, { signa
 	}
 	return root;
 
+}
+
+export function updateWorldPackageLOD( root, camera ) {
+	for ( const controller of root?.userData?.worldPackage?.lodControllers?.values() || [] ) controller.update( camera );
+}
+
+function installObjectLOD( connector, root, instance, object ) {
+	const state = root.userData.worldPackage;
+	const levels = new Map();
+	const base = new Group();
+	for ( const child of [ ...instance.children ] ) base.add( child );
+	instance.add( base ); levels.set( 0, base );
+	instance.userData.collisionRoot = base;
+	state.lodControllers ||= new Map();
+	state.lodQueue ||= new LODLoadQueue();
+	state.lodControllers.set( object.id, new WorldObjectLOD( {
+		object,
+		loadLevel: ( level, signal ) => state.lodQueue.run( signal, async () => {
+			const assetId = object.lods[ level - 1 ].assetId;
+			const bytes = await connector.getAsset( assetId, { signal } );
+			if ( signal.aborted || state.disposed ) throw signal.reason || new DOMException( 'World unloaded', 'AbortError' );
+			let source = state.parsed.get( assetId );
+			if ( ! source ) {
+				source = await buildGLTF( parseGLB( bytes ) );
+				if ( signal.aborted || state.disposed ) { disposeWorldPackage( source ); throw signal.reason || new DOMException( 'World unloaded', 'AbortError' ); }
+				const shared = state.parsed.get( assetId );
+				if ( shared ) { disposeWorldPackage( source ); source = shared; }
+				else state.parsed.set( assetId, source );
+			}
+			const visual = cloneScene( source ); visual.visible = false;
+			instance.add( visual ); levels.set( level, visual );
+		} ),
+		showLevel: level => { for ( const [ index, visual ] of levels ) visual.visible = index === level; },
+	} ) );
 }
 
 function addPortalFrames( root, portals ) {
@@ -145,7 +182,7 @@ export function registerWorldPackageCollisions( root, colliders ) {
 		if ( ! instance ) continue;
 		if ( collision.shape === 'heightfield' ) {
 			const meshes = [];
-			instance.traverse( ( child ) => { if ( child.isMesh ) meshes.push( child ); } );
+			( instance.userData.collisionRoot || instance ).traverse( ( child ) => { if ( child.isMesh ) meshes.push( child ); } );
 			if ( meshes.length !== 1 ) throw new Error( `World object ${object.id} heightfield must have exactly one mesh` );
 			const attribute = meshes[ 0 ].geometry.getAttribute( 'position' );
 			if ( ! attribute || attribute.count !== collision.columns * collision.rows ) throw new Error( `World object ${object.id} heightfield vertex count does not match its dimensions` );
@@ -216,6 +253,7 @@ export function disposeWorldPackage( root ) {
 	const state = root?.userData?.worldPackage;
 	if ( ! root || state?.disposed ) return;
 	if ( state ) state.disposed = true;
+	for ( const controller of state?.lodControllers?.values() || [] ) controller.dispose();
 	const geometries = new Set(), materials = new Set(), textures = new Set();
 	const roots = [ root, ...( state?.parsed?.values?.() || [] ) ];
 	for ( const packageRoot of roots ) packageRoot.traverse( ( object ) => {
@@ -229,9 +267,13 @@ export function disposeWorldPackage( root ) {
 			}
 		}
 	} );
-	for ( const geometry of geometries ) geometry.dispose();
-	for ( const material of materials ) material.dispose?.();
-	for ( const texture of textures ) texture.destroy();
+	const release = () => {
+		for ( const geometry of geometries ) geometry.dispose();
+		for ( const material of materials ) material.dispose?.();
+		for ( const texture of textures ) texture.destroy();
+	};
+	if ( GPU.encoder ) GPU.onSubmit( null, release );
+	else release();
 	state?.parsed?.clear();
 	state?.loadedObjects?.clear();
 }

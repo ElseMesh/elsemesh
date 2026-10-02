@@ -1,6 +1,7 @@
 # Reusable world-object levels of detail
 
-Status: design; signed reusable GLB object LOD is not implemented yet.
+Status: signed contract and runtime switching implemented; authored world variants
+and live visual validation remain outstanding.
 Avatar distance LOD is implemented separately in `RemoteAvatar.js`.
 
 ## Existing renderer paths
@@ -13,7 +14,7 @@ visibility-prioritized loading in `WorldStreaming.js` does not reduce its mesh.
 
 ## Content and streaming contract
 
-Extend an asset instance with optional signed `lods`, ordered from medium to
+An asset instance may declare optional signed `lods`, ordered from medium to
 lowest detail, each referencing a distinct content-addressed GLB and a decreasing
 `maxScreenFraction` threshold. Keep the existing `assetId` as full detail and the
 collision source. Validate bounded level counts, threshold ordering, referenced
@@ -46,3 +47,35 @@ unchanged materials/transforms/collisions, mapped portal-camera selection,
 variant fetch priority, shared-resource disposal and interrupted downloads.
 Compare matching near and distant views locally and on Flip7, including animated
 avatars. Structural GLB checks alone are insufficient visual evidence.
+
+## Implemented contract and runtime
+
+`lods` contains one to three records with exactly `assetId` and
+`maxScreenFraction` fields. Thresholds are finite, strictly decreasing and
+between zero and one; variant IDs are distinct from each other and the base.
+Streaming bounds are required. Source import and signed client/server manifest
+validation enforce the contract and GLB references. The converter hashes every
+variant. Proposal and Blender action updates permit validated LOD declarations.
+
+`WorldObjectLOD` estimates the projected sphere diameter relative to viewport
+height using transformed bounds and the camera projection matrix. It switches
+with 12% hysteresis. Each package owns per-object controllers and persistent
+instance wrappers; visual levels are independently cached under verified hashes.
+Selected variants load on demand through `WorldConnector.getAsset`, keeping the
+current visual until acquisition completes. Completion cannot change visibility;
+the next explicit per-camera update does that. Disposal aborts variant downloads.
+Heightfield collision always traverses the base visual, even if a lower level is
+currently displayed. Other collision descriptors remain unchanged.
+
+Current limits: the base mesh is still initially acquired; loaded levels are
+retained until package disposal, so LOD reduces draw geometry but does not yet
+reduce texture/mesh residency. Selection uses screen fraction, without a target
+pixel-size or sustained-load bias. Transitions currently use hysteresis and a
+ready-level swap, without a dither cross-fade. Existing checked-in world objects
+have no new LOD declarations yet. These are remaining work, not completed gates.
+
+`test/world-object-lod.mjs` uses texture-free real GLBs to establish eight/four/two
+visible-triangle switching, near-view restoration, independent camera selection,
+unchanged collision, asynchronous race handling and Blender validation. It does
+not establish GPU-submitted counts or near/far image fidelity. Contract tests
+exercise invalid declarations and CLI hash import; Go tests cover signed validation.

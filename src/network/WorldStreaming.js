@@ -58,7 +58,7 @@ export function selectWorldComponentsForView( manifest, camera, { nearbyDistance
 	return selected.sort( ( a, b ) => ( VIEW_RANK[ a.priority || assets.get( a.placementAssetId ) || assets.get( a.beds?.[ 0 ]?.assetId ) ] ?? 1 ) - ( VIEW_RANK[ b.priority || assets.get( b.placementAssetId ) || assets.get( b.beds?.[ 0 ]?.assetId ) ] ?? 1 ) );
 }
 
-function transformBoundsCenter( object, center, target ) {
+export function transformBoundsCenter( object, center, target ) {
 	const p = object.transform.position, scale = object.scale || [ 1, 1, 1 ];
 	let x = center[ 0 ] * scale[ 0 ], y = center[ 1 ] * scale[ 1 ], z = center[ 2 ] * scale[ 2 ];
 	const rotation = object.transform.rotation;

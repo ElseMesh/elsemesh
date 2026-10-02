@@ -1,3 +1,4 @@
+import { updateWorldPackageLOD } from './WorldPackage.js';
 import { PlaneGeometry } from '../engine/geometry/PrimitiveGeometries.js';
 import { RenderTarget } from '../engine/gpu/Texture.js';
 import { Material } from '../engine/render/Material.js';
@@ -56,6 +57,7 @@ export class WorldPortalView {
 		if ( ! this.active || now - this.lastRenderAt < UPDATE_INTERVAL_MS ) return;
 		const { root, portal } = this.active;
 		mapPortalCamera( sourceCamera, this.camera, portal.entry, portal.exit );
+		updateWorldPackageLOD( root, this.camera );
 		setFrameCamera( this.camera, this.target.width, this.target.height, { block: this.frameBlock } );
 		updatePortalPreviewComponents( root.userData.worldComponents, now, this.lastRenderAt, this.camera );
 		this.frameBlock.fields.portalClipPlane.value.set( ...portalExitClipPlane( portal.exit ) );

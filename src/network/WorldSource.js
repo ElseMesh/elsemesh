@@ -52,6 +52,7 @@ export function validateWorldSource( source ) {
 		}
 		if ( object.assetId !== null && object.assetId !== undefined && ! /^sha256:[0-9a-f]{64}$/.test( object.assetId ) ) throw new Error( 'Invalid object assetId' );
 		if ( object.priority !== undefined && ! [ 'portal-preview', 'visible', 'nearby', 'background' ].includes( object.priority ) ) throw new Error( 'Invalid object streaming priority' );
+		validateObjectLODs( object );
 		ids.add( object.id );
 	}
 	const objectByID = new Map( source.objects.map( ( object ) => [ object.id, object ] ) );
@@ -136,5 +137,20 @@ function validGateway( value ) {
 		return [ 'https:', 'wss:' ].includes( gateway.protocol ) && ! gateway.username && ! gateway.password && ( gateway.pathname === '' || gateway.pathname === '/' ) && ! gateway.search && ! gateway.hash;
 	} catch {
 		return false;
+	}
+}
+
+// Shared source and signed-manifest contract; variants change visuals only.
+export function validateObjectLODs( object, assets ) {
+	if ( object.lods === undefined ) return;
+	if ( ! /^sha256:[0-9a-f]{64}$/.test( object.assetId || '' ) || ! object.streamingBounds || ! Array.isArray( object.lods ) || object.lods.length < 1 || object.lods.length > 3 ) throw new Error( `Invalid object LOD list on ${object.id}` );
+	const seen = new Set( [ object.assetId ] );
+	let previous = 1;
+	const refs = assets && new Map( assets.map( ( asset ) => [ asset.id, asset ] ) );
+	if ( refs && refs.get( object.assetId )?.kind !== 'glb' ) throw new Error( `Object LOD base must reference GLB on ${object.id}` );
+	for ( const level of object.lods ) {
+		if ( ! level || typeof level !== 'object' || Array.isArray( level ) || Object.keys( level ).some( ( key ) => ! [ 'assetId', 'maxScreenFraction' ].includes( key ) ) || ! /^sha256:[0-9a-f]{64}$/.test( level.assetId || '' ) || seen.has( level.assetId ) || ! Number.isFinite( level.maxScreenFraction ) || level.maxScreenFraction <= 0 || level.maxScreenFraction >= previous || refs && refs.get( level.assetId )?.kind !== 'glb' ) throw new Error( `Invalid object LOD variant on ${object.id}` );
+		seen.add( level.assetId );
+		previous = level.maxScreenFraction;
 	}
 }

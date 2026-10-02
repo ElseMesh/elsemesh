@@ -7,7 +7,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { validateWorldSource } from '../src/network/WorldSource.js';
 import { renderAIEditReviewHTML } from './ai-edit-review-html.mjs';
-import { AI_TASK_PROTOCOL, MAX_ASSET_BYTES, MAX_BLEND_BYTES, MAX_SOURCE_BYTES, MAX_TASK_BYTES } from './create-ai-edit-task.mjs';
+import { objectAssetIDs, sourceAssetIDs, AI_TASK_PROTOCOL, MAX_ASSET_BYTES, MAX_BLEND_BYTES, MAX_SOURCE_BYTES, MAX_TASK_BYTES } from './create-ai-edit-task.mjs';
 
 export const MAX_PLAN_BYTES = 16 * 1024 * 1024;
 export const MAX_OUTPUT_BYTES = 1024 * 1024 * 1024;
@@ -91,11 +91,7 @@ export async function validateAITaskBundle(taskPath, { requirePlan = true } = {}
 	const objectIDs = new Set( source.objects.map( ( object ) => object.id ) );
 	const portalIDs = new Set( source.portals.map( ( portal ) => portal.id ) );
 	if ( task.includedObjectIds.some( ( id ) => ! objectIDs.has( id ) ) || task.includedPortalIds.some( ( id ) => ! portalIDs.has( id ) ) ) throw new Error( 'task includes an object or portal not present in its source snapshot' );
-	const sourceAssets = new Set( source.objects.map( ( object ) => object.assetId ).filter( ( id ) => HASH.test( id || '' ) ) );
-	for ( const component of source.components || [] ) {
-		if ( HASH.test( component.placementAssetId || '' ) ) sourceAssets.add( component.placementAssetId );
-		for ( const bed of component.beds || [] ) if ( HASH.test( bed.assetId || '' ) ) sourceAssets.add( bed.assetId );
-	}
+	const sourceAssets = sourceAssetIDs( source );
 	if ( task.availableAssetIds.some( ( id ) => ! sourceAssets.has( id ) ) ) throw new Error( 'task asset allow-list contains an asset absent from the source' );
 	await validateFlatDirectory( assetsPath, new Set( task.availableAssetIds.map( ( id ) => id.slice( 7 ) ) ), 'task assets' );
 	let totalBytes = sourceInfo.size + blendInfo.size + ( planInfo?.size || 0 );
@@ -123,7 +119,7 @@ export function validateScopedActions(actions, task) {
 		if ( ! action || typeof action !== 'object' || Array.isArray( action ) ) throw new Error( 'action plan entries must be objects' );
 		switch ( action.op ) {
 			case 'object.add':
-				if ( ! availableAssets.has( action.object?.assetId ) ) throw new Error( 'object.add may use only assets explicitly included in the task bundle' );
+				if ( ! availableAssets.has( action.object?.assetId ) || objectAssetIDs( action.object ).some( ( id ) => ! availableAssets.has( id ) ) ) throw new Error( 'object.add may use only assets explicitly included in the task bundle' );
 				break;
 			case 'mesh.create':
 			case 'portal.add':
@@ -131,7 +127,7 @@ export function validateScopedActions(actions, task) {
 			case 'object.update':
 			case 'object.remove':
 				if ( ! allowedObjects.has( action.id ) ) throw new Error( `${action.op} is outside the task object allow-list` );
-				if ( action.op === 'object.update' && action.fields?.assetId !== undefined && ! availableAssets.has( action.fields.assetId ) ) throw new Error( 'object.update may use only assets explicitly included in the task bundle' );
+				if ( action.op === 'object.update' && ( action.fields?.assetId !== undefined && ! availableAssets.has( action.fields.assetId ) || action.fields?.lods && objectAssetIDs( { lods: action.fields.lods } ).some( ( id ) => ! availableAssets.has( id ) ) ) ) throw new Error( 'object.update may use only assets explicitly included in the task bundle' );
 				break;
 			case 'portal.update':
 			case 'portal.remove':
@@ -328,11 +324,11 @@ export async function runAIEditWorker({ taskPath, outputPath, blender, blenderPr
 		const candidateBytes = await readFile( candidatePath );
 		const candidate = validateWorldSource( JSON.parse( candidateBytes.toString( 'utf8' ) ) );
 		if ( candidate.worldId !== bundle.task.worldId ) throw new Error( 'candidate changed the world ID' );
-		const originalAssetIds = new Set( bundle.source.objects.map( ( item ) => item.assetId ).filter( ( id ) => HASH.test( id || '' ) ) );
-		for ( const object of candidate.objects ) {
-			if ( HASH.test( object.assetId || '' ) && ! originalAssetIds.has( object.assetId ) ) {
-				const generatedAssetPath = path.join( output, 'assets', object.assetId.slice( 7 ) );
-				if ( ! bundle.outputAssetsRequired || await digest( generatedAssetPath ).catch( () => null ) !== object.assetId ) throw new Error( `candidate references a generated asset that is missing or invalid: ${object.assetId}` );
+		const originalAssetIds = sourceAssetIDs( bundle.source );
+		for ( const assetId of sourceAssetIDs( candidate ) ) {
+			if ( ! originalAssetIds.has( assetId ) ) {
+				const generatedAssetPath = path.join( output, 'assets', assetId.slice( 7 ) );
+				if ( ! bundle.outputAssetsRequired || await digest( generatedAssetPath ).catch( () => null ) !== assetId ) throw new Error( `candidate references a generated asset that is missing or invalid: ${assetId}` );
 			}
 		}
 		const objectChanges = recordChanges( bundle.source.objects, candidate.objects );

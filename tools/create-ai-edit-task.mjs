@@ -45,8 +45,12 @@ async function hashFile(file) {
 	return `sha256:${hasher.digest( 'hex' )}`;
 }
 
+export function objectAssetIDs(object) {
+	return [ object.assetId, ...( object.lods || [] ).map( ( level ) => level.assetId ) ].filter( ( id ) => ASSET_ID.test( id || '' ) );
+}
+
 export function sourceAssetIDs(source) {
-	const ids = new Set( source.objects.map( ( object ) => object.assetId ).filter( ( id ) => ASSET_ID.test( id || '' ) ) );
+	const ids = new Set( source.objects.flatMap( objectAssetIDs ) );
 	for ( const component of source.components || [] ) {
 		if ( ASSET_ID.test( component.placementAssetId || '' ) ) ids.add( component.placementAssetId );
 		for ( const bed of component.beds || [] ) if ( ASSET_ID.test( bed.assetId || '' ) ) ids.add( bed.assetId );
@@ -86,7 +90,7 @@ export async function createAITaskBundle({ sourcePath, blendPath, assetsPath, in
 	if ( objectIds.some( ( id ) => ! knownObjectIDs.has( id ) ) ) throw new Error( 'an included object ID is not present in the world source' );
 	if ( portalIds.some( ( id ) => ! knownPortalIDs.has( id ) ) ) throw new Error( 'an included portal ID is not present in the world source' );
 	const available = sourceAssetIDs( source );
-	const selectedAssetIDs = new Set( [ ...objectIds.map( ( id ) => source.objects.find( ( object ) => object.id === id ).assetId ), ...assetIds ] );
+	const selectedAssetIDs = new Set( [ ...objectIds.flatMap( ( id ) => objectAssetIDs( source.objects.find( ( object ) => object.id === id ) ) ), ...assetIds ] );
 	if ( [ ...selectedAssetIDs ].some( ( id ) => ! available.has( id ) ) ) throw new Error( 'an included asset ID is not referenced by the world source' );
 	const requestedOutputPath = path.resolve( outTaskPath );
 	const parent = await realpath( path.dirname( requestedOutputPath ) );

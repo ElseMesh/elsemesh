@@ -72,7 +72,7 @@ import { Group } from './engine/scene/Group.js';
 import { WorldConnector, worldLinkFromLocation } from './network/WorldConnector.js';
 import { rememberWorldVisit } from './network/WorldLauncher.js';
 import { worldSeaLevel } from './network/WorldRules.js';
-import { appendWorldPackageAssets, disposeWorldPackage, loadWorldPackage, registerWorldPackageCollisions, unregisterWorldPackageCollisions } from './network/WorldPackage.js';
+import { updateWorldPackageLOD, appendWorldPackageAssets, disposeWorldPackage, loadWorldPackage, registerWorldPackageCollisions, unregisterWorldPackageCollisions } from './network/WorldPackage.js';
 import { HostedBoat } from './network/HostedBoat.js';
 import { selectWorldComponentsForView, selectWorldObjectsForView } from './network/WorldStreaming.js';
 import { crossedPortalPlane, mapPortalPlayerState } from './network/PortalHandoff.js';
@@ -1149,6 +1149,7 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 			this.updateWorldPortals();
 			this.updateWorldStreaming();
 			this.worldPresence?.update( dt, this.player );
+			updateWorldPackageLOD( this.linkedWorldRoot, this.camera );
 		}
 		else {
 

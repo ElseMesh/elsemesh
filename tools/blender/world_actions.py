@@ -29,7 +29,7 @@ MAX_TOTAL_MESH_PARTS = 96
 OBJECT_ID = re.compile(r"^tw-object:[\w.-]{1,128}$")
 PORTAL_ID = re.compile(r"^tw-portal:[\w.-]{1,128}$")
 ASSET_ID = re.compile(r"^sha256:[0-9a-f]{64}$")
-OBJECT_FIELDS = {"label", "assetId", "priority", "streamingBounds", "transform", "scale", "collision"}
+OBJECT_FIELDS = {"label", "assetId", "lods", "priority", "streamingBounds", "transform", "scale", "collision"}
 PORTAL_FIELDS = {"destinationWorldId", "destinationPeerId", "destinationGateway", "entry", "exit", "openView", "enabled", "visual"}
 PRIORITIES = {"portal-preview", "visible", "nearby", "background"}
 MESH_SHAPES = {"box", "cylinder", "uv-sphere"}
@@ -71,7 +71,7 @@ def validate_source(source):
         if not isinstance(record, dict) or not isinstance(record.get("id"), str) or not OBJECT_ID.fullmatch(record["id"]) or record["id"] in seen:
             raise ValueError("invalid or duplicate object ID")
         require_keys(record, {"id", "kind", "label", "assetId", "transform", "scale", "collision"},
-                     {"id", "kind", "label", "assetId", "priority", "streamingBounds", "transform", "scale", "collision", "replacesObjectId"}, "source object")
+                     {"id", "kind", "label", "assetId", "lods", "priority", "streamingBounds", "transform", "scale", "collision", "replacesObjectId"}, "source object")
         seen.add(record["id"])
         if not isinstance(record["label"], str) or len(record["label"]) > 160:
             raise ValueError("object label must be a string no longer than 160 characters")
@@ -99,6 +99,20 @@ def validate_source(source):
             vector(bounds["center"], "streaming bounds center", maximum=10000)
             if not finite_number(bounds["radius"]) or not 0 < bounds["radius"] <= 10000:
                 raise ValueError("streaming bounds radius is outside the supported range")
+        if "lods" in record:
+            levels = record["lods"]
+            if bounds is None or not isinstance(levels, list) or not 1 <= len(levels) <= 3:
+                raise ValueError("object LODs require bounds and one to three levels")
+            referenced = {record["assetId"]}
+            threshold = 1
+            for level in levels:
+                require_keys(level, {"assetId", "maxScreenFraction"}, {"assetId", "maxScreenFraction"}, "object LOD")
+                asset = level["assetId"]
+                size = level["maxScreenFraction"]
+                if not isinstance(asset, str) or not ASSET_ID.fullmatch(asset) or asset in referenced or not finite_number(size) or not 0 < size < threshold:
+                    raise ValueError("object LOD references and thresholds must be distinct and decreasing")
+                referenced.add(asset)
+                threshold = size
         collision = record.get("collision")
         require_keys(collision, {"shape", "enabled"}, {"shape", "enabled", "center", "halfExtents", "boxes", "rows", "columns", "walkable", "solid"}, "collision")
         if not isinstance(collision, dict) or not isinstance(collision.get("enabled"), bool):

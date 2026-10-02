@@ -13,10 +13,12 @@ try {
 	await mkdir( assets, { recursive: true } );
 	const assetBytes = Buffer.from( 'glb-content-addressed-fixture' );
 	const assetId = `sha256:${createHash( 'sha256' ).update( assetBytes ).digest( 'hex' )}`;
+	const lodBytes = Buffer.from( 'low-detail-glb-fixture' );
+	const lodId = `sha256:${createHash( 'sha256' ).update( lodBytes ).digest( 'hex' )}`;
 	const world = createWorldSource( { worldId: 'tw-world:ai-worker-test' } );
 	world.objects.push( {
 		id: 'tw-object:review-target', kind: 'asset-instance', label: 'Review target', assetId,
-		priority: 'visible', transform: { position: [ 0, 0, 0 ], yaw: 0 }, scale: [ 1, 1, 1 ],
+		priority: 'visible', streamingBounds: { center: [ 0, 0, 0 ], radius: 2 }, lods: [ { assetId: lodId, maxScreenFraction: 0.1 } ], transform: { position: [ 0, 0, 0 ], yaw: 0 }, scale: [ 1, 1, 1 ],
 		collision: { shape: 'none', enabled: false },
 	} );
 	world.portals.push( {
@@ -29,13 +31,15 @@ try {
 	await writeFile( sourcePath, `${JSON.stringify( world, null, 2 )}\n` );
 	await writeFile( blendPath, 'not a real blend; bundle tests treat it as opaque bytes' );
 	await writeFile( path.join( assets, assetId.slice( 7 ) ), assetBytes );
+	await writeFile( path.join( assets, lodId.slice( 7 ) ), lodBytes );
 	const taskDirectory = path.join( temporaryRoot, 'task' );
 	const created = await createAITaskBundle( {
 		sourcePath, blendPath, assetsPath: assets, instruction: 'Move the selected prop one meter east.', outTaskPath: taskDirectory,
 		objectIds: [ 'tw-object:review-target' ], portalIds: [ 'tw-portal:review-target' ],
 	} );
 	assert.equal( created.worldId, world.worldId );
-	assert.deepEqual( created.availableAssetIds, [ assetId ] );
+	assert.deepEqual( new Set( created.availableAssetIds ), new Set( [ assetId, lodId ] ) );
+	assert.deepEqual( await readFile( path.join( taskDirectory, 'assets', lodId.slice( 7 ) ) ), lodBytes );
 	assert.equal( ( await readFile( path.join( taskDirectory, 'scene.blend' ) ) ).toString(), 'not a real blend; bundle tests treat it as opaque bytes' );
 	await writeFile( path.join( taskDirectory, 'plan.json' ), `${JSON.stringify( {
 		protocol: 'elsemesh.blender-actions/1', sourceHash: created.sourceHash,
@@ -50,6 +54,11 @@ try {
 	assert.throws( () => validateScopedActions( [ { op: 'portal.remove', id: 'tw-portal:unselected' } ], created ), /outside the task portal allow-list/ );
 	assert.throws( () => validateScopedActions( [ { op: 'object.add', object: { assetId: 'sha256:' + '0'.repeat( 64 ) } } ], created ), /explicitly included/ );
 	assert.doesNotThrow( () => validateScopedActions( [ { op: 'object.update', id: 'tw-object:review-target', fields: { assetId } } ], created ) );
+	assert.doesNotThrow( () => validateScopedActions( [ { op: 'object.update', id: 'tw-object:review-target', fields: { lods: world.objects[ 0 ].lods } } ], created ) );
+	for ( const op of [ 'object.add', 'object.update' ] ) {
+		const record = { assetId, lods: [ { assetId: 'sha256:' + '0'.repeat( 64 ), maxScreenFraction: 0.1 } ] };
+		assert.throws( () => validateScopedActions( [ op === 'object.add' ? { op, object: record } : { op, id: 'tw-object:review-target', fields: record } ], created ), /explicitly included/ );
+	}
 
 	const output = path.join( temporaryRoot, 'candidate' );
 	const command = buildSandboxCommand( {
