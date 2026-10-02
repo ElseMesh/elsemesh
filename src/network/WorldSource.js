@@ -1,3 +1,4 @@
+import { validatePortalBack } from './PortalSideContract.js';
 import { MAX_WORLD_PACKAGE_BYTES, movementParameters, SUPPORTED_PHYSICS_PROFILES, validateWorldLevels } from './WorldRules.js';
 
 export const WORLD_SOURCE_PROTOCOL = 'tidewater.world-source/1';
@@ -64,6 +65,10 @@ export function validateWorldSource( source ) {
 	}
 	for ( const portal of source.portals ) {
 		if ( typeof portal.id !== 'string' || ! /^tw-portal:[\w.-]{1,128}$/.test( portal.id ) || ids.has( portal.id ) || ! /^tw-world:[\w.-]{1,128}$/.test( portal.destinationWorldId || '' ) || portal.destinationPeerId !== undefined && ( typeof portal.destinationPeerId !== 'string' || ! /^[A-Za-z0-9]{20,256}$/.test( portal.destinationPeerId ) ) || ( portal.destinationGateway !== undefined && ! validGateway( portal.destinationGateway ) ) || portal.visual !== undefined && ! [ 'timber', 'stone', 'metal' ].includes( portal.visual ) || ! portal.entry || ! validVector( portal.entry.position ) || ! Number.isFinite( portal.entry.yaw ) || portal.entry.rotation !== undefined || ! portal.exit || ! validVector( portal.exit.position ) || ! Number.isFinite( portal.exit.yaw ) || portal.exit.rotation !== undefined || typeof portal.openView !== 'boolean' || typeof portal.enabled !== 'boolean' ) throw new Error( 'Invalid or duplicate portal record' );
+		if ( portal.back !== undefined ) {
+			if ( ! source.rules.requiredFeatures?.includes( 'tidewater.portal-two-sided/1' ) ) throw new Error( 'Portal back requires tidewater.portal-two-sided/1' );
+			validatePortalBack( portal.back, validGateway );
+		}
 		ids.add( portal.id );
 	}
 	let islandOceanCount = 0;

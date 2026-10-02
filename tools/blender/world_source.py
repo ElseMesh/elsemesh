@@ -57,6 +57,11 @@ def validate(source):
         visual = portal.get("visual") if isinstance(portal, dict) else None
         if not isinstance(portal, dict) or visual is not None and (not isinstance(visual, str) or visual not in {"timber", "stone", "metal"}):
             raise ValueError("portal visual must be timber, stone, or metal when specified")
+        if "back" in portal:
+            if "tidewater.portal-two-sided/1" not in source.get("rules", {}).get("requiredFeatures", []):
+                raise ValueError("portal back requires tidewater.portal-two-sided/1")
+            from world_actions import validate_portal_back
+            validate_portal_back(portal["back"])
     return source
 
 

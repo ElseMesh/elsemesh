@@ -4,6 +4,7 @@ export const SUPPORTED_WORLD_FEATURES = new Set( [
 	'tidewater.static-glb/1',
 	'tidewater.static-glb-emissive-strength/1',
 	'tidewater.portal-handoff/1',
+	'tidewater.portal-two-sided/1',
 	'tidewater.portal-preview-static/1',
 	'tidewater.static-glb-quaternion/1',
 	'tidewater.procedural-island-vegetation/1',

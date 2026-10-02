@@ -104,16 +104,88 @@ type collisionBox struct {
 	Solid       bool    `json:"solid"`
 }
 
-type portal struct {
-	ID          string    `json:"id"`
+type portalBack struct {
 	Destination string    `json:"destinationWorldId"`
 	PeerID      string    `json:"destinationPeerId,omitempty"`
 	Gateway     string    `json:"destinationGateway,omitempty"`
-	Visual      string    `json:"visual,omitempty"`
-	Entry       transform `json:"entry"`
 	Exit        transform `json:"exit"`
 	OpenView    bool      `json:"openView"`
 	Enabled     bool      `json:"enabled"`
+}
+
+func (side *portalBack) UnmarshalJSON(data []byte) error {
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(data, &fields); err != nil {
+		return err
+	}
+	if fields == nil {
+		return errors.New("portal back must be an object")
+	}
+	for key := range fields {
+		switch key {
+		case "destinationWorldId", "destinationPeerId", "destinationGateway", "exit", "openView", "enabled":
+		default:
+			return fmt.Errorf("unsupported portal back field %q", key)
+		}
+	}
+	for _, key := range []string{"destinationWorldId", "exit", "openView", "enabled"} {
+		if raw, ok := fields[key]; !ok || strings.TrimSpace(string(raw)) == "null" {
+			return fmt.Errorf("portal back requires %s", key)
+		}
+	}
+	var exitFields map[string]json.RawMessage
+	if err := json.Unmarshal(fields["exit"], &exitFields); err != nil {
+		return err
+	}
+	if len(exitFields) != 2 || exitFields["position"] == nil || exitFields["yaw"] == nil {
+		return errors.New("portal back exit requires only position and yaw")
+	}
+	for _, raw := range exitFields {
+		if strings.TrimSpace(string(raw)) == "null" {
+			return errors.New("portal back exit values cannot be null")
+		}
+	}
+	var coordinates []json.RawMessage
+	if err := json.Unmarshal(exitFields["position"], &coordinates); err != nil || len(coordinates) != 3 {
+		return errors.New("portal back exit position requires three coordinates")
+	}
+	for _, raw := range coordinates {
+		if strings.TrimSpace(string(raw)) == "null" {
+			return errors.New("portal back coordinate cannot be null")
+		}
+	}
+	type plain portalBack
+	return json.Unmarshal(data, (*plain)(side))
+}
+
+type portal struct {
+	Back        *portalBack `json:"back,omitempty"`
+	ID          string      `json:"id"`
+	Destination string      `json:"destinationWorldId"`
+	PeerID      string      `json:"destinationPeerId,omitempty"`
+	Gateway     string      `json:"destinationGateway,omitempty"`
+	Visual      string      `json:"visual,omitempty"`
+	Entry       transform   `json:"entry"`
+	Exit        transform   `json:"exit"`
+	OpenView    bool        `json:"openView"`
+	Enabled     bool        `json:"enabled"`
+}
+
+func (p *portal) UnmarshalJSON(data []byte) error {
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(data, &fields); err != nil {
+		return err
+	}
+	if raw, ok := fields["back"]; ok && strings.TrimSpace(string(raw)) == "null" {
+		return errors.New("portal back must be an object")
+	}
+	type plain portal
+	var decoded plain
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		return err
+	}
+	*p = portal(decoded)
+	return nil
 }
 
 // A present LOD declaration must be an array; null is not an absent declaration.
@@ -534,6 +606,29 @@ func validateManifest(manifest worldManifest, localPeerID string, now time.Time)
 			}
 			if math.IsNaN(t.Yaw) || math.IsInf(t.Yaw, 0) || math.Abs(t.Yaw) > 360 {
 				return errors.New("portal yaw out of bounds")
+			}
+		}
+		if p.Back != nil {
+			if !seenFeatures["tidewater.portal-two-sided/1"] {
+				return errors.New("portal back requires tidewater.portal-two-sided/1")
+			}
+			back := p.Back
+			if !worldIDPattern.MatchString(back.Destination) || back.Gateway != "" && !validPortalGateway(back.Gateway) {
+				return errors.New("invalid portal back destination")
+			}
+			if back.PeerID != "" {
+				if _, err := peer.Decode(back.PeerID); err != nil {
+					return errors.New("invalid portal back peer")
+				}
+			}
+			t := back.Exit
+			if t.Rotation != nil || math.IsNaN(t.Yaw) || math.IsInf(t.Yaw, 0) || math.Abs(t.Yaw) > 360 {
+				return errors.New("invalid portal back transform")
+			}
+			for _, coordinate := range t.Position {
+				if math.IsNaN(coordinate) || math.IsInf(coordinate, 0) || math.Abs(coordinate) > 1e6 {
+					return errors.New("portal back coordinate out of bounds")
+				}
 			}
 		}
 		seenPortals[p.ID] = true

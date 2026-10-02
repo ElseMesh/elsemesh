@@ -75,7 +75,7 @@ import { worldSeaLevel } from './network/WorldRules.js';
 import { updateWorldPackageLOD, appendWorldPackageAssets, disposeWorldPackage, loadWorldPackage, registerWorldPackageCollisions, unregisterWorldPackageCollisions } from './network/WorldPackage.js';
 import { HostedBoat } from './network/HostedBoat.js';
 import { selectWorldComponentsForView, selectWorldObjectsForView } from './network/WorldStreaming.js';
-import { crossedPortalPlane, mapPortalPlayerState } from './network/PortalHandoff.js';
+import { portalRouteFromPosition, crossedPortalPlane, mapPortalPlayerState } from './network/PortalHandoff.js';
 import { WorldPresenceSession } from './network/WorldPresenceSession.js';
 import { WorldPortalView } from './network/WorldPortalView.js';
 
@@ -940,12 +940,15 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 		if ( ! this.portalPreviousPosition ) this.portalPreviousPosition = current.clone();
 		const previous = this.portalPreviousPosition.clone();
 		this.portalPreviousPosition.copy( current );
-		const candidates = connector.manifest.portals.filter( ( portal ) => portal.enabled && portal.entry?.position?.length === 3 && portal.exit?.position?.length === 3 )
-			.map( ( portal ) => {
-				const entry = portal.entry.position;
-				const dx = current.x - entry[ 0 ], dy = current.y - entry[ 1 ], dz = current.z - entry[ 2 ];
-				return { portal, distanceSq: dx * dx + dy * dy + dz * dz, crossed: crossedPortalPlane( previous, current, portal ) };
-			} );
+		const candidates = connector.manifest.portals.flatMap( ( physicalPortal ) => {
+			const previousRoute = portalRouteFromPosition( physicalPortal, previous );
+			const crossed = previousRoute && crossedPortalPlane( previous, current, previousRoute );
+			const portal = crossed ? previousRoute : portalRouteFromPosition( physicalPortal, current );
+			if ( ! portal ) return [];
+			const entry = portal.entry.position;
+			const dx = current.x - entry[ 0 ], dy = current.y - entry[ 1 ], dz = current.z - entry[ 2 ];
+			return [ { portal, distanceSq: dx * dx + dy * dy + dz * dz, crossed } ];
+		} );
 		const crossed = candidates.filter( ( candidate ) => candidate.crossed ).sort( ( a, b ) => a.distanceSq - b.distanceSq )[ 0 ];
 		const inRange = candidates.filter( ( candidate ) => candidate.distanceSq <= 32 * 32 );
 		const target = crossed || inRange.filter( ( candidate ) => candidate.portal.openView ).sort( ( a, b ) => a.distanceSq - b.distanceSq )[ 0 ] || inRange.sort( ( a, b ) => a.distanceSq - b.distanceSq )[ 0 ];
@@ -956,22 +959,23 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 		}
 
 		const { portal } = target;
-		this.cancelUnneededPortalPreparations( portal.id );
+		const portalKey = portal.connectionKey || portal.id;
+		this.cancelUnneededPortalPreparations( portalKey );
 		if ( ! portal.openView ) this.clearPortalPreview();
-		let preparation = this.portalPreparations.get( portal.id );
+		let preparation = this.portalPreparations.get( portalKey );
 		const attempt = preparation?.attempt || 0;
 		if ( preparation?.status === 'failed' && Date.now() >= preparation.retryAt ) {
-			this.portalPreparations.delete( portal.id );
+			this.portalPreparations.delete( portalKey );
 			preparation = null;
 		}
 		if ( ! preparation && this.remoteWorlds.has( portal.destinationWorldId ) ) {
 			const cached = this.remoteWorlds.get( portal.destinationWorldId );
 			preparation = { status: 'ready', connector: cached.connector, root: cached.root };
-			this.portalPreparations.set( portal.id, preparation );
+			this.portalPreparations.set( portalKey, preparation );
 		}
 		if ( ! preparation ) {
 			preparation = { status: 'loading', noticeShown: false, attempt, controller: new AbortController() };
-			this.portalPreparations.set( portal.id, preparation );
+			this.portalPreparations.set( portalKey, preparation );
 			const signal = preparation.controller.signal;
 			connector.preparePortal( portal, { signal, onPreview: async ( { connector: destination, assets } ) => {
 				if ( signal.aborted ) return null;
@@ -997,17 +1001,17 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 				if ( signal.aborted ) {
 					this.disposeUncommittedWorldComponents( preparation.root );
 					preparation.connector?.close();
-					if ( this.portalPreparations.get( portal.id ) === preparation ) this.portalPreparations.delete( portal.id );
+					if ( this.portalPreparations.get( portalKey ) === preparation ) this.portalPreparations.delete( portalKey );
 					return;
 				}
 				preparation.retryAt = Date.now() + Math.min( 60000, 2500 * 2 ** preparation.attempt );
 				Object.assign( preparation, { status: 'failed', error, attempt: preparation.attempt + 1 } );
-				console.warn( `Could not prepare portal ${portal.id}`, error );
+				console.warn( `Could not prepare portal ${portalKey}`, error );
 			} );
 		}
 		if ( portal.openView && preparation.root ) {
-			if ( this.portalPreviewId !== portal.id ) this.clearPortalPreview();
-			this.portalPreviewId = portal.id;
+			if ( this.portalPreviewId !== portalKey ) this.clearPortalPreview();
+			this.portalPreviewId = portalKey;
 			this.portalView.setTarget( preparation.root, portal );
 		} else {
 			this.clearPortalPreview();

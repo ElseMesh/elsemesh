@@ -1,3 +1,4 @@
+import { validatePortalBack } from './PortalSideContract.js';
 import { validateObjectLODs } from './WorldSource.js';
 import { validatePresencePose } from './PlayerPresence.js';
 import { validateWorldRequirements } from './WorldRules.js';
@@ -149,7 +150,7 @@ export class WorldConnector {
 		invariant( reply.document.payload.protocol === 'tidewater.world/1' && reply.document.payload.worldId === this.worldId, 'Manifest belongs to another world or protocol' );
 		validateWorldRequirements( reply.document.payload );
 		const entityIDs = validateWorldObjects( reply.document.payload.objects, reply.document.payload.assets );
-		validateWorldPortals( reply.document.payload.portals, entityIDs );
+		validateWorldPortals( reply.document.payload.portals, entityIDs, reply.document.payload.rules );
 		validateWorldComponents( reply.document.payload.components, reply.document.payload.rules, entityIDs, reply.document.payload.assets, reply.document.payload.objects );
 		validateWorldHosts( reply.document.payload.hosts );
 		this.manifest = reply.document.payload;
@@ -537,7 +538,7 @@ export function validateWorldObjects( objects, assets ) {
 	return ids;
 }
 
-export function validateWorldPortals( portals = [], ids = new Set() ) {
+export function validateWorldPortals( portals = [], ids = new Set(), rules = {} ) {
 	invariant( Array.isArray( portals ) && portals.length <= 1024, 'World manifest has an invalid portal list' );
 	for ( const portal of portals ) {
 		invariant( portal && typeof portal.id === 'string' && /^tw-portal:[\w.-]{1,128}$/.test( portal.id ) && ! ids.has( portal.id ), 'World manifest has an invalid or duplicate portal ID' );
@@ -548,6 +549,10 @@ export function validateWorldPortals( portals = [], ids = new Set() ) {
 			invariant( transform && validVector( transform.position ) && transform.position.every( ( value ) => Math.abs( value ) <= 1e6 ) && Number.isFinite( transform.yaw ) && Math.abs( transform.yaw ) <= 360 && transform.rotation === undefined, `Portal ${portal.id} has an invalid transform` );
 		}
 		invariant( typeof portal.openView === 'boolean' && typeof portal.enabled === 'boolean', `Portal ${portal.id} has invalid flags` );
+		if ( portal.back !== undefined ) {
+			invariant( rules.requiredFeatures?.includes( 'tidewater.portal-two-sided/1' ), 'Portal back requires tidewater.portal-two-sided/1' );
+			validatePortalBack( portal.back, validWorldGateway );
+		}
 		ids.add( portal.id );
 	}
 	return ids;

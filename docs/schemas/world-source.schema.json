@@ -127,6 +127,7 @@
       "format": "date-time"
     }
   },
+  "allOf": [{"if": {"properties": {"portals": {"contains": {"required": ["back"]}}}, "required": ["portals"]}, "then": {"properties": {"rules": {"required": ["requiredFeatures"], "properties": {"requiredFeatures": {"contains": {"const": "tidewater.portal-two-sided/1"}}}}}}}],
   "$defs": {
     "vector3": {
       "type": "array",
@@ -425,6 +426,60 @@
         }
       ]
     },
+    "portalBack": {
+      "type": "object",
+      "required": [
+        "destinationWorldId",
+        "exit",
+        "openView",
+        "enabled"
+      ],
+      "properties": {
+        "destinationWorldId": {
+          "type": "string",
+          "pattern": "^tw-world:[\\w.-]{1,128}$"
+        },
+        "destinationPeerId": {
+          "type": "string",
+          "minLength": 20,
+          "maxLength": 256,
+          "pattern": "^[A-Za-z0-9]+$",
+          "description": "Optional provider identity. Omit it to discover world providers by destinationWorldId."
+        },
+        "destinationGateway": {
+          "type": "string",
+          "format": "uri",
+          "description": "Optional HTTPS or WSS origin for the destination node's browser gateway.",
+          "pattern": "^(https|wss)://[^/?#]+/?$"
+        },
+        "exit": {
+          "type": "object",
+          "required": [
+            "position",
+            "yaw"
+          ],
+          "properties": {
+            "position": {
+              "$ref": "#/$defs/vector3"
+            },
+            "yaw": {
+              "type": "number",
+              "minimum": -360,
+              "maximum": 360
+            }
+          },
+          "additionalProperties": false
+        },
+        "openView": {
+          "type": "boolean"
+        },
+        "enabled": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Independent rear connection. Uses the same entry position and entry yaw plus PI radians. Omission preserves the legacy portal behavior. Requires rules.requiredFeatures to include tidewater.portal-two-sided/1."
+    },
     "portal": {
       "type": "object",
       "required": [
@@ -469,6 +524,7 @@
         "enabled": {
           "type": "boolean"
         },
+        "back": { "$ref": "#/$defs/portalBack" },
         "visual": {
           "type": "string",
           "enum": ["timber", "stone", "metal"],

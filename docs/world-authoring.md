@@ -1,5 +1,7 @@
 # ElseMesh ThruHold authoring and AI editor direction
 
+For doorway placement, independent front/back routes and friend-to-friend connection exchange, see [adding and sharing portals](portal-authoring.md).
+
 ## Product direction
 
 ThruHolds are authored in Blender and through a separate AI editor service. ElseMesh will not ship an in-game world editor in this direction. Blender is the visual authoring tool; the existing `tidewater.world-source/1` JSON identifier is retained for compatibility; the AI service will propose edits to that document and its referenced assets.

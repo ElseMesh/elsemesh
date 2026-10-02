@@ -130,7 +130,7 @@ function installObjectLOD( connector, root, instance, object ) {
 function addPortalFrames( root, portals ) {
 	for ( const portal of portals ) {
 		const style = PORTAL_FRAME_STYLES[ portal.visual ];
-		if ( ! portal.enabled || ! style ) continue;
+		if ( ( ! portal.enabled && ! portal.back?.enabled ) || ! style ) continue;
 		const frame = new Group();
 		frame.name = `portal frame:${portal.id}`;
 		frame.userData.worldPortalFrame = portal.id;

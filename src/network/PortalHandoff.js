@@ -18,6 +18,27 @@ export function updatePortalPreviewComponents(components, now, lastRenderedAt, c
 	return dt;
 }
 
+const backRoutes = new WeakMap();
+
+// A physical opening has a front route and an optional independently configured
+// back route. Legacy portals retain only their authored front connection.
+export function portalRouteFromPosition( portal, position ) {
+	if ( ! portal?.entry?.position || ! Number.isFinite( portal.entry.yaw ) ) return null;
+	const [ x, , z ] = portal.entry.position;
+	if ( localZ( position.x, position.z, x, z, portal.entry.yaw ) >= 0 ) return portal.enabled ? portal : null;
+	if ( ! portal.back?.enabled ) return null;
+	let route = backRoutes.get( portal );
+	if ( ! route ) {
+		route = {
+			id: portal.id, connectionKey: `${portal.id}#back`, side: 'back',
+			...portal.back,
+			entry: { position: [ ...portal.entry.position ], yaw: portal.entry.yaw + Math.PI },
+		};
+		backRoutes.set( portal, route );
+	}
+	return route;
+}
+
 // Portal entries face local -Z. Only a front-to-back crossing inside the opening transfers worlds.
 export function crossedPortalPlane( previous, current, portal, { halfWidth = 1.25, halfHeight = 2.5 } = {} ) {
 	const entry = portal?.entry;

@@ -30,7 +30,7 @@ OBJECT_ID = re.compile(r"^tw-object:[\w.-]{1,128}$")
 PORTAL_ID = re.compile(r"^tw-portal:[\w.-]{1,128}$")
 ASSET_ID = re.compile(r"^sha256:[0-9a-f]{64}$")
 OBJECT_FIELDS = {"label", "assetId", "lods", "priority", "streamingBounds", "transform", "scale", "collision"}
-PORTAL_FIELDS = {"destinationWorldId", "destinationPeerId", "destinationGateway", "entry", "exit", "openView", "enabled", "visual"}
+PORTAL_FIELDS = {"destinationWorldId", "destinationPeerId", "destinationGateway", "entry", "exit", "openView", "enabled", "visual", "back"}
 PRIORITIES = {"portal-preview", "visible", "nearby", "background"}
 MESH_SHAPES = {"box", "cylinder", "uv-sphere"}
 MESH_MATERIALS = {"wood", "stone", "paint", "metal"}
@@ -161,10 +161,37 @@ def validate_source(source):
             raise ValueError("portal %s requires a destination world" % record["id"])
         if not isinstance(record.get("openView"), bool) or not isinstance(record.get("enabled"), bool):
             raise ValueError("portal %s requires boolean openView and enabled" % record["id"])
+        if "back" in record:
+            if "tidewater.portal-two-sided/1" not in source.get("rules", {}).get("requiredFeatures", []):
+                raise ValueError("portal back requires tidewater.portal-two-sided/1")
+            validate_portal_back(record["back"])
         visual = record.get("visual")
         if visual is not None and (not isinstance(visual, str) or visual not in {"timber", "stone", "metal"}):
             raise ValueError("portal %s visual must be timber, stone, or metal" % record["id"])
     return source
+
+
+def validate_portal_back(back):
+    from urllib.parse import urlparse
+    fields = {"destinationWorldId", "destinationPeerId", "destinationGateway", "exit", "openView", "enabled"}
+    if not isinstance(back, dict) or set(back) - fields or not re.fullmatch(r"tw-world:[\w.-]{1,128}", str(back.get("destinationWorldId", ""))):
+        raise ValueError("invalid portal back fields or destination")
+    if "destinationPeerId" in back and (not isinstance(back["destinationPeerId"], str) or not re.fullmatch(r"[A-Za-z0-9]{20,256}", back["destinationPeerId"])):
+        raise ValueError("invalid portal back peer")
+    if "destinationGateway" in back:
+        gateway = back["destinationGateway"]
+        if not isinstance(gateway, str):
+            raise ValueError("invalid portal back gateway")
+        parsed = urlparse(gateway)
+        if parsed.scheme not in {"https", "wss"} or not parsed.hostname or parsed.username or parsed.password or parsed.query or parsed.fragment or parsed.path not in {"", "/"}:
+            raise ValueError("invalid portal back gateway")
+    point = back.get("exit")
+    if not isinstance(point, dict) or set(point) != {"position", "yaw"} or not finite_number(point.get("yaw")) or abs(point["yaw"]) > 360:
+        raise ValueError("invalid portal back exit")
+    vector(point.get("position"), "portal back exit position")
+    if any(abs(n) > 1e6 for n in point["position"]) or not isinstance(back.get("openView"), bool) or not isinstance(back.get("enabled"), bool):
+        raise ValueError("invalid portal back flags or position")
+    return back
 
 
 def validate_plan(plan, source_bytes):

@@ -9,7 +9,7 @@ const ROOT = path.resolve( path.dirname( fileURLToPath( import.meta.url ) ), '..
 const MAX_DOCUMENT_BYTES = 16 * 1024 * 1024;
 const MAX_OPERATIONS = 1000;
 const OBJECT_FIELDS = new Set( [ 'label', 'assetId', 'lods', 'priority', 'streamingBounds', 'transform', 'scale', 'collision' ] );
-const PORTAL_FIELDS = new Set( [ 'destinationWorldId', 'destinationPeerId', 'destinationGateway', 'entry', 'exit', 'openView', 'enabled', 'visual' ] );
+const PORTAL_FIELDS = new Set( [ 'destinationWorldId', 'destinationPeerId', 'destinationGateway', 'entry', 'exit', 'openView', 'enabled', 'visual', 'back' ] );
 const WORLD_FIELDS = new Set( [ 'title', 'styleGuide', 'updatedAt', 'rules', 'hosts' ] );
 
 function parseArgs( argv ) {
@@ -26,7 +26,7 @@ function parseArgs( argv ) {
 export function applyWorldProposal( sourceBytes, proposal ) {
 	if ( proposal?.protocol !== 'elsemesh.world-proposal/1' || typeof proposal.worldId !== 'string' || ! /^tw-world:[\w.-]{1,128}$/.test( proposal.worldId ) || ! /^sha256:[0-9a-f]{64}$/.test( proposal.sourceHash || '' ) || ! Array.isArray( proposal.operations ) || proposal.operations.length > MAX_OPERATIONS ) throw new Error( 'Invalid world proposal header' );
 	if ( ! ( sourceBytes instanceof Uint8Array ) || `sha256:${createHash( 'sha256' ).update( sourceBytes ).digest( 'hex' )}` !== proposal.sourceHash ) throw new Error( 'Proposal source hash mismatch' );
-	const source = JSON.parse( sourceBytes );
+	const source = JSON.parse( Buffer.from( sourceBytes ).toString( 'utf8' ) );
 	if ( source.worldId !== proposal.worldId ) throw new Error( 'Proposal world ID does not match the source world' );
 	const result = JSON.parse( JSON.stringify( validateWorldSource( source ) ) );
 	const counts = { added: 0, updated: 0, removed: 0 };
