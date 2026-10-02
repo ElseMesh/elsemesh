@@ -1,7 +1,12 @@
 import { execFileSync } from 'node:child_process';
+import { resolve } from 'node:path';
 import { defineConfig } from 'vite';
 
-const commitSha = execFileSync( 'git', [ 'rev-parse', 'HEAD' ], { encoding: 'utf8' } ).trim();
+// Builds run from a separate .build worktree whose per-worktree HEAD can lag
+// behind the source checkout. Read HEAD from Git's common directory so the
+// game stamp always identifies the source repository revision.
+const commonGitDir = execFileSync( 'git', [ 'rev-parse', '--git-common-dir' ], { encoding: 'utf8' } ).trim();
+const commitSha = execFileSync( 'git', [ '--git-dir', resolve( commonGitDir ), 'rev-parse', 'HEAD' ], { encoding: 'utf8' } ).trim();
 if ( ! /^[\da-f]{40}$/i.test( commitSha ) ) throw new Error( 'Git HEAD must be a full 40-character commit SHA' );
 const commitShort = commitSha.slice( 0, 8 ).toLowerCase();
 
