@@ -412,6 +412,16 @@
             }
           },
           "additionalProperties": false
+        },
+        {
+          "required": ["id", "type", "objectId", "priority"],
+          "properties": {
+            "id": { "type": "string", "pattern": "^tw-component:[\\w.-]{1,128}$" },
+            "type": { "const": "tidewater.downeast-boat/1" },
+            "objectId": { "type": "string", "pattern": "^tw-object:[\\w.-]{1,128}$", "description": "References a collision-free portal-preview asset instance. Its transform defines the trusted built-in boat's berth and heading." },
+            "priority": { "const": "portal-preview" }
+          },
+          "additionalProperties": false
         }
       ]
     },

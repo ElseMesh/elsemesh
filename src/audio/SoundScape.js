@@ -344,6 +344,7 @@ export class SoundScape {
 				this._ramp( bed.gain.gain, bed.definition.gain * factor * ( bed.mono ? MONO : 1 ), 0.35 );
 
 			}
+			if ( state?.boat ) this._boat( this.ctx.currentTime, clamp( num( dt, 1 / 60 ), 0, 0.1 ) );
 
 		} catch ( e ) { this._warn( e ); }
 
@@ -1231,6 +1232,13 @@ export class SoundScape {
 		// water lapping the pier piles
 		this._bed( 'pier_lap', ( e.nearPier ? dB( MIX.pierLap ) : 0 ) / dB( BANK.pier_lap.lufs ), now, 0.6 );
 
+		this._boat( now, dt );
+
+	}
+
+	_boat( now, dt ) {
+
+		const e = this.env, eb = e.boat;
 		// boat: one engine recording, pitched and opened up with rpm; water past the hull with speed,
 		// lapping at rest, chop slapping the hull while running
 		this._engine += ( ( this._engineOn ? 1 : 0 ) - this._engine ) * ( 1 - Math.exp( - dt * ( this._engineOn ? 3 : 1.2 ) ) );

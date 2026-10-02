@@ -87,7 +87,7 @@ for ( const tile of reefTiles ) {
 		streamingBounds: tile.bounds,
 	} );
 }
-if ( reefComponents.length + 3 > 128 ) throw new Error( 'Island world exceeds the 128 component limit after adding reef tiles and ambient audio' );
+if ( reefComponents.length + 4 > 128 ) throw new Error( 'Island world exceeds the 128 component limit after adding reef tiles, the boat, and ambient audio' );
 const debrisAssetIDs = new Map();
 const debrisAssetBounds = new Map();
 for ( const assetName of SCAN_ASSETS ) {
@@ -139,9 +139,10 @@ const source = {
 	styleGuide: 'Procedural volcanic island terrain. Preserve the coast, central bay, volcanic ridge, beaches, seabed, and terrain color regions.',
 	rules: {
 		gravity: 1,
+		seaLevel: 0,
 		avatarComplexity: 20000,
 		physicsProfile: 'tidewater-default',
-		requiredFeatures: [ 'tidewater.static-glb/1', 'tidewater.static-glb-quaternion/1', 'tidewater.static-vegetation/1', 'tidewater.static-reef/1', 'tidewater.island-ocean/1', 'tidewater.ambient-audio/1', 'tidewater.portal-handoff/1', 'tidewater.portal-preview-static/1' ],
+		requiredFeatures: [ 'tidewater.static-glb/1', 'tidewater.static-glb-quaternion/1', 'tidewater.static-vegetation/1', 'tidewater.static-reef/1', 'tidewater.island-ocean/1', 'tidewater.downeast-boat/1', 'tidewater.ambient-audio/1', 'tidewater.portal-handoff/1', 'tidewater.portal-preview-static/1' ],
 		maxPackageBytes: 64 * 1024 * 1024,
 	},
 	hosts: [],
@@ -205,6 +206,7 @@ const source = {
 		{ id: 'tw-component:island-vegetation', type: 'tidewater.static-vegetation/1', priority: 'portal-preview', placementAssetId: vegetationAssetId },
 		...reefComponents,
 		{ id: 'tw-component:island-ocean', type: 'tidewater.island-ocean/1', priority: 'portal-preview' },
+		{ id: 'tw-component:island-lobster-boat', type: 'tidewater.downeast-boat/1', objectId: 'tw-object:moored-lobster-boat', priority: 'portal-preview' },
 		{ id: 'tw-component:island-ambience', type: 'tidewater.ambient-audio/1', priority: 'portal-preview', beds: ambientBeds },
 	],
 	portals: [ {

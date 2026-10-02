@@ -101,6 +101,7 @@ type portal struct {
 type worldComponent struct {
 	ID               string           `json:"id"`
 	Type             string           `json:"type"`
+	ObjectID         string           `json:"objectId,omitempty"`
 	Seed             uint32           `json:"seed,omitempty"`
 	Priority         string           `json:"priority,omitempty"`
 	PlacementAssetID string           `json:"placementAssetId,omitempty"`
@@ -170,6 +171,8 @@ func (component *worldComponent) UnmarshalJSON(data []byte) error {
 		allowed["center"], allowed["extent"], allowed["profile"] = true, true, true
 	case "tidewater.ambient-audio/1":
 		allowed["beds"] = true
+	case "tidewater.downeast-boat/1":
+		allowed["objectId"] = true
 	default:
 		return fmt.Errorf("unsupported world component type %q", typeName)
 	}
@@ -490,6 +493,8 @@ func validateManifest(manifest worldManifest, localPeerID string, now time.Time)
 	islandOceanCount := 0
 	waterBodyCount := 0
 	ambientAudioCount := 0
+	boatCount := 0
+	var boatObject worldObject
 	waterBodies := make([]worldComponent, 0, 4)
 	assetRefs := make(map[string]assetRef, len(manifest.Assets))
 	for _, asset := range manifest.Assets {
@@ -500,6 +505,7 @@ func validateManifest(manifest worldManifest, localPeerID string, now time.Time)
 		staticVegetation := component.Type == "tidewater.static-vegetation/1" && component.Seed == 0 && component.PlacementAssetID != ""
 		staticReef := component.Type == "tidewater.static-reef/1" && component.Seed == 0 && component.PlacementAssetID != "" && component.StreamingBounds != nil
 		ambientAudio := component.Type == "tidewater.ambient-audio/1" && component.Seed == 0 && component.PlacementAssetID == "" && len(component.Beds) > 0 && len(component.Beds) <= 16
+		boat := component.Type == "tidewater.downeast-boat/1" && component.Seed == 0 && component.PlacementAssetID == "" && component.ObjectID != ""
 		islandOcean := component.Type == "tidewater.island-ocean/1" && component.Seed == 0 && component.PlacementAssetID == ""
 		waterBody := component.Type == "tidewater.water-body/1" && component.Seed == 0 && component.PlacementAssetID == "" && len(component.Center) == 2 && component.Extent >= 8 && component.Extent <= 100000 && (component.Profile == "" || component.Profile == "deep-ocean" || component.Profile == "calm-lagoon" || component.Profile == "storm")
 		if waterBody {
@@ -519,7 +525,16 @@ func validateManifest(manifest worldManifest, localPeerID string, now time.Time)
 		if ambientAudio {
 			ambientAudioCount++
 		}
-		if !componentIDPattern.MatchString(component.ID) || seenComponents[component.ID] || seenObjects[component.ID] || seenPortals[component.ID] || (!vegetation && !staticVegetation && !staticReef && !islandOcean && !waterBody && !ambientAudio) || islandOceanCount > 1 || waterBodyCount > 4 || ambientAudioCount > 16 || component.Priority != "" && component.Priority != "portal-preview" && component.Priority != "visible" && component.Priority != "nearby" && component.Priority != "background" || !seenFeatures[component.Type] {
+		if boat {
+			boatCount++
+			preview, exists := objectByID[component.ObjectID]
+			previewAsset, assetExists := assetRefs[preview.AssetID]
+			if !exists || !assetExists || previewAsset.Kind != "glb" || previewAsset.Priority != "portal-preview" || preview.Kind != "asset-instance" || preview.Priority != "portal-preview" || preview.Collision.Enabled || preview.Collision.Shape != "none" || preview.Transform.Rotation != nil || preview.Scale != (vector3{1, 1, 1}) || component.Priority != "portal-preview" {
+				return fmt.Errorf("invalid berth preview object on boat component %q", component.ID)
+			}
+			boatObject = preview
+		}
+		if !componentIDPattern.MatchString(component.ID) || seenComponents[component.ID] || seenObjects[component.ID] || seenPortals[component.ID] || (!vegetation && !staticVegetation && !staticReef && !islandOcean && !waterBody && !ambientAudio && !boat) || islandOceanCount > 1 || waterBodyCount > 4 || ambientAudioCount > 16 || boatCount > 1 || component.Priority != "" && component.Priority != "portal-preview" && component.Priority != "visible" && component.Priority != "nearby" && component.Priority != "background" || !seenFeatures[component.Type] {
 			return fmt.Errorf("invalid or unsupported world component %q", component.ID)
 		}
 		if waterBody && (manifest.Rules.SeaLevel == nil || islandOceanCount > 0) || islandOcean && waterBodyCount > 0 {
@@ -573,6 +588,22 @@ func validateManifest(manifest worldManifest, localPeerID string, now time.Time)
 			}
 		}
 		seenComponents[component.ID] = true
+	}
+	if boatCount > 0 {
+		if manifest.Rules.SeaLevel == nil || islandOceanCount != 1 && waterBodyCount == 0 {
+			return errors.New("a Downeast boat requires seaLevel and a declared water renderer")
+		}
+		if waterBodyCount > 0 {
+			inside := false
+			for _, water := range waterBodies {
+				if math.Abs(boatObject.Transform.Position[0]-water.Center[0]) <= water.Extent && math.Abs(boatObject.Transform.Position[2]-water.Center[1]) <= water.Extent {
+					inside = true
+				}
+			}
+			if !inside {
+				return errors.New("a Downeast boat berth must be inside a declared water body")
+			}
+		}
 	}
 	return nil
 }

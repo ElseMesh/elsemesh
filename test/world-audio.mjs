@@ -7,7 +7,7 @@ class Param {
 }
 
 class Node {
-	constructor() { this.gain = new Param(); this.frequency = new Param(); this.Q = new Param(); this.pan = new Param(); this.positionX = new Param(); this.positionY = new Param(); this.positionZ = new Param(); }
+	constructor() { this.gain = new Param(); this.frequency = new Param(); this.Q = new Param(); this.pan = new Param(); this.positionX = new Param(); this.positionY = new Param(); this.positionZ = new Param(); this.playbackRate = new Param( 1 ); }
 	connect( destination ) { return destination || this; }
 	disconnect() { this.disconnected = true; }
 }
@@ -50,6 +50,11 @@ const source = sound.ctx.sources[ 0 ];
 assert.equal( source.started, true, 'the ambience buffer source starts looping' );
 assert.equal( source.loop, true, 'ambient audio loops continuously' );
 assert.equal( sound._worldAudioSources.values().next().value.gain.gain.value, 0.35, 'ambient gain is applied through the shared audio context' );
+for ( const name of [ 'boat_engine', 'boat_lap', 'boat_rush', 'hull_slap' ] ) sound._buffers.set( name, { duration: 4, numberOfChannels: 2 } );
+sound.engineStart();
+sound.updateWorldAudio( 1 / 60, { boat: { active: true, rpm: 0.4, speed: 0.2, position: { x: 12, y: 0, z: -4 } } } );
+assert.ok( sound._engine > 0, 'hosted boat state advances the original engine sound mixer' );
+assert.ok( sound._beds.has( 'boat_engine' ), 'hosted boat engine uses the original engine recording' );
 sound.setWorldAmbience( 'tw-world:second', [], new Map() );
 assert.equal( source.stopped, true, 'world handoff stops the previous world ambience' );
 assert.equal( sound._worldAudioSources.size, 0, 'world handoff releases loop sources' );

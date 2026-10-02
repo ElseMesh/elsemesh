@@ -135,7 +135,7 @@ export class WorldConnector {
 		validateWorldRequirements( reply.document.payload );
 		const entityIDs = validateWorldObjects( reply.document.payload.objects );
 		validateWorldPortals( reply.document.payload.portals, entityIDs );
-		validateWorldComponents( reply.document.payload.components, reply.document.payload.rules, entityIDs, reply.document.payload.assets );
+		validateWorldComponents( reply.document.payload.components, reply.document.payload.rules, entityIDs, reply.document.payload.assets, reply.document.payload.objects );
 		validateWorldHosts( reply.document.payload.hosts );
 		this.manifest = reply.document.payload;
 		invariant( Number.isSafeInteger( this.manifest.authorityEpoch ) && this.manifest.authorityEpoch > 0, 'Manifest authority epoch is outside the supported range' );
@@ -537,12 +537,15 @@ export function validateWorldPortals( portals = [], ids = new Set() ) {
 	return ids;
 }
 
-export function validateWorldComponents( components = [], rules, ids = new Set(), assets = [] ) {
+export function validateWorldComponents( components = [], rules, ids = new Set(), assets = [], objects = [] ) {
 	invariant( Array.isArray( components ) && components.length <= 128, 'World manifest has an invalid component list' );
 	const assetRefs = new Map( assets.map( ( asset ) => [ asset.id, asset ] ) );
+	const objectRefs = new Map( objects.map( ( object ) => [ object.id, object ] ) );
 	let islandOceanCount = 0;
 	let waterBodyCount = 0;
 	let audioComponentCount = 0;
+	let boatCount = 0;
+	let boatObject = null;
 	const waterBodies = [];
 	for ( const component of components ) {
 		invariant( component && typeof component.id === 'string' && /^tw-component:[\w.-]{1,128}$/.test( component.id ) && ! ids.has( component.id ), 'World manifest has an invalid or duplicate component ID' );
@@ -552,11 +555,18 @@ export function validateWorldComponents( components = [], rules, ids = new Set()
 		const islandOcean = component.type === 'tidewater.island-ocean/1' && Object.keys( component ).every( ( key ) => [ 'id', 'type', 'priority', 'streamingBounds' ].includes( key ) );
 		const waterBody = component.type === 'tidewater.water-body/1' && ( component.profile === undefined || [ 'deep-ocean', 'calm-lagoon', 'storm' ].includes( component.profile ) ) && Array.isArray( component.center ) && component.center.length === 2 && Number.isFinite( component.extent ) && component.extent >= 8 && component.extent <= 100000 && component.center.every( ( n ) => Number.isFinite( n ) && Math.abs( n ) + component.extent <= 1e6 ) && Object.keys( component ).every( ( key ) => [ 'id', 'type', 'priority', 'center', 'extent', 'profile', 'streamingBounds' ].includes( key ) );
 		const ambientAudio = component.type === 'tidewater.ambient-audio/1' && Object.keys( component ).every( ( key ) => [ 'id', 'type', 'priority', 'streamingBounds', 'beds' ].includes( key ) ) && Array.isArray( component.beds ) && component.beds.length > 0 && component.beds.length <= 16 && component.beds.every( ( bed ) => validAudioBed( bed, assetRefs, component.priority || 'portal-preview' ) );
-		invariant( ( vegetation || staticVegetation || staticReef || islandOcean || waterBody || ambientAudio ) && ( component.priority === undefined || [ 'portal-preview', 'visible', 'nearby', 'background' ].includes( component.priority ) ), `Unsupported or invalid world component ${component.id}` );
+		const boat = component.type === 'tidewater.downeast-boat/1' && typeof component.objectId === 'string' && /^tw-object:[\w.-]{1,128}$/.test( component.objectId ) && Object.keys( component ).every( ( key ) => [ 'id', 'type', 'priority', 'objectId' ].includes( key ) );
+		invariant( ( vegetation || staticVegetation || staticReef || islandOcean || waterBody || ambientAudio || boat ) && ( component.priority === undefined || [ 'portal-preview', 'visible', 'nearby', 'background' ].includes( component.priority ) ), `Unsupported or invalid world component ${component.id}` );
 		if ( islandOcean ) invariant( ++ islandOceanCount === 1, 'World manifest may declare only one island ocean component' );
 		if ( waterBody ) invariant( ++ waterBodyCount <= 4 && rules.seaLevel !== undefined && islandOceanCount === 0, 'Portable water requires seaLevel, allows at most four bodies, and cannot be combined with island-ocean' );
 		if ( islandOcean ) invariant( waterBodyCount === 0, 'A world cannot combine portable water and island-ocean components' );
 		if ( ambientAudio ) invariant( ++ audioComponentCount <= 16, 'World manifest may declare at most 16 ambient audio components' );
+		if ( boat ) {
+			boatCount ++;
+			boatObject = objectRefs.get( component.objectId );
+			const berthAsset = assetRefs.get( boatObject?.assetId );
+			invariant( boatCount === 1 && component.priority === 'portal-preview' && boatObject?.kind === 'asset-instance' && boatObject.priority === 'portal-preview' && boatObject.collision?.enabled === false && boatObject.collision?.shape === 'none' && boatObject.transform?.rotation === undefined && boatObject.scale?.length === 3 && boatObject.scale.every( ( value ) => value === 1 ) && berthAsset?.kind === 'glb' && berthAsset.priority === 'portal-preview', `Boat component ${component.id} has an invalid berth preview object` );
+		}
 		if ( waterBody ) {
 			invariant( ! waterBodies.some( ( other ) => Math.abs( component.center[ 0 ] - other.center[ 0 ] ) < component.extent + other.extent && Math.abs( component.center[ 1 ] - other.center[ 1 ] ) < component.extent + other.extent ), 'Portable water body bounds cannot overlap' );
 			waterBodies.push( component );
@@ -570,6 +580,10 @@ export function validateWorldComponents( components = [], rules, ids = new Set()
 		if ( component.type === 'tidewater.static-vegetation/1' ) invariant( typeof component.placementAssetId === 'string', `Static vegetation component ${component.id} requires placement data` );
 		if ( staticReef ) invariant( typeof component.placementAssetId === 'string', `Static reef component ${component.id} requires placement data` );
 		ids.add( component.id );
+	}
+	if ( boatCount ) {
+		invariant( rules.seaLevel !== undefined && ( islandOceanCount === 1 || waterBodyCount > 0 ), 'A Downeast boat requires seaLevel and a declared water renderer' );
+		if ( waterBodyCount ) invariant( waterBodies.some( ( water ) => Math.abs( boatObject.transform.position[ 0 ] - water.center[ 0 ] ) <= water.extent && Math.abs( boatObject.transform.position[ 2 ] - water.center[ 1 ] ) <= water.extent ), 'A Downeast boat berth must be inside a declared water body' );
 	}
 	return ids;
 }

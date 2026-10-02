@@ -74,6 +74,8 @@ export class Player {
 		this.prompt = null;
 		this.surface = 'sand';
 		this.gravity = 9.81;
+		this.hostedSeaLevel = null;
+		this._previousPosition = new THREE.Vector3();
 		this.worldMovement = movementParameters( null );
 
 		// boat cameras
@@ -121,6 +123,16 @@ export class Player {
 	// sample the hidden local procedural island, reef, water, or boat simulation.
 	updateHostedWorld( dt ) {
 		const inp = this.input;
+		this.prompt = null;
+		if ( this.mode === 'boat' ) { this.updateBoat( dt ); return; }
+		if ( this.mode === 'deck' ) { this.updateDeck( dt ); return; }
+		if ( this.mode === 'swim' && this.hostedSeaLevel !== null ) {
+			this.updateSwim( dt );
+			this.camera.position.set( this.position.x, this.position.y + SWIM_EYE, this.position.z );
+			this.camera.quaternion.setFromEuler( _e.set( this.pitch, this.yaw, 0 ) );
+			this._camY = this.camera.position.y;
+			return;
+		}
 		const look = inp.consumeLook( dt );
 		this.yaw -= look.x * 0.0022;
 		this.pitch = THREE.MathUtils.clamp( this.pitch - look.y * 0.0022, - 1.5, 1.5 );
@@ -136,14 +148,23 @@ export class Player {
 		this.velocity.z += ( _wish.z * speed - this.velocity.z ) * k;
 		if ( this.grounded && this.worldMovement.jumpSpeed > 0 && inp.hit( 'Space' ) ) { this.velocity.y = this.worldMovement.jumpSpeed; this.grounded = false; }
 		this.velocity.y -= this.gravity * dt;
+		this._previousPosition.copy( this.position );
 		this.position.addScaledVector( this.velocity, dt );
 		this.colliders.resolveCapsule( this.position, RADIUS, HEIGHT, 0.4 );
+		if ( this.landOnBoat( this._previousPosition, this.position ) ) return;
 		const ground = this.colliders.groundHeightAt( this.position.x, this.position.z, this.position.y + 0.45, 0.15 );
 		if ( this.position.y <= ground ) {
 			this.position.y = ground;
 			if ( this.velocity.y < 0 ) this.velocity.y = 0;
 			this.grounded = true;
 		} else this.grounded = this.position.y - ground < 0.06;
+		if ( this.hostedSeaLevel !== null && this.position.y < this.hostedSeaLevel - SWIM_DEPTH ) {
+			this.mode = 'swim';
+			this.waterH = this.hostedSeaLevel;
+			this.waterMean = this.hostedSeaLevel;
+			this.floating = true;
+			this.velocity.y = Math.max( this.velocity.y * 0.3, - 2.5 );
+		}
 		this.camera.position.set( this.position.x, this.position.y + EYE, this.position.z );
 		this.camera.quaternion.setFromEuler( _e.set( this.pitch, this.yaw, 0 ) );
 		this._camY = this.camera.position.y;
@@ -169,7 +190,7 @@ export class Player {
 
 	groundAt( x, z, maxY ) {
 
-		let g = this.terrain.heightAt( x, z );
+		let g = this.terrain?.heightAt( x, z ) ?? - Infinity;
 		const c = this.colliders.groundHeightAt( x, z, maxY );
 		if ( c > g ) g = c;
 		if ( this.reef && this.reef.floorHeightAt ) g = Math.max( g, this.reef.floorHeightAt( x, z ) );
@@ -522,7 +543,8 @@ export class Player {
 		b.driven = false;
 		b.throttle = 0;
 		this.mode = 'deck';
-		this.deckPos.set( HOUSE_HELM.x + 0.45, b.model.lines.deckY, HOUSE_HELM.z - 0.1 );
+		const helm = b.model.helmPosition || new THREE.Vector3( HOUSE_HELM.x, b.model.lines.deckY, HOUSE_HELM.z );
+		this.deckPos.set( helm.x + 0.45, b.model.lines.deckY, helm.z - 0.1 );
 		this.deckVel.set( 0, 0, 0 );
 		this.deckYaw = this.helmYaw;
 		this.pitch = this.helmPitch;
@@ -738,7 +760,8 @@ export class Player {
 		this.deckToWorld();
 
 		// prompts: take the helm, or step ashore
-		const hx = HOUSE_HELM.x, hz = HOUSE_HELM.z;
+		const helm = b.model.helmPosition || HOUSE_HELM;
+		const hx = helm.x, hz = helm.z;
 		const nearHelm = Math.hypot( p.x - hx, p.z - hz ) < HELM_REACH && ! this.busy;
 		this._ashoreT -= dt;
 		if ( this._ashoreT <= 0 ) {

@@ -83,13 +83,16 @@ try {
 	assert.equal( source.objects[ 0 ].replacesObjectId, terrainPreview.id, 'full terrain replaces the lightweight portal terrain' );
 	const previewGLB = parseGLB( firstAssets.get( terrainPreview.assetId ) );
 	assert.equal( previewGLB.meshes[ 0 ][ 0 ].indices.length, 128 * 128 * 6, 'portal terrain preview uses one sixteenth as many grid cells as full terrain' );
-	assert.deepEqual( source.rules.requiredFeatures, [ 'tidewater.static-glb/1', 'tidewater.static-glb-quaternion/1', 'tidewater.static-vegetation/1', 'tidewater.static-reef/1', 'tidewater.island-ocean/1', 'tidewater.ambient-audio/1', 'tidewater.portal-handoff/1', 'tidewater.portal-preview-static/1' ], 'GLB transforms, portable vegetation and reef, ocean, audio, and portals declare runtime capabilities' );
+	assert.deepEqual( source.rules.requiredFeatures, [ 'tidewater.static-glb/1', 'tidewater.static-glb-quaternion/1', 'tidewater.static-vegetation/1', 'tidewater.static-reef/1', 'tidewater.island-ocean/1', 'tidewater.downeast-boat/1', 'tidewater.ambient-audio/1', 'tidewater.portal-handoff/1', 'tidewater.portal-preview-static/1' ], 'GLB transforms, portable vegetation and reef, ocean, boat, audio, and portals declare runtime capabilities' );
 	assert.equal( source.portals[ 0 ].destinationWorldId, 'tw-world:loz-underneath', 'the example island links to the portable LOZ-derived cave' );
-	assert.equal( source.components.length, 3 + source.components.filter( ( component ) => component.type === 'tidewater.static-reef/1' ).length, 'portable island declares vegetation, reef tiles, ocean, and ambient components' );
+	assert.equal( source.components.length, 4 + source.components.filter( ( component ) => component.type === 'tidewater.static-reef/1' ).length, 'portable island declares vegetation, reef tiles, ocean, boat, and ambient components' );
 	assert.equal( source.components[ 0 ].type, 'tidewater.static-vegetation/1', 'portable island uses terrain-independent, authored world-space vegetation placements' );
 	assert.match( source.components[ 0 ].placementAssetId, /^sha256:[0-9a-f]{64}$/, 'vegetation placement data is content addressed' );
 	assert.equal( source.components[ 0 ].priority, 'portal-preview', 'vegetation records are available for open portal previews' );
 	assert.deepEqual( source.components.find( ( component ) => component.type === 'tidewater.island-ocean/1' ), { id: 'tw-component:island-ocean', type: 'tidewater.island-ocean/1', priority: 'portal-preview' }, 'portable island declares its versioned ocean renderer for early portal previews' );
+	const boat = source.components.find( ( component ) => component.type === 'tidewater.downeast-boat/1' );
+	assert.deepEqual( boat, { id: 'tw-component:island-lobster-boat', type: 'tidewater.downeast-boat/1', objectId: 'tw-object:moored-lobster-boat', priority: 'portal-preview' }, 'portable island binds the trusted boat runtime to its signed world-local berth' );
+	assert.equal( source.rules.seaLevel, 0, 'the boat has a declared world-space sea level' );
 	const ambience = source.components.find( ( component ) => component.type === 'tidewater.ambient-audio/1' );
 	assert.equal( ambience?.beds.length, 8, 'portable island exports its eight original ambient loop beds' );
 	assert.ok( ambience.beds.every( ( bed ) => firstAssets.has( bed.assetId ) && firstAssets.get( bed.assetId ).length <= 16 * 1024 * 1024 ), 'each ambience bed is bundled as a bounded content-addressed asset' );

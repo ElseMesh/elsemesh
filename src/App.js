@@ -73,6 +73,7 @@ import { WorldConnector, worldLinkFromLocation } from './network/WorldConnector.
 import { rememberWorldVisit } from './network/WorldLauncher.js';
 import { worldSeaLevel } from './network/WorldRules.js';
 import { appendWorldPackageAssets, disposeWorldPackage, loadWorldPackage, registerWorldPackageCollisions, unregisterWorldPackageCollisions } from './network/WorldPackage.js';
+import { HostedBoat } from './network/HostedBoat.js';
 import { selectWorldComponentsForView, selectWorldObjectsForView } from './network/WorldStreaming.js';
 import { crossedPortalPlane, rotatePortalVelocity } from './network/PortalHandoff.js';
 import { WorldPortalView } from './network/WorldPortalView.js';
@@ -170,6 +171,7 @@ export class App {
 		await progress( 0.06, 'Shaping the island…' );
 		this.terrainData = new TerrainData();
 		this.colliders = new Colliders();
+		this.hostedColliders = new Colliders();
 		// the village flattens building pads into the heightmap: build it before any terrain
 		// data is derived (shore field, GPU textures, meshes)
 		await progress( 0.12, 'Building the village…' );
@@ -308,6 +310,11 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 		scene.add( this.ocean );
 
 		this.query = new WaterQuery( renderer, this.surface );
+		// Hosted boats use the same FFT swell but a terrain-free query surface. This keeps boat
+		// hydrostatics independent of the hidden procedural island's shore and wake fields.
+		this.hostedWaterSurface = new WaterSurface( { fft: this.fft, cdlod: this.oceanLOD, foamTexture: this.foamTexture } );
+		this.hostedQuery = new WaterQuery( renderer, this.hostedWaterSurface );
+		this.hostedPlayerSlot = this.hostedQuery.allocate( 'player', 1 );
 
 		this.marineSnow = new MarineSnow( { fft: this.fft, query: this.query } );
 		scene.add( this.marineSnow.mesh );
@@ -345,6 +352,7 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 		this.wake = new WakeSim( renderer, { terrainGPU: this.terrainGPU, boat: this.boatCtl, colliders: this.colliders } );
 		this.surface.wake = this.wake;
 		this.player = new Player( { camera, input: this.input, terrain: this.terrainData, colliders: this.colliders, query: this.query, boat: this.boatCtl, reef: this.reef } );
+		this.localPlayerEnvironment = { terrain: this.player.terrain, colliders: this.player.colliders, query: this.player.query, slot: this.player.slot, reef: this.player.reef, boat: this.player.boat, hostedSeaLevel: null };
 		// birds, beach crabs, sanderlings (after spray / query / boat, which they use)
 		this.wildlife = new Wildlife( {
 			scene, renderer, terrain: this.terrainData, terrainGPU: this.terrainGPU, shore: this.shore,
@@ -417,7 +425,9 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 			this.player.setWorldRules( connector.manifest.rules );
 			G.seaLevel.value = worldSeaLevel( connector.manifest.rules );
 			this.camera.position.set( 0, 3, 8 );
-			this.player.setHostedWorldPose( this.camera.position, Math.PI, - 0.1 );
+			this.player.yaw = Math.PI;
+			this.player.pitch = - 0.1;
+			this.camera.quaternion.setFromEuler( new Euler( - 0.1, Math.PI, 0 ) );
 			const initialObjects = selectWorldObjectsForView( connector.manifest, this.camera );
 			const initialComponents = selectWorldComponentsForView( connector.manifest, this.camera ).filter( ( component ) => this.vegetationEnabled || ! isVegetationComponent( component ) );
 			const initialObjectIDs = new Set( initialObjects.map( ( object ) => object.id ) );
@@ -427,13 +437,16 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 			const visibleAssets = await connector.preload( { through: 'background', assetIDs: initialAssetIDs } );
 			this.linkedWorldRoot = await loadWorldPackage( connector, { assets: visibleAssets, objectIDs: initialObjectIDs } );
 			this.installWorldComponents( this.linkedWorldRoot, connector, initialComponentIDs );
-			registerWorldPackageCollisions( this.linkedWorldRoot, this.colliders );
+			registerWorldPackageCollisions( this.linkedWorldRoot, this.hostedColliders );
+			this.prepareHostedWorld( connector );
 			this.linkedWorldRoot.name = `hosted-world:${worldLink.worldId}`;
 			scene.add( this.linkedWorldRoot );
 			this.remoteWorlds.set( worldLink.worldId, { connector, root: this.linkedWorldRoot } );
+			this.player.setHostedWorldPose( this.camera.position, this.player.yaw, this.player.pitch );
 			this.streamWorldRemainder( connector, this.linkedWorldRoot );
 			this.proceduralWorldRoot.visible = false;
 			this.remoteWorldActive = true;
+			this.activateHostedWorld( this.linkedWorldRoot, connector );
 			this.refraction.enabled = false;
 			this.portalPreviousPosition = this.camera.position.clone();
 			rememberWorldVisit( {
@@ -783,11 +796,63 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 				// SoundScape consumes the signed component from the connector directly; record
 				// installation here so view streaming does not repeatedly request its loop assets.
 				installedIDs.add( component.id );
+			} else if ( component.type === 'tidewater.downeast-boat/1' ) {
+				const object = connector.manifest.objects.find( ( candidate ) => candidate.id === component.objectId );
+				if ( ! object ) throw new Error( `Boat component ${component.id} has no berth object` );
+				const boat = new HostedBoat( { root, component, object } );
+				installed.push( {
+					hostedBoat: true,
+					boat,
+					activate: ( context ) => boat.activate( context ),
+					deactivate: () => boat.deactivate(),
+					update: ( dt ) => boat.update( dt ),
+					dispose: () => boat.dispose(),
+				} );
 			}
 			if ( installed.length > count ) installedIDs.add( component.id );
 		}
 		root.userData.worldComponents ||= [];
 		root.userData.worldComponents.push( ...installed );
+	}
+
+	activateHostedWorld( root, connector ) {
+
+		this.prepareHostedWorld( connector );
+		const runtime = ( root.userData.worldComponents || [] ).find( ( component ) => component.hostedBoat );
+		this.activeHostedBoat = runtime || null;
+		this.player.boat = runtime ? runtime.activate( { query: this.hostedQuery, colliders: this.hostedColliders } ) : null;
+
+	}
+
+	prepareHostedWorld( connector ) {
+
+		this.deactivateHostedWorld();
+		this.player.terrain = null;
+		this.player.colliders = this.hostedColliders;
+		this.player.query = this.hostedQuery;
+		this.player.slot = this.hostedPlayerSlot;
+		this.player.reef = null;
+		const hasWater = connector.manifest.components.some( ( component ) => component.type === 'tidewater.island-ocean/1' || component.type === 'tidewater.water-body/1' );
+		this.player.hostedSeaLevel = hasWater && Number.isFinite( connector.manifest.rules.seaLevel ) ? connector.manifest.rules.seaLevel : hasWater ? 0 : null;
+
+	}
+
+	deactivateHostedWorld() {
+
+		const runtime = this.activeHostedBoat;
+		if ( ! runtime ) return;
+		const controller = runtime.boat.controller;
+		const wasDriving = controller?.driven;
+		runtime.deactivate();
+		if ( this.player.boat === controller ) this.player.boat = null;
+		if ( this.player.mode === 'boat' || this.player.mode === 'deck' ) {
+			this.player.mode = 'walk';
+			this.player.velocity.set( 0, 0, 0 );
+			this.player._camY = null;
+		}
+		if ( wasDriving && this.player.audio ) this.player.audio.engineStop();
+		this.activeHostedBoat = null;
+
 	}
 
 	updateWorldComponents( root, dt, camera ) {
@@ -838,7 +903,7 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 			if ( loadController.signal.aborted || state.controller.signal.aborted || this.linkedWorldRoot !== root ) return;
 			return appendWorldPackageAssets( connector, root, assets, { signal: loadController.signal, objectIDs } ).then( () => {
 				this.installWorldComponents( root, connector, componentIDs );
-				return registerWorldPackageCollisions( root, this.colliders );
+				return registerWorldPackageCollisions( root, this.hostedColliders );
 			} );
 		} ).catch( ( error ) => {
 			if ( ! loadController.signal.aborted && ! state.controller.signal.aborted ) console.warn( `View-driven world asset load failed for ${connector.worldId}`, error );
@@ -990,22 +1055,23 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 		const destinationConnector = preparation.connector;
 		const destinationRoot = preparation.root;
 		this.clearPortalPreview();
+		const velocity = rotatePortalVelocity( this.player.velocity, portal.entry.yaw, portal.exit.yaw );
+		this.deactivateHostedWorld();
 		this.worldBackgroundLoads.get( sourceConnector.worldId )?.abort();
 		this.worldBackgroundLoads.delete( sourceConnector.worldId );
 		this.scene.remove( this.linkedWorldRoot );
-		unregisterWorldPackageCollisions( this.linkedWorldRoot, this.colliders );
+		unregisterWorldPackageCollisions( this.linkedWorldRoot, this.hostedColliders );
 		this.linkedWorldRoot = destinationRoot;
-		registerWorldPackageCollisions( destinationRoot, this.colliders );
+		registerWorldPackageCollisions( destinationRoot, this.hostedColliders );
 		this.scene.add( destinationRoot );
 		this.worldConnector = destinationConnector;
 		this.player.setWorldRules( destinationConnector.manifest.rules );
 		G.seaLevel.value = worldSeaLevel( destinationConnector.manifest.rules );
+		this.player.setHostedWorldPose( new Vector3( ...portal.exit.position ), portal.exit.yaw, this.player.pitch );
+		this.activateHostedWorld( destinationRoot, destinationConnector );
 		this.remoteWorlds.set( destinationConnector.worldId, { connector: destinationConnector, root: destinationRoot } );
 		this.streamWorldRemainder( destinationConnector, destinationRoot );
 
-		const exit = portal.exit;
-		const velocity = rotatePortalVelocity( this.player.velocity, portal.entry.yaw, exit.yaw );
-		this.player.setHostedWorldPose( new Vector3( ...exit.position ), exit.yaw, this.player.pitch );
 		this.player.velocity.x = velocity.x;
 		this.player.velocity.z = velocity.z;
 		this.player.velocity.y = velocity.y;
@@ -1059,6 +1125,16 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 
 		}
 		if ( this.remoteWorldActive ) {
+			const hostedBoat = this.activeHostedBoat?.boat.controller;
+			if ( this.player.hostedSeaLevel !== null ) {
+				this.hostedQuery.setCamera( this.camera.position.x, this.camera.position.z );
+				this.hostedQuery.setPoint( this.player.slot, this.player.position.x, this.player.position.z );
+				hostedBoat?.queueQueries();
+				this.hostedQuery.update();
+				hostedBoat?.update( dt );
+				this.player.waterH = this.player.waterHeight();
+				this.player.waterMean = this.player.waterMean === null ? this.player.waterH : this.player.waterMean + ( this.player.waterH - this.player.waterMean ) * ( 1 - Math.exp( - dt / 4 ) );
+			}
 			this.player.updateHostedWorld( dt );
 			this.updateWorldPortals();
 			this.updateWorldStreaming();
@@ -1080,9 +1156,10 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 
 		if ( this.remoteWorldActive ) {
 
-			this.cameraWaterHeight = 0;
-			G.cameraUnderwater.value = 0;
-			G.cameraWaterHeight.value = 0;
+			const waterSample = this.player.hostedSeaLevel !== null && this.hostedQuery.cpuValid ? this.hostedQuery.cpu[ 0 ] : this.player.hostedSeaLevel;
+			this.cameraWaterHeight = Number.isFinite( waterSample ) ? waterSample : 0;
+			G.cameraUnderwater.value = this.player.hostedSeaLevel !== null && this.camera.position.y < this.cameraWaterHeight - LENS_REACH ? 1 : 0;
+			G.cameraWaterHeight.value = this.cameraWaterHeight;
 			if ( this.clouds ) this.clouds.update( dt, this.camera );
 			this.environment.update( dt );
 			this.updateWorldComponents( this.linkedWorldRoot, dt, this.camera );
@@ -1196,12 +1273,17 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 			this.audio.setWorldAmbience( connector.worldId, components, connector.assets );
 			if ( this.audio.enabled ) {
 				const h = this.cameraWaterHeight ?? G.seaLevel.value;
+				const boat = this.activeHostedBoat?.boat.controller;
 				this.audio.updateWorldAudio( dt, {
 					listener,
 					underwater: p.y < h ? 1 : 0,
 					depthBelowSurface: Math.max( 0, h - p.y ),
 					daylight: 1 - G.night.value,
 					timeOfDay: this.settings.timeOfDay,
+					boat: boat ? {
+						active: boat.driven, rpm: boat.rpm, speed: boat.velocity.length(), position: boat.model.group.position,
+						listenerInside: this.player.mode === 'boat' && this.player.camMode === 'first',
+					} : undefined,
 				} );
 			}
 			return;

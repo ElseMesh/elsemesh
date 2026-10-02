@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { Vector3 } from '../src/engine/math/Vector3.js';
+import { Quaternion } from '../src/engine/math/Quaternion.js';
 import { Player } from '../src/player/Player.js';
 import { Colliders } from '../src/world/Colliders.js';
 
@@ -23,8 +24,10 @@ const input = {
 const camera = { position: new Vector3(), quaternion: { setFromEuler() {} } };
 const player = {
 	camera, input, colliders, position: new Vector3(), velocity: new Vector3(),
+	_previousPosition: new Vector3(),
 	yaw: 0, pitch: 0, grounded: false, gravity: 9.81,
 };
+Object.setPrototypeOf( player, Player.prototype );
 Player.prototype.setWorldRules.call( player, { gravity: 1, movement: { walkSpeed: 1.5, sprintSpeed: 4, jumpSpeed: 2.5 } } );
 Player.prototype.setHostedWorldPose.call( player, new Vector3( 0, 1.62, 0 ), 0, 0 );
 assert.equal( player.position.y, 0 );
@@ -42,4 +45,35 @@ player.grounded = true;
 jumpPressed = true;
 Player.prototype.updateHostedWorld.call( player, 1 / 60 );
 assert.ok( player.velocity.y > 2.3 && player.velocity.y < 2.5, 'hosted jump impulse follows the signed world rule' );
+
+const boatDeck = { center: new Vector3( 0, 1, 0 ), half: new Vector3( 2, 0.1, 4 ), walkable: true, solid: true };
+const hostedBoat = {
+	position: new Vector3(), velocity: new Vector3(), quaternion: new Quaternion(), driven: false, moored: true,
+	model: { colliders: [ boatDeck ], boardPoint: new Vector3(), lines: { deckY: 1.1 }, helmPosition: new Vector3() },
+	getYaw: () => 0,
+	toWorld( local, out ) { return out.copy( local ).applyQuaternion( this.quaternion ).add( this.position ); },
+};
+player.boat = hostedBoat;
+player.deckPos = new Vector3();
+player.deckVel = new Vector3();
+player.deckYaw = 0;
+player._ashore = null;
+player._ashoreT = 0;
+player._camY = null;
+player.helmYaw = 0;
+player.helmPitch = 0;
+player.camMode = 'first';
+player.audio = null;
+player.mode = 'walk';
+player.position.set( 0, 0.9, 0 );
+player.velocity.set( 0, -5, 0 );
+assert.equal( Player.prototype.landOnBoat.call( player, new Vector3( 0, 1.3, 0 ), player.position ), true, 'descending hosted player lands on the boat deck' );
+assert.equal( player.mode, 'deck', 'boat contact automatically boards the player without a separate board action' );
+assert.ok( Math.abs( player.position.y - 1.1 ) < 1e-9, 'landing snaps the player feet to the deck surface' );
+hostedBoat.position.y = 0.45;
+Player.prototype.deckToWorld.call( player );
+assert.ok( Math.abs( player.position.y - 1.55 ) < 1e-9, 'deck-local player pose follows boat heave' );
+Player.prototype.takeHelm.call( player );
+assert.equal( player.mode, 'boat', 'the player can take the helm from the deck' );
+assert.equal( hostedBoat.driven, true, 'taking the helm activates the hosted boat controller' );
 console.log( 'ok   hosted first-person movement uses only active world colliders' );

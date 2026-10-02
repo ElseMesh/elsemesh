@@ -68,6 +68,8 @@ export function validateWorldSource( source ) {
 	let islandOceanCount = 0;
 	let waterBodyCount = 0;
 	let ambientAudioCount = 0;
+	let boatCount = 0;
+	let boatObject = null;
 	const waterBodies = [];
 	for ( const component of source.components || [] ) {
 		const vegetation = component?.type === 'tidewater.procedural-island-vegetation/1' && component.seed === 7 && ( component.placementAssetId === undefined || /^sha256:[0-9a-f]{64}$/.test( component.placementAssetId ) );
@@ -76,11 +78,18 @@ export function validateWorldSource( source ) {
 		const islandOcean = component?.type === 'tidewater.island-ocean/1';
 		const waterBody = component?.type === 'tidewater.water-body/1' && validWaterBody( component );
 		const ambientAudio = component?.type === 'tidewater.ambient-audio/1' && validAmbientAudio( component );
-		const allowedKeys = vegetation ? [ 'id', 'type', 'seed', 'priority', 'placementAssetId', 'streamingBounds' ] : staticVegetation || staticReef ? [ 'id', 'type', 'priority', 'placementAssetId', 'streamingBounds' ] : islandOcean ? [ 'id', 'type', 'priority', 'streamingBounds' ] : waterBody ? [ 'id', 'type', 'priority', 'center', 'extent', 'profile', 'streamingBounds' ] : ambientAudio ? [ 'id', 'type', 'priority', 'streamingBounds', 'beds' ] : [];
-		if ( ! component || typeof component.id !== 'string' || ! /^tw-component:[\w.-]{1,128}$/.test( component.id ) || ids.has( component.id ) || ( ! vegetation && ! staticVegetation && ! staticReef && ! islandOcean && ! waterBody && ! ambientAudio ) || component.priority !== undefined && ! [ 'portal-preview', 'visible', 'nearby', 'background' ].includes( component.priority ) || component.streamingBounds !== undefined && ! validStreamingBounds( component.streamingBounds ) || Object.keys( component ).some( ( key ) => ! allowedKeys.includes( key ) ) ) throw new Error( 'Invalid or duplicate world component' );
+		const boat = component?.type === 'tidewater.downeast-boat/1' && /^tw-object:[\w.-]{1,128}$/.test( component.objectId || '' );
+		const allowedKeys = vegetation ? [ 'id', 'type', 'seed', 'priority', 'placementAssetId', 'streamingBounds' ] : staticVegetation || staticReef ? [ 'id', 'type', 'priority', 'placementAssetId', 'streamingBounds' ] : islandOcean ? [ 'id', 'type', 'priority', 'streamingBounds' ] : waterBody ? [ 'id', 'type', 'priority', 'center', 'extent', 'profile', 'streamingBounds' ] : ambientAudio ? [ 'id', 'type', 'priority', 'streamingBounds', 'beds' ] : boat ? [ 'id', 'type', 'priority', 'objectId' ] : [];
+		if ( ! component || typeof component.id !== 'string' || ! /^tw-component:[\w.-]{1,128}$/.test( component.id ) || ids.has( component.id ) || ( ! vegetation && ! staticVegetation && ! staticReef && ! islandOcean && ! waterBody && ! ambientAudio && ! boat ) || component.priority !== undefined && ! [ 'portal-preview', 'visible', 'nearby', 'background' ].includes( component.priority ) || component.streamingBounds !== undefined && ! validStreamingBounds( component.streamingBounds ) || Object.keys( component ).some( ( key ) => ! allowedKeys.includes( key ) ) ) throw new Error( 'Invalid or duplicate world component' );
 		if ( islandOcean && ++ islandOceanCount > 1 ) throw new Error( 'A world may declare only one island ocean component' );
 		if ( waterBody && ++ waterBodyCount > 4 ) throw new Error( 'A world may declare at most four water body components' );
 		if ( ambientAudio && ++ ambientAudioCount > 16 ) throw new Error( 'A world may declare at most 16 ambient audio components' );
+		if ( boat ) {
+			boatCount ++;
+			boatObject = objectByID.get( component.objectId );
+			if ( component.priority !== 'portal-preview' || ! boatObject || boatObject.kind !== 'asset-instance' || boatObject.priority !== 'portal-preview' || boatObject.collision.enabled || boatObject.collision.shape !== 'none' || boatObject.transform.rotation !== undefined || boatObject.scale.some( ( value ) => value !== 1 ) || ! /^sha256:[0-9a-f]{64}$/.test( boatObject.assetId || '' ) ) throw new Error( `Invalid berth preview object on boat component ${component.id}` );
+			if ( boatCount > 1 ) throw new Error( 'A world may declare only one Downeast boat component' );
+		}
 		if ( waterBody && ( source.rules.seaLevel === undefined || islandOceanCount > 0 ) ) throw new Error( 'A portable water body requires seaLevel and cannot be combined with island-ocean' );
 		if ( islandOcean && waterBodyCount > 0 ) throw new Error( 'A world cannot combine portable water and island-ocean components' );
 		if ( waterBody ) {
@@ -90,6 +99,8 @@ export function validateWorldSource( source ) {
 		if ( ! source.rules.requiredFeatures?.includes( component.type ) ) throw new Error( `World component ${component.type} must be listed in requiredFeatures` );
 		ids.add( component.id );
 	}
+	if ( boatCount && ( source.rules.seaLevel === undefined || islandOceanCount !== 1 && waterBodyCount === 0 ) ) throw new Error( 'A Downeast boat requires seaLevel and a declared water renderer' );
+	if ( boatCount && waterBodyCount && ! waterBodies.some( ( water ) => Math.abs( boatObject.transform.position[ 0 ] - water.center[ 0 ] ) <= water.extent && Math.abs( boatObject.transform.position[ 2 ] - water.center[ 1 ] ) <= water.extent ) ) throw new Error( 'A Downeast boat berth must be inside a declared water body' );
 	return source;
 }
 

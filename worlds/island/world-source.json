@@ -6,6 +6,7 @@
   "styleGuide": "Procedural volcanic island terrain. Preserve the coast, central bay, volcanic ridge, beaches, seabed, and terrain color regions.",
   "rules": {
     "gravity": 1,
+    "seaLevel": 0,
     "avatarComplexity": 20000,
     "physicsProfile": "tidewater-default",
     "requiredFeatures": [
@@ -14,6 +15,7 @@
       "tidewater.static-vegetation/1",
       "tidewater.static-reef/1",
       "tidewater.island-ocean/1",
+      "tidewater.downeast-boat/1",
       "tidewater.ambient-audio/1",
       "tidewater.portal-handoff/1",
       "tidewater.portal-preview-static/1"
@@ -11842,6 +11844,12 @@
     {
       "id": "tw-component:island-ocean",
       "type": "tidewater.island-ocean/1",
+      "priority": "portal-preview"
+    },
+    {
+      "id": "tw-component:island-lobster-boat",
+      "type": "tidewater.downeast-boat/1",
+      "objectId": "tw-object:moored-lobster-boat",
       "priority": "portal-preview"
     },
     {

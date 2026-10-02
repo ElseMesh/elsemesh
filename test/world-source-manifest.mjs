@@ -17,6 +17,9 @@ try {
 	const boundedAssetBytes = Buffer.from( 'mesh' );
 	const boundedAssetID = `sha256:${createHashForTest( boundedAssetBytes )}`;
 	await writeFile( path.join( assetsPath, boundedAssetID.slice( 'sha256:'.length ) ), boundedAssetBytes );
+	const boatPreviewBytes = Buffer.from( 'trusted boat berth preview mesh' );
+	const boatPreviewAssetID = `sha256:${createHashForTest( boatPreviewBytes )}`;
+	await writeFile( path.join( assetsPath, boatPreviewAssetID.slice( 'sha256:'.length ) ), boatPreviewBytes );
 	const emptyVegetation = Object.fromEntries( [ ...VEGETATION_PLACEMENT_KINDS.map( ( kind ) => [ kind, [] ] ), [ 'villagePalms', 0 ] ] );
 	const placementBytes = Buffer.from( encodeVegetationPlacements( emptyVegetation, 7 ) );
 	const placementAssetID = `sha256:${createHashForTest( placementBytes )}`;
@@ -33,10 +36,10 @@ try {
 		title: 'Manifest test',
 		coordinateSystem: 'right-handed-y-up-meters',
 		styleGuide: '',
-		rules: { gravity: 1, seaLevel: -4.5, atmosphereLevel: 18000, avatarComplexity: 20000, physicsProfile: 'default', movement: { walkSpeed: 2.5, sprintSpeed: 7, jumpSpeed: 4.2 }, maxPackageBytes: 1024, requiredFeatures: [ 'tidewater.portal-handoff/1', 'tidewater.procedural-island-vegetation/1', 'tidewater.static-vegetation/1', 'tidewater.static-reef/1', 'tidewater.island-ocean/1', 'tidewater.ambient-audio/1', 'tidewater.static-glb-emissive-strength/1' ] },
+		rules: { gravity: 1, seaLevel: -4.5, atmosphereLevel: 18000, avatarComplexity: 20000, physicsProfile: 'default', movement: { walkSpeed: 2.5, sprintSpeed: 7, jumpSpeed: 4.2 }, maxPackageBytes: 1024, requiredFeatures: [ 'tidewater.portal-handoff/1', 'tidewater.procedural-island-vegetation/1', 'tidewater.static-vegetation/1', 'tidewater.static-reef/1', 'tidewater.island-ocean/1', 'tidewater.downeast-boat/1', 'tidewater.ambient-audio/1', 'tidewater.static-glb-emissive-strength/1' ] },
 		hosts: [ { peerId: '12D3KooWAbcdefghijk1234567890123456', scopes: [ 'content-cache', 'failover-authority' ], expiresAt: 1900000000, epoch: 3, failoverAfter: 1800000000, failoverSeconds: 300 } ],
-		objects: [ { id: 'tw-object:bounded', kind: 'asset-instance', label: 'Bounded', assetId: boundedAssetID, priority: 'nearby', streamingBounds: { center: [ 1, 2, 3 ], radius: 4 }, transform: { position: [ 0, 0, 0 ], yaw: 0 }, scale: [ 1, 1, 1 ], collision: { shape: 'none', enabled: false } } ],
-		components: [ { id: 'tw-component:test-vegetation', type: 'tidewater.procedural-island-vegetation/1', seed: 7, priority: 'portal-preview', placementAssetId: placementAssetID }, { id: 'tw-component:static-plants', type: 'tidewater.static-vegetation/1', priority: 'portal-preview', placementAssetId: placementAssetID }, { id: 'tw-component:reef-tile', type: 'tidewater.static-reef/1', priority: 'visible', placementAssetId: reefPlacementAssetID, streamingBounds: { center: [ 0, -4, 0 ], radius: 32 } }, { id: 'tw-component:test-ocean', type: 'tidewater.island-ocean/1', priority: 'portal-preview' }, { id: 'tw-component:test-ambience', type: 'tidewater.ambient-audio/1', priority: 'portal-preview', beds: [ { assetId: ambientAssetID, gain: 0.3, condition: 'underwater', position: [ 1, 2, 3 ] } ] } ],
+		objects: [ { id: 'tw-object:bounded', kind: 'asset-instance', label: 'Bounded', assetId: boundedAssetID, priority: 'nearby', streamingBounds: { center: [ 1, 2, 3 ], radius: 4 }, transform: { position: [ 0, 0, 0 ], yaw: 0 }, scale: [ 1, 1, 1 ], collision: { shape: 'none', enabled: false } }, { id: 'tw-object:boat-preview', kind: 'asset-instance', label: 'Boat berth preview', assetId: boatPreviewAssetID, priority: 'portal-preview', transform: { position: [ 0, -4.5, 0 ], yaw: 0 }, scale: [ 1, 1, 1 ], collision: { shape: 'none', enabled: false } } ],
+		components: [ { id: 'tw-component:test-vegetation', type: 'tidewater.procedural-island-vegetation/1', seed: 7, priority: 'portal-preview', placementAssetId: placementAssetID }, { id: 'tw-component:static-plants', type: 'tidewater.static-vegetation/1', priority: 'portal-preview', placementAssetId: placementAssetID }, { id: 'tw-component:reef-tile', type: 'tidewater.static-reef/1', priority: 'visible', placementAssetId: reefPlacementAssetID, streamingBounds: { center: [ 0, -4, 0 ], radius: 32 } }, { id: 'tw-component:test-ocean', type: 'tidewater.island-ocean/1', priority: 'portal-preview' }, { id: 'tw-component:hosted-boat', type: 'tidewater.downeast-boat/1', objectId: 'tw-object:boat-preview', priority: 'portal-preview' }, { id: 'tw-component:test-ambience', type: 'tidewater.ambient-audio/1', priority: 'portal-preview', beds: [ { assetId: ambientAssetID, gain: 0.3, condition: 'underwater', position: [ 1, 2, 3 ] } ] } ],
 		portals: [],
 		updatedAt: '2026-09-30T12:34:56Z',
 	} ) );
@@ -58,8 +61,9 @@ try {
 	assert.equal( manifest.updatedAt, 1790771696, 'runtime timestamp must come from the source snapshot' );
 	assert.equal( manifest.discoverable, false, 'world publication is private by default' );
 	assert.deepEqual( manifest.hosts, [ { peerId: '12D3KooWAbcdefghijk1234567890123456', scopes: [ 'content-cache', 'failover-authority' ], expiresAt: 1900000000, epoch: 3, failoverAfter: 1800000000, failoverSeconds: 300 } ], 'owner-granted cache and failover authority survive conversion' );
-	assert.deepEqual( manifest.rules.requiredFeatures, [ 'tidewater.portal-handoff/1', 'tidewater.procedural-island-vegetation/1', 'tidewater.static-vegetation/1', 'tidewater.static-reef/1', 'tidewater.island-ocean/1', 'tidewater.ambient-audio/1', 'tidewater.static-glb-emissive-strength/1' ], 'runtime feature requirements survive deterministic conversion' );
+	assert.deepEqual( manifest.rules.requiredFeatures, [ 'tidewater.portal-handoff/1', 'tidewater.procedural-island-vegetation/1', 'tidewater.static-vegetation/1', 'tidewater.static-reef/1', 'tidewater.island-ocean/1', 'tidewater.downeast-boat/1', 'tidewater.ambient-audio/1', 'tidewater.static-glb-emissive-strength/1' ], 'runtime feature requirements survive deterministic conversion' );
 	assert.deepEqual( manifest.components.at( -1 ), { id: 'tw-component:test-ambience', type: 'tidewater.ambient-audio/1', priority: 'portal-preview', beds: [ { assetId: ambientAssetID, gain: 0.3, condition: 'underwater', position: [ 1, 2, 3 ] } ] }, 'ambient bed contract survives deterministic conversion' );
+	assert.deepEqual( manifest.components.find( ( component ) => component.type === 'tidewater.downeast-boat/1' ), { id: 'tw-component:hosted-boat', type: 'tidewater.downeast-boat/1', objectId: 'tw-object:boat-preview', priority: 'portal-preview' }, 'boat runtime binds through stable world object ID' );
 	assert.ok( manifest.assets.some( ( asset ) => asset.id === ambientAssetID && asset.kind === 'audio/ogg' && asset.priority === 'portal-preview' ), 'audio bytes are included in the signed manifest at the component streaming priority' );
 	const invalidAmbientSource = JSON.parse( await readFile( sourcePath, 'utf8' ) );
 	invalidAmbientSource.components.at( -1 ).beds[ 0 ].condition = 'storm';
@@ -78,6 +82,8 @@ try {
 	const oversizedSource = JSON.parse( await readFile( sourcePath, 'utf8' ) );
 	oversizedSource.worldId = 'tw-world:over-budget';
 	oversizedSource.rules.maxPackageBytes = 1;
+	oversizedSource.rules.requiredFeatures = [];
+	oversizedSource.components = [];
 	oversizedSource.objects = [ { id: 'tw-object:asset', kind: 'asset-instance', label: 'Asset', assetId: oversizedAssetID, transform: { position: [ 0, 0, 0 ], yaw: 0 }, scale: [ 1, 1, 1 ], collision: { shape: 'none', enabled: false }, priority: 'visible' } ];
 	const oversizedSourcePath = path.join( root, 'over-budget-source.json' );
 	await writeFile( oversizedSourcePath, JSON.stringify( oversizedSource ) );

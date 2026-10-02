@@ -258,6 +258,51 @@ func TestWorldManifestValidatesProceduralComponents(t *testing.T) {
 	}
 }
 
+func TestWorldManifestValidatesHostedBoatBerthAsset(t *testing.T) {
+	owner, _, err := crypto.GenerateEd25519Key(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ownerID, err := peer.IDFromPublicKey(owner.GetPublic())
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifest := newStarterManifest("Hosted boat", ownerID.String())
+	manifest.WorldID = "tw-world:hosted-boat"
+	seaLevel := 0.0
+	manifest.Rules.SeaLevel = &seaLevel
+	assetID := "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+	manifest.Rules.RequiredFeatures = []string{"tidewater.island-ocean/1", "tidewater.downeast-boat/1"}
+	manifest.Assets = []assetRef{{ID: assetID, Bytes: 10, Kind: "glb", Priority: "portal-preview"}}
+	var berth worldObject
+	if err := json.Unmarshal([]byte(`{"id":"tw-object:boat-berth","kind":"asset-instance","label":"Boat berth","assetId":"`+assetID+`","priority":"portal-preview","transform":{"position":[0,0,0],"yaw":0},"scale":[1,1,1],"collision":{"shape":"none","enabled":false}}`), &berth); err != nil {
+		t.Fatal(err)
+	}
+	manifest.Objects = []worldObject{berth}
+	manifest.Components = []worldComponent{
+		{ID: "tw-component:island-ocean", Type: "tidewater.island-ocean/1", Priority: "portal-preview"},
+		{ID: "tw-component:hosted-boat", Type: "tidewater.downeast-boat/1", ObjectID: berth.ID, Priority: "portal-preview"},
+	}
+	if err := validateManifest(manifest, ownerID.String(), time.Now()); err != nil {
+		t.Fatalf("valid hosted boat berth rejected: %v", err)
+	}
+
+	manifest.Assets[0].Kind = "audio/ogg"
+	if err := validateManifest(manifest, ownerID.String(), time.Now()); err == nil {
+		t.Fatal("hosted boat berth with a non-GLB asset was accepted")
+	}
+	manifest.Assets[0].Kind = "glb"
+	manifest.Assets[0].Priority = "background"
+	if err := validateManifest(manifest, ownerID.String(), time.Now()); err == nil {
+		t.Fatal("hosted boat berth asset not staged for portal preview was accepted")
+	}
+	manifest.Assets[0].Priority = "portal-preview"
+	manifest.Assets = nil
+	if err := validateManifest(manifest, ownerID.String(), time.Now()); err == nil {
+		t.Fatal("hosted boat berth referencing an undeclared asset was accepted")
+	}
+}
+
 func TestWorldComponentRejectsUnknownFields(t *testing.T) {
 	var component worldComponent
 	err := json.Unmarshal([]byte(`{"id":"tw-component:vegetation","type":"tidewater.procedural-island-vegetation/1","seed":7,"extra":true}`), &component)
