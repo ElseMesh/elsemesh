@@ -5,6 +5,7 @@ import { blendState } from './Material.js';
 import { SceneLighting } from './wgsl/lighting.js';
 import { FrameUniforms } from './Frame.js';
 import { Frustum, Matrix4, Sphere, Vector3 } from '../math/index.js';
+import { DrawListPool } from './DrawListPool.js';
 
 // Draws scene meshes: geometry upload, pipeline cache, per-draw uniforms, culling and sorting.
 //
@@ -20,11 +21,9 @@ import { Frustum, Matrix4, Sphere, Vector3 } from '../math/index.js';
 //     after: ( pass ) => {}           // extra draws inside the same render pass (background, ...)
 //   } );
 
-const _sphere = new Sphere();
-const _frustum = new Frustum();
-const _vp = new Matrix4();
-const _v = new Vector3();
-const _camPos = new Vector3();
+const opaqueOrder = ( a, b ) => a.renderOrder - b.renderOrder || a.pipeKey - b.pipeKey || a.z - b.z;
+const transparentOrder = ( a, b ) => a.renderOrder - b.renderOrder || b.z - a.z;
+const depthBucketOrder = ( a, b ) => a.depthBucket - b.depthBucket || a.pipeKey - b.pipeKey || a.z - b.z;
 
 const _layouts = new WeakMap();
 let _listToken = 0; // one per drawItems call (see BindingSet.getBindGroup)
@@ -49,6 +48,16 @@ export class MeshRenderer {
 		// updates. Set false for diagnostic comparisons.
 		this.optimizeSceneTransforms = true;
 		this._sceneTransformScopes = new WeakMap();
+		// Qualified submission reuse; retain the baseline switch for diagnostics.
+		this.optimizeSceneSubmission = true;
+		// Experimental: depth ordering still requires separate qualification.
+		this.optimizeOpaqueDepthSort = false;
+		this.submissionStats = { listLeases: 0, drawRecordAllocations: 0, pipelineBinds: 0, vertexBindsSkipped: 0, indexBindsSkipped: 0, drawBindsSkipped: 0 };
+		this._drawListPool = new DrawListPool();
+		this._collectionStates = [];
+		this._collectionDepth = 0;
+		this._submissionStates = [];
+		this._submissionDepth = 0;
 		this.drawLayout = null;
 		this.drawBindGroup = null;
 		// true: a draw compiles its pipeline on the spot (one-off bakes, portraits, tests); the engine's
@@ -417,55 +426,73 @@ export class MeshRenderer {
 
 	}
 
-	collect( scene, { camera, layerMask = 0xffffffff, filter = null, kind = 'main', cull = true } ) {
+	collect( scene, { camera, layerMask = 0xffffffff, filter = null, kind = 'main', cull = true, late = false }, pooled = null ) {
 
-		const opaque = [];
-		const transparent = [];
-		if ( camera ) {
+		// Scratch belongs to this active collection, not to the module. A filter or
+		// onBeforeRender callback can collect another camera/scene synchronously.
+		const depth = this._collectionDepth ++;
+		const state = this._collectionStates[ depth ] || ( this._collectionStates[ depth ] = {
+			frustum: new Frustum(), sphere: new Sphere(), vp: new Matrix4(), view: new Matrix4(), camPos: new Vector3(), sortItems: [],
+		} );
+		const lists = pooled || { opaque: [], transparent: [] };
+		state.camera = camera; state.layerMask = layerMask; state.filter = filter;
+		state.kind = kind; state.cull = cull; state.lists = lists; state.pooled = pooled;
+		state.all = this.precompiling;
+		state.depthSort = this.optimizeOpaqueDepthSort && ! this.precompiling && kind === 'main' && ! late && !! camera?.isPerspectiveCamera;
+		try {
 
-			camera.updateMatrixWorld();
-			_vp.multiplyMatrices( camera.projectionMatrix, camera.matrixWorldInverse.copy( camera.matrixWorld ).invert() );
-			_frustum.setFromProjectionMatrix( _vp, camera.reversedDepth !== false );
-			_camPos.setFromMatrixPosition( camera.matrixWorld );
+			state.camPos.set( 0, 0, 0 );
+			if ( camera ) {
 
-		}
-
-		// precompile: every mesh of the pass, hidden or not (builds all pipelines behind the loading screen)
-		const all = this.precompiling;
-		const visit = ( o ) => {
-
-			if ( ! o.visible && ! all ) return;
-			if ( o.isMesh && o.material && o.geometry && ( o.layers.mask & layerMask ) !== 0 && ( ! filter || filter( o ) ) && ( kind !== 'depth' || o.castShadow ) ) {
-
-				if ( all || ! cull || ! camera || o.frustumCulled === false || this._inFrustum( o ) ) {
-
-					// ported systems use this for their own LOD / culling (called per pass, as three does)
-					if ( o.onBeforeRender ) o.onBeforeRender( null, null, camera, o.geometry, o.material, null );
-					if ( o.visible || all ) this._addItems( o, opaque, transparent );
-
-				}
+				camera.updateMatrixWorld();
+				state.view.copy( camera.matrixWorldInverse.copy( camera.matrixWorld ).invert() );
+				state.vp.multiplyMatrices( camera.projectionMatrix, state.view );
+				state.frustum.setFromProjectionMatrix( state.vp, camera.coordinateSystem, camera.reversedDepth !== false );
+				state.camPos.setFromMatrixPosition( camera.matrixWorld );
 
 			}
+			const scope = this.optimizeSceneTransforms && ! this.precompiling ? this._sceneTransformScopes.get( scene ) : null;
+			if ( ! scope || ! scope.updated || scope.frame !== GPU.frame ) {
 
-			for ( const c of o.children ) visit( c );
+				scene.updateMatrixWorld();
+				if ( scope ) { scope.frame = GPU.frame; scope.updated = true; }
 
-		};
+			}
+			this._collectObject( scene, state );
+			lists.opaque.sort( opaqueOrder );
+			if ( state.depthSort ) this._sortOpaqueDepth( lists.opaque, state.sortItems );
+			lists.transparent.sort( transparentOrder );
+			return lists;
 
-		const scope = this.optimizeSceneTransforms && ! this.precompiling ? this._sceneTransformScopes.get( scene ) : null;
-		if ( ! scope || ! scope.updated || scope.frame !== GPU.frame ) {
+		} finally {
 
-			scene.updateMatrixWorld();
-			if ( scope ) { scope.frame = GPU.frame; scope.updated = true; }
+			state.camera = state.filter = state.lists = state.pooled = null;
+			state.sortItems.length = 0;
+			this._collectionDepth --;
 
 		}
-		visit( scene );
-		opaque.sort( ( a, b ) => a.renderOrder - b.renderOrder || a.pipeKey - b.pipeKey || a.z - b.z );
-		transparent.sort( ( a, b ) => a.renderOrder - b.renderOrder || b.z - a.z );
-		return { opaque, transparent };
 
 	}
 
-	_inFrustum( o ) {
+	_collectObject( o, state ) {
+
+		const { all, camera } = state;
+		if ( ! o.visible && ! all ) return;
+		if ( o.isMesh && o.material && o.geometry && ( o.layers.mask & state.layerMask ) !== 0 && ( ! state.filter || state.filter( o ) ) && ( state.kind !== 'depth' || o.castShadow ) ) {
+
+			if ( all || ! state.cull || ! camera || o.frustumCulled === false || this._inFrustum( o, state ) ) {
+
+				if ( o.onBeforeRender ) o.onBeforeRender( null, null, camera, o.geometry, o.material, null );
+				if ( o.visible || all ) this._addItems( o, state );
+
+			}
+
+		}
+		for ( const child of o.children ) this._collectObject( child, state );
+
+	}
+
+	_inFrustum( o, state ) {
 
 		let s = null;
 		if ( o.isInstancedMesh ) {
@@ -481,38 +508,93 @@ export class MeshRenderer {
 		}
 
 		if ( ! s || s.radius < 0 || ! Number.isFinite( s.radius ) ) return true;
-		_sphere.copy( s ).applyMatrix4( o.matrixWorld );
-		return _frustum.intersectsSphere( _sphere );
+		state.sphere.copy( s ).applyMatrix4( o.matrixWorld );
+		return state.frustum.intersectsSphere( state.sphere );
 
 	}
 
-	_addItems( o, opaque, transparent ) {
+	_addItems( o, state ) {
 
 		const geo = o.geometry;
 		const mats = Array.isArray( o.material ) ? o.material : null;
-		const z = _v.setFromMatrixPosition( o.matrixWorld ).distanceToSquared( _camPos );
-		const push = ( material, start, count ) => {
+		const e = o.matrixWorld.elements, cp = state.camPos;
+		const dx = e[ 12 ] - cp.x, dy = e[ 13 ] - cp.y, dz = e[ 14 ] - cp.z;
+		const z = dx * dx + dy * dy + dz * dz;
+		const rangeStart = geo.drawRange?.start ?? 0, rangeCount = geo.drawRange?.count ?? Infinity;
+		let depthBucket = - 1;
+		// Only ordinary, depth-writing opaque geometry is reordered. Shader-positioned
+		// or instanced batches have no reliable object-origin depth; leave them alone.
+		if ( state.depthSort && o.frustumCulled !== false && ! o.isInstancedMesh && geo.boundingSphere && Number.isFinite( geo.boundingSphere.radius ) && geo.boundingSphere.radius >= 0 ) {
 
-			if ( ! material || ( ! material.visible && ! this.precompiling ) ) return;
-			const item = { object: o, geometry: geo, material, start, count, z, renderOrder: o.renderOrder || 0, pipeKey: material.id };
-			( material.transparent ? transparent : opaque ).push( item );
+			const sphere = state.sphere.copy( geo.boundingSphere ).applyMatrix4( o.matrixWorld );
+			const view = state.view.elements, p = sphere.center;
+			const near = - ( view[ 2 ] * p.x + view[ 6 ] * p.y + view[ 10 ] * p.z + view[ 14 ] ) - sphere.radius;
+			depthBucket = Math.floor( Math.max( 0, near ) / 32 );
 
-		};
-
-		const range = geo.drawRange || { start: 0, count: Infinity };
+		}
 		if ( mats && geo.groups && geo.groups.length ) {
 
 			for ( const g of geo.groups ) {
 
-				const start = Math.max( g.start, range.start );
-				const end = Math.min( g.start + g.count, range.start + range.count );
-				if ( end > start ) push( mats[ g.materialIndex ], start, end - start );
+				const start = Math.max( g.start, rangeStart );
+				const end = Math.min( g.start + g.count, rangeStart + rangeCount );
+				if ( end > start ) this._pushItem( o, geo, mats[ g.materialIndex ], start, end - start, z, depthBucket, state );
 
 			}
 
 		} else {
 
-			push( mats ? mats[ 0 ] : o.material, range.start, range.count );
+			this._pushItem( o, geo, mats ? mats[ 0 ] : o.material, rangeStart, rangeCount, z, depthBucket, state );
+
+		}
+
+	}
+
+	_pushItem( object, geometry, material, start, count, z, depthBucket, state ) {
+
+		if ( ! material || ( ! material.visible && ! state.all ) ) return;
+		let item;
+		if ( state.pooled ) {
+
+			const pool = state.pooled, index = pool.used ++;
+			item = pool.records[ index ];
+			if ( ! item ) {
+
+				item = pool.records[ index ] = {};
+				this.submissionStats.drawRecordAllocations ++;
+
+			}
+
+		} else item = {};
+		item.object = object; item.geometry = geometry; item.material = material;
+		item.start = start; item.count = count; item.z = z;
+		item.renderOrder = object.renderOrder || 0; item.pipeKey = material.id;
+		item.depthBucket = ! material.transparent && material.depthTest && material.depthWrite && material.blending === 'none' && ! material.depthCompare && material.topology === 'triangle-list' ? depthBucket : - 1;
+		( material.transparent ? state.lists.transparent : state.lists.opaque ).push( item );
+
+	}
+
+	_sortOpaqueDepth( items, scratch ) {
+
+		// Nonstandard depth/blend draws are barriers. Their original relative order
+		// and position are retained, as is explicit renderOrder. Material grouping
+		// inside each 32 m depth band limits extra pipeline switches.
+		let start = 0;
+		while ( start < items.length ) {
+
+			if ( items[ start ].depthBucket < 0 ) { start ++; continue; }
+			let end = start + 1;
+			const order = items[ start ].renderOrder;
+			while ( end < items.length && items[ end ].depthBucket >= 0 && items[ end ].renderOrder === order ) end ++;
+			if ( end - start > 1 ) {
+
+				for ( let i = start; i < end; i ++ ) scratch.push( items[ i ] );
+				scratch.sort( depthBucketOrder );
+				for ( let i = start; i < end; i ++ ) items[ i ] = scratch[ i - start ];
+				scratch.length = 0;
+
+			}
+			start = end;
 
 		}
 
@@ -528,7 +610,22 @@ export class MeshRenderer {
 			frameBlock: FrameUniforms, layerMask: 0xffffffff, ...pass,
 		};
 		pass.passKey = `${ pass.kind }.${ pass.late ? 1 : 0 }.${ pass.colorFormats.join( ',' ) }.${ pass.depthFormat }.${ pass.depthCompare }.${ pass.cullOverride || '' }.${ pass.defines ? JSON.stringify( pass.defines ) : '' }`;
-		const lists = pass.items || this.collect( scene, pass );
+		const pooled = this.optimizeSceneSubmission && ! pass.items && ! this.precompiling ? this._drawListPool.acquire() : null;
+		if ( pooled ) this.submissionStats.listLeases ++;
+		try {
+
+			this._renderPass( pass.items || this.collect( scene, pass, pooled ), pass );
+
+		} finally {
+
+			if ( pooled ) this._drawListPool.release( pooled );
+
+		}
+
+	}
+
+	_renderPass( lists, pass ) {
+
 		const enc = GPU.getEncoder();
 		const colorAttachments = ( pass.colorViews || [] ).map( ( view, i ) => {
 
@@ -556,6 +653,28 @@ export class MeshRenderer {
 	}
 
 	drawItems( rp, items, pass ) {
+
+		if ( ! this.optimizeSceneSubmission || this.precompiling ) return this._drawItems( rp, items, pass, null );
+		const depth = this._submissionDepth ++;
+		const state = this._submissionStates[ depth ] || ( this._submissionStates[ depth ] = {
+			vertexBuffers: [], offsets: new Uint32Array( 1 ), indexBuffer: null, indexFormat: null, drawGroup: null, drawOffset: - 1,
+		} );
+		try {
+
+			return this._drawItems( rp, items, pass, state );
+
+		} finally {
+
+			state.vertexBuffers.length = 0;
+			state.indexBuffer = state.indexFormat = state.drawGroup = null;
+			state.drawOffset = - 1;
+			this._submissionDepth --;
+
+		}
+
+	}
+
+	_drawItems( rp, items, pass, state ) {
 
 		let lastPipeline = null, lastGroup = null;
 		const token = ++ _listToken;
@@ -589,6 +708,7 @@ export class MeshRenderer {
 			if ( p !== lastPipeline ) {
 
 				rp.setPipeline( pipeline );
+				this.submissionStats.pipelineBinds ++;
 				lastPipeline = p;
 
 			}
@@ -601,8 +721,31 @@ export class MeshRenderer {
 
 			}
 
-			rp.setBindGroup( 2, this.drawBindGroup, [ this._slot( o ) * DRAW_STRIDE ] );
-			for ( let i = 0; i < vl.buffers.length; i ++ ) rp.setVertexBuffer( i, this._attributeBuffer( geo, vl.buffers[ i ].attr ) );
+			const offset = this._slot( o ) * DRAW_STRIDE;
+			if ( state ) {
+
+				if ( state.drawGroup !== this.drawBindGroup || state.drawOffset !== offset ) {
+
+					state.offsets[ 0 ] = offset;
+					rp.setBindGroup( 2, this.drawBindGroup, state.offsets, 0, 1 );
+					state.drawGroup = this.drawBindGroup; state.drawOffset = offset;
+
+				} else this.submissionStats.drawBindsSkipped ++;
+
+			} else rp.setBindGroup( 2, this.drawBindGroup, [ offset ] );
+			for ( let i = 0; i < vl.buffers.length; i ++ ) {
+
+				// Resolve/upload the attribute every time: its contents may have changed
+				// even when its GPU buffer binding is already correct.
+				const buffer = this._attributeBuffer( geo, vl.buffers[ i ].attr );
+				if ( ! state || state.vertexBuffers[ i ] !== buffer ) {
+
+					rp.setVertexBuffer( i, buffer );
+					if ( state ) state.vertexBuffers[ i ] = buffer;
+
+				} else this.submissionStats.vertexBindsSkipped ++;
+
+			}
 			const instances = o.isInstancedMesh ? o.count : geo.instanceCount ?? 1;
 			if ( instances === 0 ) continue;
 			const index = this._indexBuffer( geo );
@@ -611,10 +754,12 @@ export class MeshRenderer {
 				const ib = geo.indirect.buffer.getGPU ? geo.indirect.buffer.getGPU() : geo.indirect.buffer;
 				// `offsets`: several indirect commands (byte offsets) in one buffer, drawn in turn
 				// (three's geometry.setIndirect( attr, offsets ) multi-draw)
-				const offs = geo.indirect.offsets || [ geo.indirect.offset || 0 ];
-				if ( index ) rp.setIndexBuffer( index.buffer, index.format );
-				for ( const off of offs ) {
+				const offs = geo.indirect.offsets;
+				if ( index ) this._bindIndex( rp, index, state );
+				const count = offs ? offs.length : 1;
+				for ( let i = 0; i < count; i ++ ) {
 
+					const off = offs ? offs[ i ] : geo.indirect.offset || 0;
 					if ( index ) rp.drawIndexedIndirect( ib, off );
 					else rp.drawIndirect( ib, off );
 					this.stats.draws ++;
@@ -629,7 +774,7 @@ export class MeshRenderer {
 
 				const count = Math.min( it.count, geo.index.count - it.start );
 				if ( count <= 0 ) continue;
-				rp.setIndexBuffer( index.buffer, index.format );
+				this._bindIndex( rp, index, state );
 				rp.drawIndexed( count, instances === Infinity ? 1 : instances, it.start, 0, 0 );
 				this.stats.triangles += count / 3 * instances;
 
@@ -646,6 +791,17 @@ export class MeshRenderer {
 			this.stats.draws ++;
 
 		}
+
+	}
+
+	_bindIndex( rp, index, state ) {
+
+		if ( ! state || state.indexBuffer !== index.buffer || state.indexFormat !== index.format ) {
+
+			rp.setIndexBuffer( index.buffer, index.format );
+			if ( state ) { state.indexBuffer = index.buffer; state.indexFormat = index.format; }
+
+		} else this.submissionStats.indexBindsSkipped ++;
 
 	}
 

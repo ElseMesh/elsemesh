@@ -3,6 +3,7 @@ import { Vector4 } from '../engine/index.js';
 import { commonModule } from '../engine/render/wgsl/common.js';
 import { whaleWaterModule } from './WhaleWater.js';
 import { REFRACTION_GUARD } from './RefractionPass.js';
+import { WATER_OPTICAL_LOD_WGSL } from './WaterOpticalLOD.js';
 
 const IOR = 1.333;
 
@@ -79,6 +80,7 @@ export class WaterMaterial extends Material {
 				waterRoughness: [ 'f32', 0.035 ],
 				reflectionStrength: [ 'f32', 1.0 ],
 				ssr: [ 'f32', 1 ], // screen-space reflections on/off
+				optimizeDistantWater: [ 'f32', 1 ], // runtime A/B switch for renderer review
 				debugMode: [ 'i32', 0 ],
 				hullActive: [ 'f32', 0 ],
 			},
@@ -128,6 +130,9 @@ export class WaterMaterial extends Material {
 	// Mirror the exact shader guard; re-enabling SSR refreshes its depth in the
 	// same frame, before the water pass. Other water depth uses keep the full copy.
 	get needsSSRDepth() { return this.params.ssr.value > 0.5; }
+
+	get optimizeDistantWater() { return this.uniforms.optimizeDistantWater.value > 0.5; }
+	set optimizeDistantWater( enabled ) { this.uniforms.optimizeDistantWater.value = enabled ? 1 : 0; }
 
 	// two pipelines: with the hull-mask discard (a hull on screen) and without it. A shader that can
 	// discard loses early depth / hidden surface removal on every pixel, so the sea only pays for it
@@ -198,14 +203,14 @@ export class WaterMaterial extends Material {
 	o.vShoreFoam = r.shoreFoam;
 	o.vSurfMask = r.surfMask;
 `;
-		this.output = this.cheap ? 'r.color = vec4f( 0.02, 0.05, 0.1, 1.0 ); r.mask = vec4f( 0.0, 1.0, 0.0, 1.0 );' : this._shadeWGSL( { T, SH, SIM, SF, CL, HULL, REFL } );
+		this.output = this.cheap ? 'r.color = vec4f( 0.02, 0.05, 0.1, 1.0 ); r.mask = vec4f( 0.0, 1.0, 0.0, 1.0 );' : this._shadeWGSL( { T, TN: !! S.terrain?.normalTexture, SH, SIM, SF, CL, HULL, REFL } );
 		this.needsUpdate = true;
 
 	}
 
 	// --------------------------------------------------------------- shading (WGSL output snippet)
 
-	_shadeWGSL( { T, SH, SIM, SF, CL, HULL, REFL } ) {
+	_shadeWGSL( { T, TN, SH, SIM, SF, CL, HULL, REFL } ) {
 
 		const S = this.waterSurface;
 		// the ShoreWaves module always provides shoreCrestPath / shoreSurfMedium (WGSL; the TSL-era
@@ -225,6 +230,11 @@ export class WaterMaterial extends Material {
 	let vHeight = in.vs.vWaveH;
 	// footprint of this pixel on the surface (m) — for filtering / roughness (uniform control flow)
 	let footprint = max( length( fwidth( lagXZ ) ), 1e-4 );
+${ TN ? `	// Gradients must be taken before per-pixel branches or discards. The opt-in
+	// meniscus lookup uses explicit gradients only when its weight is nonzero.
+	let terrainNormalUV = terrainUvOf( pos.xz );
+	let terrainNormalDx = dpdx( terrainNormalUV );
+	let terrainNormalDy = dpdy( terrainNormalUV );` : '' }
 
 #if WATER_HULL
 	// No sea inside a hull: the surface behind the nearest face of the hull volume is water the hull
@@ -331,9 +341,17 @@ ${ SH ? '	let folded = surf.jacobian < 0.1 || normalize( in.vs.vShoreN ).y < 0.3
 		// near the leading edge the surface bends down to meet the sand like a rounded bead
 		// (meniscus), tilting the normal toward dry land
 		let edgeW = max( ( 1.0 - smoothstep( 0.0, 0.006, thickness ) ) * uprush, lipW );
-		let nr = ${ T ? 'terrainNormalRock( pos.xz )' : 'vec4f( 0.0 )' };
-		let uphill = normalize( - vec2f( nr.x, nr.y ) + vec2f( 1e-5, 0.0 ) );
-		let N = normalize( Nview + vec3f( uphill.x, 0.0, uphill.y ) * ( edgeW * edgeW * 0.7 ) );
+		var N = normalize( Nview );
+		if ( ${ TN ? '' : 'true || ' }mat.optimizeDistantWater < 0.5 || mat.debugMode != 0 ) {
+			let nr = ${ T ? 'terrainNormalRock( pos.xz )' : 'vec4f( 0.0 )' };
+			let uphill = normalize( - vec2f( nr.x, nr.y ) + vec2f( 1e-5, 0.0 ) );
+			N = normalize( Nview + vec3f( uphill.x, 0.0, uphill.y ) * ( edgeW * edgeW * 0.7 ) );
+		} else if ( edgeW > 0.0 ) {
+${ TN ? `			let tex = textureSampleGrad( terrainNormalTex, smpLinearClamp, terrainNormalUV, terrainNormalDx, terrainNormalDy );
+			let nr = tex.xy * 2.0 - 1.0;` : '			let nr = vec2f( 0.0 );' }
+			let uphill = normalize( - nr + vec2f( 1e-5, 0.0 ) );
+			N = normalize( Nview + vec3f( uphill.x, 0.0, uphill.y ) * ( edgeW * edgeW * 0.7 ) );
+		}
 		let NdV = max( dot( N, V ), 1e-4 );
 		let F = fresnelDielectric( NdV, ${ IOR } );
 
@@ -505,20 +523,36 @@ ${ hasMedium ? `		// surf zone: sand and bubbles stirred up by the breakers (see
 		let muS = max( Ls.y, 0.1 );
 		let muV = max( - Tv.y, 0.15 );
 
-		let Tview = exp( - sigT * pathLen );
-
 		// in-scattered light along the view ray (single scattering sun + ambient), analytic
 		// light at depth z: E0 * exp(-sigT * z / mu). Along the view ray z = s * muV.
 		let sunIn = sunLight * ( 1.0 - fresnelDielectric( max( L.y, 0.02 ), ${ IOR } ) );
 		let kSun = sigT * ( 1.0 + muV / muS );
 		let kAmb = sigT * ( 1.0 + muV / 0.75 );
+		// Use the actual selected geometry/crest path, not terrain depth alone.
+		// Only optically exhausted, far, deep pixels reach the fast branch. All
+		// RGB transmission is then <= 0.001; the scattering tails are smaller.
+		// Transitions evaluate the full path and blend continuously to its limit.
+		let opticalLOD = waterOpticalLODWeight( mat.optimizeDistantWater, dist, min( thickness, vDepth ), pathLen, sigT, mat.debugMode );
+		var Tview = vec3f( 0.0 );
+		var scatterSun = vec3f( 1.0 );
+		var scatterAmb = vec3f( 1.0 );
+		if ( opticalLOD < 1.0 ) {
+			Tview = exp( - sigT * pathLen );
+			scatterSun = 1.0 - exp( - kSun * pathLen );
+			scatterAmb = 1.0 - exp( - kAmb * pathLen );
+			if ( opticalLOD > 0.0 ) {
+				Tview *= 1.0 - opticalLOD;
+				scatterSun = mix( scatterSun, vec3f( 1.0 ), opticalLOD );
+				scatterAmb = mix( scatterAmb, vec3f( 1.0 ), opticalLOD );
+			}
+		}
 		let cosPh = dot( Tv, Ls );
 		let phase = waterPhaseHG( cosPh, 0.86 ) * 0.7 + ${ ( 0.3 / ( 4 * Math.PI ) ).toFixed( 8 ) };
 		let bb = sigS * mix( mat.backscatter, 0.06, sat( aer * 2.0 ) );
 		// multiple-scattering boosted backscatter (Gordon R = 0.33 bb/(a+bb))
 		let albedoMS = bb * ( 0.33 * 4.0 ) / ( sigA + bb );
-		let inSun = sunIn * ( sigS * phase + albedoMS * sigT * INV_PI ) * ( 1.0 - exp( - kSun * pathLen ) ) / kSun;
-		let inAmb = frame.skyIrradiance * ( sigS * 0.25 + albedoMS * sigT ) * ( 1.0 - exp( - kAmb * pathLen ) ) / kAmb;
+		let inSun = sunIn * ( sigS * phase + albedoMS * sigT * INV_PI ) * scatterSun / kSun;
+		let inAmb = frame.skyIrradiance * ( sigS * 0.25 + albedoMS * sigT ) * scatterAmb / kAmb;
 
 		// crest translucency (sun shining through thin wave tips)
 		let vH = normalize( vec2f( V.x, V.z ) );
@@ -754,4 +788,4 @@ fn _waterSSR( posV: vec3f, Rv: vec3f, y0: f32, ry: f32 ) -> vec4f {
 `;
 
 // (the helpers read the material's scene-copy bindings waterSceneDepth / waterSceneColor: same shader)
-const waterHelpersModule = new ShaderModule( { name: 'waterHelpers', deps: [ commonModule ], code: WATER_HELPERS } );
+const waterHelpersModule = new ShaderModule( { name: 'waterHelpers', deps: [ commonModule ], code: WATER_HELPERS + WATER_OPTICAL_LOD_WGSL } );

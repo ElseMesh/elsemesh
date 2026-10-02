@@ -1,0 +1,113 @@
+ElseMesh rendering follow-up - 2 October 2026
+
+The three changes are enabled by default:
+1. Distant forest: full wind within 140 m, smoothly settled through 200 m,
+   then two material batches per tree instead of 19 meshes. Identical rest
+   triangles, UVs, normals, materials and shadow participation; tree-sized
+   culling bounds. Near wildlife remains animated. Returning detail uses the
+   current wind phase and resets motion history. This adds about 8 MB of
+   prebuilt geometry. Individual tree geometry/root transforms are static;
+   future edits to those require rebuilding the corresponding batch.
+2. Scene submission: reusable render-owned draw records and nested-pass-safe
+   scratch state, fewer redundant buffer bindings, and the five-argument
+   typed-array setBindGroup overload. Public collect() ownership, dynamic
+   uploads and callback ordering are retained.
+3. Water: avoid zero-contribution meniscus work and approximate only the
+   converged far/deep optical path. Actual refracted geometry is resolved
+   first. Camera/depth/optical-depth transitions are continuous; nearby
+   submerged objects retain the full calculation. At the fully converged
+   endpoint, discarded transmission is <=0.001 in every RGB channel.
+
+The separate experimental opaque depth sort remains DISABLED. It raised
+pipeline switches and did not meet the performance requirement.
+
+FINAL CONTROLLED COMPARISON
+Balanced quality, Intel Xe-LPG, Chrome 154 on Windows; 1600x900 output,
+1200x675 internal, TAA, shadows on, SSR off, AO 1, bloom 0.05. Two ABBA
+cycles per view, 60 warm-up and 180 measured frames per run; 48 complete
+runs, 4,320 sampled frames per mode. No measured outliers were removed.
+
+View                    Flags off FPS   Three changes FPS   Change
+Beach                         26.73               29.27       +9.49%
+Village                       31.24               31.56       +1.03%
+Underwater                    30.68               33.00       +7.56%
+Forest villa                  27.32               27.15       -0.63%
+Warehouse junction            30.02               29.87       -0.49%
+Wide cargo harbour            26.07               26.07        0.00%
+Equal-frame pooled sample     28.53               29.29       +2.67%
+
+Both pooled cycles improved (+3.44%, +1.90%). CPU-side app.frame wall time
+fell 28.42 to 21.53 ms (-24.26%); it includes browser/driver backpressure
+and is not GPU timing. FPS is sampled frames divided by sampled elapsed
+time, not inverse median frame time. Beach and underwater remove 1,309
+draws each while retaining their triangle totals.
+
+This is a modest overall FPS gain, not a substantial gain in every view.
+Pooled p99 remained 66.6 ms. Neither mode had a frame >150 ms; worst frame
+was 99.9 -> 83.5 ms. Underwater p99 worsened 50.5 -> 66.5 ms and forest
+villa p99 worsened 50.3 -> 66.4 ms. No universal smoothness claim is made.
+
+The baseline is the revised renderer with these three switches off and
+the previously published stage-one optimizations still on. Common code
+refactors exist in both modes. These results establish runtime-switch
+benefit, not by themselves the full difference from commit 875a67e.
+This is fixed-camera dt=0 screening, not gameplay, long-session thermal,
+multiplayer, all-quality-profile or other-hardware qualification. The
+three switches were qualified together; each is not proven separately
+to improve FPS. Do not add these percentages to the earlier report.
+
+EARLIER EXPERIMENTS AND CORRECTIONS
+The initial combination regressed badly at the forest villa and harbour.
+Removing depth sorting was insufficient. The first submission candidate
+used a typed array through the three-argument sequence overload; changing
+to the five-argument overload removed that avoidable conversion. Water
+eligibility now exits early and skips zero-weight blending. The revised
+submission-only villa comparison improved 25.13 -> 27.32 FPS in both
+cycles. Earlier failed combination summaries are retained beside this
+report and are not pooled into the changed-source final result.
+
+The review harness also refreshes atmosphere irradiance when changing
+time of day with dt=0, preventing stale launch-time lighting. All final
+comparison lighting tuples match within each view. A later helper fix
+only affects the custom forestTransition preview, not the six measured
+views. Three default promotions, tests and helper changes reverse exactly
+to the measured hashes; see source-diff-declarations.txt and the separate
+measured/shipped manifests.
+
+VALIDATION
+The main, network, security, cargo, steering, vehicle-material and graphics
+suites passed during implementation. Final renderer suite: 25 tests pass,
+plus full water/shore/refraction WGSL compile with off/on/off switches.
+Production build and publication scan pass. Independent source review
+checked nested passes, pooled-list lifetime, offsets, forest transitions,
+velocity reset, and water derivative placement.
+
+Moving forest preview and settled shoreline/open-water A/B screenshots
+showed no obvious candidate-specific visual regression; this is visual
+screening, not pixel equivalence. No browser error logs were observed.
+Far forest wind intentionally settles, while nearby wind remains active.
+The moving preview's HUD uses its fixed simulation dt; do not interpret
+that HUD number as a measured display FPS result.
+
+Reproduce locally with:
+?bench&rendererReview&rendererStage=2&quality=balanced&noAudio
+Select All six views and Stage two without depth ordering. The review
+tool is development-only and excluded from the production import path.
+
+Evidence: revised-six-views.json, revised-six-views-summary.json,
+final-audit.txt, revised-measured-source.json, shipped-source.json,
+source-diff-declarations.txt and submission-fixed-villa.json.
+
+PUBLISHED-SOURCE SPOT CHECK
+An isolated checkout at 875a67e changed only the development review helper
+to provide the same fixed-light protocol; both labelled modes retained
+the identical published game code. An initial warm-up stalled with two
+game contexts open and was aborted before measurement. After closing the
+other game context, eight complete beach reference runs were retained.
+The first four measured 24.38, 25.17, 25.96 and 24.66 FPS. Later identical
+code runs fell to 9.04-11.67 FPS, including roughly one-second intervals,
+while submission durations remained around 33-36 ms. The reason for those
+interval stalls was not established. This reference is inconclusive for
+a precise source-to-source percentage; it is not pooled into the primary
+comparison and no part of it is silently discarded. See
+published-source-beach.json and published-reference-aborted-warmup.json.

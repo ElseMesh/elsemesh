@@ -1,5 +1,6 @@
 import { GPU } from '../engine/gpu/GPU.js';
 import { G, FrameUniforms } from '../engine/render/Frame.js';
+import { Vector3 } from '../engine/math/index.js';
 
 const SIZE = [1600, 900];
 const REVIEW_VIEWS = ['beach', 'village', 'underwater', 'islandFourVilla', 'portJunction-warehouse', 'portCargoWide'];
@@ -8,6 +9,11 @@ const VARIANTS = {
   waterDepth: 'Unused water depth copy',
   effects: 'Inactive effect passes',
   combined: 'All optimizations',
+};
+const STAGE_TWO_VARIANTS = {
+  forest: 'Distant forest', submission: 'Scene submission', depthSort: 'Opaque depth ordering',
+  water: 'Distant water optics', combined: 'All stage two changes',
+  safeCombined: 'Stage two without depth ordering',
 };
 const ABBA = ['baseline', 'candidate', 'candidate', 'baseline'];
 
@@ -34,7 +40,13 @@ function configuration(app) {
     shafts: app.haze?.shafts.value ?? null };
 }
 
-function switches(app) {
+function switches(app, stageTwo = false) {
+  if (stageTwo) return [
+    [app.fourthIsland, 'optimizeDistantForest', 'forest'],
+    [app.engine.meshRenderer, 'optimizeSceneSubmission', 'submission'],
+    [app.engine.meshRenderer, 'optimizeOpaqueDepthSort', 'depthSort'],
+    [app.waterMaterial, 'optimizeDistantWater', 'water'],
+  ];
   return [
     [app.engine.meshRenderer, 'optimizeSceneTransforms', 'transforms'],
     [app.sceneRenderer, 'optimizeWaterDepthCopy', 'waterDepth'],
@@ -42,10 +54,10 @@ function switches(app) {
   ];
 }
 
-function applyVariant(app, variant, candidate) {
-  for (const [target, key, name] of switches(app)) {
+function applyVariant(app, variant, candidate, stageTwo = false) {
+  for (const [target, key, name] of switches(app, stageTwo)) {
     if (typeof target[key] !== 'boolean') throw Error(`Renderer candidate unavailable: ${key}`);
-    target[key] = candidate && (variant === 'combined' || variant === name);
+    target[key] = candidate && (variant === 'combined' || variant === name || (variant === 'safeCombined' && name !== 'depthSort'));
   }
 }
 
@@ -65,41 +77,50 @@ function nextFrame(signal) {
 
 // Explicit developer tool. It never runs automatically and is excluded from production imports.
 export function installRendererReview(app, views) {
+  const stageTwo = app.qs.get('rendererStage') === '2';
+  const variants = stageTwo ? STAGE_TWO_VARIANTS : VARIANTS;
+  views = { ...views, forestTransition: { p: [-500, 24, 850], yaw: 0, pitch: -.08, time: 16.4 } };
   const panel = document.createElement('section');
   panel.setAttribute('aria-label', 'Renderer development review');
   panel.style.cssText = 'position:fixed;right:16px;top:16px;z-index:12000;width:330px;max-width:calc(100vw - 48px);max-height:85vh;overflow:auto;padding:12px;background:#11202ff2;color:#edf7ff;border:1px solid #54778f;border-radius:8px;font:12px/1.45 system-ui';
-  const title = document.createElement('strong'); title.textContent = 'Renderer review · development only';
+  const title = document.createElement('strong'); title.textContent = `Renderer review · ${stageTwo ? 'stage two · ' : ''}development only`;
   const description = document.createElement('p');
   description.textContent = '1600 × 900; fixed simulation clock; quality from URL. Two ABBA cycles. Keep this tab visible. Inactive-effect savings require effects already off; settings are identical in A and B.';
   const view = document.createElement('select'); view.setAttribute('aria-label', 'Renderer review view');
   const variant = document.createElement('select'); variant.setAttribute('aria-label', 'Renderer optimization variant');
   const preset = document.createElement('select'); preset.setAttribute('aria-label', 'Renderer review effect preset');
+  const motion = document.createElement('select'); motion.setAttribute('aria-label', 'Renderer review camera motion');
   const option = (select, value, text) => { const o = document.createElement('option'); o.value = value; o.textContent = text; select.append(o); };
   for (const name of REVIEW_VIEWS) option(view, name, name);
   option(view, 'all', 'All six views');
-  for (const [key, name] of Object.entries(VARIANTS)) option(variant, key, name);
+  for (const name of ['forestTransition', 'islandFourAerial', 'deepBlue', 'pierShallows', 'waterline', 'surf']) option(view, name, name);
+  for (const [key, name] of Object.entries(variants)) option(variant, key, name);
   option(variant, 'all', 'Every variant separately + combined'); variant.value = 'combined';
   option(preset, 'unchanged', 'Existing quality settings');
   option(preset, 'effectsOff', 'Separate scenario: AO 0 and bloom 0 in A + B');
+  option(motion, 'fixed', 'Fixed camera');
+  option(motion, 'sweep', 'Repeatable camera sweep · fixed simulation');
   if (REVIEW_VIEWS.includes(app.qs.get('view'))) view.value = app.qs.get('view');
-  for (const select of [view, variant, preset]) select.style.cssText = 'display:block;box-sizing:border-box;width:100%;margin:8px 0;padding:5px';
+  for (const select of [view, variant, preset, motion]) select.style.cssText = 'display:block;box-sizing:border-box;width:100%;margin:8px 0;padding:5px';
   const controls = document.createElement('div'); controls.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap';
   const button = label => { const b = document.createElement('button'); b.textContent = label; b.style.padding = '5px 7px'; controls.append(b); return b; };
   const live = button('Run foreground ABBA · 60 / 180');
   const gpu = button('Run GPU ABBA · 30 / 90');
   const baseline = button('Render baseline still');
   const optimized = button('Render optimized still');
+  const previewA = button('Preview baseline movement');
+  const previewB = button('Preview optimized movement');
   const abort = button('Abort'); abort.disabled = true;
   const download = button('Download results'); download.disabled = true;
   const output = document.createElement('output'); output.setAttribute('aria-label', 'Renderer review results');
   output.setAttribute('aria-live', 'polite'); output.style.cssText = 'display:block;margin-top:10px;white-space:pre-wrap;overflow-wrap:anywhere';
   output.textContent = 'Ready after game loading. Use ?bench&rendererReview&quality=balanced&noAudio for seeded comparisons.';
-  panel.append(title, description, view, variant, preset, controls, output); document.body.append(panel);
+  panel.append(title, description, view, variant, preset, motion, controls, output); document.body.append(panel);
 
   let active = null, bench = null, report = null;
   const publish = () => { output.dataset.raw = JSON.stringify(report); download.disabled = !report; };
   const setBusy = busy => {
-    for (const control of [live, gpu, baseline, optimized, view, variant, preset]) control.disabled = busy;
+    for (const control of [live, gpu, baseline, optimized, previewA, previewB, view, variant, preset, motion]) control.disabled = busy;
     abort.disabled = !busy;
   };
   const invalidate = reason => { if (active && !active.signal.aborted) active.abort(Error(reason)); };
@@ -130,6 +151,7 @@ export function installRendererReview(app, views) {
     if (app.profiler?.enabled) throw Error('Disable the separate GPU profiler before comparison');
     if (app.networkDemo) throw Error('Network sessions cannot be used for renderer comparisons');
     if (app.game?.salvage?.open) throw Error('Close the salvage camera before comparison');
+    if (stageTwo && switches(app).some(([target, key]) => target[key] !== true)) throw Error('Stage two baseline requires all published stage-one optimizations enabled');
     await Promise.all([app.clouds?.ready, app.fourthIsland?.ready, app.avatar?.ready,
       app.game?.stand?.ready, app.game?.chandlery?.ready, app.portIsland?.vehicleAssetsReady,
       app.portIsland?.cargoVehicleReady, app.portIsland?.gatehouseReady, app.portIsland?.ivyReady]);
@@ -144,7 +166,7 @@ export function installRendererReview(app, views) {
     const snapshot = { autoResolution: app.settings.autoResolution, clockMode: app.settings.clockMode,
       timeSpeed: app.settings.timeSpeed, queryView: app.qs.get('view'),
       ao: app.post.params.aoStrength.value, bloom: app.post.params.bloom.value,
-      flags: switches(app).map(([target, key]) => [target, key, target[key]]) };
+      flags: switches(app, stageTwo).map(([target, key]) => [target, key, target[key]]) };
     app.settings.autoResolution = false; app.settings.clockMode = 'manual'; app.settings.timeSpeed = 0;
     if (preset.value === 'effectsOff') { app.post.params.aoStrength.value = 0; app.post.params.bloom.value = 0; }
     // The normal ?view floor clamp forbids the explicitly underwater benchmark camera.
@@ -159,15 +181,48 @@ export function installRendererReview(app, views) {
     };
   }
 
+  let currentView = null, currentViewName = null, motionFrame = 0, animatePreview = false, lightingPoseFrame = -1;
+  const motionPosition = new Vector3();
   function pose(name) {
     if (!views[name]) throw Error(`Unknown review view: ${name}`);
-    bench.pose(name); app.post.taau?.resetHistory();
+    // The transition route is local to this review; Bench only knows DebugViews.
+    bench.pose(name === 'forestTransition' ? 'islandFourVilla' : name);
+    if (name === 'forestTransition') {
+      const v = views[name];
+      app.settings.timeOfDay = v.time;
+      app.fly.setPose(new Vector3(...v.p), v.yaw, v.pitch);
+    }
+    app.post.taau?.resetHistory();
     G.time.value = 1000;
+    // Irradiance readback normally advances on simulation dt. A dt=0 review
+    // otherwise retains the launch-time sun colour after moving to a daytime
+    // camera. Request one fresh readback; the warm-up allows it to complete.
+    app.atmosphere._irrTimer = 0;
+    lightingPoseFrame = GPU.frame;
+    currentView = views[name]; currentViewName = name; motionFrame = 0;
+    // Each comparison starts the forest at the same wind phase, including when
+    // previewing its time-dependent near/far transition.
+    if (app.fourthIsland) app.fourthIsland.time = 1000;
+  }
+
+  function assertLightingSettled() {
+    if (app.atmosphere._irrPending || app.atmosphere.readback.frame <= lightingPoseFrame) {
+      throw Error('Atmosphere irradiance did not refresh for the selected camera/time');
+    }
   }
 
   function render(signal, signature) {
     guard(signal, signature); G.time.value = 1000;
-    const start = performance.now(); app.frame(0);
+    if (currentView && (motion.value === 'sweep' || animatePreview)) {
+      const phase = motionFrame++ * Math.PI * 2 / (animatePreview ? 360 : 240);
+      const offset = Math.sin(phase) * 8;
+      motionPosition.fromArray(currentView.p);
+      motionPosition.x += Math.cos(currentView.yaw) * offset;
+      motionPosition.z -= Math.sin(currentView.yaw) * offset;
+      if (currentViewName === 'forestTransition') motionPosition.z += Math.sin(phase) * 100;
+      app.fly.setPose(motionPosition, currentView.yaw + Math.sin(phase) * .18, currentView.pitch + Math.sin(phase * 2) * .025);
+    }
+    const start = performance.now(); app.frame(animatePreview ? 1 / 60 : 0);
     return performance.now() - start;
   }
 
@@ -184,7 +239,10 @@ export function installRendererReview(app, views) {
     // The last warm frame primes the clock. 60 + 180 preserves the four-frame
     // shadow cadence across variants, with no extra submitted prime frame.
     let previous = await paced(60, signal, signature, n => { output.textContent = `${label}\nWarm-up ${n}/60`; });
+    assertLightingSettled();
     run.internal = [app.sceneRenderer.width, app.sceneRenderer.height];
+    run.lighting = { sunColor: G.sunColor.value.toArray(), skyIrradiance: G.skyIrradiance.value.toArray(),
+      sunDirection: G.sunDir.value.toArray() };
     for (let frame = 0; frame < 180; frame++) {
       const now = await nextFrame(signal);
       run.intervalsMs.push(now - previous); previous = now;
@@ -199,6 +257,7 @@ export function installRendererReview(app, views) {
   async function gpuFrames(run, signal, signature, label) {
     if (!bench.enabled) throw Error('GPU timestamp queries unavailable; foreground measurement remains available');
     await paced(30, signal, signature, n => { output.textContent = `${label}\nGPU warm-up ${n}/30`; });
+    assertLightingSettled();
     run.internal = [app.sceneRenderer.width, app.sceneRenderer.height];
     await GPU.queue.onSubmittedWorkDone();
     while (bench.ring.some(slot => slot.busy)) await nextFrame(signal);
@@ -247,12 +306,13 @@ export function installRendererReview(app, views) {
     for (const run of runs.filter(run => run.complete)) {
       const key = `${run.view}/${run.variant}`;
       if (!groups.has(key)) groups.set(key, { baseline: [], candidate: [] });
-      groups.get(key)[run.mode].push(run[metric].medianMs);
+      groups.get(key)[run.mode].push(...(metric === 'framePacing' ? run.intervalsMs : run.gpuFrames.map(frame => frame.gpuMs)));
     }
     return [...groups].map(([name, group]) => {
-      const a = summarizeRendererSamples(group.baseline)?.medianMs, b = summarizeRendererSamples(group.candidate)?.medianMs;
-      return { name, baselineRunMediansMs: group.baseline, candidateRunMediansMs: group.candidate,
-        baselineMedianMs: a ?? null, candidateMedianMs: b ?? null,
+      const base = summarizeRendererSamples(group.baseline), candidate = summarizeRendererSamples(group.candidate);
+      const a = base?.meanMs, b = candidate?.meanMs;
+      return { name, baseline: base, candidate,
+        baselineMeanMs: a ?? null, candidateMeanMs: b ?? null,
         reductionPercent: a > 0 && b !== undefined ? (a - b) / a * 100 : null };
     });
   }
@@ -261,37 +321,42 @@ export function installRendererReview(app, views) {
     if (active) return;
     const controller = new AbortController(); active = controller; setBusy(true);
     const selectedViews = view.value === 'all' ? REVIEW_VIEWS : [view.value];
-    const selectedVariants = variant.value === 'all' ? Object.keys(VARIANTS) : [variant.value];
+    const selectedVariants = variant.value === 'all' ? Object.keys(variants) : [variant.value];
     report = { schema: 'elsemesh.renderer-review/v1', startedAt: new Date().toISOString(), kind,
-      status: 'running', valid: false, output: SIZE, simulationDt: 0, simulationTime: 1000,
+      status: 'running', valid: false, stage: stageTwo ? 2 : 1, output: SIZE, simulationDt: kind === 'preview' ? 1 / 60 : 0, simulationTime: 1000,
+      cameraMotion: motion.value, baseline: stageTwo ? 'Published stage-one optimizations remain enabled; only stage-two flags toggle' : 'Original renderer',
       effectPreset: preset.value, effectPresetNote: preset.value === 'effectsOff'
         ? 'AO and bloom are both zero for baseline and candidate; this is a separate scenario, not a default-quality speedup.' : 'Existing quality and effect settings preserved.',
-      platform: navigator.userAgent, selectedViews, selectedVariants, cycles: kind === 'still' ? 0 : 2,
+      platform: navigator.userAgent, selectedViews, selectedVariants, cycles: ['still', 'preview'].includes(kind) ? 0 : 2,
       warmFrames: kind === 'foreground' ? 60 : 30, sampleFrames: kind === 'foreground' ? 180 : 90,
       runs: [], limitations: ['Fixed-camera screening with dt=0, not live gameplay or thermal qualification',
         'Simulation clock is fixed, but renderer frame counters and some frame-driven animation advance',
         'Foreground intervals include refresh-rate limits; GPU samples are a separate instrumented run',
-        'No asset removal or quality reduction; candidate work savings depend on the recorded effect settings'] };
+        stageTwo ? 'Distant forest motion and converged water optics may differ; moving visual review required' : 'No asset removal or quality reduction; candidate work savings depend on the recorded effect settings'] };
     publish(); let restore;
     try {
       await prepare(controller.signal); restore = freeze();
       report.configuration = configuration(app); const signature = JSON.stringify(report.configuration);
       report.adapter = GPU.adapter.info ? { vendor: GPU.adapter.info.vendor, architecture: GPU.adapter.info.architecture,
         device: GPU.adapter.info.device, description: GPU.adapter.info.description } : null;
-      if (kind === 'still') {
+      if (kind === 'still' || kind === 'preview') {
         const name = selectedViews[0], selected = variant.value === 'all' ? 'combined' : variant.value;
-        applyVariant(app, selected, stillCandidate); pose(name);
+        applyVariant(app, selected, stillCandidate, stageTwo); pose(name);
+        animatePreview = kind === 'preview';
         output.textContent = `Settling ${stillCandidate ? 'optimized' : 'baseline'} still: ${name}`;
-        await paced(60, controller.signal, signature);
+        await paced(kind === 'preview' ? 360 : 60, controller.signal, signature, n => { output.textContent = `${kind} · ${name} · ${stillCandidate ? 'candidate' : 'baseline'} · ${n} frames`; });
         await GPU.queue.onSubmittedWorkDone(); guard(controller.signal, signature);
+        assertLightingSettled();
         report.still = { view: name, variant: selected, mode: stillCandidate ? 'candidate' : 'baseline',
           internal: [app.sceneRenderer.width, app.sceneRenderer.height], drawStats: { ...app.engine.meshRenderer.stats } };
       } else {
         const total = selectedViews.length * selectedVariants.length * 8;
         for (const name of selectedViews) for (const selected of selectedVariants) for (let cycle = 0; cycle < 2; cycle++) for (const mode of ABBA) {
-          guard(controller.signal, signature); applyVariant(app, selected, mode === 'candidate'); pose(name);
+          guard(controller.signal, signature); applyVariant(app, selected, mode === 'candidate', stageTwo); pose(name);
           const run = { view: name, variant: selected, cycle: cycle + 1, mode, complete: false,
             intervalsMs: [], cpuSubmitMs: [], gpuFrames: [],
+            submissionStatsBefore: { ...app.engine.meshRenderer.submissionStats },
+            heapBefore: performance.memory?.usedJSHeapSize ?? null,
             cameraBefore: { position: app.camera.position.toArray(), quaternion: app.camera.quaternion.toArray(), timeOfDay: app.settings.timeOfDay } };
           report.runs.push(run);
           const label = `${report.runs.length}/${total} · ${name} · ${selected} · ${mode} · cycle ${cycle + 1}`;
@@ -301,24 +366,30 @@ export function installRendererReview(app, views) {
           guard(controller.signal, signature);
           run.internal = [app.sceneRenderer.width, app.sceneRenderer.height];
           run.cameraAfter = { position: app.camera.position.toArray(), quaternion: app.camera.quaternion.toArray(), timeOfDay: app.settings.timeOfDay };
-          run.drawStats = { ...app.engine.meshRenderer.stats }; run.complete = true; publish();
+          run.drawStats = { ...app.engine.meshRenderer.stats };
+          run.submissionStats = { ...app.engine.meshRenderer.submissionStats };
+          run.forestStats = { ...app.fourthIsland?.forestStats };
+          run.heapAfter = performance.memory?.usedJSHeapSize ?? null;
+          run.complete = true; publish();
         }
         report.comparisons = comparisons(report.runs, kind === 'foreground' ? 'framePacing' : 'gpuTime');
       }
       report.status = 'complete'; report.valid = true;
-      output.textContent = kind === 'still' ? `STILL READY · ${report.still.view} · ${report.still.mode}\n1600 × 900. Scene remains frozen for a screenshot.`
-        : `COMPLETE · ${report.runs.length} runs\n${report.comparisons.map(row => `${row.name}: ${row.baselineMedianMs.toFixed(2)} → ${row.candidateMedianMs.toFixed(2)} ms (${row.reductionPercent.toFixed(1)}% reduction)`).join('\n')}\nRaw results are ready to download.`;
+      output.textContent = report.still ? `STILL READY · ${report.still.view} · ${report.still.mode}\n1600 × 900. Scene remains frozen for a screenshot.`
+        : `COMPLETE · ${report.runs.length} runs\n${report.comparisons.map(row => `${row.name}: ${row.baseline.meanFPS.toFixed(2)} → ${row.candidate.meanFPS.toFixed(2)} mean FPS (${row.reductionPercent.toFixed(1)}% frame-time reduction)`).join('\n')}\nRaw results are ready to download.`;
     } catch (error) {
       report.status = controller.signal.aborted ? 'invalidated' : 'failed'; report.error = String(error.message || error);
       output.textContent = `${report.status.toUpperCase()} · ${report.error}\nPartial samples retained; do not count this run as evidence.`;
     } finally {
       if (bench) bench._capture = false;
       restore?.(); report.finishedAt = new Date().toISOString(); publish(); active = null; setBusy(false);
+      animatePreview = false;
     }
   }
 
   live.onclick = () => execute('foreground'); gpu.onclick = () => execute('gpu');
   baseline.onclick = () => execute('still', false); optimized.onclick = () => execute('still', true);
+  previewA.onclick = () => execute('preview', false); previewB.onclick = () => execute('preview', true);
   download.onclick = () => {
     if (!report) return;
     const url = URL.createObjectURL(new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' }));

@@ -1,0 +1,90 @@
+ElseMesh stage two - final foreground benchmark audit
+Raw report: revised-six-views.json
+Source manifest: revised-measured-source.json
+Raw report SHA-256: da468e25be85633d5860c2b17ee2961604d51a56367274621bd1af3db39de6d2
+Run interval UTC: 2026-10-02T18:20:48.305Z to 2026-10-02T18:27:39.312Z
+
+Decision: PASS for integrity of this runtime-switch comparison; qualified with scope limitations below.
+No source files were edited by this audit. No tests, GPU benchmarks or browser actions were run.
+
+Protocol and consistency
+- 48 complete foreground runs: six views, two ABBA cycles per view, 60 warm-up frames and 180 sampled frames per run.
+- 24 baseline and 24 candidate runs; 4,320 valid frame intervals per mode; 8,640 total. No sample or hitch excluded.
+- Balanced quality, 1600 x 900 output, 1200 x 675 internal; adaptive resolution off. TAA; SSR off; AO 1; bloom 0.05; refraction scale 0.35; post scale 0.75; exposure 0.55.
+- Intel Xe-LPG adapter; Chrome 154 on Windows. One device and configuration only.
+- Fixed camera, simulation dt=0 and simulation clock=1000. All before/after camera positions, YXZ-derived quaternions and clock times agree with the named source views.
+- Each view has exactly one common baseline/candidate lighting tuple. Sun direction agrees with the source solar model at that view time. This avoids the earlier stale sunset/daylight mismatch.
+- Correct ABBA ordering in all 12 view/cycle groups. All intervals positive and finite; all recorded CPU submission durations finite.
+- At the initial audit, all 12 measured manifest hashes matched current files. During report preparation, six files received the planned promotion/review changes. Reversing only those declared changes in memory recovers every measured SHA-256 exactly; six other files are byte-identical. No additional changed content remains unaccounted for. See source-diff-declarations.txt and shipped-source.json. This covers the listed files, not every repository file.
+- Candidate safeCombined enables distant forest, fixed-arity scene submission, and revised distant-water optics. Opaque depth sorting remains disabled in both modes. Published stage-one switches remain enabled.
+- The raw artifact does not contain a browser WebGPU error log or explicit readback-freshness frame ID. Matching lighting and report validity are verified here; console/device error review remains separate.
+
+Method: pooled FPS = 1000 * sampled frame count / sum(frame intervals). Percentile index = floor((N-1)*p), matching the harness. Numbers below are rounded for display; original intervals remain in the JSON.
+
+Pooled result
+FPS 28.532216 -> 29.293061 (+2.6666%). Mean frame 35.048102 -> 34.137778 ms (2.5974% reduction).
+Mean app.frame submission duration 28.419491 -> 21.525208 ms (24.2590% reduction). This is CPU-side wall duration and may include browser/driver backpressure; it is not a GPU timestamp.
+Cycle 1: 28.332551 -> 29.306216 FPS (+3.4366%).
+Cycle 2: 28.734715 -> 29.279917 FPS (+1.8974%).
+
+Per-view FPS, baseline -> candidate; both cycle gains
+beach: 26.731118 -> 29.266746 (+9.4857%); cycle 1 +11.4634%, cycle 2 +7.5346%.
+village: 31.235087 -> 31.555419 (+1.0256%); cycle 1 +0.8646%, cycle 2 +1.1920%.
+underwater: 30.680598 -> 33.000880 (+7.5627%); cycle 1 +9.3808%, cycle 2 +5.7081%.
+islandFourVilla: 27.323338 -> 27.150652 (-0.6320%); cycle 1 -0.5138%, cycle 2 -0.7477%.
+portJunction-warehouse: 30.019137 -> 29.873411 (-0.4854%); cycle 1 -0.5576%, cycle 2 -0.4135%.
+portCargoWide: 26.069482 -> 26.069105 (-0.0014%); cycle 1 +0.9703%, cycle 2 -0.9604%.
+
+Per-view cycle FPS, baseline -> candidate
+beach cycle 1: 26.436376 -> 29.466895 FPS (+11.4634%).
+beach cycle 2: 27.032507 -> 29.069298 FPS (+7.5346%).
+village cycle 1: 30.768179 -> 31.034215 FPS (+0.8646%).
+village cycle 2: 31.716385 -> 32.094429 FPS (+1.1920%).
+underwater cycle 1: 29.873783 -> 32.676179 FPS (+9.3808%).
+underwater cycle 2: 31.532202 -> 33.332099 FPS (+5.7081%).
+islandFourVilla cycle 1: 27.585361 -> 27.443626 FPS (-0.5138%).
+islandFourVilla cycle 2: 27.066245 -> 26.863867 FPS (-0.7477%).
+portJunction-warehouse cycle 1: 30.081973 -> 29.914246 FPS (-0.5576%).
+portJunction-warehouse cycle 2: 29.956563 -> 29.832688 FPS (-0.4135%).
+portCargoWide cycle 1: 25.990903 -> 26.243084 FPS (+0.9703%).
+portCargoWide cycle 2: 26.148538 -> 25.897417 FPS (-0.9604%).
+
+Frame-time tails and hitches, baseline -> candidate
+ALL: p95 50.2 -> 50.2 ms; p99 66.6 -> 66.6 ms; max 99.9 -> 83.5 ms; >50 ms 429 -> 392; >150 ms 0 -> 0.
+beach: p95 50.2 -> 50.1 ms; p99 66.7 -> 50.3 ms; max 83.3 -> 66.9 ms; >50 ms 85 -> 43; >150 ms 0 -> 0.
+village: p95 50.2 -> 50.2 ms; p99 50.9 -> 50.5 ms; max 67.0 -> 67.0 ms; >50 ms 68 -> 68; >150 ms 0 -> 0.
+underwater: p95 50.1 -> 50.1 ms; p99 50.5 -> 66.5 ms; max 99.9 -> 66.9 ms; >50 ms 55 -> 47; >150 ms 0 -> 0.
+islandFourVilla: p95 50.2 -> 50.2 ms; p99 50.3 -> 66.4 ms; max 83.2 -> 83.4 ms; >50 ms 69 -> 76; >150 ms 0 -> 0.
+portJunction-warehouse: p95 50.1 -> 50.1 ms; p99 66.5 -> 50.3 ms; max 66.8 -> 67.0 ms; >50 ms 47 -> 47; >150 ms 0 -> 0.
+portCargoWide: p95 50.2 -> 50.4 ms; p99 66.8 -> 66.8 ms; max 83.3 -> 83.5 ms; >50 ms 105 -> 111; >150 ms 0 -> 0.
+
+Per-view mean submission wall duration (ms), baseline -> candidate
+beach: 34.660694 -> 21.576389.
+village: 15.496111 -> 11.160556.
+underwater: 29.067361 -> 16.564167.
+islandFourVilla: 34.736667 -> 34.255417.
+portJunction-warehouse: 25.922361 -> 21.104722.
+portCargoWide: 30.633750 -> 24.490000.
+
+Draw and scene consistency
+beach: draws 2948 -> 1639; triangles 4074716 -> 4074716; renderer pipelines statistic 500 -> 500.
+village: draws 145 -> 145; triangles 4598932 -> 4598932; renderer pipelines statistic 500 -> 500.
+underwater: draws 2407 -> 1098; triangles 2588034 -> 2588034; renderer pipelines statistic 500 -> 500.
+islandFourVilla: draws 2452 -> 2452; triangles 3029479 -> 3029479; renderer pipelines statistic 500 -> 500.
+portJunction-warehouse: draws 909 -> 909; triangles 2457536 -> 2457536; renderer pipelines statistic 795 -> 795.
+portCargoWide: draws 1564 -> 1564; triangles 2500937 -> 2500937; renderer pipelines statistic 954 -> 954.
+- Draw statistics are stable within each view/mode and triangle totals match exactly between modes. The pipelines field is the renderer statistic, not an independently measured count of GPU pipeline binds.
+- Beach and underwater each remove 1,309 draws, exactly 77 trees * (19 original meshes - 2 batches), with unchanged triangle totals.
+- Candidate has 77 far trees and zero joint updates in five views. Villa has 54 fully animated and 23 transitioning trees, zero far trees, and 693 joint updates: it exercises the near/transition path without batching savings.
+
+Conservative interpretation
+- The combined revised switches improve pooled observed FPS by 2.6666%, supported by positive pooled results in both cycles. Largest repeatable gains are beach and underwater.
+- Villa is 0.63% slower and warehouse 0.49% slower, in both cycles; cargo is effectively unchanged. These small losses are retained, not declared wins or removed. No statistical significance claim is made from two cycles.
+- Pooled >150 ms hitches are zero in both modes and worst frame falls, but tail improvement is not universal: underwater p99 increases 50.5 -> 66.5 ms and villa 50.3 -> 66.4 ms.
+- This does not establish that each of the three switches independently improves FPS. The earlier water-only villa result was neutral on average with worse tails; old-code outcomes cannot qualify the revised shader.
+- Prior failed combined/depth-sort and pre-fix safeCombined runs remain diagnostic history. Their frames are not pooled into this changed-source result, and their hitches must not be silently discarded from that history.
+- The flags-off baseline is the revised source with common refactors already present, including water shader scaffolding and forest batch construction. This comparison establishes runtime-switch benefit, not a complete source-to-source comparison against the published 875a67e build.
+- Fixed-camera dt=0 screening does not establish live-gameplay, moving-camera transitions, long-session stability, thermals, other hardware, High/SSR, or all-profile FPS. Separate visual review and any exact published-source comparison remain separate evidence.
+- Promotion of only the three default booleans is consistent with the measured combination; maintain opaque depth sorting off. Record the final shipped hashes separately after any promotion. A claim of universal FPS or hitch improvement would exceed this evidence.
+
+Integrity failures: none after exact verification of the declared post-measurement changes.

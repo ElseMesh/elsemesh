@@ -1,0 +1,17 @@
+ElseMesh stage two - declared post-measurement source differences
+
+Measured source: revised-measured-source.json. Current promoted candidate: shipped-source.json.
+The latter name describes the intended shipping snapshot; this audit does not prove deployment.
+
+Verification: each changed file was loaded as text, only the declarations below were reversed in memory, and the resulting SHA-256 was compared with the measured manifest. All 12 recovered hashes match. No worktree source was modified by this audit.
+
+src/engine/render/MeshRenderer.js: optimizeSceneSubmission false -> true; constructor comments updated. optimizeOpaqueDepthSort stays false. Five-argument indexed binding behavior already belongs to the measured source and is unchanged.
+src/world/FourthIslandSystem.js: optimizeDistantForest false -> true only.
+src/ocean/WaterMaterial.js: optimizeDistantWater initial uniform 0 -> 1; its adjacent comment updated. Shader algorithm and WGSL unchanged.
+src/core/RendererReview.js: forestTransition preview now calls the known islandFourVilla pose before applying its own position/yaw/pitch/time; prevents the previously unknown Bench view. The six measured view names take the identical original pose path. No measured view, sample timing or metric changes.
+test/scene-submission.mjs: default-switch assertion false -> true only.
+test/water-optical-lod.mjs: default-switch assertion false -> true; explicitly toggle false and assert uniform0 before re-enabling. All other tests unchanged.
+
+Byte-identical measured files: src/engine/render/DrawListPool.js; src/world/vegetation/DistantForest.js; src/ocean/WaterOpticalLOD.js; test/distant-forest.mjs; test/water-optical-lod-gpu.mjs; package.json.
+
+No unexplained source difference among the 12 manifest entries. Record any later change in a new manifest; this check does not authorize additional algorithm changes without renewed qualification.

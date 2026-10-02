@@ -73,6 +73,13 @@ This is a fixed-camera result, not a guarantee for gameplay or other hardware.
 Long-frame hitches remain, including a worse cargo p99 in this run.
 See the [method, limitations and raw evidence](docs/performance-2026-10-02/review.txt).
 
+A follow-up adds distant forest batches, draw-submission reuse and conservative
+distant-water optical simplification. A separate six-view comparison with these
+switches off/on measured 28.5 to 29.3 FPS (+2.7%), with beach +9.5% and underwater
++7.6%; other views stayed within 1%. CPU submission wall time fell 24%, while
+frame-time tails did not improve everywhere. Experimental depth ordering remains
+disabled. See the [follow-up evidence and limitations](docs/performance-2026-10-02-stage-two/review.txt).
+
 ## Licensing and source
 
 Game code is MIT except `tools/ivy_trial.py` (GPL-2.0-or-later); third-party assets retain their own terms. See [CREDITS.md](CREDITS.md)

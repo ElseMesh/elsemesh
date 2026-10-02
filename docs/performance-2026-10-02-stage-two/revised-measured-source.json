@@ -1,0 +1,50 @@
+[
+  {
+    "path": "src/engine/render/MeshRenderer.js",
+    "sha256": "7BBF5B10F589C578FC543EF3A1D291FD36A5646ECF94506991FED491CC9B35CA"
+  },
+  {
+    "path": "src/engine/render/DrawListPool.js",
+    "sha256": "E51CBDDAC377836B124E23F3AFF55B91BE73209EC3872676EE0D0E7F86BFC4F3"
+  },
+  {
+    "path": "src/world/FourthIslandSystem.js",
+    "sha256": "2D2C6FB16D053E27150E9EB6A15D6B74FFA83BBC24A86521B07B953EE27A8D01"
+  },
+  {
+    "path": "src/world/vegetation/DistantForest.js",
+    "sha256": "F5DBD9AD60FEFE53A524A564C0C812A346EAD6381B4F6264E43B0EBFE431E069"
+  },
+  {
+    "path": "src/ocean/WaterMaterial.js",
+    "sha256": "44E8432036F623FA98F6E3B65C7EC1489184423C84C791CCC963558CF4FD11D5"
+  },
+  {
+    "path": "src/ocean/WaterOpticalLOD.js",
+    "sha256": "5E336C6787D23A92EA3BE2055E2E0DD6C4E38B0828E523B91BDBABEB98D3735D"
+  },
+  {
+    "path": "src/core/RendererReview.js",
+    "sha256": "EE0FDBD362A9E227A3377A3360941D9637D75FAC151D09D22CDBC6ED50ED23CF"
+  },
+  {
+    "path": "test/distant-forest.mjs",
+    "sha256": "96B731A9257614DDE1E9616516D7BC3C904BB96BC30C6262FB61F89C0D616454"
+  },
+  {
+    "path": "test/scene-submission.mjs",
+    "sha256": "5E40B7C840DDE3C72C4ACF7A9ABFCB881BC883B6677432A29266498009CC3523"
+  },
+  {
+    "path": "test/water-optical-lod.mjs",
+    "sha256": "6F27C79CE83ACB60C8F5EFEF1328DE30B26B16375982CD52377748F1317971C8"
+  },
+  {
+    "path": "test/water-optical-lod-gpu.mjs",
+    "sha256": "190B0B3EE640DD4C1BB1284B408653D01558A53F9827C95A3C1516BE60BBAC2D"
+  },
+  {
+    "path": "package.json",
+    "sha256": "621953B24235E63674C269A9620AE33CC4BCC71CFABA12B8484D3DECB262BCF7"
+  }
+]
