@@ -70,9 +70,12 @@ const objects = [
 	{ id: 'side', assetId: 'side', priority: 'visible', transform: { position: [ 20, 0, -10 ], yaw: 0 }, scale: [ 1, 1, 1 ], streamingBounds: { center: [ 0, 0, 0 ], radius: 1 } },
 	{ id: 'near', assetId: 'near', priority: 'nearby', transform: { position: [ 0, 0, 3 ], yaw: 0 }, scale: [ 1, 1, 1 ], streamingBounds: { center: [ 0, 0, 0 ], radius: 0.5 } },
 	{ id: 'legacy', assetId: 'legacy', priority: 'background', transform: { position: [ 0, 0, 10 ], yaw: 0 }, scale: [ 1, 1, 1 ] },
+	{ id: 'preview-only', assetId: 'preview-only', priority: 'portal-preview', transform: { position: [ 0, 0, -8 ], yaw: 0 }, scale: [ 1, 1, 1 ] },
+	{ id: 'preview-placeholder', assetId: 'preview-placeholder', priority: 'portal-preview', transform: { position: [ 0, 0, -8 ], yaw: 0 }, scale: [ 1, 1, 1 ] },
+	{ id: 'full-detail', assetId: 'full-detail', priority: 'visible', replacesObjectId: 'preview-placeholder', transform: { position: [ 0, 0, -8 ], yaw: 0 }, scale: [ 1, 1, 1 ] },
 ];
 const viewIDs = selectWorldObjectsForView( { assets: [], objects }, camera, { nearbyDistance: 5 } ).map( ( object ) => object.id );
-assert.deepEqual( viewIDs, [ 'front', 'near', 'legacy' ], 'view selection includes visible and nearby bounds, excludes behind/outside bounds, and preserves legacy unbounded objects' );
+assert.deepEqual( viewIDs, [ 'preview-only', 'front', 'full-detail', 'near', 'legacy' ], 'active worlds load standalone portal-preview content, skip replaceable preview placeholders, include in-view visible content, and preserve legacy unbounded objects' );
 const components = [
 	{ id: 'tw-component:front', type: 'tidewater.static-vegetation/1', placementAssetId: 'front', priority: 'visible', streamingBounds: { center: [ 0, 0, -10 ], radius: 1 } },
 	{ id: 'tw-component:behind', type: 'tidewater.static-vegetation/1', placementAssetId: 'behind', priority: 'nearby', streamingBounds: { center: [ 0, 0, 10 ], radius: 1 } },

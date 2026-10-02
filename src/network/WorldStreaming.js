@@ -16,10 +16,14 @@ export function selectWorldObjectsForView( manifest, camera, { nearbyDistance = 
 	_frustum.setFromProjectionMatrix( _viewProjection, camera.coordinateSystem, camera.reversedDepth );
 	const cameraPosition = camera.position;
 	const priorities = new Map( manifest.assets.map( ( asset ) => [ asset.id, asset.priority ] ) );
+	const replacedPreviewIDs = new Set( ( manifest.objects || [] ).map( ( object ) => object.replacesObjectId ).filter( Boolean ) );
 	const selected = [];
 	for ( const object of manifest.objects || [] ) {
 		const priority = object.priority || priorities.get( object.assetId ) || 'visible';
-		if ( priority === 'portal-preview' ) continue;
+		// A portal-preview object with a higher-detail replacement is only a portal
+		// placeholder. Without a replacement, it is the world's actual representation
+		// (for example a compact cave mesh), so it must also load after crossing.
+		if ( priority === 'portal-preview' && replacedPreviewIDs.has( object.id ) ) continue;
 		const bounds = object.streamingBounds;
 		if ( ! bounds ) { selected.push( object ); continue; }
 		transformBoundsCenter( object, bounds.center, _center );
