@@ -77,10 +77,16 @@ An account with an owner-issued `world.content.edit` grant can submit the unsign
 
 `tools/blender/world_actions.py` is the Blender-side companion for data-only scene edits. It accepts a JSON plan bound to the exact source-file bytes with `sourceHash`; supported operations are add, update, or remove for stable-ID asset instances and portals. The plan cannot contain Python or Blender operator names. New object instances must reference an existing `sha256:` asset, and the runner verifies its digest before importing it. Existing source markers created by `world_source.py` are the edit targets, so start from a Blender file imported from the same source snapshot.
 
-Run it in a disposable copy of the scene. It writes an unsigned source candidate and a separate `.blend` candidate, refusing to overwrite either destination. Review both candidates and run the ordinary source and asset validators before publishing. The runner does not sign or publish. Its Python validation tests do not require Blender; applying GLB imports and scene operations still needs Blender installed and is not verified by those tests.
+Run it in a disposable copy of the scene. It writes an unsigned source candidate and a separate `.blend` candidate, refusing to overwrite either destination. Review both candidates and run the ordinary source and asset validators before publishing. The runner does not sign or publish. Pure plan validation does not require Blender. The optional runtime integration check imports a content-hash-verified island GLB, saves a candidate scene and source, reopens the `.blend`, and verifies the stable-ID object:
 
 ```sh
 python3 test/blender-world-actions.py
+BLENDER_EXECUTABLE=/path/to/blender python3 test/blender-world-actions-runtime.py
+```
+
+On 2026-10-02 this completed with Blender 4.3.2 on Linux. It verifies that Blender can execute this typed scene action; it does not establish an isolated service worker, arbitrary AI task handling, or publication.
+
+```sh
 blender working-copy.blend --background --python tools/blender/world_actions.py -- \
   --plan plan.json --source island.world-source.json --assets worlds/island/assets \
   --out-source candidate.world-source.json --out-blend candidate.blend
