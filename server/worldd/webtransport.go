@@ -6,6 +6,7 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/quic-go/webtransport-go"
@@ -46,16 +47,27 @@ func (d *daemon) handleBrowserWebTransport(w http.ResponseWriter, r *http.Reques
 	}
 	_ = connectStream.Close()
 
+	presenceSession, err := newPresenceSession()
+	if err != nil {
+		return
+	}
+	defer d.leaveBrowserPresence(first.WorldID, first.TargetPeerID, presenceSession)
+	var requests sync.WaitGroup
+	defer requests.Wait()
 	for {
 		stream, err := session.AcceptStream(session.Context())
 		if err != nil {
 			return
 		}
-		go d.handleBrowserWebTransportRequest(session.Context(), stream, first.WorldID, first.TargetPeerID)
+		requests.Add(1)
+		go func() {
+			defer requests.Done()
+			d.handleBrowserWebTransportRequest(session.Context(), stream, first.WorldID, first.TargetPeerID, presenceSession)
+		}()
 	}
 }
 
-func (d *daemon) handleBrowserWebTransportRequest(ctx context.Context, stream *webtransport.Stream, worldID, targetPeerID string) {
+func (d *daemon) handleBrowserWebTransportRequest(ctx context.Context, stream *webtransport.Stream, worldID, targetPeerID, presenceSession string) {
 	defer stream.Close()
 	_ = stream.SetDeadline(time.Now().Add(35 * time.Second))
 	var message gatewayMessage
@@ -65,6 +77,7 @@ func (d *daemon) handleBrowserWebTransportRequest(ctx context.Context, stream *w
 	}
 	message.WorldID = worldID
 	message.TargetPeerID = targetPeerID
+	bindPresenceRequest(&message, d.host.ID().String(), presenceSession)
 	response, err := d.gatewayRequest(ctx, message)
 	if err != nil {
 		response = peerResponse{Type: "error", WorldID: worldID, RequestID: message.RequestID, Error: err.Error()}

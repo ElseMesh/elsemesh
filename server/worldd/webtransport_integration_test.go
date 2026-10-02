@@ -4,9 +4,11 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
+	"github.com/gorilla/websocket"
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -89,6 +91,40 @@ func TestBrowserWebTransportGatewayServesSignedManifest(t *testing.T) {
 	if _, err := decodeManifest(*manifestReply.Document, host.ID().String(), time.Now()); err != nil {
 		t.Fatalf("WebTransport returned a manifest not authorized for the connected owner: %v", err)
 	}
+	joined := exchangeWebTransportRequest(t, ctx, session, gatewayMessage{Type: "presence.update", RequestID: "join", Pose: presenceTestPose()})
+	if joined.Type != "presence" || len(joined.Players) != 1 || joined.PlayerID == "" {
+		t.Fatalf("WebTransport presence join: %+v", joined)
+	}
+	wsServer := httptest.NewServer(http.HandlerFunc(d.handleBrowserGateway))
+	defer wsServer.Close()
+	ws, _, err := websocket.DefaultDialer.Dial("ws"+strings.TrimPrefix(wsServer.URL, "http"), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ws.Close()
+	_ = ws.SetReadDeadline(time.Now().Add(5 * time.Second))
+	if err := ws.WriteJSON(gatewayMessage{Type: "connect", WorldID: world.WorldID}); err != nil {
+		t.Fatal(err)
+	}
+	var welcome map[string]any
+	if err := ws.ReadJSON(&welcome); err != nil || welcome["type"] != "connected" {
+		t.Fatalf("WebSocket connect: %v %v", welcome, err)
+	}
+	if err := ws.WriteJSON(gatewayMessage{Type: "presence.update", RequestID: "ws-join", Pose: presenceTestPose()}); err != nil {
+		t.Fatal(err)
+	}
+	var snapshot peerResponse
+	if err := ws.ReadJSON(&snapshot); err != nil {
+		t.Fatal(err)
+	}
+	if snapshot.Type != "presence" || len(snapshot.Players) != 2 || snapshot.PlayerID == joined.PlayerID {
+		t.Fatalf("transports do not share distinct player state: %+v", snapshot)
+	}
+	left := exchangeWebTransportRequest(t, ctx, session, gatewayMessage{Type: "presence.leave", RequestID: "leave"})
+	if left.Type != "presence" || len(left.Players) != 1 || left.Players[0].ID != snapshot.PlayerID {
+		t.Fatalf("WebTransport leave removed wrong player: %+v", left)
+	}
+
 }
 
 func exchangeWebTransportMessage(t *testing.T, ctx context.Context, session *webtransport.Session, message gatewayMessage) map[string]any {

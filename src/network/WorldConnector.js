@@ -1,3 +1,4 @@
+import { validatePresencePose } from './PlayerPresence.js';
 import { validateWorldRequirements } from './WorldRules.js';
 
 const ASSET_CHUNK_BYTES = 128 * 1024;
@@ -125,6 +126,19 @@ export class WorldConnector {
 			}
 		}
 		throw lastError || new Error( 'No available provider could serve this world' );
+	}
+
+	async updatePresence( pose, { signal } = {} ) {
+		validatePresencePose( pose );
+		const reply = await this.#request( { type: 'presence.update', pose }, { signal } );
+		invariant( reply.type === 'presence' && reply.worldId === this.worldId && typeof reply.playerId === 'string' && Array.isArray( reply.players ), 'Invalid player presence response' );
+		return reply;
+	}
+
+	async leavePresence( { signal } = {} ) {
+		const reply = await this.#request( { type: 'presence.leave' }, { signal } );
+		invariant( reply.type === 'presence' && reply.worldId === this.worldId, 'Invalid presence departure response' );
+		return reply;
 	}
 
 	async #fetchManifest( signal ) {

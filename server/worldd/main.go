@@ -70,6 +70,8 @@ type daemon struct {
 	roleStatePath         string
 	proposalDir           string
 	proposalMu            sync.Mutex
+	presenceMu            sync.Mutex
+	players               map[string]playerPresence
 }
 
 func main() {
@@ -1153,27 +1155,32 @@ func browserGatewayOriginAllowed(origin, requestHost string, secure bool, allowe
 }
 
 type gatewayMessage struct {
-	Type         string `json:"type"`
-	WorldID      string `json:"worldId,omitempty"`
-	AssetID      string `json:"assetId,omitempty"`
-	TargetPeerID string `json:"targetPeerId,omitempty"`
-	RequestID    string `json:"requestId,omitempty"`
-	Offset       int64  `json:"offset,omitempty"`
-	Length       int64  `json:"length,omitempty"`
+	PresenceSession string      `json:"presenceSession,omitempty"`
+	Pose            *playerPose `json:"pose,omitempty"`
+	presenceKey     string
+	Type            string `json:"type"`
+	WorldID         string `json:"worldId,omitempty"`
+	AssetID         string `json:"assetId,omitempty"`
+	TargetPeerID    string `json:"targetPeerId,omitempty"`
+	RequestID       string `json:"requestId,omitempty"`
+	Offset          int64  `json:"offset,omitempty"`
+	Length          int64  `json:"length,omitempty"`
 }
 
 type peerResponse struct {
-	Type            string          `json:"type"`
-	WorldID         string          `json:"worldId,omitempty"`
-	RequestID       string          `json:"requestId,omitempty"`
-	Document        *signedDocument `json:"document,omitempty"`
-	RoleRevocations *signedDocument `json:"roleRevocations,omitempty"`
-	AuthorityLease  *signedDocument `json:"authorityLease,omitempty"`
-	AssetID         string          `json:"assetId,omitempty"`
-	Offset          int64           `json:"offset"`
-	Total           int64           `json:"total,omitempty"`
-	Chunk           string          `json:"chunk,omitempty"`
-	Error           string          `json:"error,omitempty"`
+	PlayerID        string           `json:"playerId,omitempty"`
+	Players         []playerPresence `json:"players,omitempty"`
+	Type            string           `json:"type"`
+	WorldID         string           `json:"worldId,omitempty"`
+	RequestID       string           `json:"requestId,omitempty"`
+	Document        *signedDocument  `json:"document,omitempty"`
+	RoleRevocations *signedDocument  `json:"roleRevocations,omitempty"`
+	AuthorityLease  *signedDocument  `json:"authorityLease,omitempty"`
+	AssetID         string           `json:"assetId,omitempty"`
+	Offset          int64            `json:"offset"`
+	Total           int64            `json:"total,omitempty"`
+	Chunk           string           `json:"chunk,omitempty"`
+	Error           string           `json:"error,omitempty"`
 }
 
 func (d *daemon) handleBrowserGateway(w http.ResponseWriter, r *http.Request) {
@@ -1203,6 +1210,11 @@ func (d *daemon) handleBrowserGateway(w http.ResponseWriter, r *http.Request) {
 	if err := conn.WriteJSON(map[string]any{"type": "connected", "nodeId": d.host.ID().String(), "targetPeerId": first.TargetPeerID, "worldId": first.WorldID, "manifestProtocol": manifestProtocol}); err != nil {
 		return
 	}
+	sessionID, err := newPresenceSession()
+	if err != nil {
+		return
+	}
+	defer d.leaveBrowserPresence(first.WorldID, first.TargetPeerID, sessionID)
 	requestCtx, cancelRequests := context.WithCancel(r.Context())
 	var requestGroup sync.WaitGroup
 	var writeMu sync.Mutex
@@ -1218,6 +1230,7 @@ func (d *daemon) handleBrowserGateway(w http.ResponseWriter, r *http.Request) {
 		}
 		message.WorldID = first.WorldID
 		message.TargetPeerID = first.TargetPeerID
+		bindPresenceRequest(&message, d.host.ID().String(), sessionID)
 		requestSlots <- struct{}{}
 		requestGroup.Add(1)
 		go func(message gatewayMessage) {
@@ -1326,6 +1339,7 @@ func (d *daemon) handlePeerStream(stream network.Stream) {
 	if err := decoder.Decode(&envelope); err != nil {
 		return
 	}
+	bindPresenceRequest(&envelope, stream.Conn().RemotePeer().String(), envelope.PresenceSession)
 	response, err := d.localRequest(envelope)
 	if err != nil {
 		response = peerResponse{Type: "error", WorldID: envelope.WorldID, RequestID: envelope.RequestID, Error: err.Error()}
@@ -1339,6 +1353,8 @@ func (d *daemon) localRequest(request gatewayMessage) (peerResponse, error) {
 		return peerResponse{}, errors.New("world_not_hosted")
 	}
 	switch request.Type {
+	case "presence.update", "presence.leave":
+		return d.presenceRequest(request, time.Now())
 	case "manifest.get":
 		return peerResponse{Type: "manifest", WorldID: d.world.WorldID, RequestID: request.RequestID, Document: &d.manifest, AuthorityLease: d.currentAuthorityLease()}, nil
 	case "role-revocations.get":
