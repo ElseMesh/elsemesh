@@ -141,6 +141,27 @@ function countActions(actions) {
 	return counts;
 }
 
+function canonical(value) {
+	if ( Array.isArray( value ) ) return value.map( canonical );
+	if ( value && typeof value === 'object' ) return Object.fromEntries( Object.keys( value ).sort().map( ( key ) => [ key, canonical( value[ key ] ) ] ) );
+	return value;
+}
+
+function equalRecord(left, right) {
+	return JSON.stringify( canonical( left ) ) === JSON.stringify( canonical( right ) );
+}
+
+function recordChanges(beforeRecords, afterRecords) {
+	const before = new Map( beforeRecords.map( ( record ) => [ record.id, record ] ) );
+	const after = new Map( afterRecords.map( ( record ) => [ record.id, record ] ) );
+	return [ ...new Set( [ ...before.keys(), ...after.keys() ] ) ].sort().flatMap( ( id ) => {
+		const previous = before.get( id );
+		const next = after.get( id );
+		if ( previous && next && equalRecord( previous, next ) ) return [];
+		return [ { id, status: previous ? next ? 'changed' : 'removed' : 'added', before: previous ?? null, after: next ?? null } ];
+	} );
+}
+
 export function buildSandboxCommand({ bwrap, prlimit, blender, blenderPrefix = '/usr', runner = ACTION_RUNNER, taskRoot, outputRoot, outputAssetsRequired, limits = WORKER_LIMITS }) {
 	const portableBlender = blenderPrefix !== '/usr';
 	const blenderInSandbox = portableBlender ? path.join( '/opt/elsemesh-blender', path.relative( blenderPrefix, blender ) ) : blender;
@@ -297,20 +318,23 @@ export async function runAIEditWorker({ taskPath, outputPath, blender, blenderPr
 				if ( ! bundle.outputAssetsRequired || await digest( generatedAssetPath ).catch( () => null ) !== object.assetId ) throw new Error( `candidate references a generated asset that is missing or invalid: ${object.assetId}` );
 			}
 		}
-		const baseRecords = new Map( bundle.source.objects.map( ( item ) => [ item.id, item ] ) );
-		const basePortals = new Map( bundle.source.portals.map( ( item ) => [ item.id, item ] ) );
-		const changedObjects = candidate.objects.filter( ( item ) => JSON.stringify( item ) !== JSON.stringify( baseRecords.get( item.id ) ) ).map( ( item ) => item.id );
+		const objectChanges = recordChanges( bundle.source.objects, candidate.objects );
+		const portalChanges = recordChanges( bundle.source.portals, candidate.portals );
+		const worldChanges = [ 'title', 'styleGuide', 'rules', 'hosts', 'components' ].filter( ( key ) => ! equalRecord( candidate[ key ], bundle.source[ key ] ) ).map( ( field ) => ( { field, before: bundle.source[ field ], after: candidate[ field ] } ) );
+		const generatedAssets = bundle.outputAssetsRequired ? ( await readdir( path.join( output, 'assets' ) ) ).sort().map( ( name ) => ( { id: `sha256:${name}`, bytes: statSync( path.join( output, 'assets', name ) ).size } ) ) : [];
 		const report = {
 			protocol: 'elsemesh.ai-edit-review/1', taskId: bundle.task.taskId, worldId: bundle.task.worldId,
 			baseSourceHash: bundle.task.sourceHash, candidateSourceHash: `sha256:${createHash( 'sha256' ).update( candidateBytes ).digest( 'hex' )}`,
 			candidateSourceBytes: candidateInfo.size, outputBytes, actionCounts: bundle.actionCounts,
-			addedObjectIds: candidate.objects.filter( ( item ) => ! baseRecords.has( item.id ) ).map( ( item ) => item.id ),
-			removedObjectIds: [ ...baseRecords.keys() ].filter( ( id ) => ! candidate.objects.some( ( item ) => item.id === id ) ),
-			changedObjectIds: changedObjects,
-			addedPortalIds: candidate.portals.filter( ( item ) => ! bundle.source.portals.some( ( prior ) => prior.id === item.id ) ).map( ( item ) => item.id ),
-			removedPortalIds: bundle.source.portals.filter( ( item ) => ! candidate.portals.some( ( next ) => next.id === item.id ) ).map( ( item ) => item.id ),
-			changedPortalIds: candidate.portals.filter( ( item ) => JSON.stringify( item ) !== JSON.stringify( basePortals.get( item.id ) ) ).map( ( item ) => item.id ),
-			changedWorldFields: [ 'title', 'styleGuide', 'rules', 'hosts', 'components' ].filter( ( key ) => JSON.stringify( candidate[ key ] ) !== JSON.stringify( bundle.source[ key ] ) ),
+			objectChanges, portalChanges, worldChanges, generatedAssets,
+			addedObjectIds: objectChanges.filter( ( change ) => change.status === 'added' ).map( ( change ) => change.id ),
+			removedObjectIds: objectChanges.filter( ( change ) => change.status === 'removed' ).map( ( change ) => change.id ),
+			changedObjectIds: objectChanges.filter( ( change ) => change.status === 'changed' ).map( ( change ) => change.id ),
+			addedPortalIds: portalChanges.filter( ( change ) => change.status === 'added' ).map( ( change ) => change.id ),
+			removedPortalIds: portalChanges.filter( ( change ) => change.status === 'removed' ).map( ( change ) => change.id ),
+			changedPortalIds: portalChanges.filter( ( change ) => change.status === 'changed' ).map( ( change ) => change.id ),
+			changedWorldFields: worldChanges.map( ( change ) => change.field ),
+			validation: { candidateSource: 'passed', generatedAssetHashes: 'passed', ownerSignature: 'not-created', publication: 'not-performed' },
 			signed: false, published: false,
 		};
 		await writeFile( path.join( output, 'review.json' ), `${JSON.stringify( report, null, 2 )}\n`, { mode: 0o600, flag: 'wx' } );

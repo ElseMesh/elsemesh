@@ -64,6 +64,9 @@ try {
 
 	const report = await runAIEditWorker( { taskPath, outputPath, blender, blenderPrefix } );
 	assert.deepEqual( report.addedObjectIds, [ objectId ] );
+	assert.equal( report.objectChanges.length, 1 );
+	assert.equal( report.objectChanges[ 0 ].status, 'added' );
+	assert.equal( report.objectChanges[ 0 ].after.id, objectId );
 	assert.equal( report.signed, false );
 	assert.equal( report.published, false );
 	const candidate = JSON.parse( await readFile( path.join( outputPath, 'candidate.world-source.json' ), 'utf8' ) );
@@ -72,6 +75,7 @@ try {
 	const generatedAsset = path.join( outputPath, 'assets', generatedAssetId.slice( 7 ) );
 	const assetHash = `sha256:${createHash( 'sha256' ).update( await readFile( generatedAsset ) ).digest( 'hex' )}`;
 	assert.equal( assetHash, generatedAssetId );
+	assert.deepEqual( report.generatedAssets, [ { id: generatedAssetId, bytes: ( await readFile( generatedAsset ) ).length } ] );
 	assert.ok( ( await readFile( path.join( outputPath, 'candidate.blend' ) ) ).length > 100_000 );
 	assert.equal( JSON.parse( await readFile( path.join( outputPath, 'review.json' ), 'utf8' ) ).candidateSourceHash, report.candidateSourceHash );
 	console.log( 'ok isolated Blender worker created an unsigned candidate with a verified generated GLB and review report' );

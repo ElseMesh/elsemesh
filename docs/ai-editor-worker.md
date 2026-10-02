@@ -46,7 +46,7 @@ ELSEMESH_RUN_BLENDER_WORKER=1 node test/ai-edit-worker-runtime.mjs
 
 For a portable Blender package, also set `BLENDER_EXECUTABLE` and `BLENDER_PREFIX` to its executable and trusted `usr` directory.
 
-Successful output contains an unsigned candidate source, a candidate `.blend`, any newly generated content-addressed GLBs, and `review.json`. The report lists changed object, portal, and world fields. An owner must inspect the source diff, reopen/render the Blender scene, and verify generated asset hashes. To publish, merge required original and generated assets into a reviewed package and use the separate owner-only publication flow against the exact base-source snapshot. Running the worker never signs or publishes anything.
+Successful output contains an unsigned candidate source, a candidate `.blend`, any newly generated content-addressed GLBs, and `review.json`. The report contains before/after records for changed objects and portals, before/after values for changed world fields, generated asset IDs and byte sizes, source hashes, validation outcomes, and explicit unsigned/unpublished status. An owner must inspect the source diff, reopen/render the Blender scene, and verify generated asset hashes. To publish, merge required original and generated assets into a reviewed package and use the separate owner-only publication flow against the exact base-source snapshot. Running the worker never signs or publishes anything.
 
 ## Current boundary
 
