@@ -41,7 +41,7 @@ try {
 	};
 	const runtimeLibraryPaths = [ path.join( blenderPrefix, 'lib' ), path.join( blenderPrefix, 'lib/x86_64-linux-gnu' ), '/usr/lib', '/usr/lib/x86_64-linux-gnu' ];
 	if ( blenderPrefix !== '/usr' ) blenderEnvironment.LD_LIBRARY_PATH = [ ...runtimeLibraryPaths, process.env.LD_LIBRARY_PATH ].filter( Boolean ).join( ':' );
-	const saveScene = spawnSync( blender, [ '--background', '--factory-startup', '--python-expr', `import bpy; bpy.ops.wm.save_as_mainfile(filepath=${JSON.stringify( blendPath )})` ], { env: blenderEnvironment, encoding: 'utf8' } );
+	const saveScene = spawnSync( blender, [ '--background', '--factory-startup', '--python-expr', `import bpy; bpy.ops.object.select_all(action='SELECT'); bpy.ops.object.delete(use_global=False); bpy.ops.wm.save_as_mainfile(filepath=${JSON.stringify( blendPath )})` ], { env: blenderEnvironment, encoding: 'utf8' } );
 	if ( saveScene.status !== 0 ) throw new Error( `could not create test Blender scene:\n${saveScene.stdout || ''}${saveScene.stderr || ''}` );
 
 	const task = await createAITaskBundle( {
@@ -76,12 +76,24 @@ try {
 	const assetHash = `sha256:${createHash( 'sha256' ).update( await readFile( generatedAsset ) ).digest( 'hex' )}`;
 	assert.equal( assetHash, generatedAssetId );
 	assert.deepEqual( report.generatedAssets, [ { id: generatedAssetId, bytes: ( await readFile( generatedAsset ) ).length } ] );
-	assert.ok( ( await readFile( path.join( outputPath, 'candidate.blend' ) ) ).length > 100_000 );
-	assert.equal( JSON.parse( await readFile( path.join( outputPath, 'review.json' ), 'utf8' ) ).candidateSourceHash, report.candidateSourceHash );
+	const candidateBlend = path.join( outputPath, 'candidate.blend' );
+	assert.ok( ( await readFile( candidateBlend ) ).length > 100_000 );
+	const inspectBlend = spawnSync( blender, [ '--background', candidateBlend, '--python-expr', "import bpy; assert bpy.data.objects.get('ElseMesh Temporary Review Camera') is None" ], { env: blenderEnvironment, encoding: 'utf8' } );
+	assert.equal( inspectBlend.status, 0, `candidate blend must not retain temporary preview setup:\n${inspectBlend.stdout || ''}\n${inspectBlend.stderr || ''}` );
+	const previewPath = path.join( outputPath, 'review-preview.png' );
+	const previewBytes = await readFile( previewPath );
+	assert.deepEqual( previewBytes.subarray( 0, 8 ), Buffer.from( [ 137, 80, 78, 71, 13, 10, 26, 10 ] ) );
+	assert.equal( previewBytes.readUInt32BE( 16 ), 640 );
+	assert.equal( previewBytes.readUInt32BE( 20 ), 420 );
+	const review = JSON.parse( await readFile( path.join( outputPath, 'review.json' ), 'utf8' ) );
+	assert.equal( review.candidateSourceHash, report.candidateSourceHash );
+	assert.equal( review.preview.file, 'review-preview.png' );
+	assert.equal( review.preview.sha256, `sha256:${createHash( 'sha256' ).update( previewBytes ).digest( 'hex' )}` );
 	const reviewHTML = await readFile( path.join( outputPath, 'review.html' ), 'utf8' );
 	assert.ok( reviewHTML.includes( 'Unsigned candidate' ) );
 	assert.ok( reviewHTML.includes( generatedAssetId ) );
-	console.log( 'ok isolated Blender worker created an unsigned candidate with a verified generated GLB and review report' );
+	assert.ok( reviewHTML.includes( 'review-preview.png' ) );
+	console.log( 'ok isolated Blender worker created an unsigned candidate with verified GLB and rendered review preview' );
 } finally {
 	await rm( temporaryRoot, { recursive: true, force: true } );
 }

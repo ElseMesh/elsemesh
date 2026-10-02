@@ -170,6 +170,7 @@ export function buildSandboxCommand({ bwrap, prlimit, blender, blenderPrefix = '
 	const blenderArgs = [ '--background', '--factory-startup', '/task/scene.blend', '--python', '/worker/world_actions.py', '--',
 		'--plan', '/task/plan.json', '--source', '/task/world-source.json', '--assets', '/task/assets',
 		'--out-source', '/out/candidate.world-source.json', '--out-blend', '/out/candidate.blend',
+		'--out-preview', '/out/review-preview.png',
 	];
 	if ( outputAssetsRequired ) blenderArgs.push( '--out-assets', '/out/assets' );
 	const bubbleArgs = [
@@ -306,7 +307,16 @@ export async function runAIEditWorker({ taskPath, outputPath, blender, blenderPr
 		const outputBytes = await scanOutput( output );
 		const expectedOutput = new Set( [ 'candidate.world-source.json', 'candidate.blend', ...( bundle.outputAssetsRequired ? [ 'assets' ] : [] ) ] );
 		const actualOutput = await readdir( output );
-		if ( actualOutput.length !== expectedOutput.size || actualOutput.some( ( name ) => ! expectedOutput.has( name ) ) ) throw new Error( 'worker did not produce the exact expected candidate artifacts' );
+		const previewPath = path.join( output, 'review-preview.png' );
+		const hasPreview = actualOutput.includes( 'review-preview.png' );
+		if ( actualOutput.length !== expectedOutput.size + Number( hasPreview ) || actualOutput.some( ( name ) => ! expectedOutput.has( name ) && name !== 'review-preview.png' ) ) throw new Error( 'worker did not produce the exact expected candidate artifacts' );
+		let preview;
+		if ( hasPreview ) {
+			const previewInfo = await regularFile( previewPath, 16 * 1024 * 1024, 'rendered review preview' );
+			const previewBytes = await readFile( previewPath );
+			if ( previewBytes.length < 24 || ! previewBytes.subarray( 0, 8 ).equals( Buffer.from( [ 137, 80, 78, 71, 13, 10, 26, 10 ] ) ) || previewBytes.readUInt32BE( 16 ) !== 640 || previewBytes.readUInt32BE( 20 ) !== 420 ) throw new Error( 'rendered review preview must be a 640x420 PNG' );
+			preview = { file: 'review-preview.png', bytes: previewInfo.size, sha256: await digest( previewPath ) };
+		}
 		const candidatePath = path.join( output, 'candidate.world-source.json' );
 		const candidateInfo = await regularFile( candidatePath, MAX_SOURCE_BYTES, 'candidate world source' );
 		const candidateBytes = await readFile( candidatePath );
@@ -326,7 +336,7 @@ export async function runAIEditWorker({ taskPath, outputPath, blender, blenderPr
 		const report = {
 			protocol: 'elsemesh.ai-edit-review/1', taskId: bundle.task.taskId, worldId: bundle.task.worldId, worldTitle: bundle.task.worldTitle, instruction: bundle.task.instruction,
 			baseSourceHash: bundle.task.sourceHash, candidateSourceHash: `sha256:${createHash( 'sha256' ).update( candidateBytes ).digest( 'hex' )}`,
-			candidateSourceBytes: candidateInfo.size, outputBytes, actionCounts: bundle.actionCounts,
+			candidateSourceBytes: candidateInfo.size, outputBytes, actionCounts: bundle.actionCounts, preview: preview || null,
 			objectChanges, portalChanges, worldChanges, generatedAssets,
 			addedObjectIds: objectChanges.filter( ( change ) => change.status === 'added' ).map( ( change ) => change.id ),
 			removedObjectIds: objectChanges.filter( ( change ) => change.status === 'removed' ).map( ( change ) => change.id ),

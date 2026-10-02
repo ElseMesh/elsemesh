@@ -363,6 +363,7 @@ def create_mesh_asset(bpy, action, collection, asset_dir):
             material = bpy.data.materials.new("ElseMesh preset " + part["material"])
             material.use_nodes = True
             color, roughness, metallic = material_presets[part["material"]]
+            material.diffuse_color = color
             shader = material.node_tree.nodes.get("Principled BSDF")
             shader.inputs["Base Color"].default_value = color
             shader.inputs["Roughness"].default_value = roughness
@@ -480,6 +481,110 @@ def apply_to_blender(actions, assets_dir, output_assets_dir=None):
     return created_assets
 
 
+def render_review_preview(bpy, actions, output_path):
+    """Render an offline geometry-focused preview without saving temporary camera settings."""
+    from mathutils import Vector
+
+    output = pathlib.Path(output_path).resolve()
+    if os.path.lexists(output):
+        raise ValueError("review preview output already exists")
+    scene = bpy.context.scene
+    changed_ids = set()
+    for action in actions:
+        if action["op"] in {"mesh.create", "object.add"}:
+            changed_ids.add(action["object"]["id"])
+        elif action["op"] == "object.update":
+            changed_ids.add(action["id"])
+
+    def descends_from(obj, root):
+        current = obj
+        while current is not None:
+            if current == root:
+                return True
+            current = current.parent
+        return False
+
+    scene_meshes = [obj for obj in scene.objects if obj.type == "MESH" and not obj.hide_render]
+    roots = [find_preview(bpy, "object", stable_id) for stable_id in changed_ids]
+    roots = [root for root in roots if root is not None]
+    focused_meshes = [obj for obj in scene_meshes if any(descends_from(obj, root) for root in roots)]
+    render_meshes = focused_meshes or scene_meshes
+    if not render_meshes:
+        return False
+
+    depsgraph = bpy.context.evaluated_depsgraph_get()
+    corners = []
+    for obj in render_meshes:
+        evaluated = obj.evaluated_get(depsgraph)
+        corners.extend(evaluated.matrix_world @ Vector(corner) for corner in evaluated.bound_box)
+    if not corners:
+        return False
+    minimum = Vector(tuple(min(point[axis] for point in corners) for axis in range(3)))
+    maximum = Vector(tuple(max(point[axis] for point in corners) for axis in range(3)))
+    center = (minimum + maximum) * 0.5
+    radius = max((point - center).length for point in corners)
+    extent = max(maximum[axis] - minimum[axis] for axis in range(3))
+    if not math.isfinite(radius) or not math.isfinite(extent) or extent <= 0:
+        return False
+
+    output.parent.mkdir(parents=True, exist_ok=True)
+    fd, staged_name = tempfile.mkstemp(prefix=".elsemesh-preview-", suffix=".png", dir=output.parent)
+    os.close(fd)
+    staged = pathlib.Path(staged_name)
+    staged.unlink()
+    camera_data = bpy.data.cameras.new("ElseMesh Temporary Review Camera")
+    camera = bpy.data.objects.new("ElseMesh Temporary Review Camera", camera_data)
+    scene.collection.objects.link(camera)
+    old_camera = scene.camera
+    old_render = (scene.render.engine, scene.render.filepath, scene.render.resolution_x,
+                  scene.render.resolution_y, scene.render.resolution_percentage,
+                  scene.render.image_settings.file_format, scene.render.film_transparent)
+    shading = scene.display.shading
+    old_shading = (shading.light, shading.color_type, shading.background_type,
+                   shading.show_shadows, shading.show_cavity)
+    old_world_color = tuple(scene.world.color) if scene.world else None
+    try:
+        direction = Vector((1.0, -1.0, 0.72)).normalized()
+        camera.location = center + direction * max(radius * 4.0, 4.0)
+        camera.rotation_euler = (center - camera.location).to_track_quat("-Z", "Y").to_euler()
+        camera_data.type = "ORTHO"
+        camera_data.ortho_scale = max(extent * 2.4, 0.5)
+        camera_data.clip_start = 0.01
+        camera_data.clip_end = max(radius * 20.0, 100.0)
+        scene.camera = camera
+        scene.render.engine = "BLENDER_WORKBENCH"
+        scene.render.filepath = str(staged)
+        scene.render.resolution_x = 640
+        scene.render.resolution_y = 420
+        scene.render.resolution_percentage = 100
+        scene.render.image_settings.file_format = "PNG"
+        scene.render.film_transparent = False
+        shading.light = "STUDIO"
+        shading.color_type = "MATERIAL"
+        shading.background_type = "WORLD"
+        shading.show_shadows = True
+        shading.show_cavity = True
+        if scene.world is not None:
+            scene.world.color = (0.025, 0.035, 0.05)
+        bpy.ops.render.render(write_still=True)
+        if not staged.is_file() or staged.stat().st_size < 24:
+            raise RuntimeError("Blender did not produce a review preview image")
+        os.replace(staged, output)
+        return True
+    finally:
+        scene.camera = old_camera
+        (scene.render.engine, scene.render.filepath, scene.render.resolution_x,
+         scene.render.resolution_y, scene.render.resolution_percentage,
+         scene.render.image_settings.file_format, scene.render.film_transparent) = old_render
+        (shading.light, shading.color_type, shading.background_type,
+         shading.show_shadows, shading.show_cavity) = old_shading
+        if scene.world is not None and old_world_color is not None:
+            scene.world.color = old_world_color
+        bpy.data.objects.remove(camera, do_unlink=True)
+        bpy.data.cameras.remove(camera_data)
+        staged.unlink(missing_ok=True)
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--plan", required=True)
@@ -488,6 +593,7 @@ def main():
     parser.add_argument("--out-assets")
     parser.add_argument("--out-source", required=True)
     parser.add_argument("--out-blend", required=True)
+    parser.add_argument("--out-preview", required=True)
     args = parser.parse_args(sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else [])
     plan_bytes = read_bytes(args.plan, MAX_PLAN_BYTES)
     source_bytes = read_bytes(args.source, MAX_PLAN_BYTES)
@@ -495,19 +601,20 @@ def main():
     source, actions = validate_plan(plan, source_bytes)
     output_source = pathlib.Path(args.out_source).resolve()
     output_blend = pathlib.Path(args.out_blend).resolve()
+    output_preview = pathlib.Path(args.out_preview).resolve()
     mesh_actions = [action for action in actions if action["op"] == "mesh.create"]
     output_assets = pathlib.Path(args.out_assets).resolve() if args.out_assets else None
     if bool(mesh_actions) != bool(output_assets):
         raise ValueError("--out-assets is required exactly when the plan contains mesh.create")
-    if os.path.lexists(output_source) or os.path.lexists(output_blend):
+    if os.path.lexists(output_source) or os.path.lexists(output_blend) or os.path.lexists(output_preview):
         raise ValueError("candidate output paths must not already exist")
-    if output_source == output_blend:
-        raise ValueError("candidate source and Blender output paths must differ")
+    outputs = [output_source, output_blend, output_preview]
+    if len(set(outputs)) != len(outputs):
+        raise ValueError("candidate source, Blender scene, and preview outputs must use separate paths")
     if output_assets is not None:
         if os.path.lexists(output_assets):
             raise ValueError("candidate asset directory must not already exist")
         input_assets = pathlib.Path(args.assets).resolve()
-        outputs = [output_source, output_blend]
         if output_assets == input_assets or output_assets in input_assets.parents or input_assets in output_assets.parents:
             raise ValueError("candidate assets must be separate from the read-only input asset store")
         if any(output_assets == output or output_assets in output.parents or output in output_assets.parents for output in outputs):
@@ -545,8 +652,10 @@ def main():
     committed_blend = False
     committed_source = False
     committed_assets = False
+    preview_rendered = False
     try:
         pathlib.Path(staged_source_name).write_text(json.dumps(source, indent=2) + "\n", encoding="utf-8", newline="\n")
+        preview_rendered = render_review_preview(bpy, actions, output_preview)
         bpy.ops.wm.save_as_mainfile(filepath=str(staged_blend))
         if staged_assets is not None:
             os.replace(staged_assets, output_assets)
@@ -562,6 +671,8 @@ def main():
             output_source.unlink(missing_ok=True)
         if committed_blend:
             output_blend.unlink(missing_ok=True)
+        if preview_rendered:
+            output_preview.unlink(missing_ok=True)
         if committed_assets:
             import shutil
             shutil.rmtree(output_assets, ignore_errors=True)
