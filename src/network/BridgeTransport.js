@@ -15,7 +15,7 @@ export class BridgeTransport {
 				try {
 					if (typeof data !== 'string' || data.length > 8192) return;
 					const packet = JSON.parse(data);
-					if (packet.type === 'hello' && packet.role === role && /^bh-node:[0-9a-f]{64}$/.test(packet.nodeId)) {
+					if (packet.type === 'hello' && packet.role === role && /^elsemesh-node:[0-9a-f]{64}$/.test(packet.nodeId)) {
 						this.nodeId = packet.nodeId; this.peerNodeId = packet.peerNodeId; this.connected = !!packet.connected;
 						clearTimeout(timer); resolve(this);
 					} else if (packet.type === 'peer-status') this.connected = !!packet.connected;

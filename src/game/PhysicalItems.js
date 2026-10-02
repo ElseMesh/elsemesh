@@ -4,7 +4,7 @@ import { createPropMaterial } from './GameMaterials.js';
 import { ItemEconomy } from './ItemEconomy.js';
 import { ITEM_TYPES, SUPPLY_CRATE } from './ItemCatalog.js';
 
-const SAVE = 'burning-horizons.items.v1';
+const SAVE = 'elsemesh.items.v1';
 // Agent Control: one shared geometry per type; held and dropped objects use the same model.
 function geometry(type) {
 	const parts = [], add = (g, color, x=0,y=0,z=0,rx=0,ry=0,rz=0) => parts.push(prepare(g,{color,matrix:mat4(x,y,z,rx,ry,rz)}));

@@ -1,8 +1,8 @@
-# KIRI scan to Burning Horizons character
+# KIRI scan to ElseMesh character
 
 This pipeline keeps the KIRI download untouched and generates a separate,
-skinned game asset. Use Blender 4.5 or newer. On this workstation, Blender and
-all working files are on `D:`. The Windows character smoke test also uses
+skinned game asset. Use Blender 4.5 or newer. Choose local paths for Blender and
+all working files. The Windows character smoke test also uses
 FFmpeg to decode the embedded texture.
 
 The walk and run clips come from a reduced motion-only copy of GDQuest's
@@ -16,14 +16,14 @@ shape or UV layout.
 ## Commands (PowerShell)
 
 ```powershell
-$blender = 'D:\Codex\blender-portable\blender-4.5.10-windows-x64\blender.exe'
-$source = 'D:\Codex\Burning-Horizons-character-source\project-2-20260926\extracted\3DModel.obj'
-$work = 'D:\Codex\Burning-Horizons-character-source\project-2-20260926'
-$donor = 'D:\Codex\Burning-Horizons-character-source\donors\mannequiny-v0.4.0\mannequiny-0.4.0.blend'
-$env:BH_TMPDIR = "$work\work"
-New-Item -ItemType Directory -Force -Path $env:BH_TMPDIR | Out-Null
+$blender = 'C:\example\blender-portable\blender-4.5.10-windows-x64\blender.exe'
+$source = 'C:\example\ElseMesh-character-source\project-2-20260926\extracted\3DModel.obj'
+$work = 'C:\example\ElseMesh-character-source\project-2-20260926'
+$donor = 'C:\example\ElseMesh-character-source\donors\mannequiny-v0.4.0\mannequiny-0.4.0.blend'
+$env:ELSEMESH_TMPDIR = "$work\work"
+New-Item -ItemType Directory -Force -Path $env:ELSEMESH_TMPDIR | Out-Null
 
-& $blender -b $donor -t 4 --python tools/character_pipeline/inspect_animation_donor.py -- 'D:\Codex\Burning-Horizons-character-source\donors\mannequiny-v0.4.0\report.json'
+& $blender -b $donor -t 4 --python tools/character_pipeline/inspect_animation_donor.py -- 'C:\example\ElseMesh-character-source\donors\mannequiny-v0.4.0\report.json'
 & $blender -b $donor -t 4 --python tools/character_pipeline/prepare_motion_donor.py -- tools/character_pipeline/third_party/mannequiny-motion.blend
 & $blender -b -t 4 --python tools/character_pipeline/inspect_scan.py -- $source "$work/evidence"
 & $blender -b -t 4 --python tools/character_pipeline/build_character.py -- $source tools/character_pipeline/project-2.json "$work/build"

@@ -54,7 +54,9 @@ export class MotionBlur {
 			outSize: [ 'vec2f', new Vector2( 1, 1 ) ],
 			tileCount: [ 'vec2f', new Vector2( 1, 1 ) ],
 			// fraction of the frame time the shutter is open: 0.5 = 180 degree shutter, 0 = off
-			shutter: [ 'f32', 0.5 ],
+            // Keep driving and walk-up inspection crisp by default. The Effects
+            // slider retains the optional cinematic shutter. This is not a TAA fix.
+            shutter: [ 'f32', 0 ],
 			frameIndex: [ 'f32', 0 ],
 		}, { label: 'motionBlur' } );
 		const U = this.uniforms.fields;

@@ -2,11 +2,11 @@
 
 ## Baseline and preservation
 
-Started from clean `feature/ten-player-rooms` at `8dd7126`, in the existing isolated checkout on D:. Work branch: `feature/third-island-helicopter`. No original model or UNDERNEATH asset was overwritten. The new heightfield is confined to the sea south of the home island, around (115, 650). Home-island and cave coordinates fall outside that footprint.
+The third island heightfield is confined to the sea south of the home island, around (115, 650). Home-island and cave coordinates fall outside that footprint. Original models and UNDERNEATH geometry are preserved.
 
 ## Play
 
-Sail south past Godzilla, keeping a safe berth. Island 03 is visible beyond it. Approach the west side of the north-facing timber jetty, stop afloat, leave the helm and use E at the boat rail to step ashore. The rental and helicopter appear as L and H on the radar. N opens the three-island map.
+Sail south from the home island toward Island 03. Approach the west side of the north-facing timber jetty, stop afloat, leave the helm and use E at the boat rail to step ashore. The rental and helicopter appear as L and H on the radar. N opens the map.
 
 Meet Loz outside **Loz's Helicopter Rental** and press E for the key. Follow the path lights to the central clearing. Press E beside the bright pink helicopter to board. Without the key it remains locked.
 
@@ -38,7 +38,7 @@ The relay validates ownership and bounded state, but player movement remains cli
 
 ## Capture
 
-`node tools/video/helicopter-receiver.mjs` receives local capture files into `D:/Downloads`. Start the Vite game with `?bench&noAudio`, wait for `window.__app`, then invoke the exported `recordHelicopterJourney` from `tools/video/helicopter-capture.js` in the local developer console. The recording begins aboard the moored boat and uses scripted inputs through the live boat, walking and helicopter controllers. Key pickup and boarding use the normal interaction methods. Camera direction is choreographed for visibility. Captions and cockpit readouts are composited over actual rendered frames. Inspect the capture report for any failure before distributing the video.
+`node tools/video/helicopter-receiver.mjs` receives local capture files; review its output directory before starting it. Start the Vite game with `?bench&noAudio`, wait for `window.__app`, then invoke the exported `recordHelicopterJourney` from `tools/video/helicopter-capture.js` in the local developer console. The recording begins aboard the moored boat and uses scripted inputs through the live boat, walking and helicopter controllers. Key pickup and boarding use the normal interaction methods. Camera direction is choreographed for visibility. Captions and cockpit readouts are composited over actual rendered frames. Inspect the capture report for any failure before distributing the video.
 
 Generated video and screenshots stay outside Git. Island and aircraft geometry is original procedural project code.
 

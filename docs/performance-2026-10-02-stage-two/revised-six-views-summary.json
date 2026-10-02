@@ -1,0 +1,916 @@
+{
+  "validation": {
+    "status": "complete",
+    "valid": true,
+    "stage": 2,
+    "motion": "fixed",
+    "completed": 48,
+    "total": 48,
+    "frameCounts": [
+      180
+    ],
+    "sizes": [
+      "[1200,675]"
+    ],
+    "incomplete": 0
+  },
+  "configuration": {
+    "requestedQuality": "balanced",
+    "profile": "balanced",
+    "renderScale": 0.75,
+    "autoResolution": false,
+    "aa": "taa",
+    "ssr": 0,
+    "ao": 1,
+    "bloom": 0.05,
+    "motionBlur": 0,
+    "exposure": 0.55,
+    "clockMode": "manual",
+    "timeSpeed": 0,
+    "postScale": 0.75,
+    "shadows": true,
+    "refractionEnabled": true,
+    "refractionScale": 0.35,
+    "hazeEnabled": 1,
+    "hazeDensity": 1.6,
+    "shafts": 1
+  },
+  "results": [
+    {
+      "name": "beach/safeCombined",
+      "baseline": {
+        "frames": 720,
+        "meanMs": 37.40958333333329,
+        "meanFPS": 26.731118363164555,
+        "p95": 50.20000000001164,
+        "p99": 66.69999999998254,
+        "max": 83.29999999998836,
+        "over150": 0,
+        "runs": 4,
+        "cpuMs": 34.6606944443658,
+        "runFPS": [
+          26.339279181726415,
+          26.534192254964175,
+          26.665481534154083,
+          27.409776153494747
+        ],
+        "draws": [
+          {
+            "draws": 2948,
+            "triangles": 4074716,
+            "pipelines": 500
+          },
+          {
+            "draws": 2948,
+            "triangles": 4074716,
+            "pipelines": 500
+          },
+          {
+            "draws": 2948,
+            "triangles": 4074716,
+            "pipelines": 500
+          },
+          {
+            "draws": 2948,
+            "triangles": 4074716,
+            "pipelines": 500
+          }
+        ],
+        "forest": [
+          {
+            "detailedTrees": 77,
+            "transitionTrees": 0,
+            "farTrees": 0,
+            "jointUpdates": 693
+          },
+          {
+            "detailedTrees": 77,
+            "transitionTrees": 0,
+            "farTrees": 0,
+            "jointUpdates": 693
+          },
+          {
+            "detailedTrees": 77,
+            "transitionTrees": 0,
+            "farTrees": 0,
+            "jointUpdates": 693
+          },
+          {
+            "detailedTrees": 77,
+            "transitionTrees": 0,
+            "farTrees": 0,
+            "jointUpdates": 693
+          }
+        ],
+        "cycles": [
+          26.43637645400075,
+          27.032506589173504
+        ]
+      },
+      "candidate": {
+        "frames": 720,
+        "meanMs": 34.168472222222164,
+        "meanFPS": 29.26674606626484,
+        "p95": 50.10000000000582,
+        "p99": 50.29999999998836,
+        "max": 66.89999999999418,
+        "over150": 0,
+        "runs": 4,
+        "cpuMs": 21.576388888723322,
+        "runFPS": [
+          29.83343001574542,
+          29.10925674364459,
+          28.874843594597248,
+          29.266389177939676
+        ],
+        "draws": [
+          {
+            "draws": 1639,
+            "triangles": 4074716,
+            "pipelines": 500
+          },
+          {
+            "draws": 1639,
+            "triangles": 4074716,
+            "pipelines": 500
+          },
+          {
+            "draws": 1639,
+            "triangles": 4074716,
+            "pipelines": 500
+          },
+          {
+            "draws": 1639,
+            "triangles": 4074716,
+            "pipelines": 500
+          }
+        ],
+        "forest": [
+          {
+            "detailedTrees": 0,
+            "transitionTrees": 0,
+            "farTrees": 77,
+            "jointUpdates": 0
+          },
+          {
+            "detailedTrees": 0,
+            "transitionTrees": 0,
+            "farTrees": 77,
+            "jointUpdates": 0
+          },
+          {
+            "detailedTrees": 0,
+            "transitionTrees": 0,
+            "farTrees": 77,
+            "jointUpdates": 0
+          },
+          {
+            "detailedTrees": 0,
+            "transitionTrees": 0,
+            "farTrees": 77,
+            "jointUpdates": 0
+          }
+        ],
+        "cycles": [
+          29.46689476225951,
+          29.06929797645391
+        ]
+      },
+      "gainPercent": 9.485677586143847,
+      "cycleGains": [
+        11.463440587373452,
+        7.5346005393970295
+      ]
+    },
+    {
+      "name": "village/safeCombined",
+      "baseline": {
+        "frames": 720,
+        "meanMs": 32.01527777777782,
+        "meanFPS": 31.235087414862658,
+        "p95": 50.20000000001164,
+        "p99": 50.899999999965075,
+        "max": 67,
+        "over150": 0,
+        "runs": 4,
+        "cpuMs": 15.496111111084206,
+        "runFPS": [
+          30.251083997176654,
+          31.303259017077604,
+          31.762277002346682,
+          31.670625494853525
+        ],
+        "draws": [
+          {
+            "draws": 145,
+            "triangles": 4598932,
+            "pipelines": 500
+          },
+          {
+            "draws": 145,
+            "triangles": 4598932,
+            "pipelines": 500
+          },
+          {
+            "draws": 145,
+            "triangles": 4598932,
+            "pipelines": 500
+          },
+          {
+            "draws": 145,
+            "triangles": 4598932,
+            "pipelines": 500
+          }
+        ],
+        "forest": [
+          {
+            "detailedTrees": 77,
+            "transitionTrees": 0,
+            "farTrees": 0,
+            "jointUpdates": 693
+          },
+          {
+            "detailedTrees": 77,
+            "transitionTrees": 0,
+            "farTrees": 0,
+            "jointUpdates": 693
+          },
+          {
+            "detailedTrees": 77,
+            "transitionTrees": 0,
+            "farTrees": 0,
+            "jointUpdates": 693
+          },
+          {
+            "detailedTrees": 77,
+            "transitionTrees": 0,
+            "farTrees": 0,
+            "jointUpdates": 693
+          }
+        ],
+        "cycles": [
+          30.768178865679822,
+          31.71638503691425
+        ]
+      },
+      "candidate": {
+        "frames": 720,
+        "meanMs": 31.690277777777776,
+        "meanFPS": 31.555419204978744,
+        "p95": 50.199999999953434,
+        "p99": 50.5,
+        "max": 67,
+        "over150": 0,
+        "runs": 4,
+        "cpuMs": 11.160555555578322,
+        "runFPS": [
+          30.857848179386895,
+          31.212609894397527,
+          31.952851792022503,
+          32.237266279819266
+        ],
+        "draws": [
+          {
+            "draws": 145,
+            "triangles": 4598932,
+            "pipelines": 500
+          },
+          {
+            "draws": 145,
+            "triangles": 4598932,
+            "pipelines": 500
+          },
+          {
+            "draws": 145,
+            "triangles": 4598932,
+            "pipelines": 500
+          },
+          {
+            "draws": 145,
+            "triangles": 4598932,
+            "pipelines": 500
+          }
+        ],
+        "forest": [
+          {
+            "detailedTrees": 0,
+            "transitionTrees": 0,
+            "farTrees": 77,
+            "jointUpdates": 0
+          },
+          {
+            "detailedTrees": 0,
+            "transitionTrees": 0,
+            "farTrees": 77,
+            "jointUpdates": 0
+          },
+          {
+            "detailedTrees": 0,
+            "transitionTrees": 0,
+            "farTrees": 77,
+            "jointUpdates": 0
+          },
+          {
+            "detailedTrees": 0,
+            "transitionTrees": 0,
+            "farTrees": 77,
+            "jointUpdates": 0
+          }
+        ],
+        "cycles": [
+          31.03421522228263,
+          32.09442894204275
+        ]
+      },
+      "gainPercent": 1.0255511241619386,
+      "cycleGains": [
+        0.8646477185543011,
+        1.191951430430982
+      ]
+    },
+    {
+      "name": "underwater/safeCombined",
+      "baseline": {
+        "frames": 720,
+        "meanMs": 32.59388888888894,
+        "meanFPS": 30.680597930764073,
+        "p95": 50.100000000034925,
+        "p99": 50.5,
+        "max": 99.90000000002328,
+        "over150": 0,
+        "runs": 4,
+        "cpuMs": 29.06736111122494,
+        "runFPS": [
+          28.95380259940784,
+          30.85414559728502,
+          31.577839374056985,
+          31.486696870572118
+        ],
+        "draws": [
+          {
+            "draws": 2407,
+            "triangles": 2588034,
+            "pipelines": 500
+          },
+          {
+            "draws": 2407,
+            "triangles": 2588034,
+            "pipelines": 500
+          },
+          {
+            "draws": 2407,
+            "triangles": 2588034,
+            "pipelines": 500
+          },
+          {
+            "draws": 2407,
+            "triangles": 2588034,
+            "pipelines": 500
+          }
+        ],
+        "forest": [
+          {
+            "detailedTrees": 77,
+            "transitionTrees": 0,
+            "farTrees": 0,
+            "jointUpdates": 693
+          },
+          {
+            "detailedTrees": 77,
+            "transitionTrees": 0,
+            "farTrees": 0,
+            "jointUpdates": 693
+          },
+          {
+            "detailedTrees": 77,
+            "transitionTrees": 0,
+            "farTrees": 0,
+            "jointUpdates": 693
+          },
+          {
+            "detailedTrees": 77,
+            "transitionTrees": 0,
+            "farTrees": 0,
+            "jointUpdates": 693
+          }
+        ],
+        "cycles": [
+          29.87378326570238,
+          31.532202261559554
+        ]
+      },
+      "candidate": {
+        "frames": 720,
+        "meanMs": 30.30222222222227,
+        "meanFPS": 33.00088002346724,
+        "p95": 50.09999999997672,
+        "p99": 66.5,
+        "max": 66.89999999996508,
+        "over150": 0,
+        "runs": 4,
+        "cpuMs": 16.564166666608717,
+        "runFPS": [
+          32.92542391483276,
+          32.430679422733974,
+          33.027522935779814,
+          33.64234449760751
+        ],
+        "draws": [
+          {
+            "draws": 1098,
+            "triangles": 2588034,
+            "pipelines": 500
+          },
+          {
+            "draws": 1098,
+            "triangles": 2588034,
+            "pipelines": 500
+          },
+          {
+            "draws": 1098,
+            "triangles": 2588034,
+            "pipelines": 500
+          },
+          {
+            "draws": 1098,
+            "triangles": 2588034,
+            "pipelines": 500
+          }
+        ],
+        "forest": [
+          {
+            "detailedTrees": 0,
+            "transitionTrees": 0,
+            "farTrees": 77,
+            "jointUpdates": 0
+          },
+          {
+            "detailedTrees": 0,
+            "transitionTrees": 0,
+            "farTrees": 77,
+            "jointUpdates": 0
+          },
+          {
+            "detailedTrees": 0,
+            "transitionTrees": 0,
+            "farTrees": 77,
+            "jointUpdates": 0
+          },
+          {
+            "detailedTrees": 0,
+            "transitionTrees": 0,
+            "farTrees": 77,
+            "jointUpdates": 0
+          }
+        ],
+        "cycles": [
+          32.67617906546124,
+          33.33209881115507
+        ]
+      },
+      "gainPercent": 7.5627016720445805,
+      "cycleGains": [
+        9.380786406709497,
+        5.708121921410303
+      ]
+    },
+    {
+      "name": "islandFourVilla/safeCombined",
+      "baseline": {
+        "frames": 720,
+        "meanMs": 36.598750000000045,
+        "meanFPS": 27.32333754568117,
+        "p95": 50.20000000001164,
+        "p99": 50.29999999998836,
+        "max": 83.20000000001164,
+        "over150": 0,
+        "runs": 4,
+        "cpuMs": 34.73666666667494,
+        "runFPS": [
+          27.978549778503147,
+          27.20307092445093,
+          27.34066468193679,
+          26.797278587485764
+        ],
+        "draws": [
+          {
+            "draws": 2452,
+            "triangles": 3029479,
+            "pipelines": 500
+          },
+          {
+            "draws": 2452,
+            "triangles": 3029479,
+            "pipelines": 500
+          },
+          {
+            "draws": 2452,
+            "triangles": 3029479,
+            "pipelines": 500
+          },
+          {
+            "draws": 2452,
+            "triangles": 3029479,
+            "pipelines": 500
+          }
+        ],
+        "forest": [
+          {
+            "detailedTrees": 77,
+            "transitionTrees": 0,
+            "farTrees": 0,
+            "jointUpdates": 693
+          },
+          {
+            "detailedTrees": 77,
+            "transitionTrees": 0,
+            "farTrees": 0,
+            "jointUpdates": 693
+          },
+          {
+            "detailedTrees": 77,
+            "transitionTrees": 0,
+            "farTrees": 0,
+            "jointUpdates": 693
+          },
+          {
+            "detailedTrees": 77,
+            "transitionTrees": 0,
+            "farTrees": 0,
+            "jointUpdates": 693
+          }
+        ],
+        "cycles": [
+          27.585361368233876,
+          27.066244633741057
+        ]
+      },
+      "candidate": {
+        "frames": 720,
+        "meanMs": 36.831527777777794,
+        "meanFPS": 27.150652181290926,
+        "p95": 50.20000000001164,
+        "p99": 66.39999999996508,
+        "max": 83.40000000002328,
+        "over150": 0,
+        "runs": 4,
+        "cpuMs": 34.255416666737034,
+        "runFPS": [
+          28.049179561497876,
+          26.863666890530556,
+          26.998245114067444,
+          26.730820636193577
+        ],
+        "draws": [
+          {
+            "draws": 2452,
+            "triangles": 3029479,
+            "pipelines": 500
+          },
+          {
+            "draws": 2452,
+            "triangles": 3029479,
+            "pipelines": 500
+          },
+          {
+            "draws": 2452,
+            "triangles": 3029479,
+            "pipelines": 500
+          },
+          {
+            "draws": 2452,
+            "triangles": 3029479,
+            "pipelines": 500
+          }
+        ],
+        "forest": [
+          {
+            "detailedTrees": 54,
+            "transitionTrees": 23,
+            "farTrees": 0,
+            "jointUpdates": 693
+          },
+          {
+            "detailedTrees": 54,
+            "transitionTrees": 23,
+            "farTrees": 0,
+            "jointUpdates": 693
+          },
+          {
+            "detailedTrees": 54,
+            "transitionTrees": 23,
+            "farTrees": 0,
+            "jointUpdates": 693
+          },
+          {
+            "detailedTrees": 54,
+            "transitionTrees": 23,
+            "farTrees": 0,
+            "jointUpdates": 693
+          }
+        ],
+        "cycles": [
+          27.443626217810937,
+          26.863867352192717
+        ]
+      },
+      "gainPercent": -0.6320068479977459,
+      "cycleGains": [
+        -0.5138056686332049,
+        -0.7477109746361177
+      ]
+    },
+    {
+      "name": "portJunction-warehouse/safeCombined",
+      "baseline": {
+        "frames": 720,
+        "meanMs": 33.31208333333327,
+        "meanFPS": 30.019137199965037,
+        "p95": 50.100000000034925,
+        "p99": 66.5,
+        "max": 66.79999999998836,
+        "over150": 0,
+        "runs": 4,
+        "cpuMs": 25.922361110989005,
+        "runFPS": [
+          29.998500074996308,
+          30.165912518853695,
+          29.83244112236267,
+          30.081722011464713
+        ],
+        "draws": [
+          {
+            "draws": 909,
+            "triangles": 2457536,
+            "pipelines": 795
+          },
+          {
+            "draws": 909,
+            "triangles": 2457536,
+            "pipelines": 795
+          },
+          {
+            "draws": 909,
+            "triangles": 2457536,
+            "pipelines": 795
+          },
+          {
+            "draws": 909,
+            "triangles": 2457536,
+            "pipelines": 795
+          }
+        ],
+        "forest": [
+          {
+            "detailedTrees": 77,
+            "transitionTrees": 0,
+            "farTrees": 0,
+            "jointUpdates": 693
+          },
+          {
+            "detailedTrees": 77,
+            "transitionTrees": 0,
+            "farTrees": 0,
+            "jointUpdates": 693
+          },
+          {
+            "detailedTrees": 77,
+            "transitionTrees": 0,
+            "farTrees": 0,
+            "jointUpdates": 693
+          },
+          {
+            "detailedTrees": 77,
+            "transitionTrees": 0,
+            "farTrees": 0,
+            "jointUpdates": 693
+          }
+        ],
+        "cycles": [
+          30.08197337745359,
+          29.95656298367376
+        ]
+      },
+      "candidate": {
+        "frames": 720,
+        "meanMs": 33.47458333333335,
+        "meanFPS": 29.873411419111502,
+        "p95": 50.100000000034925,
+        "p99": 50.29999999998836,
+        "max": 67,
+        "over150": 0,
+        "runs": 4,
+        "cpuMs": 21.104722222147718,
+        "runFPS": [
+          29.749607470456986,
+          30.08071658951508,
+          29.831452294535758,
+          29.833924487022415
+        ],
+        "draws": [
+          {
+            "draws": 909,
+            "triangles": 2457536,
+            "pipelines": 795
+          },
+          {
+            "draws": 909,
+            "triangles": 2457536,
+            "pipelines": 795
+          },
+          {
+            "draws": 909,
+            "triangles": 2457536,
+            "pipelines": 795
+          },
+          {
+            "draws": 909,
+            "triangles": 2457536,
+            "pipelines": 795
+          }
+        ],
+        "forest": [
+          {
+            "detailedTrees": 0,
+            "transitionTrees": 0,
+            "farTrees": 77,
+            "jointUpdates": 0
+          },
+          {
+            "detailedTrees": 0,
+            "transitionTrees": 0,
+            "farTrees": 77,
+            "jointUpdates": 0
+          },
+          {
+            "detailedTrees": 0,
+            "transitionTrees": 0,
+            "farTrees": 77,
+            "jointUpdates": 0
+          },
+          {
+            "detailedTrees": 0,
+            "transitionTrees": 0,
+            "farTrees": 77,
+            "jointUpdates": 0
+          }
+        ],
+        "cycles": [
+          29.91424582862455,
+          29.832688339562317
+        ]
+      },
+      "gainPercent": -0.4854429355607981,
+      "cycleGains": [
+        -0.5575683041949331,
+        -0.41351420781801096
+      ]
+    },
+    {
+      "name": "portCargoWide/safeCombined",
+      "baseline": {
+        "frames": 720,
+        "meanMs": 38.359027777777776,
+        "meanFPS": 26.069482412151274,
+        "p95": 50.20000000006985,
+        "p99": 66.79999999993015,
+        "max": 83.30000000004657,
+        "over150": 0,
+        "runs": 4,
+        "cpuMs": 30.633749999954468,
+        "runFPS": [
+          26.40418946472804,
+          25.590355279432377,
+          26.339664608270922,
+          25.96016556816724
+        ],
+        "draws": [
+          {
+            "draws": 1564,
+            "triangles": 2500937,
+            "pipelines": 954
+          },
+          {
+            "draws": 1564,
+            "triangles": 2500937,
+            "pipelines": 954
+          },
+          {
+            "draws": 1564,
+            "triangles": 2500937,
+            "pipelines": 954
+          },
+          {
+            "draws": 1564,
+            "triangles": 2500937,
+            "pipelines": 954
+          }
+        ],
+        "forest": [
+          {
+            "detailedTrees": 77,
+            "transitionTrees": 0,
+            "farTrees": 0,
+            "jointUpdates": 693
+          },
+          {
+            "detailedTrees": 77,
+            "transitionTrees": 0,
+            "farTrees": 0,
+            "jointUpdates": 693
+          },
+          {
+            "detailedTrees": 77,
+            "transitionTrees": 0,
+            "farTrees": 0,
+            "jointUpdates": 693
+          },
+          {
+            "detailedTrees": 77,
+            "transitionTrees": 0,
+            "farTrees": 0,
+            "jointUpdates": 693
+          }
+        ],
+        "cycles": [
+          25.990903183885422,
+          26.148538224078667
+        ]
+      },
+      "candidate": {
+        "frames": 720,
+        "meanMs": 38.359583333333205,
+        "meanFPS": 26.06910485211223,
+        "p95": 50.40000000002328,
+        "p99": 66.80000000004657,
+        "max": 83.5,
+        "over150": 0,
+        "runs": 4,
+        "cpuMs": 24.48999999995447,
+        "runFPS": [
+          26.211556383970354,
+          26.274687258236117,
+          26.340050046095268,
+          25.469415476915056
+        ],
+        "draws": [
+          {
+            "draws": 1564,
+            "triangles": 2500937,
+            "pipelines": 954
+          },
+          {
+            "draws": 1564,
+            "triangles": 2500937,
+            "pipelines": 954
+          },
+          {
+            "draws": 1564,
+            "triangles": 2500937,
+            "pipelines": 954
+          },
+          {
+            "draws": 1564,
+            "triangles": 2500937,
+            "pipelines": 954
+          }
+        ],
+        "forest": [
+          {
+            "detailedTrees": 0,
+            "transitionTrees": 0,
+            "farTrees": 77,
+            "jointUpdates": 0
+          },
+          {
+            "detailedTrees": 0,
+            "transitionTrees": 0,
+            "farTrees": 77,
+            "jointUpdates": 0
+          },
+          {
+            "detailedTrees": 0,
+            "transitionTrees": 0,
+            "farTrees": 77,
+            "jointUpdates": 0
+          },
+          {
+            "detailedTrees": 0,
+            "transitionTrees": 0,
+            "farTrees": 77,
+            "jointUpdates": 0
+          }
+        ],
+        "cycles": [
+          26.243083853942615,
+          25.89741745198209
+        ]
+      },
+      "gainPercent": -0.0014482836025453416,
+      "cycleGains": [
+        0.9702651280450558,
+        -0.9603625638443303
+      ]
+    }
+  ]
+}

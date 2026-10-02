@@ -1,0 +1,270 @@
+{
+  "reportPath": "outputs\\performance-architecture\\villa-wind.json",
+  "sha256": "899571f4aa64ba9de1947a6f37b10a234ea15b5cfddd12a5c473abc2ddd92b1e",
+  "rawSamplesRetained": true,
+  "configuration": {
+    "requestedQuality": "balanced",
+    "profile": "balanced",
+    "renderScale": 0.75,
+    "autoResolution": false,
+    "aa": "taa",
+    "ssr": 0,
+    "ao": 1,
+    "bloom": 0.05,
+    "motionBlur": 0,
+    "exposure": 0.55,
+    "clockMode": "manual",
+    "timeSpeed": 0,
+    "postScale": 0.75,
+    "shadows": true,
+    "refractionEnabled": true,
+    "refractionScale": 0.35,
+    "hazeEnabled": 1,
+    "hazeDensity": 1.6,
+    "shafts": 1
+  },
+  "cameraMotion": "windSweep",
+  "simulationDt": 0,
+  "baseline": {
+    "frames": 720,
+    "meanMs": 43.25875000000006,
+    "fps": 23.11671049209694,
+    "p95": 76.39999999990687,
+    "p99": 104.09999999997672,
+    "max": 333.60000000009313,
+    "over50": 192,
+    "over150": 3,
+    "cpu": 22.667777777835727,
+    "drawCounts": [
+      2450,
+      2450,
+      2450,
+      2450
+    ],
+    "animatedForest": [
+      {
+        "activeTrees": 0,
+        "sourceMeshesReplaced": 0,
+        "batchMeshes": 0,
+        "jointMatrices": 0,
+        "paletteBytes": 88704,
+        "uploadedBytes": 0,
+        "geometryBytes": 8888880
+      },
+      {
+        "activeTrees": 0,
+        "sourceMeshesReplaced": 0,
+        "batchMeshes": 0,
+        "jointMatrices": 0,
+        "paletteBytes": 88704,
+        "uploadedBytes": 0,
+        "geometryBytes": 8888880
+      },
+      {
+        "activeTrees": 0,
+        "sourceMeshesReplaced": 0,
+        "batchMeshes": 0,
+        "jointMatrices": 0,
+        "paletteBytes": 88704,
+        "uploadedBytes": 0,
+        "geometryBytes": 8888880
+      },
+      {
+        "activeTrees": 0,
+        "sourceMeshesReplaced": 0,
+        "batchMeshes": 0,
+        "jointMatrices": 0,
+        "paletteBytes": 88704,
+        "uploadedBytes": 0,
+        "geometryBytes": 8888880
+      }
+    ]
+  },
+  "candidate": {
+    "frames": 720,
+    "meanMs": 36.70986111111092,
+    "fps": 27.240636976894788,
+    "p95": 69.40000000002328,
+    "p99": 83.40000000002328,
+    "max": 131.90000000002328,
+    "over50": 122,
+    "over150": 0,
+    "cpu": 15.975833333490623,
+    "drawCounts": [
+      1236,
+      1236,
+      1236,
+      1236
+    ],
+    "animatedForest": [
+      {
+        "activeTrees": 77,
+        "sourceMeshesReplaced": 1463,
+        "batchMeshes": 154,
+        "jointMatrices": 693,
+        "paletteBytes": 88704,
+        "uploadedBytes": 88704,
+        "geometryBytes": 8888880
+      },
+      {
+        "activeTrees": 77,
+        "sourceMeshesReplaced": 1463,
+        "batchMeshes": 154,
+        "jointMatrices": 693,
+        "paletteBytes": 88704,
+        "uploadedBytes": 88704,
+        "geometryBytes": 8888880
+      },
+      {
+        "activeTrees": 77,
+        "sourceMeshesReplaced": 1463,
+        "batchMeshes": 154,
+        "jointMatrices": 693,
+        "paletteBytes": 88704,
+        "uploadedBytes": 88704,
+        "geometryBytes": 8888880
+      },
+      {
+        "activeTrees": 77,
+        "sourceMeshesReplaced": 1463,
+        "batchMeshes": 154,
+        "jointMatrices": 693,
+        "paletteBytes": 88704,
+        "uploadedBytes": 88704,
+        "geometryBytes": 8888880
+      }
+    ]
+  },
+  "gainPercent": 17.839590482424917,
+  "groups": [
+    {
+      "view": "islandFourVilla",
+      "variant": "combined",
+      "baseline": {
+        "frames": 720,
+        "meanMs": 43.25875000000006,
+        "fps": 23.11671049209694,
+        "p95": 76.39999999990687,
+        "p99": 104.09999999997672,
+        "max": 333.60000000009313,
+        "over50": 192,
+        "over150": 3,
+        "cpu": 22.667777777835727,
+        "drawCounts": [
+          2450,
+          2450,
+          2450,
+          2450
+        ],
+        "animatedForest": [
+          {
+            "activeTrees": 0,
+            "sourceMeshesReplaced": 0,
+            "batchMeshes": 0,
+            "jointMatrices": 0,
+            "paletteBytes": 88704,
+            "uploadedBytes": 0,
+            "geometryBytes": 8888880
+          },
+          {
+            "activeTrees": 0,
+            "sourceMeshesReplaced": 0,
+            "batchMeshes": 0,
+            "jointMatrices": 0,
+            "paletteBytes": 88704,
+            "uploadedBytes": 0,
+            "geometryBytes": 8888880
+          },
+          {
+            "activeTrees": 0,
+            "sourceMeshesReplaced": 0,
+            "batchMeshes": 0,
+            "jointMatrices": 0,
+            "paletteBytes": 88704,
+            "uploadedBytes": 0,
+            "geometryBytes": 8888880
+          },
+          {
+            "activeTrees": 0,
+            "sourceMeshesReplaced": 0,
+            "batchMeshes": 0,
+            "jointMatrices": 0,
+            "paletteBytes": 88704,
+            "uploadedBytes": 0,
+            "geometryBytes": 8888880
+          }
+        ]
+      },
+      "candidate": {
+        "frames": 720,
+        "meanMs": 36.70986111111092,
+        "fps": 27.240636976894788,
+        "p95": 69.40000000002328,
+        "p99": 83.40000000002328,
+        "max": 131.90000000002328,
+        "over50": 122,
+        "over150": 0,
+        "cpu": 15.975833333490623,
+        "drawCounts": [
+          1236,
+          1236,
+          1236,
+          1236
+        ],
+        "animatedForest": [
+          {
+            "activeTrees": 77,
+            "sourceMeshesReplaced": 1463,
+            "batchMeshes": 154,
+            "jointMatrices": 693,
+            "paletteBytes": 88704,
+            "uploadedBytes": 88704,
+            "geometryBytes": 8888880
+          },
+          {
+            "activeTrees": 77,
+            "sourceMeshesReplaced": 1463,
+            "batchMeshes": 154,
+            "jointMatrices": 693,
+            "paletteBytes": 88704,
+            "uploadedBytes": 88704,
+            "geometryBytes": 8888880
+          },
+          {
+            "activeTrees": 77,
+            "sourceMeshesReplaced": 1463,
+            "batchMeshes": 154,
+            "jointMatrices": 693,
+            "paletteBytes": 88704,
+            "uploadedBytes": 88704,
+            "geometryBytes": 8888880
+          },
+          {
+            "activeTrees": 77,
+            "sourceMeshesReplaced": 1463,
+            "batchMeshes": 154,
+            "jointMatrices": 693,
+            "paletteBytes": 88704,
+            "uploadedBytes": 88704,
+            "geometryBytes": 8888880
+          }
+        ]
+      },
+      "gainPercent": 17.839590482424917,
+      "cycles": [
+        {
+          "cycle": 1,
+          "baseline": 24.15637224969633,
+          "candidate": 30.3684707787828,
+          "gainPercent": 25.716189769200803
+        },
+        {
+          "cycle": 2,
+          "baseline": 22.162847679672943,
+          "candidate": 24.696947868859287,
+          "gainPercent": 11.434000836952652
+        }
+      ]
+    }
+  ]
+}

@@ -1,7 +1,14 @@
 # Credits
 
-The code in this repository is released under the MIT license (see `LICENSE`). The third-party
-assets below keep their own licences.
+Game code is released under the MIT license (see `LICENSE`), except where a file
+states another licence. The Blender compatibility/export tool
+[`tools/ivy_trial.py`](tools/ivy_trial.py) declares **GPL-2.0-or-later**; the
+complete [GNU GPL version 2 text](LICENSES/GPL-2.0-or-later.txt) is included,
+with the option to use a later version as stated in the tool's notice. That
+tool licence is separate from the generated geometry and artwork. See the
+[ivy provenance](public/models/port/ivy-trial/PROVENANCE.md) for upstream
+IvyGen authorship, source revision and asset distinctions. Third-party assets
+below keep their own licences.
 
 ## Rendering changes — Agent Control
 
@@ -85,10 +92,6 @@ them from J. Jimenez et al.'s SMAA reference implementation (MIT).
 
 [Vite](https://vite.dev) (MIT) is an npm dependency and is not vendored here.
 
-## Godzilla character: `public/models/godzilla/`
-
-"Godzilla 2014" (https://skfb.ly/pC9tn) by Steam79 is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/).
-
 ## Portal warehouse materials and interactive computer
 
 - `Brick Wall 001` by Dimitrios Savva and Rob Tuytel, from Poly Haven, CC0: https://polyhaven.com/a/brick_wall_001
@@ -96,7 +99,6 @@ them from J. Jimenez et al.'s SMAA reference implementation (MIT).
 - Microsoft BASIC 1.1 for 6502 TypeScript port, revision `586d11bba3b3924180a3a5481ce6eccb9ecedf1a`, MIT: https://github.com/fabioc-aloha/BASIC-M6502-TS
 - The browser adapter replaces Node file access with per-browser local storage and requires an explicit ConsoleIO adapter. Original and modified source are retained in `src/vendor/basic-m6502/`.
 
-The included `public/models/godzilla/steam79-walk.glb` is a Blender-prepared, reduced-polygon derivative with a walk rig and animation. The original download is not included.
 
 ## Building 002: Abandoned Warehouse
 
@@ -154,3 +156,10 @@ These are published techniques. No code from the papers is included.
 
 The cloud noise, lighting and sampling scheme (`src/sky/Clouds.js`) is adapted from DRG Software Solutions'
 own *Sky Pro WebGPU*. It is published here under this repository's MIT license by its copyright holder.
+
+## Bracken Quay vehicles
+
+Vehicle authors, licence terms, modifications and source availability are in
+[the vehicle credits](public/models/port/CREDITS.md). Third-party vehicle assets
+are not relicensed under the game's MIT licence. Release clearance remains
+subject to the recorded unresolved items.

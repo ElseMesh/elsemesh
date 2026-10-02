@@ -1,14 +1,5 @@
 // Keyboard / mouse input with pointer lock support.
 const LOOK_VERTICAL_DEAD_ZONE = 0.78;
-const KEYBOARD_LOOK_PIXELS_PER_SECOND = 260;
-
-export function keyboardLookDelta( keys, dt, rate = KEYBOARD_LOOK_PIXELS_PER_SECOND ) {
-	const step = rate * dt;
-	return {
-		x: ( Number( keys.has( 'ArrowRight' ) ) - Number( keys.has( 'ArrowLeft' ) ) ) * step,
-		y: ( Number( keys.has( 'ArrowDown' ) ) - Number( keys.has( 'ArrowUp' ) ) ) * step,
-	};
-}
 
 export class Input {
 
@@ -279,8 +270,10 @@ export class Input {
 			sy = this._shapeAxis( Math.max( - 1, Math.min( y, 1 ) ), LOOK_VERTICAL_DEAD_ZONE ) * outsideScale;
 
 		}
-		const keyboardLook = keyboardLookDelta( this.keys, dt );
-		const l = { x: this.look.x + sx * 420 * dt + keyboardLook.x, y: this.look.y - sy * 420 * dt + keyboardLook.y };
+		const l = {
+			x: this.look.x + sx * 420 * dt,
+			y: this.look.y - sy * 420 * dt,
+		};
 		this.look.x = 0;
 		this.look.y = 0;
 		return l;

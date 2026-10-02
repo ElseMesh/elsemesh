@@ -1,7 +1,7 @@
 // Agent Control: bounded loopback-only evidence collector; no arbitrary file paths.
 import http from 'node:http';
 import fs from 'node:fs';
-const dir='D:/Downloads/Burning-Horizons-Wildlife';fs.mkdirSync(dir,{recursive:true});
+const dir='artifacts/video/ElseMesh-Wildlife';fs.mkdirSync(dir,{recursive:true});
 const allowed=new Set(['monkeys.png','bananas.png','bark.png','review.webm','benchmark.json']);
 http.createServer(async(req,res)=>{
 	res.setHeader('Access-Control-Allow-Origin','http://127.0.0.1:5189');

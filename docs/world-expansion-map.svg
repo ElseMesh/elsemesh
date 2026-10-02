@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 650" role="img" aria-label="Concept world map showing Burning Horizons island, a hidden cave station, an undersea monorail, and a second island">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 650" role="img" aria-label="Concept world map showing ElseMesh island, a hidden cave station, an undersea monorail, and a second island">
   <defs>
     <linearGradient id="sea" x2="0" y2="1"><stop stop-color="#102e48"/><stop offset="1" stop-color="#07536b"/></linearGradient>
     <linearGradient id="land" x2="0" y2="1"><stop stop-color="#c2ae77"/><stop offset=".5" stop-color="#677b54"/><stop offset="1" stop-color="#233d37"/></linearGradient>
@@ -20,7 +20,7 @@
   <circle cx="853" cy="320" r="14" fill="#f1d79b" stroke="#102e48" stroke-width="5"/>
   <g fill="#f3ead5" font-family="Arial,sans-serif">
     <text x="141" y="235" font-size="24" font-weight="700">FIRST ISLAND</text>
-    <text x="141" y="263" font-size="15">Burning Horizons · pier and boat</text>
+    <text x="141" y="263" font-size="15">ElseMesh · pier and boat</text>
     <text x="882" y="244" font-size="24" font-weight="700">SECOND ISLAND</text>
     <text x="882" y="272" font-size="15">New region · concept</text>
     <text x="292" y="344" font-size="16">Cave door</text>

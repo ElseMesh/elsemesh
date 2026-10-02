@@ -1,6 +1,6 @@
 import { icon, brandMark } from './icons.js';
 
-// Burning Horizons UI: settings panel (tabs → folders → controls), HUD, help,
+// ElseMesh UI: settings panel (tabs → folders → controls), HUD, help,
 // photo mode, start overlay and loader. Plain DOM, no dependencies.
 // All styling lives in ui.css (class prefix `tw-`).
 
@@ -1938,7 +1938,7 @@ export class UI {
 		this.sparkEl = stats.querySelector( '.tw-spark' );
 
 		const brand = h( 'div', 'tw-brand' );
-		brand.innerHTML = `${ brandMark() }<span class="tw-brand-name">BURNING HORIZONS</span>`;
+		brand.innerHTML = `${ brandMark() }<span class="tw-brand-name">ELSEMESH</span>`;
 		this.locationEl = h( 'div', 'tw-location', { role: 'status', 'aria-label': 'Current location' } );
 		this.modeEl = h( 'div', 'tw-mode is-empty', { role: 'status' } );
 		this.modeIco = h( 'span', 'tw-mode-ico' );
@@ -2148,7 +2148,6 @@ export class UI {
 					<section>
 						<h3>Move</h3>
 						${ row( wasd, 'Move' ) }
-						${ row( k( '↑', '←', '↓', '→' ), 'Look around' ) }
 						${ row( mouse, 'Look around<small>Click to capture</small>' ) }
 						${ row( k( 'Shift' ), 'Sprint, boat boost' ) }
 						${ row( k( 'Space' ), 'Jump, swim up' ) }
@@ -2201,12 +2200,11 @@ export class UI {
 		el.innerHTML = `
 			<div class="tw-start-inner">
 				${ brandMark( 'tw-start-mark' ) }
-				<div class="tw-start-title">BURNING HORIZONS</div>
+				<div class="tw-start-title">ELSEMESH</div>
 				<button type="button" class="tw-start-cta"><span class="tw-start-pulse" aria-hidden="true"></span>${ icon( 'mouse' ) }<span>Tap or click to explore</span></button>
 				<div class="tw-start-touch-hint">Left stick moves · right stick looks · tap action prompts</div>
 				<div class="tw-start-keys">
 					<span><span class="tw-wasd"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></span>Move</span>
-					<span><kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd>Look</span>
 					<span><kbd class="tw-kbd-ico">${ icon( 'mouse' ) }</kbd>Look</span>
 					<span><kbd>E</kbd>Interact</span>
 					<span><kbd>H</kbd>Settings</span>
@@ -2591,7 +2589,7 @@ export class UI {
 		let saved = null;
 		try {
 
-			saved = localStorage.getItem( 'burning-horizons.ui.tab' );
+			saved = localStorage.getItem( 'elsemesh.ui.tab' );
 
 		} catch { /* storage unavailable */ }
 
@@ -2647,7 +2645,7 @@ export class UI {
 
 			try {
 
-				localStorage.setItem( 'burning-horizons.ui.tab', tab.id );
+				localStorage.setItem( 'elsemesh.ui.tab', tab.id );
 
 			} catch { /* storage unavailable */ }
 

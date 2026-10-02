@@ -1,0 +1,58 @@
+[
+  {
+    "file": "licenses/CC-BY-4.0.txt",
+    "sha256": "4500200b91acb1324538d8e8f9665d5f4142d3f1c5cd9730564cf1895b6170f7"
+  },
+  {
+    "file": "licenses/MPL-2.0.txt",
+    "sha256": "9303ea1cfbf049945652668089d753fb1a7e1f2e52c680615c3d2cea7515c118"
+  },
+  {
+    "file": "openx-source/bracken_openx_derivative.py",
+    "sha256": "dd924027010c5be30127406f9924c3552bed902f400652851af2bff1ba0d7dda"
+  },
+  {
+    "file": "openx-source/compact/candidate-compact.glb",
+    "sha256": "19c057fc5b39428533eb7e273a16ff539cac22c789ebd539513407e3aacfb61c"
+  },
+  {
+    "file": "openx-source/compact/m1_mini_countryman_2016.blend",
+    "sha256": "1e2db705d3b9654e9a15ba41d9bcb6ad28cef6e6745f4d2360798ff9d8c07841"
+  },
+  {
+    "file": "openx-source/compact/m1_mini_countryman_2016.xoma",
+    "sha256": "bb2e18c5fe00e917b9a4ad23ed4265f377f528240d4df0a2938716c724e5b4bc"
+  },
+  {
+    "file": "openx-source/estate/candidate-estate.glb",
+    "sha256": "301a208c0755e76c175e6c412c102d8517b9572ce4083c31d715d55552f6da91"
+  },
+  {
+    "file": "openx-source/estate/m1_volvo_v60_polestar_2013.blend",
+    "sha256": "df68628ab41d110d74c56c8adafc6393b75ad7e25b9fdf65606ed17b79dfb99f"
+  },
+  {
+    "file": "openx-source/estate/m1_volvo_v60_polestar_2013.xoma",
+    "sha256": "635b4340b827fc75ad22c1d044115c9f33084a24495671f3ebf01f55f6f5b9a2"
+  },
+  {
+    "file": "openx-source/panel-van/candidate-panel-van.glb",
+    "sha256": "e9beba5ec1c96c5ee2424b6912d7c3b426f2cf5a3db9c8f777058b2751dbf9a9"
+  },
+  {
+    "file": "openx-source/panel-van/n1_fiat_ducato_2014.blend",
+    "sha256": "1fcbb4db2c2764bfc55aedcc6772462fcd338a1a5e720ada0ca9262d18bd32af"
+  },
+  {
+    "file": "openx-source/panel-van/n1_fiat_ducato_2014.xoma",
+    "sha256": "209e812f3a9a6b3e3c9c50ca4b2c13634bb7f1c2491cc0a0d92ade2f53485c0b"
+  },
+  {
+    "file": "README.md",
+    "sha256": "edf2b2a8190dc206af4bc4b36f24f559e2a61e47e0378863519e6cc6f8f95c4d"
+  },
+  {
+    "file": "vehicle-manifest.json",
+    "sha256": "2016f74e2a88031688061737ccc0f441a734505f59fd18378aea0731b29c4174"
+  }
+]

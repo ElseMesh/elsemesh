@@ -42,7 +42,7 @@ current inventory state. Equipped objects are also represented beside remote ava
 
 ## Persistence and limits
 
-Solo state uses `burning-horizons.items.v1` in browser storage. Online inventory is
+Solo state uses `elsemesh.items.v1` in browser storage. Online inventory is
 room-session state: disconnecting drops your carried objects and clears your
 credits; the last participant leaving removes the room. This is not a persistent
 account economy. Online state does not overwrite the solo save.

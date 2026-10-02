@@ -1,4 +1,4 @@
-module burning-horizons/libp2p-quic-probe
+module elsemesh/libp2p-quic-probe
 
 go 1.27.1
 

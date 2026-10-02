@@ -67,7 +67,7 @@ for ( const [ name, data, scale ] of [
 	( x, y ) => clamp8( data[ y * t.res + x ] * scale ) );
 
 const meta = {
-	format: 'Burning Horizons terrain exchange v1',
+	format: 'ElseMesh terrain exchange v1',
 	units: 'metres',
 	resolution: t.res, size: t.size, texel: t.texel, origin: t.origin,
 	minHeight: min, maxHeight: max, seaLevel: 0,
@@ -88,6 +88,6 @@ features.push( {
 fs.writeFileSync( path.join( OUT, 'world-features.geojson' ),
 	JSON.stringify( { type: 'FeatureCollection', features }, null, 2 ) );
 
-console.log( `Exported Burning Horizons terrain to ${ OUT }` );
+console.log( `Exported ElseMesh terrain to ${ OUT }` );
 console.log( `height ${ min.toFixed( 2 ) } m .. ${ max.toFixed( 2 ) } m, ${ t.res }x${ t.res } @ ${ t.texel } m/texel` );
 console.log( 'Files: heightmap.png, heightmap.f32, masks, terrain.json, world-features.geojson' );

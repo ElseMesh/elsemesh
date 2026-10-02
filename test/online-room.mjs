@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { WebSocket } from 'ws';
+import { WebSocket } from './RoomTestSocket.mjs';
 import { createOnlineServer } from '../tools/networking/online-server.mjs';
 import { makeState } from '../src/network/PlayerProtocol.js';
 
-const nodeId = (letter) => `bh-node:${letter.repeat(64)}`;
+const nodeId = (letter) => `elsemesh-node:${letter.repeat(64)}`;
 const player = (x) => ({ position: { x, y: 2, z: -70 }, yaw: 0, mode: 'walk', velocity: { lengthSq: () => 1 } });
 const receive = (socket, predicate) => new Promise((resolve, reject) => {
 	const timeout = setTimeout(() => { socket.off('message', onMessage); reject(new Error('Timed out waiting for room message')); }, 2000);
@@ -23,7 +23,7 @@ const open = (url, origin) => new Promise((resolve, reject) => {
 test('two human clients exchange room state; a third room stays isolated', async () => {
 	const service = await createOnlineServer({ root: process.cwd(), port: 0 });
 	const origin = `http://127.0.0.1:${service.address.port}`;
-	const room = 'a'.repeat(32), other = 'b'.repeat(32);
+	const room = roomForHostKey('d'.repeat(32)), other = 'b'.repeat(32);
 	const sockets = [];
 	try {
 		const host = await open(`${origin.replace('http', 'ws')}/ws?room=${room}&role=loz&hostKey=${'d'.repeat(32)}`, origin); sockets.push(host);
@@ -43,3 +43,4 @@ test('two human clients exchange room state; a third room stays isolated', async
 		assert.equal(observerReceived, false);
 	} finally { for (const socket of sockets) socket.terminate(); await service.close(); }
 });
+import { roomForHostKey } from '../tools/networking/RoomSecurity.mjs';

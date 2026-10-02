@@ -1,15 +1,24 @@
 {
-  "name": "burning-horizons",
-  "version": "1.0.0",
+  "name": "elsemesh",
+  "version": "0.1.0",
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 5189",
     "build": "vite build",
     "preview": "vite preview",
     "online": "node tools/networking/online-server.mjs",
-    "test": "node test/render-quality.mjs && node test/survival-toggle.mjs && node test/game-logic.mjs && node test/cave-system.mjs && node test/monorail-route.mjs && node test/engine-smoke.mjs && node --test test/helicopter.mjs test/helicopter-online.mjs test/static-cache.mjs test/tree-wildlife.mjs test/item-economy.mjs test/item-online.mjs test/building-002-layout.mjs test/portal-warehouse.mjs test/fourth-island.mjs test/island-five.mjs test/world-location.mjs",
-    "test:network": "node --test test/network-foundation.mjs test/network-player.mjs test/federation.mjs test/online-room.mjs test/ten-player-room.mjs test/network-speech.mjs test/avatar-appearance.mjs",
+    "test": "node test/render-quality.mjs && node test/survival-toggle.mjs && node test/game-logic.mjs && node test/cave-system.mjs && node test/monorail-route.mjs && node test/engine-smoke.mjs && node --test test/helicopter.mjs test/helicopter-online.mjs test/static-cache.mjs test/tree-wildlife.mjs test/item-economy.mjs test/item-online.mjs test/building-002-layout.mjs test/portal-warehouse.mjs test/fourth-island.mjs test/island-five.mjs test/world-location.mjs test/port-road-graph.mjs test/port-traffic.mjs test/port-gatehouse-asset.mjs test/port-collision.mjs",
+    "test:vehicle-material": "node --test test/port-vehicle-material.mjs",
+    "test:cargo": "node --test test/port-cargo.mjs",
+    "test:demo": "node --test test/network-demo.mjs",
+    "test:vehicle-steering": "node --test test/port-wheel-rig.mjs test/port-traffic.mjs",
+    "test:network": "node --test test/network-foundation.mjs test/network-player.mjs test/federation.mjs test/online-room.mjs test/ten-player-room.mjs test/network-speech.mjs test/avatar-appearance.mjs test/network-demo.mjs",
     "verify:portal-detail": "node tools/portal_interior/verify-reference-detail.mjs",
-    "world:export": "node tools/blender/export-terrain.mjs artifacts/world"
+    "world:export": "node tools/blender/export-terrain.mjs artifacts/world",
+    "test:security": "node --test test/online-security.mjs",
+    "test:graphics": "node --test test/port-depot-lighting.mjs test/port-detail-culling.mjs test/port-drive-review.mjs test/port-graphics-isolation.mjs test/skin-bounds.mjs test/temporal-history-reset.mjs test/ivy-textured-asset.mjs",
+    "test:renderer": "node --test test/scene-transform-cache.mjs test/render-pass-scheduling.mjs test/scene-submission.mjs test/distant-forest.mjs test/water-optical-lod.mjs && node test/water-optical-lod-gpu.mjs",
+    "test:publication": "node tools/check-publication.mjs",
+    "test:architecture": "node --test test/frame-timing.mjs test/collider-spatial-queries.mjs test/collision-review.mjs test/animated-forest.mjs && node test/animated-forest-gpu.mjs"
   },
   "devDependencies": {
     "vite": "^8.3.0",
@@ -20,5 +29,6 @@
   "type": "module",
   "dependencies": {
     "ws": "^8.22.0"
-  }
+  },
+  "description": "ElseMesh — an experimental WebGPU island exploration game"
 }

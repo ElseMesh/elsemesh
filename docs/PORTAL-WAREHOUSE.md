@@ -24,7 +24,7 @@ The fabric and charcoal batches use a 512 px PBR upholstery set derived from Ble
 Walk to the Commodore 64 on the mezzanine and press **E**. The terminal opens full screen and suspends world controls. Log in with a local display name, then enter numbered BASIC lines. Useful commands include:
 
 ```text
-10 PRINT "BURNING HORIZONS"
+10 PRINT "ELSEMESH"
 20 FOR I=1 TO 5
 30 PRINT I
 40 NEXT I
@@ -40,12 +40,12 @@ The interpreter is the MIT-licensed BASIC-M6502-TS browser build derived from Mi
 
 After one uninterrupted minute of play, Esmie from Edinburgh gives a faint, 29.6-second account of the islands' wrecks, hidden treasure and connected past. Her voice belongs to the entire game rather than this warehouse: a different childhood memory is selected about every five minutes wherever the player is, with immediate repeats prevented. The memory pool mentions the Royal Mile, Calton Hill, Edinburgh Castle, the Water of Leith, Greyfriars Kirkyard, Arthur's Seat and Waverley Station.
 
-The user-selected Alba voice (`en_GB-alba-medium.onnx`) was generated through the Sentinel Agent Control speech service. The eight qualified WAV files and a non-secret hash/provenance manifest are bundled under `public/audio/esmie/`, so no speech credential or provider endpoint is exposed to the browser. Playback is deliberately quiet, non-spatial and heard as an internal voice. There is no character, caption, speech bubble, toast or dialogue panel. Audio respects the game mute setting and pauses while the browser tab is hidden.
+The user-selected Alba voice (`en_GB-alba-medium.onnx`) was generated through a private Agent Control speech service. The eight qualified WAV files and a hash/provenance manifest with infrastructure details redacted are bundled under `public/audio/esmie/`, so no speech credential or provider endpoint is exposed to the browser. Playback is deliberately quiet, non-spatial and heard as an internal voice. There is no character, caption, speech bubble, toast or dialogue panel. Audio respects the game mute setting and pauses while the browser tab is hidden.
 
 ## Agent Control reference-detail operation
 
-The second reference pass adds arched window transoms, roof plates and rivets, mixed cushions and a sofa throw, floor and task lamps, an ottoman, kitchen backsplash, oven, bottles and pendant lights, dining place settings and flowers, richer woven rugs, desk drawers and media, stereo equipment, speakers, small plants, denser graffiti and mezzanine reading chairs. These additions reuse the existing merged material batches and do not change the protected arrival, stair, mezzanine or C64 interaction routes. See `tools/portal_interior/reference-detail-v1.json` and [the learning ledger](PORTAL-WAREHOUSE-DETAIL-LEARNING.md).
+The second reference pass adds arched window transoms, roof plates and rivets, mixed cushions and a sofa throw, floor and task lamps, an ottoman, kitchen backsplash, oven, bottles and pendant lights, dining place settings and flowers, richer woven rugs, desk drawers and media, stereo equipment, speakers, small plants, denser graffiti and mezzanine reading chairs. These additions reuse the existing merged material batches and do not change the protected arrival, stair, mezzanine or C64 interaction routes. See [the reference recipe](../tools/portal_interior/reference-detail-v1.json).
 
 ## Verification
 
-`test/portal-warehouse.mjs` validates the retained circulation zones, reference details, programmable BASIC execution, queued terminal input, Esmie timing/content, the absence of popup code, Sentinel/Alba provenance, WAV structure and the 28–32 second introductory duration. Runtime evidence is captured on a Windows WebGPU browser; the capture camera and accelerated Esmie timer are evidence fixtures and do not alter production timing.
+`test/portal-warehouse.mjs` validates the retained circulation zones, reference details, programmable BASIC execution, queued terminal input, Esmie timing/content, the absence of popup code, redacted Alba provenance, WAV structure and the 28–32 second introductory duration. Runtime evidence is captured on a Windows WebGPU browser; the capture camera and accelerated Esmie timer are evidence fixtures and do not alter production timing.

@@ -18,10 +18,10 @@ export class VideoEvidence {
 				try { ctx.drawImage(source, 0, 0, 960, 540); } catch { return; }
 				ctx.fillStyle = 'rgba(3,19,29,.78)'; ctx.fillRect(0, 0, 960, 85);
 				ctx.fillStyle = '#eaffff'; ctx.font = 'bold 23px system-ui';
-				ctx.fillText(`BURNING HORIZONS · ${this.demo.role.toUpperCase()} — ${this.demo.role === 'loz' ? 'HUMAN' : 'AI'}`, 20, 30);
+				ctx.fillText(`ELSEMESH · ${this.demo.role.toUpperCase()} — ${this.demo.role === 'loz' ? 'HUMAN' : 'AI'}`, 20, 30);
 				ctx.font = '15px system-ui';
 				ctx.fillText(`Node ${this.demo.identity.nodeId.slice(0, 20)}… · ${this.demo.physical ? 'TWO PHYSICAL NODES' : 'LOCAL TWO-NODE DEMO'} · ${this.demo.remote.state ? 'CONNECTED' : 'WAITING'}`, 20, 54);
-				ctx.fillText(`Sector bh:ISLAND-01 · Authority ${this.demo.role === 'loz' ? 'LOZ' : 'LOZ remote'} · Agent ${this.demo.agent?.command.tool || 'human input'}`, 20, 75);
+				ctx.fillText(`Sector elsemesh:ISLAND-01 · Authority ${this.demo.role === 'loz' ? 'LOZ' : 'LOZ remote'} · Agent ${this.demo.agent?.command.tool || 'human input'}`, 20, 75);
 				ctx.fillStyle = this.demo.remote.verified() && this.demo.localMoved && this.demo.remoteMoved ? '#9cffb2' : '#ffda90';
 				ctx.fillText(this.demo.remote.verified() && this.demo.localMoved && this.demo.remoteMoved ? 'NETWORK VERIFIED' : 'Awaiting bidirectional movement', 20, 520);
 		};

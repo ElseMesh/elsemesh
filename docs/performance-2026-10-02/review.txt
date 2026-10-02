@@ -1,0 +1,101 @@
+ElseMesh rendering review — 2 October 2026
+
+RENDERER REVIEW SCOPE
+Main frame/update sequencing; mesh collection/culling, transform propagation,
+material sorting and shadow cascades; opaque/refraction/water passes and SSR;
+ocean simulation and LOD; port batching and traffic; vegetation/tree animation
+and wildlife; sky/cloud quality; postprocessing, AO, bloom, volumetric haze,
+exposure and temporal upscaling; existing profiling and driving-review tools.
+
+Three conservative implementation experiments:
+1. Share stable main-scene transforms across passes within a frame, while retaining
+   camera-dependent culling, callbacks, and independent auxiliary-scene updates.
+2. Avoid the full-resolution half-float water depth conversion when SSR is off.
+   Keep ordinary refraction colour/depth copies and immediately resume the
+   conversion when reflections are enabled.
+3. Skip unused AO, bloom reconstruction and haze work when those contributions
+   are inactive. Preserve lens/exposure inputs and reset haze history on resume.
+
+Larger follow-on opportunities identified: reducing the expensive water optical
+work at distance; overdraw-aware opaque submission; distant tree animation work;
+and effect-specific cloud/temporal-resolution budgets. These need separate
+quality comparisons. Existing material batching and the already-rejected 64m
+port batching experiment are not counted as new improvements.
+
+CONTROLLED FOREGROUND FPS RESULTS
+Intel Arc / Xe-LPG, Windows, Chrome 154. Balanced quality, 1600x900 output,
+1200x675 internal rendering, TAA, shadows on, SSR off, AO 1, bloom 0.05.
+Two baseline/candidate/candidate/baseline cycles per view; 60 warm-up and
+180 measured foreground frames per run. Simulation clock fixed (dt=0);
+some frame-driven animation continues. Automatic resolution was disabled.
+All 48 runs complete: 4,320 measured frames per mode, with matching cameras,
+time of day, sizes and final draw counts. No outliers were discarded.
+
+View                     Baseline FPS   Optimized FPS   Change
+Beach                         20.11          25.51       +26.85%
+Village                       30.91          30.74        -0.53%
+Underwater                    22.77          29.75       +30.64%
+Forest villa                  20.33          24.56       +20.84%
+Warehouse junction            23.78          30.15       +26.78%
+Wide cargo harbour            22.64          24.86        +9.80%
+Equal-frame pooled sample     22.95          27.34       +19.12%
+
+FPS above is frames divided by elapsed sampled frame time, not the inverse
+of the median frame time. Refresh quantization makes those differ materially.
+Both cycles improved in each of the five winning views. Village's cycles had
+opposite signs; no FPS change is demonstrated there. A separate earlier beach
+comparison also improved average FPS: 20.60 to 24.87 (+20.7%).
+
+This is a measured fixed-camera mean-FPS improvement, not a game-wide,
+moving-camera, cold-start, thermal-soak, mobile or multiplayer qualification.
+Severe hitches remain unexplained. In the six-view run, frames over 150ms rose
+from 6 to 17. Cargo p99 worsened from 73.8 to 107.5ms and its worst frame from
+145.2 to 670.1ms. Do not infer a worst-stutter improvement from the higher FPS.
+
+An initial run with approximately one-second browser callbacks was aborted
+and excluded. Bringing the benchmark page forward resolved the throttling.
+All complete foreground runs were free of that pattern. Separate GPU timing
+attempts with incomplete readbacks were rejected; they do not supply FPS data.
+
+Settled before/after screenshots of beach, wide harbour and underwater views
+showed no obvious candidate-specific visual regression; no WebGPU errors were
+observed. This is visual review, not pixel equality. Lens droplets retained
+from a prior underwater view were present in both harbour images.
+
+Evidence: elsemesh-fps-balanced-six-views.json, elsemesh-fps-summary.json,
+elsemesh-fps-balanced-beach.json, and elsemesh-measured-source.json.
+
+ADDITIONAL VALIDATION AND REPRODUCTION
+All three changes are enabled by default. The original measurement source
+manifest records the pre-promotion diagnostic defaults; the shipped manifest
+records the final files. Renderer logic is unchanged by promotion.
+
+The GPU recorder was repaired to reserve readback slots and bound queued work.
+The corrected component experiment completed 32 runs / 2,880 timestamp frames
+with zero dropped, invalid or failed readbacks. It used a separate AO=0,
+bloom=0 scenario on both baseline and candidate. The water-depth variant removed
+the 'opaque depth half' pass; the inactive-effects variant removed the GTAO,
+AO-depth, AO-blur and bloom-up labels while refraction remained. Individual total
+GPU times varied substantially; this is pass-removal evidence, not proof that
+each individual change improves mean FPS. The combined foreground measurement
+above is the publication criterion. Do not turn GPU elapsed milliseconds into
+a displayed-FPS claim.
+
+Additional settled visual comparisons covered AO=0/bloom=0 on the beach and
+High quality with SSR enabled at the wide harbour. No obvious rendering loss
+or WebGPU errors were observed. High was selected using the in-game quality
+control; its settings record therefore has requestedQuality=balanced (original
+URL), actual profile=high, renderScale=1, SSR=1 and internal size 1600x900.
+
+Run npm run dev and open the printed URL with
+?bench&rendererReview&quality=balanced&noAudio . Keep the browser window visible
+and foreground. Release game mouse capture before using the review controls.
+Select All six views / All optimizations / Existing quality settings, then
+Run foreground ABBA. The recorder retains every sample in its downloadable
+JSON; incomplete/hidden/resized runs are invalid. The GPU button runs a separate
+instrumented comparison with capture backpressure; it is not foreground FPS.
+Use the effects-off preset only as a separately labelled scenario.
+
+Source tests: npm run test:renderer (8 tests). Full game, network, security,
+cargo, steering, vehicle material, graphics, publication suites and build pass.
+The benchmark controls are development-only and are excluded from normal play.

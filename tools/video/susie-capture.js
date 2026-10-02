@@ -87,7 +87,7 @@ export async function recordSusie(a=window.__app, {resume=null,waypoint=0}={}) {
    }
    before.frame(dt);
    if(Math.floor(total)!==report.lastSample){report.lastSample=Math.floor(total);report.samples.push({time:total,stage,bodyRunoff:drips,kaijuTime:k.elapsed,feet:k.pose.feet});}
-   ctx.drawImage(a.engine.domElement,0,0,1280,720);ctx.fillStyle='#071b2be8';ctx.fillRect(0,0,1280,72);ctx.fillStyle='#edfff9';ctx.font='bold 23px system-ui';ctx.fillText('BURNING HORIZONS · SUSIE’S JOURNEY',24,29);ctx.font='17px system-ui';ctx.fillText(caption,24,55);
+   ctx.drawImage(a.engine.domElement,0,0,1280,720);ctx.fillStyle='#071b2be8';ctx.fillRect(0,0,1280,72);ctx.fillStyle='#edfff9';ctx.font='bold 23px system-ui';ctx.fillText('ELSEMESH · SUSIE’S JOURNEY',24,29);ctx.font='17px system-ui';ctx.fillText(caption,24,55);
    ctx.fillStyle='#071b2bcc';ctx.fillRect(0,684,1280,36);ctx.fillStyle='#b9e6de';ctx.font='14px monospace';ctx.fillText(`Scripted walkthrough · actual game controllers | ${stage} | body runoff emitted this frame: ${drips}`,20,707);
   }catch(e){stop(e.message);}
  };

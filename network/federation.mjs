@@ -3,13 +3,13 @@ import { assetId, canonical, signObject, verifyObject } from './identity.mjs';
 import { ReplayGuard } from './protocol.mjs';
 
 export const FEDERATION_CAPABILITIES = Object.freeze([
-  'bh.identity/1', 'bh.region/1', 'bh.portal/1', 'bh.rules/1',
-  'bh.handoff/1', 'bh.asset/1', 'bh.authority/1', 'bh.avatar-control/1',
+  'elsemesh.identity/1', 'elsemesh.region/1', 'elsemesh.portal/1', 'elsemesh.rules/1',
+  'elsemesh.handoff/1', 'elsemesh.asset/1', 'elsemesh.authority/1', 'elsemesh.avatar-control/1',
 ]);
 export const CONTROL_MODES = Object.freeze(['HUMAN', 'AI_ASSISTED', 'AI_AUTONOMOUS']);
 export const AVAILABILITY = Object.freeze(['ONLINE', 'REPLICA_AVAILABLE', 'OFFLINE', 'DEGRADED', 'UNREACHABLE']);
 const id = (prefix, value) => typeof value === 'string' && new RegExp(`^${prefix}:[a-zA-Z0-9._-]{1,128}$`).test(value);
-const node = (value) => id('bh-node', value);
+const node = (value) => id('elsemesh-node', value);
 const hash = (value) => /^sha256:[0-9a-f]{64}$/.test(value ?? '');
 const vector = (value) => Array.isArray(value) && value.length === 3 && value.every((n) => Number.isFinite(n) && Math.abs(n) <= 1e6);
 const transform = (value) => value && vector(value.position) && Number.isFinite(value.yaw) && Math.abs(value.yaw) <= 360;
@@ -37,8 +37,8 @@ export function negotiateRules(rules, supported) {
 
 export function validatePortal(portal) {
   check(plain(portal) && keys(portal, ['protocol', 'portalId', 'sourceRegion', 'destinationRegion', 'visual', 'entry', 'exit', 'enabled', 'requiredCapabilities', 'access', 'handoffPolicy', 'revision']), 'Invalid portal fields');
-  check(portal.protocol === 'bh.portal/1' && id('bh-portal', portal.portalId), 'Invalid portal identity');
-  check(id('bh-region', portal.sourceRegion) && id('bh-region', portal.destinationRegion) && portal.sourceRegion !== portal.destinationRegion, 'Invalid portal regions');
+  check(portal.protocol === 'elsemesh.portal/1' && id('elsemesh-portal', portal.portalId), 'Invalid portal identity');
+  check(id('elsemesh-region', portal.sourceRegion) && id('elsemesh-region', portal.destinationRegion) && portal.sourceRegion !== portal.destinationRegion, 'Invalid portal regions');
   check(['CAVE', 'DOOR', 'WINDOW', 'MIRROR', 'LIFT', 'BOAT', 'GATEWAY'].includes(portal.visual), 'Invalid portal visual');
   check(transform(portal.entry) && transform(portal.exit), 'Invalid portal transform');
   check(typeof portal.enabled === 'boolean' && portal.handoffPolicy === 'SIGNED' && Number.isSafeInteger(portal.revision) && portal.revision >= 1, 'Invalid portal policy');
@@ -50,13 +50,13 @@ export function validatePortal(portal) {
 
 export function validateRegion(region) {
   check(plain(region) && keys(region, ['protocol', 'regionId', 'worldId', 'version', 'ownerPlayerId', 'ownerNodeId', 'admins', 'hosts', 'authority', 'rules', 'assets', 'portals', 'participants']), 'Invalid region fields');
-  check(region.protocol === 'bh.region/1' && id('bh-region', region.regionId) && id('bh-world', region.worldId) && Number.isSafeInteger(region.version) && region.version >= 1, 'Invalid region identity/version');
+  check(region.protocol === 'elsemesh.region/1' && id('elsemesh-region', region.regionId) && id('elsemesh-world', region.worldId) && Number.isSafeInteger(region.version) && region.version >= 1, 'Invalid region identity/version');
   check(id('player', region.ownerPlayerId) && node(region.ownerNodeId), 'Invalid owner');
   check(ids(region.admins, (v) => id('player', v)) && ids(region.hosts, node), 'Invalid admins/hosts');
   check(plain(region.authority) && keys(region.authority, ['nodeId', 'epoch']) && node(region.authority.nodeId) && region.hosts.includes(region.authority.nodeId) && Number.isSafeInteger(region.authority.epoch) && region.authority.epoch >= 0, 'Invalid authority');
   validateRules(region.rules);
   check(Array.isArray(region.assets) && region.assets.length <= 256 && region.assets.every((asset) => plain(asset) && keys(asset, ['assetId', 'mediaType']) && hash(asset.assetId) && ['model/gltf-binary', 'image/png', 'image/jpeg', 'audio/ogg', 'application/octet-stream'].includes(asset.mediaType)), 'Invalid region assets');
-  check(ids(region.portals, (v) => id('bh-portal', v), 64), 'Invalid portal references');
+  check(ids(region.portals, (v) => id('elsemesh-portal', v), 64), 'Invalid portal references');
   check(plain(region.participants) && keys(region.participants, ['players', 'npcs']) && ids(region.participants.players, (v) => id('player', v), 128) && ids(region.participants.npcs, (v) => id('npc', v), 128), 'Invalid participants');
   check(Buffer.byteLength(JSON.stringify(region)) <= 64 * 1024, 'Oversized region');
   return region;
@@ -76,7 +76,7 @@ export function verifyRegionVersion(published, trustedOwners) {
 }
 
 export function issueDelegation(ownerIdentity, { regionId, hostNodeId, permission = 'REPLICA', expiresAt, version }) {
-  check(id('bh-region', regionId) && node(hostNodeId) && ['REPLICA', 'AUTHORITY'].includes(permission), 'Invalid delegation');
+  check(id('elsemesh-region', regionId) && node(hostNodeId) && ['REPLICA', 'AUTHORITY'].includes(permission), 'Invalid delegation');
   check(Number.isSafeInteger(expiresAt) && expiresAt > Date.now() && Number.isSafeInteger(version) && version >= 1, 'Invalid delegation expiry/version');
   return signObject({ kind: 'host-delegation', regionId, hostNodeId, permission, expiresAt, version, delegationId: randomUUID() }, ownerIdentity);
 }
@@ -116,7 +116,7 @@ export class PortalGraph {
     check(verifyObject(signedEvent, trustedAuthorities) && signedEvent.kind === 'portal-update', 'Bad portal update signature');
     const current = this.#portals.get(signedEvent.portalId);
     check(current && signedEvent.sourceRegion === current.sourceRegion && signedEvent.oldDestination === current.destinationRegion && signedEvent.revision === current.revision + 1, 'Stale portal update');
-    check(signedEvent.authorityNodeId === signedEvent.signer && signedEvent.signer === sourceAuthorityNodeId && id('bh-region', signedEvent.newDestination) && signedEvent.newDestination !== current.sourceRegion && typeof signedEvent.enabled === 'boolean', 'Invalid portal authority/destination');
+    check(signedEvent.authorityNodeId === signedEvent.signer && signedEvent.signer === sourceAuthorityNodeId && id('elsemesh-region', signedEvent.newDestination) && signedEvent.newDestination !== current.sourceRegion && typeof signedEvent.enabled === 'boolean', 'Invalid portal authority/destination');
     check(Number.isFinite(signedEvent.timestamp) && Math.abs(Date.now() - signedEvent.timestamp) < 30_000 && replay.accept(signedEvent.eventId), 'Expired/replayed portal update');
     const next = { ...current, destinationRegion: signedEvent.newDestination, enabled: signedEvent.enabled, revision: signedEvent.revision };
     validatePortal(next);
@@ -156,17 +156,17 @@ export function verifyPortalInvitation(invitation, acceptance, { sourceRegion, d
 
 export function createPortalHandoff(identity, { portal, playerId, sessionId, sequence, authorityEpoch, avatarAssetId, inventoryHash, position, velocity, controlMode }) {
   validatePortal(portal);
-  check(id('player', playerId) && id('bh-session', sessionId) && hash(avatarAssetId) && hash(inventoryHash) && vector(position) && vector(velocity) && CONTROL_MODES.includes(controlMode), 'Invalid handoff data');
+  check(id('player', playerId) && id('elsemesh-session', sessionId) && hash(avatarAssetId) && hash(inventoryHash) && vector(position) && vector(velocity) && CONTROL_MODES.includes(controlMode), 'Invalid handoff data');
   check(Number.isSafeInteger(sequence) && sequence >= 0 && Number.isSafeInteger(authorityEpoch) && authorityEpoch >= 0, 'Invalid handoff sequence/epoch');
-  return signObject({ kind: 'portal-handoff', protocol: 'bh.handoff/1', handoffId: randomUUID(), portalId: portal.portalId, portalRevision: portal.revision, sourceRegion: portal.sourceRegion, destinationRegion: portal.destinationRegion, playerId, sessionId, sequence, authorityEpoch, avatarAssetId, inventoryHash, position, velocity, controlMode, sourceAuthority: identity.nodeId, timestamp: Date.now() }, identity);
+  return signObject({ kind: 'portal-handoff', protocol: 'elsemesh.handoff/1', handoffId: randomUUID(), portalId: portal.portalId, portalRevision: portal.revision, sourceRegion: portal.sourceRegion, destinationRegion: portal.destinationRegion, playerId, sessionId, sequence, authorityEpoch, avatarAssetId, inventoryHash, position, velocity, controlMode, sourceAuthority: identity.nodeId, timestamp: Date.now() }, identity);
 }
 
 export function acceptPortalHandoff(handoff, { portal, sourceAuthority, sourceEpoch, destinationRules, supportedCapabilities, trustedAuthorities, replay, now = Date.now() }) {
   validatePortal(portal);
-  check(verifyObject(handoff, trustedAuthorities) && handoff.kind === 'portal-handoff' && handoff.protocol === 'bh.handoff/1', 'Bad handoff signature');
+  check(verifyObject(handoff, trustedAuthorities) && handoff.kind === 'portal-handoff' && handoff.protocol === 'elsemesh.handoff/1', 'Bad handoff signature');
   check(handoff.sourceAuthority === handoff.signer && handoff.signer === sourceAuthority && handoff.authorityEpoch === sourceEpoch, 'Wrong handoff authority');
   check(handoff.portalId === portal.portalId && handoff.portalRevision === portal.revision && handoff.sourceRegion === portal.sourceRegion && handoff.destinationRegion === portal.destinationRegion && portal.enabled, 'Wrong portal');
-  check(id('player', handoff.playerId) && id('bh-session', handoff.sessionId) && hash(handoff.avatarAssetId) && hash(handoff.inventoryHash) && vector(handoff.position) && vector(handoff.velocity) && CONTROL_MODES.includes(handoff.controlMode), 'Invalid handoff content');
+  check(id('player', handoff.playerId) && id('elsemesh-session', handoff.sessionId) && hash(handoff.avatarAssetId) && hash(handoff.inventoryHash) && vector(handoff.position) && vector(handoff.velocity) && CONTROL_MODES.includes(handoff.controlMode), 'Invalid handoff content');
   check(Number.isSafeInteger(handoff.sequence) && handoff.sequence >= 0 && Number.isFinite(handoff.timestamp) && Math.abs(now - handoff.timestamp) <= 30_000, 'Expired handoff');
   const negotiation = negotiateRules(destinationRules, supportedCapabilities);
   check(negotiation.accepted, `Unsupported rules: ${negotiation.unsupported.join(',')}`);
@@ -180,7 +180,7 @@ export function switchControlMode(avatar, mode) {
 }
 
 export function endpointFor(regionId, directory) {
-  check(id('bh-region', regionId), 'Invalid region ID');
+  check(id('elsemesh-region', regionId), 'Invalid region ID');
   const location = directory.get(regionId);
   check(location && node(location.authorityNodeId) && typeof location.endpoint === 'string', 'Region unresolved');
   return location;

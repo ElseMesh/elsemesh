@@ -15,9 +15,9 @@ cannot take the helm. Avatars use boat-local positions while aboard. This
 is host authority, not a general vehicle ownership or handoff protocol. If the
 host disconnects, boat state stops updating until the room reconnects.
 
-The speech server relays structured `bh.character-speech/1` events only within
+The speech server relays structured `elsemesh.character-speech/1` events only within
 the room. It checks role, node identity, message size, freshness, duplicates and
-rate. The optional server-side `BH_SPEECH_CONFIG` points to a **private** JSON
+rate. The optional server-side `ELSEMESH_SPEECH_CONFIG` points to a **private** JSON
 file with `endpoint`, `profilePath`, and `tokenPath`. The endpoint must be
 loopback `http://127.0.0.1:<port>/`. The profile must be an accepted `loz`
 OmniVoice profile with a matching representation hash. No profile, recording,

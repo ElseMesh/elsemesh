@@ -1,18 +1,18 @@
 # Multi-player node setup (up to ten)
 
-The online game uses one hpubuntu room server behind HTTPS/WebSocket and one WebGPU browser per person. The host has role `loz`; guests receive the first free slot from `ed`, `guest2` through `guest9`. The random 128-bit room code in the invitation routes only that room's state and speech. Players do not need inbound ports or a server on their own machines.
+The online game uses one separately configured room server behind HTTPS/WebSocket and one WebGPU browser per person. The host has role `loz`; guests receive the first free slot from `ed`, `guest2` through `guest9`. The host-key-derived 128-bit room code in the invitation routes only that room's state and speech. Players do not need inbound ports or a server on their own machines.
 
 ```text
 Host browser ──────┐
-Guest browsers ×9 ─┼── HTTPS/WSS ── hpubuntu room relay
+Guest browsers ×9 ─┼── HTTPS/WSS ── room relay
                    └── optional private loopback OmniVoice worker
 ```
 
 ## Run the node
 
-1. On hpubuntu, use the approved Burning Horizons checkout. Run `npm ci`, `npm run build`, `npm test`, and `npm run test:network`.
-2. Run `node tools/networking/online-server.mjs` through the `burning-horizons-online.service` user unit, or directly for local development. It binds to `127.0.0.1:5200` by default; `BH_ONLINE_HOST` and `BH_ONLINE_PORT` override that.
-3. Provide HTTPS and WebSocket upgrade forwarding to port 5200. The current hpubuntu deployment uses Tailscale Funnel on port 443. Keep the optional OmniVoice worker on its separate private loopback port and keep `BH_SPEECH_CONFIG` outside the repository.
+1. On your server, use an ElseMesh checkout. Run `npm ci`, `npm run build`, `npm test`, and `npm run test:network`.
+2. Run `node tools/networking/online-server.mjs` through the `elsemesh-online.service` user unit, or directly for local development. It binds to `127.0.0.1:5200` by default; `ELSEMESH_ONLINE_HOST` and `ELSEMESH_ONLINE_PORT` override that.
+3. Provide HTTPS and WebSocket upgrade forwarding to port 5200. Set `NODE_ENV=production` and `ELSEMESH_PUBLIC_ORIGIN` to the exact public HTTPS origin. See the [deployment templates](../../deploy/README.md). Keep the optional OmniVoice worker on its separate private loopback port and keep `ELSEMESH_SPEECH_CONFIG` outside the repository.
 4. Open `/play-online.html`, create a room, and send the same invitation to up to nine guests. Each guest chooses **Join game**. The server assigns a free slot and displays the room count. The eleventh connection is rejected. A slot is freed when its browser leaves.
 
 For a local rehearsal, `npm run online` serves the built game at `http://127.0.0.1:5200/play-online.html`. A public invitation requires the HTTPS route; a loopback link works only on the server machine.

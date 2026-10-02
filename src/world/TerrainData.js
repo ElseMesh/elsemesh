@@ -3,6 +3,7 @@ import { WORLD } from './WorldLayout.js';
 import { THIRD, thirdIslandHeight } from './ThirdIslandLayout.js';
 import { FOURTH, fourthIslandHeight } from './FourthIslandLayout.js';
 import { ISLAND_FIVE, islandFiveHeight } from './IslandFiveLayout.js';
+import { PORT, portIslandHeight } from './PortRoadGraph.js';
 import { softRamp, erosionNoise, sampleGrid, upsample2, boxBlur } from './terrain/TerrainNoise.js';
 import { ridgeEnvelope, SEA_STACKS, PATHS, polylineDistance } from './terrain/IslandShape.js';
 
@@ -75,6 +76,7 @@ export class TerrainData {
 		this.addThirdIsland();
 		this.addFourthIsland();
 		this.addFifthIsland();
+		this.addPortIsland();
 		this.buildMinMax();
 
 	}
@@ -113,6 +115,25 @@ export class TerrainData {
 				this.rock[ k ] = 0.08;
 				this.sand[ k ] = h < 2.4 ? 235 : 24;
 				this.seagrass[ k ] = h < -1 && h > -12 ? 100 : 0;
+				this.path[ k ] = 0;
+			}
+		}
+	}
+
+	addPortIsland() {
+		const { res, origin, texel } = this;
+		for ( let j = 0; j < res; j ++ ) {
+			const z = origin + ( j + 0.5 ) * texel;
+			if ( Math.abs( z - PORT.z ) > PORT.radiusZ * 1.39 ) continue;
+			for ( let i = 0; i < res; i ++ ) {
+				const x = origin + ( i + 0.5 ) * texel, k = j * res + i;
+				if ( Math.abs( x - PORT.x ) > PORT.radiusX * 1.39 ) continue;
+				const h = portIslandHeight( x, z );
+				if ( h <= this.heights[ k ] ) continue;
+				this.heights[ k ] = h;
+				this.rock[ k ] = h < 1 ? 0.22 : 0.09;
+				this.sand[ k ] = h < 2 ? 170 : 16;
+				this.seagrass[ k ] = h < -1 && h > -12 ? 45 : 0;
 				this.path[ k ] = 0;
 			}
 		}

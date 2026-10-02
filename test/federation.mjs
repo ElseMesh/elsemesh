@@ -15,8 +15,8 @@ const emptyHash = assetId(Buffer.alloc(0));
 test('stable identity is unrelated to colliding private subnet addresses', () => {
   assert.notEqual(loz.nodeId, ed.nodeId);
   const directory = new Map([
-    [f.exterior.regionId, { authorityNodeId: loz.nodeId, endpoint: '192.168.1.10:4000' }],
-    [f.edWorld.regionId, { authorityNodeId: ed.nodeId, endpoint: '192.168.1.10:4000' }],
+    [f.exterior.regionId, { authorityNodeId: loz.nodeId, endpoint: '192.0.2.10:4000' }],
+    [f.edWorld.regionId, { authorityNodeId: ed.nodeId, endpoint: '192.0.2.10:4000' }],
   ]);
   assert.equal(endpointFor(f.exterior.regionId, directory).endpoint, endpointFor(f.edWorld.regionId, directory).endpoint);
   assert.notEqual(endpointFor(f.exterior.regionId, directory).authorityNodeId, endpointFor(f.edWorld.regionId, directory).authorityNodeId);
@@ -44,13 +44,13 @@ test('portal schema, resolution, capability and availability failures', () => {
 
 test('rules negotiate bounded values and reject unsupported mandatory features', () => {
   assert.equal(negotiateRules(f.smallWorld.rules, f.capabilities).accepted, true);
-  assert.equal(negotiateRules(f.alteredPhysics.rules, ['bh.rules/1']).accepted, false);
+  assert.equal(negotiateRules(f.alteredPhysics.rules, ['elsemesh.rules/1']).accepted, false);
   assert.throws(() => validateRegion({ ...f.smallWorld, rules: { ...f.smallWorld.rules, avatarScale: 0.01 } }), /Unsafe/);
   assert.throws(() => validateRegion({ ...f.edWorld, rules: { ...f.edWorld.rules, runExecutable: 'bad' } }), /keys/);
 });
 
 test('signed portal handoff changes region and rules, rejects replay and stale authority', () => {
-  const handoff = createPortalHandoff(loz, { portal: f.caveEntry, playerId: 'player:loz', sessionId: 'bh-session:visit-1', sequence: 4, authorityEpoch: 1, avatarAssetId: emptyHash, inventoryHash: emptyHash, position: [-340, 0, 80], velocity: [0, 0, 0], controlMode: 'HUMAN' });
+  const handoff = createPortalHandoff(loz, { portal: f.caveEntry, playerId: 'player:loz', sessionId: 'elsemesh-session:visit-1', sequence: 4, authorityEpoch: 1, avatarAssetId: emptyHash, inventoryHash: emptyHash, position: [-340, 0, 80], velocity: [0, 0, 0], controlMode: 'HUMAN' });
   const options = { portal: f.caveEntry, sourceAuthority: loz.nodeId, sourceEpoch: 1, destinationRules: f.underneath.rules, supportedCapabilities: f.capabilities, trustedAuthorities: trustedLoz, replay: new ReplayGuard() };
   const admitted = acceptPortalHandoff(handoff, options);
   assert.equal(admitted.regionId, f.underneath.regionId);

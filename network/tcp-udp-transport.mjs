@@ -80,7 +80,7 @@ export class TcpUdpTransport extends NetworkTransport {
           if (typeof packet.session !== 'string' || !/^[0-9a-f-]{36}$/.test(packet.session)) return socket.destroy();
           socket.setTimeout(0);
           this.#peers.set(packet.nodeId, { socket, session: packet.session, route: { host: socket.remoteAddress, port: packet.port }, since: Date.now(), bytesSent: 0, bytesReceived: 0, reconnects: 0 });
-          if (!socket.bhHelloSent) this.#hello(socket);
+          if (!socket.elsemeshHelloSent) this.#hello(socket);
           this.#events.emit('peer', packet.nodeId, packet.capabilities);
           return;
         }
@@ -99,7 +99,7 @@ export class TcpUdpTransport extends NetworkTransport {
   }
   #hello(socket) {
     writeFrame(socket, signObject({ kind: 'hello', nodeId: this.node_id(), port: this.#port, capabilities: CAPABILITIES, session: this.#session }, this.#identity));
-    socket.bhHelloSent = true;
+    socket.elsemeshHelloSent = true;
   }
   async discover_peer(nodeId, route) { return { nodeId, route }; }
   async connect_peer(nodeId, route) {

@@ -26,7 +26,7 @@ const YAW = Number( process.argv[ 5 ] || 0 ) * Math.PI / 180;
 const TRAVEL_METERS = Number( process.env.TRAVEL_METERS || 0 );
 
 // embedded images -> RGBA8 with macOS sips (no image decoding in Node)
-const tmp = mkdtempSync( join( process.env.BH_TMPDIR || tmpdir(), 'char-img-' ) );
+const tmp = mkdtempSync( join( process.env.ELSEMESH_TMPDIR || tmpdir(), 'char-img-' ) );
 let nImg = 0;
 globalThis.__assetImage = async ( bytes, mime ) => {
 

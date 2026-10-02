@@ -17,10 +17,9 @@ Licence: `public/models/characters/LICENSE-Rocketbox.md`.
   travel while retaining hip sway, vertical movement and the donor's joint rotations.
 - The source's gait uses its matching Rocketbox skeleton rather than the KIRI rig.
 
-## Rebuild on MSI
+## Rebuild
 
-All source and working files are on D:, under
-`D:/Codex/Burning-Horizons-character-source/rocketbox-player`.
+Choose a local source directory outside the repository.
 Download these files from the Rocketbox repository's `Assets` directory:
 
 - `Avatars/Adults/Male_Adult_08/Export/Male_Adult_08.fbx`
@@ -34,12 +33,12 @@ Use the existing `fetch.sh` media/raw fallback or download the raw files directl
 Keep source downloads outside Git. Run `prepare_stock_textures.py SOURCE PREPARED`
 with Python/Pillow. Then run the existing Blender `convert.py` with avatar FBX,
 prepared texture directory, prefix `m014`, output GLB, and those four animation FBXs.
-Set `BH_STOCK_PLAYER=1` and `BH_STOCK_BLEND` to the desired D: Blender working file.
+Set `ELSEMESH_STOCK_PLAYER=1` and `ELSEMESH_STOCK_BLEND` to the desired Blender working file.
 This enables in-place motion and the runtime clip names without changing vendor builds.
 
 `validate_stock.py OUTPUT_GLB REVIEW_DIRECTORY` runs in Blender and renders the
 actual exported GLB from front and side in idle/walk/run/seated poses.
-The current review is in `D:/Downloads/Stock-player-review`.
+Historical local review captures are not included in this repository.
 
 For an in-engine animation review, start Vite and `island-review-receiver.mjs`,
 load the game with `?bench&noAudio`, and call `recordStockReview` from

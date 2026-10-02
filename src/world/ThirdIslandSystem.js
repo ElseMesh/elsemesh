@@ -46,7 +46,7 @@ export class ThirdIslandSystem {
   this.dialogue=document.createElement('div');this.dialogue.setAttribute('role','status');
   this.dialogue.style.cssText='display:none;position:fixed;z-index:1300;max-width:320px;padding:12px 16px;border-radius:14px;background:#f0ffff;color:#102b31;font:16px/1.4 system-ui;box-shadow:0 4px 18px #0008;pointer-events:none;transform:translate(-50%,-100%);';document.body.append(this.dialogue);
   this.greeted=false;this.greetingAt=-100;this.dialogueUntil=0;
-  this.hud=document.createElement('div');this.hud.id='bh-flight-hud';
+  this.hud=document.createElement('div');this.hud.id='elsemesh-flight-hud';
   this.hud.style.cssText='display:none;position:fixed;bottom:32px;left:50%;transform:translateX(-50%);background:#091e26e8;border:1px solid #63ffdd;border-radius:16px;padding:14px 22px;color:#baffec;font:14px monospace;text-align:center;z-index:1200;pointer-events:none;max-width:70vw;';document.body.append(this.hud);
  }
  ground(x,z) { return Math.max(0,this.app.terrainData.heightAt(x,z),secondIslandHeight(x,z),this.app.colliders.groundHeightAt(x,z,1000)); }

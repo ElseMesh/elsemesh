@@ -1,6 +1,6 @@
 import { ONLINE_ROLES, PLAYER_IDS } from './PlayerProtocol.js';
 
-export const SPEECH_PROTOCOL = 'bh.character-speech/1';
+export const SPEECH_PROTOCOL = 'elsemesh.character-speech/1';
 export const MAX_SPEECH_LENGTH = 180;
 export const VOICE_PROFILES = Object.freeze(Object.fromEntries(ONLINE_ROLES.map((role) => [role, role === 'loz' ? 'loz-omnivoice' : 'guest-text'])));
 
@@ -29,7 +29,7 @@ export function validateSpeechEvent(event) {
 	if (!event || event.protocol !== SPEECH_PROTOCOL || event.sourceType !== 'PLAYER_TYPED') throw new Error('Invalid speech protocol');
 	const role = Object.keys(PLAYER_IDS).find((key) => PLAYER_IDS[key] === event.speakerPlayerId);
 	if (!role || event.speakerCharacterId !== `character:${role}` || event.voiceProfile !== VOICE_PROFILES[role]) throw new Error('Invalid speaker or voice');
-	if (!/^bh-node:[0-9a-f]{64}$/.test(event.nodeId || '') || !/^[0-9a-f]{8}-[0-9a-f-]{27,36}$/.test(event.messageId || '')) throw new Error('Invalid speech identity');
+	if (!/^elsemesh-node:[0-9a-f]{64}$/.test(event.nodeId || '') || !/^[0-9a-f]{8}-[0-9a-f-]{27,36}$/.test(event.messageId || '')) throw new Error('Invalid speech identity');
 	if (typeof event.text !== 'string' || !event.text || event.text.length > MAX_SPEECH_LENGTH || cleanSpeechText(event.text) !== event.text) throw new Error('Invalid speech text');
 	if (!Number.isFinite(event.timestamp) || Math.abs(Date.now() - event.timestamp) > 60_000) throw new Error('Stale speech');
 	if (JSON.stringify(event).length > 1024) throw new Error('Oversized speech event');

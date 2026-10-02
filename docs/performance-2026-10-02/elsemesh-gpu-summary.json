@@ -1,0 +1,323 @@
+{
+  "kind": "gpu",
+  "status": "complete",
+  "valid": true,
+  "configuration": {
+    "requestedQuality": "balanced",
+    "profile": "balanced",
+    "renderScale": 0.75,
+    "autoResolution": false,
+    "aa": "taa",
+    "ssr": 0,
+    "ao": 0,
+    "bloom": 0,
+    "motionBlur": 0,
+    "exposure": 0.55,
+    "clockMode": "manual",
+    "timeSpeed": 0,
+    "postScale": 0.75,
+    "shadows": true,
+    "refractionEnabled": true,
+    "refractionScale": 0.35,
+    "hazeEnabled": 1,
+    "hazeDensity": 1.6,
+    "shafts": 1
+  },
+  "adapter": {
+    "vendor": "intel",
+    "architecture": "xe-lpg",
+    "device": "",
+    "description": ""
+  },
+  "completedRuns": 32,
+  "results": [
+    {
+      "name": "beach/transforms",
+      "baseline": {
+        "runs": 4,
+        "frames": 360,
+        "meanMs": 56.47674026666663,
+        "meanFPS": 17.706404358294986,
+        "medianMs": 57.737216,
+        "p95Ms": 73.334784,
+        "cpuMeanMs": null,
+        "runFPS": [
+          21.74373817449888,
+          16.35220661123813,
+          16.84730249558358,
+          16.833259979223357
+        ],
+        "dimensions": [
+          [
+            1200,
+            675
+          ],
+          [
+            1200,
+            675
+          ],
+          [
+            1200,
+            675
+          ],
+          [
+            1200,
+            675
+          ]
+        ],
+        "poseChanged": true
+      },
+      "candidate": {
+        "runs": 4,
+        "frames": 360,
+        "meanMs": 55.64388693333333,
+        "meanFPS": 17.97142606515061,
+        "medianMs": 54.919168,
+        "p95Ms": 72.0896,
+        "cpuMeanMs": null,
+        "runFPS": [
+          17.840045410701766,
+          18.354843229995048,
+          17.58960749577324,
+          18.119686180564727
+        ],
+        "dimensions": [
+          [
+            1200,
+            675
+          ],
+          [
+            1200,
+            675
+          ],
+          [
+            1200,
+            675
+          ],
+          [
+            1200,
+            675
+          ]
+        ],
+        "poseChanged": false
+      },
+      "fpsGainPercent": 1.4967562103113785
+    },
+    {
+      "name": "beach/waterDepth",
+      "baseline": {
+        "runs": 4,
+        "frames": 360,
+        "meanMs": 52.48614399999996,
+        "meanFPS": 19.052647494927438,
+        "medianMs": 52.4288,
+        "p95Ms": 73.07264,
+        "cpuMeanMs": null,
+        "runFPS": [
+          17.464119229668725,
+          16.717482265024895,
+          16.690865305731787,
+          30.345619613854822
+        ],
+        "dimensions": [
+          [
+            1200,
+            675
+          ],
+          [
+            1200,
+            675
+          ],
+          [
+            1200,
+            675
+          ],
+          [
+            1200,
+            675
+          ]
+        ],
+        "poseChanged": false
+      },
+      "candidate": {
+        "runs": 4,
+        "frames": 360,
+        "meanMs": 57.80366222222224,
+        "meanFPS": 17.299941933706002,
+        "medianMs": 58.523648,
+        "p95Ms": 73.596928,
+        "cpuMeanMs": null,
+        "runFPS": [
+          17.35794296507659,
+          16.611319620004352,
+          17.66995220763263,
+          17.60223301834192
+        ],
+        "dimensions": [
+          [
+            1200,
+            675
+          ],
+          [
+            1200,
+            675
+          ],
+          [
+            1200,
+            675
+          ],
+          [
+            1200,
+            675
+          ]
+        ],
+        "poseChanged": false
+      },
+      "fpsGainPercent": -9.199275647586902
+    },
+    {
+      "name": "beach/effects",
+      "baseline": {
+        "runs": 4,
+        "frames": 360,
+        "meanMs": 44.40264248888887,
+        "meanFPS": 22.521182162756094,
+        "medianMs": 34.603008,
+        "p95Ms": 73.465856,
+        "cpuMeanMs": null,
+        "runFPS": [
+          28.804660953624474,
+          18.764138653381075,
+          17.91077830327098,
+          29.613382835748475
+        ],
+        "dimensions": [
+          [
+            1200,
+            675
+          ],
+          [
+            1200,
+            675
+          ],
+          [
+            1200,
+            675
+          ],
+          [
+            1200,
+            675
+          ]
+        ],
+        "poseChanged": false
+      },
+      "candidate": {
+        "runs": 4,
+        "frames": 360,
+        "meanMs": 33.98332871111108,
+        "meanFPS": 29.4261933108702,
+        "medianMs": 32.833536,
+        "p95Ms": 43.90912,
+        "cpuMeanMs": null,
+        "runFPS": [
+          30.24736830150654,
+          31.165827333537578,
+          28.95833278419755,
+          27.583325278185065
+        ],
+        "dimensions": [
+          [
+            1200,
+            675
+          ],
+          [
+            1200,
+            675
+          ],
+          [
+            1200,
+            675
+          ],
+          [
+            1200,
+            675
+          ]
+        ],
+        "poseChanged": false
+      },
+      "fpsGainPercent": 30.660074139150282
+    },
+    {
+      "name": "beach/combined",
+      "baseline": {
+        "runs": 4,
+        "frames": 360,
+        "meanMs": 36.689965511111104,
+        "meanFPS": 27.255408558428933,
+        "medianMs": 33.947648,
+        "p95Ms": 56.885248,
+        "cpuMeanMs": null,
+        "runFPS": [
+          29.54966251291045,
+          25.720913538076864,
+          24.79491235375365,
+          29.665838927352453
+        ],
+        "dimensions": [
+          [
+            1200,
+            675
+          ],
+          [
+            1200,
+            675
+          ],
+          [
+            1200,
+            675
+          ],
+          [
+            1200,
+            675
+          ]
+        ],
+        "poseChanged": false
+      },
+      "candidate": {
+        "runs": 4,
+        "frames": 360,
+        "meanMs": 38.33728568888891,
+        "meanFPS": 26.08426710526939,
+        "medianMs": 32.833536,
+        "p95Ms": 61.60384,
+        "cpuMeanMs": null,
+        "runFPS": [
+          28.957111557722712,
+          30.157034029272246,
+          18.731123023964763,
+          30.990003511869848
+        ],
+        "dimensions": [
+          [
+            1200,
+            675
+          ],
+          [
+            1200,
+            675
+          ],
+          [
+            1200,
+            675
+          ],
+          [
+            1200,
+            675
+          ]
+        ],
+        "poseChanged": false
+      },
+      "fpsGainPercent": -4.29691395250561
+    }
+  ]
+}

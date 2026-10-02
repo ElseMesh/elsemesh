@@ -1,0 +1,49 @@
+ElseMesh architecture performance review — 2 October 2026
+Release decision: enable near animated forest batches and spatial collision queries by default. The timing correction also ships. Deployment status is recorded by the repository's Pages workflow; this report documents the qualification evidence.
+
+The strongest result is the near forest: replacing its individual rigid mesh draws with animated material batches reduced measured App.frame CPU wall time from approximately 22 ms to 15 ms, with observed foreground FPS gains of 15–18% in repeated villa comparisons. Spatial collision queries returned exactly the same outputs and ran about 3.9 times faster in a separate CPU workload. These are targeted findings, not a universal FPS guarantee.
+
+What changed
+Timing now separates actual animation-frame intervals from the simulation's 100 ms safety cap. Valid 250/1000 ms visible intervals report 4/1 FPS; hidden/resume gaps are excluded, and controlled manual benchmark frames do not drive the HUD or adaptive resolution. The optional GPU HUD identifies its partial sampled coverage. This timing correction is shared by both comparison modes and has no separately measured FPS benefit.
+
+The forest candidate retains the original triangles, UVs, materials and joint wind poses, using per-tree material batches and current/previous joint matrices. The collision candidate uses a conservative spatial index while preserving the original narrow-phase calculations and capsule resolution order. Existing stage-one and stage-two optimizations remain enabled in both modes.
+
+Measurement scope
+Intel xe-lpg adapter; Balanced quality; 1600 x 900 output, 1200 x 675 internal rendering; TAA, AO 1, bloom 0.05, SSR off. Each view used two ABBA cycles, 60 warm-up frames and 180 measured foreground intervals per run: 720 intervals per mode per view. Physics was frozen (dt=0). The moving villa scenario advanced camera and wind at repeatable steps while physics remained frozen. These are foreground rendering comparisons, not complete live gameplay or thermal qualification. CPU values are wall time inside App.frame, including any scheduler interruptions there.
+
+All raw intervals and hitches were retained. FPS is pooled frame count divided by pooled elapsed time, not an average of instantaneous FPS.
+
+Six-view combined comparison (48 complete runs; 4,320 intervals per mode)
+View                     Baseline FPS  Candidate FPS   Change    Cycle 1 / Cycle 2
+Beach                         26.85          25.10       -6.54%     -5.75% / -7.28%
+Village                       26.59          28.29       +6.38%     +6.87% / +5.88%
+Underwater                    31.59          30.00       -5.03%     -7.40% / -2.55%
+Forest villa                  25.82          29.89      +15.74%    +19.88% / +11.92%
+Warehouse junction            25.43          27.18       +6.89%     +7.73% / +6.10%
+Cargo port                    24.17          25.48       +5.43%    +16.49% / -3.90%
+All frames pooled             26.56          27.52       +3.63%
+
+The pooled 3.63% is an observation from this run, not a robust general speedup. Beach and underwater were slower in both cycles; cargo's second cycle was slower. Pooled p99 was essentially unchanged, 90.5 -> 90.4 ms; maximum interval was 666.6 -> 465.6 ms; intervals above 150 ms were 21 -> 20. Beach p99 worsened 83.4 -> 97.5 ms and its >150 ms count rose 0 -> 5; underwater p99 worsened 69.4 -> 76.3 ms and its >150 ms count rose 0 -> 4. Cargo p99 also worsened 90.5 -> 97.1 ms. These negative results are retained.
+
+An additional forest-only beach comparison measured 24.77 -> 28.68 FPS (+15.80%) despite zero active near trees, identical recorded draw counts, and almost unchanged CPU wall time (14.34 -> 14.17 ms). This conflicting control demonstrates substantial wall-time variability away from the targeted forest. It does not establish a beach improvement or erase the combined run's negative results.
+
+Underwater collision-only isolation measured 30.08 -> 30.15 FPS (+0.23%); the cycles were -6.47% and +7.40%, with CPU wall time 11.38 -> 11.32 ms. No underwater improvement is claimed. Source tracing finds no recurring collision queries during these warmed, frozen-physics free-camera samples. Far-tree runs also recorded zero joint matrix calculations and palette uploads. The consistent forest draw/CPU reduction and repeated targeted FPS gains support promotion; the broad six-view average does not support a general performance claim.
+
+Repeated near-forest evidence
+Initial fixed villa: 27.72 -> 31.96 FPS (+15.29%); both cycles positive (+16.75%, +13.82%). CPU wall time 22.48 -> 15.11 ms; p99 76.7 -> 62.5 ms; >150 ms intervals 5 -> 0.
+Villa within the six-view run: 25.82 -> 29.89 FPS (+15.74%); both cycles positive (+19.88%, +11.92%). CPU wall time 22.12 -> 15.34 ms; p99 90.2 -> 76.4 ms; >150 ms intervals 2 -> 0.
+Moving camera and wind: 23.12 -> 27.24 FPS (+17.84%); both cycles positive (+25.72%, +11.43%). CPU wall time 22.67 -> 15.98 ms; p99 104.1 -> 83.4 ms; >150 ms intervals 3 -> 0. Recorded total scene draws fell from 2,450 to 1,236. This remains a rendering workload with frozen physics.
+
+Collision CPU workload
+The loaded world contained 711 boxes and 916 cylinders. Across two ABBA cycles, each timed sample ran 4,320 deterministic ground, capsule and ray queries. Every sampled result exactly matched the flat implementation; both output digests were 98d98830. Mean batch time was 27.275 -> 6.925 ms: 3.94 times faster, or 74.61% less CPU query time. Instrumentation counted 731,760 -> 5,051 broad-phase candidates for the separate one-batch counter sample. Index construction, warm-up and counters were outside the timed batches. This measures this query distribution, not game FPS or a full gameplay route.
+
+Costs and limits
+Merged forest geometry contains 8,888,880 bytes (8.48 MiB) of additional geometry payload, plus an 88,704-byte (86.63 KiB) current/previous joint palette. This is not a total memory measurement: GPU copies, retained original geometry and object overhead are additional. The palette uploads 88,704 bytes on active updates in the recorded near-forest runs.
+Consecutive-frame position, normal and motion equivalence is covered. After a culling gap, palette history follows updates while the original per-object history follows its last draw; one reappearance frame can therefore have different motion history, even with a stationary forest parent. The limitation is explicit and tested; identical temporal output across every disocclusion is not claimed. Geometry changes to indexed colliders require explicit invalidation; live solid/walkable flags remain supported.
+
+Recorded validation and provenance
+After default promotion, npm run test:architecture passed all 26 CPU tests plus the headless forest GPU checks. The GPU report is valid for main color/motion, shadow depth and clipped color diagnostics, with zero coverage mismatches in all three fixtures. The final npm test run, production build and bounded publication check passed. Earlier runs in this batch also passed networking, security, cargo, vehicle, graphics and renderer suites. The Pages workflow runs all of those suites, including test:architecture, before deployment. These local results do not substitute for the workflow's deployment status.
+
+Raw evidence: villa-fixed.json, six-views-fixed.json, villa-wind.json, beach-forest-only.json, underwater-collisions-only.json and world-collisions.json, with the corresponding saved summaries where present. measured-source.json records 351 source-file hashes on branch perf/architecture-first-pass against base 80c55a7d19395ef4ec4485556ab5deef70bd54c0. All 351 hashes were rechecked unchanged after the measurements. The only subsequent runtime source changes enable optimizeAnimatedForest and optimizeSpatialQueries by default and update the collision-default comment. The comparison harness had already enabled these same flags for every combined candidate run. Test wiring, default assertions and documentation were then updated; release-source.json records the resulting source hashes and explicitly lists the two changes from the measured manifest.
+
+Reproduction: use Node 22.15+; run npm run test:architecture. In a development build open ?bench&rendererReview&rendererStage=3&quality=balanced&noAudio&view=islandFourVilla. The review controls select fixed or repeatable moving camera/wind comparisons, isolate either change, and measure the loaded-world collision workload. Keep the tab in the foreground. Run node docs/performance-2026-10-02-architecture/analyze.mjs <raw-report.json> to independently pool all raw foreground samples. Manifest hashes describe the exact local file bytes; Git checkout line-ending conversion can change those hashes without changing source behavior. The review UI is excluded from production builds. Opaque depth ordering remains disabled.

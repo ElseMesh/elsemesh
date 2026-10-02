@@ -15,9 +15,9 @@ const trust = JSON.parse(await readFile(args.trust, 'utf8'));
 const trustedIds = new Set(trust.map((entry) => entry.nodeId));
 if (!trustedIds.has(identity.nodeId)) throw new Error('Local identity absent from trust file');
 const transport = new TcpUdpTransport({ identity, trustedIds, host: mode === 'serve' ? '0.0.0.0' : '0.0.0.0', port: mode === 'serve' ? Number(args.port) : 0 });
-const sampleAsset = Buffer.from('Burning Horizons bounded two-node asset proof v1');
+const sampleAsset = Buffer.from('ElseMesh bounded two-node asset proof v1');
 const sampleHash = assetId(sampleAsset);
-const authority = new Map([['bh:SEA-01', { nodeId: mode === 'serve' ? trust.find((e) => e.nodeId !== identity.nodeId).nodeId : identity.nodeId, epoch: 1 }]]);
+const authority = new Map([['elsemesh:SEA-01', { nodeId: mode === 'serve' ? trust.find((e) => e.nodeId !== identity.nodeId).nodeId : identity.nodeId, epoch: 1 }]]);
 const replay = new ReplayGuard();
 const start = Date.now();
 
@@ -73,11 +73,11 @@ if (mode === 'serve') {
   acceptAsset(sampleHash, Buffer.from(assetReply.body.bytes, 'base64'));
   let corruptRejected = false;
   try { acceptAsset(sampleHash, Buffer.from('corrupt')); } catch { corruptRejected = true; }
-  const manifest = createManifest(identity, { worldId: 'bh:burning-horizons', sectorId: 'bh:SEA-01', assets: [{ hash: sampleHash, type: 'application/octet-stream' }] });
+  const manifest = createManifest(identity, { worldId: 'elsemesh:elsemesh', sectorId: 'elsemesh:SEA-01', assets: [{ hash: sampleHash, type: 'application/octet-stream' }] });
   const manifestPromise = waitFor('manifest-ack');
   await transport.send_reliable(peer, 'manifest', manifest);
   await manifestPromise;
-  const handoff = createHandoff(identity, { playerId: 'bh:player-demo', worldId: 'bh:burning-horizons', sourceSector: 'bh:SEA-01', targetSector: 'bh:UNDERNEATH-01', position: [0, 0, 0], velocity: [1, 0, 0], playerStateHash: sampleHash, inventoryHash: sampleHash, sequence: 1, epoch: 1 });
+  const handoff = createHandoff(identity, { playerId: 'elsemesh:player-demo', worldId: 'elsemesh:elsemesh', sourceSector: 'elsemesh:SEA-01', targetSector: 'elsemesh:UNDERNEATH-01', position: [0, 0, 0], velocity: [1, 0, 0], playerStateHash: sampleHash, inventoryHash: sampleHash, sequence: 1, epoch: 1 });
   const handoffPromise = waitFor('handoff-ack');
   await transport.send_reliable(peer, 'handoff', handoff);
   await handoffPromise;

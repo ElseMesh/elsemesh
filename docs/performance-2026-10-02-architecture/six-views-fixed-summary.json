@@ -1,0 +1,1315 @@
+{
+  "reportPath": "outputs\\performance-architecture\\six-views-fixed.json",
+  "sha256": "8221f7a62910ba9f0f534a74cdb0b306ed105be25cc02cfb64fc7f8ff514706d",
+  "rawSamplesRetained": true,
+  "configuration": {
+    "requestedQuality": "balanced",
+    "profile": "balanced",
+    "renderScale": 0.75,
+    "autoResolution": false,
+    "aa": "taa",
+    "ssr": 0,
+    "ao": 1,
+    "bloom": 0.05,
+    "motionBlur": 0,
+    "exposure": 0.55,
+    "clockMode": "manual",
+    "timeSpeed": 0,
+    "postScale": 0.75,
+    "shadows": true,
+    "refractionEnabled": true,
+    "refractionScale": 0.35,
+    "hazeEnabled": 1,
+    "hazeDensity": 1.6,
+    "shafts": 1
+  },
+  "cameraMotion": "fixed",
+  "simulationDt": 0,
+  "baseline": {
+    "frames": 4320,
+    "meanMs": 37.654907407407336,
+    "fps": 26.55696345712654,
+    "p95": 69.09999999997672,
+    "p99": 90.5,
+    "max": 666.5999999999767,
+    "over50": 758,
+    "over150": 21,
+    "cpu": 14.71115740742017,
+    "drawCounts": [
+      1639,
+      1639,
+      1639,
+      1639,
+      145,
+      145,
+      145,
+      145,
+      1098,
+      1098,
+      1098,
+      1098,
+      2452,
+      2452,
+      2452,
+      2452,
+      909,
+      909,
+      909,
+      909,
+      1564,
+      1564,
+      1564,
+      1564
+    ],
+    "animatedForest": [
+      {
+        "activeTrees": 0,
+        "sourceMeshesReplaced": 0,
+        "batchMeshes": 0,
+        "jointMatrices": 0,
+        "paletteBytes": 88704,
+        "uploadedBytes": 0,
+        "geometryBytes": 8888880
+      },
+      {
+        "activeTrees": 0,
+        "sourceMeshesReplaced": 0,
+        "batchMeshes": 0,
+        "jointMatrices": 0,
+        "paletteBytes": 88704,
+        "uploadedBytes": 0,
+        "geometryBytes": 8888880
+      },
+      {
+        "activeTrees": 0,
+        "sourceMeshesReplaced": 0,
+        "batchMeshes": 0,
+        "jointMatrices": 0,
+        "paletteBytes": 88704,
+        "uploadedBytes": 0,
+        "geometryBytes": 8888880
+      },
+      {
+        "activeTrees": 0,
+        "sourceMeshesReplaced": 0,
+        "batchMeshes": 0,
+        "jointMatrices": 0,
+        "paletteBytes": 88704,
+        "uploadedBytes": 0,
+        "geometryBytes": 8888880
+      },
+      {
+        "activeTrees": 0,
+        "sourceMeshesReplaced": 0,
+        "batchMeshes": 0,
+        "jointMatrices": 0,
+        "paletteBytes": 88704,
+        "uploadedBytes": 0,
+        "geometryBytes": 8888880
+      },
+      {
+        "activeTrees": 0,
+        "sourceMeshesReplaced": 0,
+        "batchMeshes": 0,
+        "jointMatrices": 0,
+        "paletteBytes": 88704,
+        "uploadedBytes": 0,
+        "geometryBytes": 8888880
+      },
+      {
+        "activeTrees": 0,
+        "sourceMeshesReplaced": 0,
+        "batchMeshes": 0,
+        "jointMatrices": 0,
+        "paletteBytes": 88704,
+        "uploadedBytes": 0,
+        "geometryBytes": 8888880
+      },
+      {
+        "activeTrees": 0,
+        "sourceMeshesReplaced": 0,
+        "batchMeshes": 0,
+        "jointMatrices": 0,
+        "paletteBytes": 88704,
+        "uploadedBytes": 0,
+        "geometryBytes": 8888880
+      },
+      {
+        "activeTrees": 0,
+        "sourceMeshesReplaced": 0,
+        "batchMeshes": 0,
+        "jointMatrices": 0,
+        "paletteBytes": 88704,
+        "uploadedBytes": 0,
+        "geometryBytes": 8888880
+      },
+      {
+        "activeTrees": 0,
+        "sourceMeshesReplaced": 0,
+        "batchMeshes": 0,
+        "jointMatrices": 0,
+        "paletteBytes": 88704,
+        "uploadedBytes": 0,
+        "geometryBytes": 8888880
+      },
+      {
+        "activeTrees": 0,
+        "sourceMeshesReplaced": 0,
+        "batchMeshes": 0,
+        "jointMatrices": 0,
+        "paletteBytes": 88704,
+        "uploadedBytes": 0,
+        "geometryBytes": 8888880
+      },
+      {
+        "activeTrees": 0,
+        "sourceMeshesReplaced": 0,
+        "batchMeshes": 0,
+        "jointMatrices": 0,
+        "paletteBytes": 88704,
+        "uploadedBytes": 0,
+        "geometryBytes": 8888880
+      },
+      {
+        "activeTrees": 0,
+        "sourceMeshesReplaced": 0,
+        "batchMeshes": 0,
+        "jointMatrices": 0,
+        "paletteBytes": 88704,
+        "uploadedBytes": 0,
+        "geometryBytes": 8888880
+      },
+      {
+        "activeTrees": 0,
+        "sourceMeshesReplaced": 0,
+        "batchMeshes": 0,
+        "jointMatrices": 0,
+        "paletteBytes": 88704,
+        "uploadedBytes": 0,
+        "geometryBytes": 8888880
+      },
+      {
+        "activeTrees": 0,
+        "sourceMeshesReplaced": 0,
+        "batchMeshes": 0,
+        "jointMatrices": 0,
+        "paletteBytes": 88704,
+        "uploadedBytes": 0,
+        "geometryBytes": 8888880
+      },
+      {
+        "activeTrees": 0,
+        "sourceMeshesReplaced": 0,
+        "batchMeshes": 0,
+        "jointMatrices": 0,
+        "paletteBytes": 88704,
+        "uploadedBytes": 0,
+        "geometryBytes": 8888880
+      },
+      {
+        "activeTrees": 0,
+        "sourceMeshesReplaced": 0,
+        "batchMeshes": 0,
+        "jointMatrices": 0,
+        "paletteBytes": 88704,
+        "uploadedBytes": 0,
+        "geometryBytes": 8888880
+      },
+      {
+        "activeTrees": 0,
+        "sourceMeshesReplaced": 0,
+        "batchMeshes": 0,
+        "jointMatrices": 0,
+        "paletteBytes": 88704,
+        "uploadedBytes": 0,
+        "geometryBytes": 8888880
+      },
+      {
+        "activeTrees": 0,
+        "sourceMeshesReplaced": 0,
+        "batchMeshes": 0,
+        "jointMatrices": 0,
+        "paletteBytes": 88704,
+        "uploadedBytes": 0,
+        "geometryBytes": 8888880
+      },
+      {
+        "activeTrees": 0,
+        "sourceMeshesReplaced": 0,
+        "batchMeshes": 0,
+        "jointMatrices": 0,
+        "paletteBytes": 88704,
+        "uploadedBytes": 0,
+        "geometryBytes": 8888880
+      },
+      {
+        "activeTrees": 0,
+        "sourceMeshesReplaced": 0,
+        "batchMeshes": 0,
+        "jointMatrices": 0,
+        "paletteBytes": 88704,
+        "uploadedBytes": 0,
+        "geometryBytes": 8888880
+      },
+      {
+        "activeTrees": 0,
+        "sourceMeshesReplaced": 0,
+        "batchMeshes": 0,
+        "jointMatrices": 0,
+        "paletteBytes": 88704,
+        "uploadedBytes": 0,
+        "geometryBytes": 8888880
+      },
+      {
+        "activeTrees": 0,
+        "sourceMeshesReplaced": 0,
+        "batchMeshes": 0,
+        "jointMatrices": 0,
+        "paletteBytes": 88704,
+        "uploadedBytes": 0,
+        "geometryBytes": 8888880
+      },
+      {
+        "activeTrees": 0,
+        "sourceMeshesReplaced": 0,
+        "batchMeshes": 0,
+        "jointMatrices": 0,
+        "paletteBytes": 88704,
+        "uploadedBytes": 0,
+        "geometryBytes": 8888880
+      }
+    ]
+  },
+  "candidate": {
+    "frames": 4320,
+    "meanMs": 36.33668981481476,
+    "fps": 27.520393439698847,
+    "p95": 62.59999999997672,
+    "p99": 90.39999999990687,
+    "max": 465.5999999999767,
+    "over50": 725,
+    "over150": 20,
+    "cpu": 13.630648148078816,
+    "drawCounts": [
+      1639,
+      1639,
+      1639,
+      1639,
+      145,
+      145,
+      145,
+      145,
+      1098,
+      1098,
+      1098,
+      1098,
+      1236,
+      1236,
+      1236,
+      1236,
+      909,
+      909,
+      909,
+      909,
+      1564,
+      1564,
+      1564,
+      1564
+    ],
+    "animatedForest": [
+      {
+        "activeTrees": 0,
+        "sourceMeshesReplaced": 0,
+        "batchMeshes": 0,
+        "jointMatrices": 0,
+        "paletteBytes": 88704,
+        "uploadedBytes": 0,
+        "geometryBytes": 8888880
+      },
+      {
+        "activeTrees": 0,
+        "sourceMeshesReplaced": 0,
+        "batchMeshes": 0,
+        "jointMatrices": 0,
+        "paletteBytes": 88704,
+        "uploadedBytes": 0,
+        "geometryBytes": 8888880
+      },
+      {
+        "activeTrees": 0,
+        "sourceMeshesReplaced": 0,
+        "batchMeshes": 0,
+        "jointMatrices": 0,
+        "paletteBytes": 88704,
+        "uploadedBytes": 0,
+        "geometryBytes": 8888880
+      },
+      {
+        "activeTrees": 0,
+        "sourceMeshesReplaced": 0,
+        "batchMeshes": 0,
+        "jointMatrices": 0,
+        "paletteBytes": 88704,
+        "uploadedBytes": 0,
+        "geometryBytes": 8888880
+      },
+      {
+        "activeTrees": 0,
+        "sourceMeshesReplaced": 0,
+        "batchMeshes": 0,
+        "jointMatrices": 0,
+        "paletteBytes": 88704,
+        "uploadedBytes": 0,
+        "geometryBytes": 8888880
+      },
+      {
+        "activeTrees": 0,
+        "sourceMeshesReplaced": 0,
+        "batchMeshes": 0,
+        "jointMatrices": 0,
+        "paletteBytes": 88704,
+        "uploadedBytes": 0,
+        "geometryBytes": 8888880
+      },
+      {
+        "activeTrees": 0,
+        "sourceMeshesReplaced": 0,
+        "batchMeshes": 0,
+        "jointMatrices": 0,
+        "paletteBytes": 88704,
+        "uploadedBytes": 0,
+        "geometryBytes": 8888880
+      },
+      {
+        "activeTrees": 0,
+        "sourceMeshesReplaced": 0,
+        "batchMeshes": 0,
+        "jointMatrices": 0,
+        "paletteBytes": 88704,
+        "uploadedBytes": 0,
+        "geometryBytes": 8888880
+      },
+      {
+        "activeTrees": 0,
+        "sourceMeshesReplaced": 0,
+        "batchMeshes": 0,
+        "jointMatrices": 0,
+        "paletteBytes": 88704,
+        "uploadedBytes": 0,
+        "geometryBytes": 8888880
+      },
+      {
+        "activeTrees": 0,
+        "sourceMeshesReplaced": 0,
+        "batchMeshes": 0,
+        "jointMatrices": 0,
+        "paletteBytes": 88704,
+        "uploadedBytes": 0,
+        "geometryBytes": 8888880
+      },
+      {
+        "activeTrees": 0,
+        "sourceMeshesReplaced": 0,
+        "batchMeshes": 0,
+        "jointMatrices": 0,
+        "paletteBytes": 88704,
+        "uploadedBytes": 0,
+        "geometryBytes": 8888880
+      },
+      {
+        "activeTrees": 0,
+        "sourceMeshesReplaced": 0,
+        "batchMeshes": 0,
+        "jointMatrices": 0,
+        "paletteBytes": 88704,
+        "uploadedBytes": 0,
+        "geometryBytes": 8888880
+      },
+      {
+        "activeTrees": 77,
+        "sourceMeshesReplaced": 1463,
+        "batchMeshes": 154,
+        "jointMatrices": 693,
+        "paletteBytes": 88704,
+        "uploadedBytes": 88704,
+        "geometryBytes": 8888880
+      },
+      {
+        "activeTrees": 77,
+        "sourceMeshesReplaced": 1463,
+        "batchMeshes": 154,
+        "jointMatrices": 693,
+        "paletteBytes": 88704,
+        "uploadedBytes": 88704,
+        "geometryBytes": 8888880
+      },
+      {
+        "activeTrees": 77,
+        "sourceMeshesReplaced": 1463,
+        "batchMeshes": 154,
+        "jointMatrices": 693,
+        "paletteBytes": 88704,
+        "uploadedBytes": 88704,
+        "geometryBytes": 8888880
+      },
+      {
+        "activeTrees": 77,
+        "sourceMeshesReplaced": 1463,
+        "batchMeshes": 154,
+        "jointMatrices": 693,
+        "paletteBytes": 88704,
+        "uploadedBytes": 88704,
+        "geometryBytes": 8888880
+      },
+      {
+        "activeTrees": 0,
+        "sourceMeshesReplaced": 0,
+        "batchMeshes": 0,
+        "jointMatrices": 0,
+        "paletteBytes": 88704,
+        "uploadedBytes": 0,
+        "geometryBytes": 8888880
+      },
+      {
+        "activeTrees": 0,
+        "sourceMeshesReplaced": 0,
+        "batchMeshes": 0,
+        "jointMatrices": 0,
+        "paletteBytes": 88704,
+        "uploadedBytes": 0,
+        "geometryBytes": 8888880
+      },
+      {
+        "activeTrees": 0,
+        "sourceMeshesReplaced": 0,
+        "batchMeshes": 0,
+        "jointMatrices": 0,
+        "paletteBytes": 88704,
+        "uploadedBytes": 0,
+        "geometryBytes": 8888880
+      },
+      {
+        "activeTrees": 0,
+        "sourceMeshesReplaced": 0,
+        "batchMeshes": 0,
+        "jointMatrices": 0,
+        "paletteBytes": 88704,
+        "uploadedBytes": 0,
+        "geometryBytes": 8888880
+      },
+      {
+        "activeTrees": 0,
+        "sourceMeshesReplaced": 0,
+        "batchMeshes": 0,
+        "jointMatrices": 0,
+        "paletteBytes": 88704,
+        "uploadedBytes": 0,
+        "geometryBytes": 8888880
+      },
+      {
+        "activeTrees": 0,
+        "sourceMeshesReplaced": 0,
+        "batchMeshes": 0,
+        "jointMatrices": 0,
+        "paletteBytes": 88704,
+        "uploadedBytes": 0,
+        "geometryBytes": 8888880
+      },
+      {
+        "activeTrees": 0,
+        "sourceMeshesReplaced": 0,
+        "batchMeshes": 0,
+        "jointMatrices": 0,
+        "paletteBytes": 88704,
+        "uploadedBytes": 0,
+        "geometryBytes": 8888880
+      },
+      {
+        "activeTrees": 0,
+        "sourceMeshesReplaced": 0,
+        "batchMeshes": 0,
+        "jointMatrices": 0,
+        "paletteBytes": 88704,
+        "uploadedBytes": 0,
+        "geometryBytes": 8888880
+      }
+    ]
+  },
+  "gainPercent": 3.627786678728029,
+  "groups": [
+    {
+      "view": "beach",
+      "variant": "combined",
+      "baseline": {
+        "frames": 720,
+        "meanMs": 37.24027777777782,
+        "fps": 26.85264610450152,
+        "p95": 69.29999999998836,
+        "p99": 83.40000000002328,
+        "max": 104.20000000001164,
+        "over50": 138,
+        "over150": 0,
+        "cpu": 14.135416666625275,
+        "drawCounts": [
+          1639,
+          1639,
+          1639,
+          1639
+        ],
+        "animatedForest": [
+          {
+            "activeTrees": 0,
+            "sourceMeshesReplaced": 0,
+            "batchMeshes": 0,
+            "jointMatrices": 0,
+            "paletteBytes": 88704,
+            "uploadedBytes": 0,
+            "geometryBytes": 8888880
+          },
+          {
+            "activeTrees": 0,
+            "sourceMeshesReplaced": 0,
+            "batchMeshes": 0,
+            "jointMatrices": 0,
+            "paletteBytes": 88704,
+            "uploadedBytes": 0,
+            "geometryBytes": 8888880
+          },
+          {
+            "activeTrees": 0,
+            "sourceMeshesReplaced": 0,
+            "batchMeshes": 0,
+            "jointMatrices": 0,
+            "paletteBytes": 88704,
+            "uploadedBytes": 0,
+            "geometryBytes": 8888880
+          },
+          {
+            "activeTrees": 0,
+            "sourceMeshesReplaced": 0,
+            "batchMeshes": 0,
+            "jointMatrices": 0,
+            "paletteBytes": 88704,
+            "uploadedBytes": 0,
+            "geometryBytes": 8888880
+          }
+        ]
+      },
+      "candidate": {
+        "frames": 720,
+        "meanMs": 39.84444444444444,
+        "fps": 25.09760178471835,
+        "p95": 69.40000000002328,
+        "p99": 97.5,
+        "max": 388.6000000000349,
+        "over50": 164,
+        "over150": 5,
+        "cpu": 14.900416666600439,
+        "drawCounts": [
+          1639,
+          1639,
+          1639,
+          1639
+        ],
+        "animatedForest": [
+          {
+            "activeTrees": 0,
+            "sourceMeshesReplaced": 0,
+            "batchMeshes": 0,
+            "jointMatrices": 0,
+            "paletteBytes": 88704,
+            "uploadedBytes": 0,
+            "geometryBytes": 8888880
+          },
+          {
+            "activeTrees": 0,
+            "sourceMeshesReplaced": 0,
+            "batchMeshes": 0,
+            "jointMatrices": 0,
+            "paletteBytes": 88704,
+            "uploadedBytes": 0,
+            "geometryBytes": 8888880
+          },
+          {
+            "activeTrees": 0,
+            "sourceMeshesReplaced": 0,
+            "batchMeshes": 0,
+            "jointMatrices": 0,
+            "paletteBytes": 88704,
+            "uploadedBytes": 0,
+            "geometryBytes": 8888880
+          },
+          {
+            "activeTrees": 0,
+            "sourceMeshesReplaced": 0,
+            "batchMeshes": 0,
+            "jointMatrices": 0,
+            "paletteBytes": 88704,
+            "uploadedBytes": 0,
+            "geometryBytes": 8888880
+          }
+        ]
+      },
+      "gainPercent": -6.53583379810364,
+      "cycles": [
+        {
+          "cycle": 1,
+          "baseline": 27.48637134087683,
+          "candidate": 25.90654931959331,
+          "gainPercent": -5.74765581709965
+        },
+        {
+          "cycle": 2,
+          "baseline": 26.247484616057562,
+          "candidate": 24.337644251245575,
+          "gainPercent": -7.276279585448709
+        }
+      ]
+    },
+    {
+      "view": "village",
+      "variant": "combined",
+      "baseline": {
+        "frames": 720,
+        "meanMs": 37.60638888888886,
+        "fps": 26.591226372587425,
+        "p95": 62.40000000002328,
+        "p99": 340.20000000001164,
+        "max": 542,
+        "over50": 87,
+        "over150": 11,
+        "cpu": 9.253055555539,
+        "drawCounts": [
+          145,
+          145,
+          145,
+          145
+        ],
+        "animatedForest": [
+          {
+            "activeTrees": 0,
+            "sourceMeshesReplaced": 0,
+            "batchMeshes": 0,
+            "jointMatrices": 0,
+            "paletteBytes": 88704,
+            "uploadedBytes": 0,
+            "geometryBytes": 8888880
+          },
+          {
+            "activeTrees": 0,
+            "sourceMeshesReplaced": 0,
+            "batchMeshes": 0,
+            "jointMatrices": 0,
+            "paletteBytes": 88704,
+            "uploadedBytes": 0,
+            "geometryBytes": 8888880
+          },
+          {
+            "activeTrees": 0,
+            "sourceMeshesReplaced": 0,
+            "batchMeshes": 0,
+            "jointMatrices": 0,
+            "paletteBytes": 88704,
+            "uploadedBytes": 0,
+            "geometryBytes": 8888880
+          },
+          {
+            "activeTrees": 0,
+            "sourceMeshesReplaced": 0,
+            "batchMeshes": 0,
+            "jointMatrices": 0,
+            "paletteBytes": 88704,
+            "uploadedBytes": 0,
+            "geometryBytes": 8888880
+          }
+        ]
+      },
+      "candidate": {
+        "frames": 720,
+        "meanMs": 35.349444444444494,
+        "fps": 28.28898772572251,
+        "p95": 56.100000000034925,
+        "p99": 118.90000000002328,
+        "max": 465.0999999999767,
+        "over50": 98,
+        "over150": 8,
+        "cpu": 8.940555555621783,
+        "drawCounts": [
+          145,
+          145,
+          145,
+          145
+        ],
+        "animatedForest": [
+          {
+            "activeTrees": 0,
+            "sourceMeshesReplaced": 0,
+            "batchMeshes": 0,
+            "jointMatrices": 0,
+            "paletteBytes": 88704,
+            "uploadedBytes": 0,
+            "geometryBytes": 8888880
+          },
+          {
+            "activeTrees": 0,
+            "sourceMeshesReplaced": 0,
+            "batchMeshes": 0,
+            "jointMatrices": 0,
+            "paletteBytes": 88704,
+            "uploadedBytes": 0,
+            "geometryBytes": 8888880
+          },
+          {
+            "activeTrees": 0,
+            "sourceMeshesReplaced": 0,
+            "batchMeshes": 0,
+            "jointMatrices": 0,
+            "paletteBytes": 88704,
+            "uploadedBytes": 0,
+            "geometryBytes": 8888880
+          },
+          {
+            "activeTrees": 0,
+            "sourceMeshesReplaced": 0,
+            "batchMeshes": 0,
+            "jointMatrices": 0,
+            "paletteBytes": 88704,
+            "uploadedBytes": 0,
+            "geometryBytes": 8888880
+          }
+        ]
+      },
+      "gainPercent": 6.384667368652419,
+      "cycles": [
+        {
+          "cycle": 1,
+          "baseline": 26.037146328762432,
+          "candidate": 27.825656801440726,
+          "gainPercent": 6.869072555399747
+        },
+        {
+          "cycle": 2,
+          "baseline": 27.169401216585385,
+          "candidate": 28.768009972910072,
+          "gainPercent": 5.88385715084816
+        }
+      ]
+    },
+    {
+      "view": "underwater",
+      "variant": "combined",
+      "baseline": {
+        "frames": 720,
+        "meanMs": 31.65569444444441,
+        "fps": 31.58989298923753,
+        "p95": 55.600000000034925,
+        "p99": 69.40000000002328,
+        "max": 76.5,
+        "over50": 80,
+        "over150": 0,
+        "cpu": 10.760416666801191,
+        "drawCounts": [
+          1098,
+          1098,
+          1098,
+          1098
+        ],
+        "animatedForest": [
+          {
+            "activeTrees": 0,
+            "sourceMeshesReplaced": 0,
+            "batchMeshes": 0,
+            "jointMatrices": 0,
+            "paletteBytes": 88704,
+            "uploadedBytes": 0,
+            "geometryBytes": 8888880
+          },
+          {
+            "activeTrees": 0,
+            "sourceMeshesReplaced": 0,
+            "batchMeshes": 0,
+            "jointMatrices": 0,
+            "paletteBytes": 88704,
+            "uploadedBytes": 0,
+            "geometryBytes": 8888880
+          },
+          {
+            "activeTrees": 0,
+            "sourceMeshesReplaced": 0,
+            "batchMeshes": 0,
+            "jointMatrices": 0,
+            "paletteBytes": 88704,
+            "uploadedBytes": 0,
+            "geometryBytes": 8888880
+          },
+          {
+            "activeTrees": 0,
+            "sourceMeshesReplaced": 0,
+            "batchMeshes": 0,
+            "jointMatrices": 0,
+            "paletteBytes": 88704,
+            "uploadedBytes": 0,
+            "geometryBytes": 8888880
+          }
+        ]
+      },
+      "candidate": {
+        "frames": 720,
+        "meanMs": 33.33361111111097,
+        "fps": 29.99975000208345,
+        "p95": 55.699999999953434,
+        "p99": 76.29999999998836,
+        "max": 465.5999999999767,
+        "over50": 87,
+        "over150": 4,
+        "cpu": 11.224861110984865,
+        "drawCounts": [
+          1098,
+          1098,
+          1098,
+          1098
+        ],
+        "animatedForest": [
+          {
+            "activeTrees": 0,
+            "sourceMeshesReplaced": 0,
+            "batchMeshes": 0,
+            "jointMatrices": 0,
+            "paletteBytes": 88704,
+            "uploadedBytes": 0,
+            "geometryBytes": 8888880
+          },
+          {
+            "activeTrees": 0,
+            "sourceMeshesReplaced": 0,
+            "batchMeshes": 0,
+            "jointMatrices": 0,
+            "paletteBytes": 88704,
+            "uploadedBytes": 0,
+            "geometryBytes": 8888880
+          },
+          {
+            "activeTrees": 0,
+            "sourceMeshesReplaced": 0,
+            "batchMeshes": 0,
+            "jointMatrices": 0,
+            "paletteBytes": 88704,
+            "uploadedBytes": 0,
+            "geometryBytes": 8888880
+          },
+          {
+            "activeTrees": 0,
+            "sourceMeshesReplaced": 0,
+            "batchMeshes": 0,
+            "jointMatrices": 0,
+            "paletteBytes": 88704,
+            "uploadedBytes": 0,
+            "geometryBytes": 8888880
+          }
+        ]
+      },
+      "gainPercent": -5.033708052432573,
+      "cycles": [
+        {
+          "cycle": 1,
+          "baseline": 31.609447712705244,
+          "candidate": 29.271148404722577,
+          "gainPercent": -7.397469671837387
+        },
+        {
+          "cycle": 2,
+          "baseline": 31.570362445300027,
+          "candidate": 30.765549421436845,
+          "gainPercent": -2.549267609003958
+        }
+      ]
+    },
+    {
+      "view": "islandFourVilla",
+      "variant": "combined",
+      "baseline": {
+        "frames": 720,
+        "meanMs": 38.72541666666665,
+        "fps": 25.82283384082376,
+        "p95": 69.39999999996508,
+        "p99": 90.19999999995343,
+        "max": 666.5999999999767,
+        "over50": 131,
+        "over150": 2,
+        "cpu": 22.116944444334756,
+        "drawCounts": [
+          2452,
+          2452,
+          2452,
+          2452
+        ],
+        "animatedForest": [
+          {
+            "activeTrees": 0,
+            "sourceMeshesReplaced": 0,
+            "batchMeshes": 0,
+            "jointMatrices": 0,
+            "paletteBytes": 88704,
+            "uploadedBytes": 0,
+            "geometryBytes": 8888880
+          },
+          {
+            "activeTrees": 0,
+            "sourceMeshesReplaced": 0,
+            "batchMeshes": 0,
+            "jointMatrices": 0,
+            "paletteBytes": 88704,
+            "uploadedBytes": 0,
+            "geometryBytes": 8888880
+          },
+          {
+            "activeTrees": 0,
+            "sourceMeshesReplaced": 0,
+            "batchMeshes": 0,
+            "jointMatrices": 0,
+            "paletteBytes": 88704,
+            "uploadedBytes": 0,
+            "geometryBytes": 8888880
+          },
+          {
+            "activeTrees": 0,
+            "sourceMeshesReplaced": 0,
+            "batchMeshes": 0,
+            "jointMatrices": 0,
+            "paletteBytes": 88704,
+            "uploadedBytes": 0,
+            "geometryBytes": 8888880
+          }
+        ]
+      },
+      "candidate": {
+        "frames": 720,
+        "meanMs": 33.45930555555565,
+        "fps": 29.887051849883893,
+        "p95": 62.40000000002328,
+        "p99": 76.40000000002328,
+        "max": 97.20000000001164,
+        "over50": 89,
+        "over150": 0,
+        "cpu": 15.337361110881385,
+        "drawCounts": [
+          1236,
+          1236,
+          1236,
+          1236
+        ],
+        "animatedForest": [
+          {
+            "activeTrees": 77,
+            "sourceMeshesReplaced": 1463,
+            "batchMeshes": 154,
+            "jointMatrices": 693,
+            "paletteBytes": 88704,
+            "uploadedBytes": 88704,
+            "geometryBytes": 8888880
+          },
+          {
+            "activeTrees": 77,
+            "sourceMeshesReplaced": 1463,
+            "batchMeshes": 154,
+            "jointMatrices": 693,
+            "paletteBytes": 88704,
+            "uploadedBytes": 88704,
+            "geometryBytes": 8888880
+          },
+          {
+            "activeTrees": 77,
+            "sourceMeshesReplaced": 1463,
+            "batchMeshes": 154,
+            "jointMatrices": 693,
+            "paletteBytes": 88704,
+            "uploadedBytes": 88704,
+            "geometryBytes": 8888880
+          },
+          {
+            "activeTrees": 77,
+            "sourceMeshesReplaced": 1463,
+            "batchMeshes": 154,
+            "jointMatrices": 693,
+            "paletteBytes": 88704,
+            "uploadedBytes": 88704,
+            "geometryBytes": 8888880
+          }
+        ]
+      },
+      "gainPercent": 15.738853582502399,
+      "cycles": [
+        {
+          "cycle": 1,
+          "baseline": 25.971402600026035,
+          "candidate": 31.134596590761486,
+          "gainPercent": 19.880304773105607
+        },
+        {
+          "cycle": 2,
+          "baseline": 25.675955181193746,
+          "candidate": 28.735632183908045,
+          "gainPercent": 11.916507024265833
+        }
+      ]
+    },
+    {
+      "view": "portJunction-warehouse",
+      "variant": "combined",
+      "baseline": {
+        "frames": 720,
+        "meanMs": 39.32361111111095,
+        "fps": 25.430014480980574,
+        "p95": 69.5,
+        "p99": 97.19999999995343,
+        "max": 429.80000000004657,
+        "over50": 139,
+        "over150": 5,
+        "cpu": 15.067361111131808,
+        "drawCounts": [
+          909,
+          909,
+          909,
+          909
+        ],
+        "animatedForest": [
+          {
+            "activeTrees": 0,
+            "sourceMeshesReplaced": 0,
+            "batchMeshes": 0,
+            "jointMatrices": 0,
+            "paletteBytes": 88704,
+            "uploadedBytes": 0,
+            "geometryBytes": 8888880
+          },
+          {
+            "activeTrees": 0,
+            "sourceMeshesReplaced": 0,
+            "batchMeshes": 0,
+            "jointMatrices": 0,
+            "paletteBytes": 88704,
+            "uploadedBytes": 0,
+            "geometryBytes": 8888880
+          },
+          {
+            "activeTrees": 0,
+            "sourceMeshesReplaced": 0,
+            "batchMeshes": 0,
+            "jointMatrices": 0,
+            "paletteBytes": 88704,
+            "uploadedBytes": 0,
+            "geometryBytes": 8888880
+          },
+          {
+            "activeTrees": 0,
+            "sourceMeshesReplaced": 0,
+            "batchMeshes": 0,
+            "jointMatrices": 0,
+            "paletteBytes": 88704,
+            "uploadedBytes": 0,
+            "geometryBytes": 8888880
+          }
+        ]
+      },
+      "candidate": {
+        "frames": 720,
+        "meanMs": 36.78763888888853,
+        "fps": 27.183043821332156,
+        "p95": 62.60000000009313,
+        "p99": 90.40000000002328,
+        "max": 360.4000000000233,
+        "over50": 126,
+        "over150": 3,
+        "cpu": 14.473611111017979,
+        "drawCounts": [
+          909,
+          909,
+          909,
+          909
+        ],
+        "animatedForest": [
+          {
+            "activeTrees": 0,
+            "sourceMeshesReplaced": 0,
+            "batchMeshes": 0,
+            "jointMatrices": 0,
+            "paletteBytes": 88704,
+            "uploadedBytes": 0,
+            "geometryBytes": 8888880
+          },
+          {
+            "activeTrees": 0,
+            "sourceMeshesReplaced": 0,
+            "batchMeshes": 0,
+            "jointMatrices": 0,
+            "paletteBytes": 88704,
+            "uploadedBytes": 0,
+            "geometryBytes": 8888880
+          },
+          {
+            "activeTrees": 0,
+            "sourceMeshesReplaced": 0,
+            "batchMeshes": 0,
+            "jointMatrices": 0,
+            "paletteBytes": 88704,
+            "uploadedBytes": 0,
+            "geometryBytes": 8888880
+          },
+          {
+            "activeTrees": 0,
+            "sourceMeshesReplaced": 0,
+            "batchMeshes": 0,
+            "jointMatrices": 0,
+            "paletteBytes": 88704,
+            "uploadedBytes": 0,
+            "geometryBytes": 8888880
+          }
+        ]
+      },
+      "gainPercent": 6.893544404635299,
+      "cycles": [
+        {
+          "cycle": 1,
+          "baseline": 25.82904045114737,
+          "candidate": 27.825011593755082,
+          "gainPercent": 7.727624053177107
+        },
+        {
+          "cycle": 2,
+          "baseline": 25.043129834715423,
+          "candidate": 26.570030481729688,
+          "gainPercent": 6.097083939155379
+        }
+      ]
+    },
+    {
+      "view": "portCargoWide",
+      "variant": "combined",
+      "baseline": {
+        "frames": 720,
+        "meanMs": 41.37805555555533,
+        "fps": 24.167399520680043,
+        "p95": 69.5,
+        "p99": 90.5,
+        "max": 389,
+        "over50": 183,
+        "over150": 3,
+        "cpu": 16.933750000088992,
+        "drawCounts": [
+          1564,
+          1564,
+          1564,
+          1564
+        ],
+        "animatedForest": [
+          {
+            "activeTrees": 0,
+            "sourceMeshesReplaced": 0,
+            "batchMeshes": 0,
+            "jointMatrices": 0,
+            "paletteBytes": 88704,
+            "uploadedBytes": 0,
+            "geometryBytes": 8888880
+          },
+          {
+            "activeTrees": 0,
+            "sourceMeshesReplaced": 0,
+            "batchMeshes": 0,
+            "jointMatrices": 0,
+            "paletteBytes": 88704,
+            "uploadedBytes": 0,
+            "geometryBytes": 8888880
+          },
+          {
+            "activeTrees": 0,
+            "sourceMeshesReplaced": 0,
+            "batchMeshes": 0,
+            "jointMatrices": 0,
+            "paletteBytes": 88704,
+            "uploadedBytes": 0,
+            "geometryBytes": 8888880
+          },
+          {
+            "activeTrees": 0,
+            "sourceMeshesReplaced": 0,
+            "batchMeshes": 0,
+            "jointMatrices": 0,
+            "paletteBytes": 88704,
+            "uploadedBytes": 0,
+            "geometryBytes": 8888880
+          }
+        ]
+      },
+      "candidate": {
+        "frames": 720,
+        "meanMs": 39.245694444444474,
+        "fps": 25.48050210744984,
+        "p95": 69.5,
+        "p99": 97.09999999997672,
+        "max": 145.79999999993015,
+        "over50": 161,
+        "over150": 0,
+        "cpu": 16.907083333366447,
+        "drawCounts": [
+          1564,
+          1564,
+          1564,
+          1564
+        ],
+        "animatedForest": [
+          {
+            "activeTrees": 0,
+            "sourceMeshesReplaced": 0,
+            "batchMeshes": 0,
+            "jointMatrices": 0,
+            "paletteBytes": 88704,
+            "uploadedBytes": 0,
+            "geometryBytes": 8888880
+          },
+          {
+            "activeTrees": 0,
+            "sourceMeshesReplaced": 0,
+            "batchMeshes": 0,
+            "jointMatrices": 0,
+            "paletteBytes": 88704,
+            "uploadedBytes": 0,
+            "geometryBytes": 8888880
+          },
+          {
+            "activeTrees": 0,
+            "sourceMeshesReplaced": 0,
+            "batchMeshes": 0,
+            "jointMatrices": 0,
+            "paletteBytes": 88704,
+            "uploadedBytes": 0,
+            "geometryBytes": 8888880
+          },
+          {
+            "activeTrees": 0,
+            "sourceMeshesReplaced": 0,
+            "batchMeshes": 0,
+            "jointMatrices": 0,
+            "paletteBytes": 88704,
+            "uploadedBytes": 0,
+            "geometryBytes": 8888880
+          }
+        ]
+      },
+      "gainPercent": 5.43336317855041,
+      "cycles": [
+        {
+          "cycle": 1,
+          "baseline": 23.89993892237842,
+          "candidate": 27.84136608302909,
+          "gainPercent": 16.491369176513505
+        },
+        {
+          "cycle": 2,
+          "baseline": 24.44091409018713,
+          "candidate": 23.488728672560597,
+          "gainPercent": -3.8958666362189254
+        }
+      ]
+    }
+  ]
+}

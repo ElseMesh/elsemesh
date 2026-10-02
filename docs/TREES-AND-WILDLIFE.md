@@ -25,10 +25,11 @@ Wildlife batches stop drawing beyond 110 m (monkeys) / 90 m (mangoes). Their sup
 
 `npm test` includes patrol position/heading continuity, finite instance matrices, buffer capacity, wind-parent attachment, distant culling and banana geometry checks. Browser review checks actual shader compilation and visible fruit, bark, leaf silhouettes and monkey animation. PC mobile-profile tests are not physical phone qualification.
 
-On MSI Intel Arc / Edge, a fixed 1280×720 wildlife close-up (30 warm-up, 90 measured frames) averaged **26.52 ms GPU / 35.50 ms wall** on Balanced and **20.24 ms GPU / 27.04 ms wall** on the Mobile profile. These are same-PC profile measurements, not a before/after speedup claim or a physical mobile result. Raw data: [wildlife benchmark](performance/wildlife-2026-09-27.json). Browser review reported no WebGPU errors.
+In historical desktop Intel Arc / Edge tests, a fixed 1280×720 wildlife close-up (30 warm-up, 90 measured frames) averaged **26.52 ms GPU / 35.50 ms wall** on Balanced and **20.24 ms GPU / 27.04 ms wall** on the Mobile profile. These are same-PC profile measurements, not a before/after speedup claim or a physical mobile result. The underlying private benchmark record is not included here. The historical browser review reported no WebGPU errors.
 
-The silent 49-second, 1280×720, 30 fps review is saved outside Git at `D:/Downloads/Burning-Horizons-Trees-Monkeys-Bananas.mp4`; stills and source WebM are in `D:/Downloads/Burning-Horizons-Wildlife/`.
-Those benchmark figures and the original review predate the curved-branch/jumping correction. Its replacement inspection video is `D:/Downloads/Burning-Horizons-Natural-Branches.mp4`.
+Historical review videos, stills and source recordings remain outside this
+repository. The benchmark figures and original review predate the curved-branch
+and jumping correction and do not qualify the current public snapshot.
 
 ## Evidence capture
 
@@ -42,6 +43,6 @@ await review.wildlifeShot('bananas');
 await review.wildlifeShot('bark');
 ```
 
-This records a 50-second silent in-engine inspection with staged camera cuts. It writes only to `D:/Downloads/Burning-Horizons-Wildlife` through a loopback-only receiver. Close the receiver after capture. External video conversion is optional.
+This records a 50-second silent in-engine inspection with staged camera cuts. The loopback-only receiver saves the capture in its configured local output directory; review that destination before starting it. Close the receiver after capture. External video conversion is optional.
 
 Texture provenance is recorded in [vegetation credits](../public/textures/vegetation/CREDITS.md).

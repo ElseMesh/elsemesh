@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import { readFile, stat } from 'node:fs/promises';
+import { readFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
 import test from 'node:test';
 import { Interpreter } from '../src/vendor/basic-m6502/interpreter.js';
 import { buildRecipe } from '../src/world/PortalInteriorRecipe.js';
@@ -40,7 +41,7 @@ test('C64 interaction uses a modal terminal and Building 001 sign remains', asyn
   assert.match(portal,/Use Commodore 64/); assert.match(portal,/WAREHOUSE LOFT/);
 });
 
-test('Esmie is an internal Alba voice with no popup and remembers Edinburgh landmarks', async () => {
+test('Esmie uses bundled Alba audio with no popup and remembers Edinburgh landmarks', async () => {
   const ghost=await readFile(new URL('../src/world/WarehouseGhost.js',import.meta.url),'utf8');
   const portal=await readFile(new URL('../src/world/PortalInterior.js',import.meta.url),'utf8');
   const app=await readFile(new URL('../src/App.js',import.meta.url),'utf8');
@@ -54,7 +55,15 @@ test('Esmie is an internal Alba voice with no popup and remembers Edinburgh land
   for(const landmark of ['Royal Mile','Calton Hill','Edinburgh Castle','Water of Leith','Greyfriars','Arthur\'s Seat','Waverley Station']) assert.match(ghost,new RegExp(landmark.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')));
   assert.match(ghost,/ship/); assert.match(ghost,/treasure/); assert.match(ghost,/Esmie, from Edinburgh/);
   const manifest=JSON.parse(await readFile(new URL('../public/audio/esmie/manifest.json',import.meta.url),'utf8'));
-  assert.equal(manifest.voice,'Alba'); assert.equal(manifest.serviceHost,'Sentinel'); assert.equal(manifest.records.length,8);
+  assert.equal(manifest.schema,'elsemesh.esmie-audio/v1');
+  assert.equal(manifest.voice,'Alba'); assert.equal(manifest.records.length,8);
+  assert.equal(Object.hasOwn(manifest,'serviceHost'),false,'public audio metadata excludes private service infrastructure');
   assert.ok(manifest.records[0].durationSeconds>=28&&manifest.records[0].durationSeconds<=32);
-  for(const record of manifest.records){const file=new URL(`../public/audio/esmie/${record.file}`,import.meta.url);assert.ok((await stat(file)).size>100000);assert.equal((await readFile(file)).subarray(0,4).toString(),'RIFF');}
+  for(const record of manifest.records){
+    const bytes=await readFile(new URL(`../public/audio/esmie/${record.file}`,import.meta.url));
+    assert.ok(bytes.length>100000);assert.equal(bytes.length,record.bytes);
+    assert.equal(bytes.subarray(0,4).toString(),'RIFF');assert.equal(bytes.subarray(8,12).toString(),'WAVE');
+    assert.equal(createHash('sha256').update(bytes).digest('hex'),record.sha256);
+    assert.equal(record.voiceLabel,'Alba');
+  }
 });

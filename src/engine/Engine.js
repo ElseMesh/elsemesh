@@ -4,6 +4,7 @@ import { Scene } from './scene/Scene.js';
 import { Timer } from './math/Timer.js';
 import { MeshRenderer } from './render/MeshRenderer.js';
 import { FrameUniforms } from './render/Frame.js';
+import { FrameTiming } from './FrameTiming.js';
 
 // Canvas, device, main camera / scene and the frame loop.
 export class Engine {
@@ -14,6 +15,8 @@ export class Engine {
 		this.renderScale = 1;
 		this.maxOutputPixels = Infinity; // Agent Control: cap full-resolution post buffers on smaller GPUs.
 		this.clock = new Timer();
+		this._frameTiming = new FrameTiming();
+		this.activeFrameTiming = null;
 		this.frame = 0;
 		this.onResize = [];
 
@@ -80,24 +83,59 @@ export class Engine {
 
 	start( update ) {
 
+		this.stop();
+		this._running = true;
+		this._frameTiming.invalidate();
+		this.clock.reset();
+		this._visibilityDocument = typeof document === 'undefined' ? null : document;
+		if ( this._visibilityDocument ) {
+
+			this.clock.connect( this._visibilityDocument );
+			this._visibilityHandler = () => this._frameTiming.invalidate();
+			this._visibilityDocument.addEventListener( 'visibilitychange', this._visibilityHandler );
+
+		}
 		const loop = ( t ) => {
 
+			if ( ! this._running || this._loop !== loop ) return;
 			this.clock.update( t );
-			let dt = this.clock.getDelta();
-			if ( dt > 0.1 ) dt = 0.1;
-			this.frame ++;
-			update( dt, this.clock.getElapsed() );
-			this._raf = requestAnimationFrame( loop );
+			const hidden = this._visibilityDocument?.hidden === true;
+			const timing = this._frameTiming.update( t, hidden );
+			if ( ! hidden ) {
+
+				const dt = timing.valid ? Math.max( 0, Math.min( this.clock.getDelta(), 0.1 ) ) : 0;
+				this.frame ++;
+				// Only expose this sample during the live callback. Manual benchmark
+				// frames must not accidentally reuse an old display interval.
+				this.activeFrameTiming = timing;
+				try { update( dt, this.clock.getElapsed(), timing ); }
+				finally { this.activeFrameTiming = null; }
+
+			}
+			if ( this._running && this._loop === loop ) this._raf = requestAnimationFrame( loop );
 
 		};
 
+		this._loop = loop;
 		this._raf = requestAnimationFrame( loop );
 
 	}
 
 	stop() {
 
-		cancelAnimationFrame( this._raf );
+		this._running = false;
+		this._loop = null;
+		if ( this._raf !== undefined ) cancelAnimationFrame( this._raf );
+		this._raf = undefined;
+		this.clock.disconnect();
+		if ( this._visibilityHandler ) {
+
+			this._visibilityDocument.removeEventListener( 'visibilitychange', this._visibilityHandler );
+			this._visibilityHandler = null;
+
+		}
+		this._visibilityDocument = null;
+		this._frameTiming.invalidate();
 
 	}
 

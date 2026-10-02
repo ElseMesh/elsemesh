@@ -18,9 +18,6 @@ export class OnlineRoomTransport {
 		this.ready = new Promise((resolve, reject) => { this.resolveReady = resolve; this.rejectReady = reject; });
 		const url = new URL('/ws', location.href);
 		url.protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-		url.searchParams.set('room', room);
-		url.searchParams.set('role', role);
-		if (role === 'loz') url.searchParams.set('hostKey', hostKey);
 		this.socket = new WebSocket(url);
 		this.socket.onmessage = ({ data }) => {
 			try {
@@ -53,7 +50,10 @@ export class OnlineRoomTransport {
 				}
 			} catch { /* Ignore malformed server data. */ }
 		};
-		this.socket.onopen = () => { this.status = 'Waiting for friend'; };
+		this.socket.onopen = () => {
+			this.socket.send(JSON.stringify({ type: 'join', room, role, ...(role === 'loz' ? { hostKey } : {}) }));
+			this.status = 'Waiting for friend';
+		};
 		this.socket.onclose = (event) => {
 			if (!this.role) this.rejectReady(new Error(event.code === 1008 ? 'Room full or role taken' : 'Room connection failed'));
 			this.connected = false;

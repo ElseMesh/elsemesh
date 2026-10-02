@@ -11,6 +11,5 @@ License: Creative Commons Attribution 4.0 International (CC BY 4.0):
 https://creativecommons.org/licenses/by/4.0/
 
 Modifications: removed the original mesh, textures, and unused animations;
-sampled and retargeted lower- and upper-body joint motion onto the Burning
-Horizons KIRI scan, then corrected the resulting foot position. The original
+sampled and retargeted lower- and upper-body joint motion onto the ElseMesh KIRI scan, then corrected the resulting foot position. The original
 download is archived separately on D: and was not modified.

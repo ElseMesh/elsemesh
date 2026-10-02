@@ -1,15 +1,15 @@
 import { randomUUID } from 'node:crypto';
 import { assetId, signObject, verifyObject } from './identity.mjs';
 
-export const PROTOCOL = 'burning-horizons';
-export const CAPABILITIES = Object.freeze(['bh.peer/1', 'bh.asset/1', 'bh.world-sector/1', 'bh.player-state/1', 'bh.authority/1']);
+export const PROTOCOL = 'elsemesh';
+export const CAPABILITIES = Object.freeze(['elsemesh.peer/1', 'elsemesh.asset/1', 'elsemesh.world-sector/1', 'elsemesh.player-state/1', 'elsemesh.authority/1']);
 export const MAX_MESSAGE_BYTES = 64 * 1024;
 export const MAX_ASSET_BYTES = 8 * 1024 * 1024;
 export const required = (peer, needed) => needed.every((capability) => peer.includes(capability));
 const id = (prefix, value) => typeof value === 'string' && new RegExp(`^${prefix}:[a-zA-Z0-9._-]{1,128}$`).test(value);
 
 export function validateEnvelope(message) {
-  if (!message || message.protocol !== PROTOCOL || !id('bh-node', message.from) || !id('bh-node', message.to)) throw new Error('Invalid envelope identity');
+  if (!message || message.protocol !== PROTOCOL || !id('elsemesh-node', message.from) || !id('elsemesh-node', message.to)) throw new Error('Invalid envelope identity');
   if (!['reliable', 'transient'].includes(message.channel) || !Number.isSafeInteger(message.sequence) || message.sequence < 0) throw new Error('Invalid envelope channel/sequence');
   if (typeof message.session !== 'string' || !/^[0-9a-f-]{36}$/.test(message.session)) throw new Error('Invalid session');
   if (Buffer.byteLength(JSON.stringify(message)) > MAX_MESSAGE_BYTES) throw new Error('Oversized message');
@@ -45,7 +45,7 @@ export class ReplayGuard {
 
 export function createHandoff(identity, fields) {
   const { playerId, worldId, sourceSector, targetSector, position, velocity, playerStateHash, inventoryHash, sequence, epoch } = fields;
-  if (![playerId, worldId, sourceSector, targetSector].every((v) => id('bh', v)) || ![playerStateHash, inventoryHash].every((v) => /^sha256:[0-9a-f]{64}$/.test(v))) throw new Error('Invalid handoff fields');
+  if (![playerId, worldId, sourceSector, targetSector].every((v) => id('elsemesh', v)) || ![playerStateHash, inventoryHash].every((v) => /^sha256:[0-9a-f]{64}$/.test(v))) throw new Error('Invalid handoff fields');
   if (![position, velocity].every((v) => Array.isArray(v) && v.length === 3 && v.every(Number.isFinite))) throw new Error('Invalid handoff vector');
   if (![sequence, epoch].every((v) => Number.isSafeInteger(v) && v >= 0)) throw new Error('Invalid handoff sequence');
   return signObject({ kind: 'sector-handoff', protocol: PROTOCOL, handoffId: randomUUID(), playerId, worldId, sourceSector, targetSector, position, velocity, playerStateHash, inventoryHash, sequence, epoch, timestamp: Date.now(), sourceAuthority: identity.nodeId }, identity);
@@ -61,7 +61,7 @@ export function acceptHandoff(handoff, { trustedIds, authority, replay, now = Da
 }
 
 export function createManifest(identity, { worldId, sectorId, assets, version = 1 }) {
-  if (!id('bh', worldId) || !id('bh', sectorId) || !Number.isSafeInteger(version) || version < 1) throw new Error('Invalid manifest');
+  if (!id('elsemesh', worldId) || !id('elsemesh', sectorId) || !Number.isSafeInteger(version) || version < 1) throw new Error('Invalid manifest');
   if (!Array.isArray(assets) || assets.length > 1000 || !assets.every((a) => /^sha256:[0-9a-f]{64}$/.test(a.hash) && typeof a.type === 'string' && a.type.length < 80)) throw new Error('Invalid assets');
   return signObject({ kind: 'sector-manifest', protocol: PROTOCOL, worldId, sectorId, version, assets, publisherId: identity.nodeId, createdAt: Date.now() }, identity);
 }

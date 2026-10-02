@@ -6,6 +6,7 @@ import { Texture, StorageBuffer } from '../gpu/Texture.js';
 import { generateMipmaps } from '../gpu/Mipmaps.js';
 import { Material } from './Material.js';
 import { decodeImage } from '../loaders/GLTF.js';
+import { SkinBounds } from './SkinBounds.js';
 
 // Skinned, animated models (glTF skins) on the GPU.
 //
@@ -308,6 +309,17 @@ export class SkinnedModel {
 
 	}
 
+	// Opt-in per model. Each geometry is owned by this model; bounds follow the
+	// actual pose, including additive modifiers, and are tested per render camera.
+	enableAnimatedBounds() {
+		for (const mesh of this.meshes) {
+			const a=mesh.geometry.attributes;
+			mesh.skinBounds=new SkinBounds(a.position.array,a.skinIndex.array,a.skinWeight.array,this.joints);
+			mesh.frustumCulled=mesh.skinBounds.update(this.jointData);
+			mesh.geometry.boundingSphere=mesh.skinBounds.sphere;
+		}
+	}
+
 	clipDuration( name ) {
 
 		const c = this.clips.get( name );
@@ -487,6 +499,7 @@ export class SkinnedModel {
 
 		}
 
+		for (const mesh of this.meshes) if (mesh.skinBounds && !mesh.skinBounds.update(D)) mesh.frustumCulled=false;
 		this.jointBuffer.write( D );
 
 	}

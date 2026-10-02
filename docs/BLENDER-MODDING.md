@@ -1,6 +1,6 @@
 # Blender / external world-editing workflow
 
-Burning Horizons keeps its procedural JavaScript terrain as the authoritative runtime source, but it can now export a standard world-editing package for Blender and other tools.
+ElseMesh keeps its procedural JavaScript terrain as the authoritative runtime source, but it can now export a standard world-editing package for Blender and other tools.
 
 ## Export the current island
 
@@ -41,17 +41,17 @@ Install Blender 4.x or newer, then run from the repository root:
 blender --python tools/blender/import_world.py -- \
   --world artifacts/world \
   --step 4 \
-  --save artifacts/blender/Burning-Horizons.blend
+  --save artifacts/blender/ElseMesh.blend
 ```
 
 `--step 4` creates a manageable 4 m preview mesh. Use `--step 1` only when the full-resolution 2048 x 2048 mesh is really needed.
 
-The importer creates collections named `BH_World`, `BH_Terrain`, `BH_Features` and `BH_Caves`.
+The importer creates collections named `ELSEMESH_World`, `ELSEMESH_Terrain`, `ELSEMESH_Features` and `ELSEMESH_Caves`.
 ## Building caves
 
 Caves must be real 3D geometry, not heightmap edits. A heightmap cannot represent a roof and floor at the same X/Z coordinate.
 
-Keep cave work in the `BH_Caves` collection. Recommended workflow:
+Keep cave work in the `ELSEMESH_Caves` collection. Recommended workflow:
 
 1. Use the imported terrain only as a visual/scale reference.
 2. Build a visible sea-level entrance in the coastal cliff.
@@ -65,9 +65,9 @@ Keep cave work in the `BH_Caves` collection. Recommended workflow:
 Export the cave collection with:
 
 ```sh
-blender Burning-Horizons.blend --background \
+blender ElseMesh.blend --background \
   --python tools/blender/export_caves.py -- \
-  --collection BH_Caves \
+  --collection ELSEMESH_Caves \
   --out public/models/world/caves.glb
 ```
 ## Codex + Computer Use
@@ -86,11 +86,11 @@ See [CAVE-SYSTEM-BRIEF.md](CAVE-SYSTEM-BRIEF.md) for the first planned undergrou
 
 ## UNDERNEATH authoring record (26 September 2026)
 
-Blender 4.5.10 LTS was installed as the official portable Windows archive on D:. The world export produced all 11 expected files at 2048 x 2048 and 1 m per texel, with heights from -90 m to approximately 305.77 m. The importer used `--step 4` and saved `artifacts/blender/Burning-Horizons.blend` on D:.
+Blender 4.5.10 LTS was installed as the official portable Windows archive on D:. The world export produced all 11 expected files at 2048 x 2048 and 1 m per texel, with heights from -90 m to approximately 305.77 m. The importer used `--step 4` and saved `artifacts/blender/ElseMesh.blend` on D:.
 
 The imported island and coast were inspected in Blender before modelling. The west outer headland at game `(-340, 0, 80)` offers a sea-level approach, rock volume above the tunnel, and a mouth away from the starting pier's immediate sightline. The boat approaches by water around the headland and stops afloat near `(-323, 0, 84.5)` in the deeper part of the cavern, clear of the landing and cave wall. The explorer jumps overboard onto a submerged shallow shelf, splashes into the water, and wades up a stone ramp onto the raised landing at `(-294, 1.2, 70)`. The cavern floor rises from -4.2 m at its mouth to the shallow inner end. The walking route continues through the junction, Basalt Gallery, Salt Fissure, Tide Alcove and larger hall to the electronic entry near `(-220, 1.2, -10)`. A ceiling-lift door reveals a lit boarding alcove and waiting train.
 
-`tools/blender/underneath-layout.json` is the metre-scale layout. `tools/blender/build_underneath.py` builds named `UN_` objects in six child collections of `BH_Caves`. Its ring meshes keep editable cross-sections; room wall openings align with passage branches. A connector shell and rock canopy bridge the boat cavern to the landing. The landing, electronic reader, station preview and iron-and-brass door are separate objects with retained bevel modifiers. No third-party cave assets were added.
+`tools/blender/underneath-layout.json` is the metre-scale layout. `tools/blender/build_underneath.py` builds named `UN_` objects in six child collections of `ELSEMESH_Caves`. Its ring meshes keep editable cross-sections; room wall openings align with passage branches. A connector shell and rock canopy bridge the boat cavern to the landing. The landing, electronic reader, station preview and iron-and-brass door are separate objects with retained bevel modifiers. No third-party cave assets were added.
 
 To regenerate after importing the world, open the saved `.blend` in Blender, switch to the Python Console, and run `p = bpy.path.abspath('//../../tools/blender/build_underneath.py'); exec(compile(open(p).read(), p, 'exec'), {'__file__': p})`. Save the scene, then use `export_caves.py` as above. The exporter writes both `public/models/world/caves.glb` and `caves.json`.
 

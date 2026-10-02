@@ -7,10 +7,10 @@ import { CHANDLERY } from './Chandlery.js';
 //    markers pulse on the minimap). Enter / Space / click: next, Esc: skip. Replay from the help (F1).
 //  - one-time tips the first time something happens (rod out, first nibble, fish on, first catch,
 //    full cooler, next to the boat, at Joe's, at Marta's), in a card above the minimap.
-// Seen state in localStorage ('burning-horizons.guide'), wrapped in try/catch.
+// Seen state in localStorage ('elsemesh.guide'), wrapped in try/catch.
 //   const guide = new Guide( ui, game, minimap );  guide.update( dt );  guide.replay()
 
-const KEY = 'burning-horizons.guide';
+const KEY = 'elsemesh.guide';
 
 const CSS = /* css */`
 .gm-guide { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; opacity: 0; visibility: hidden;
@@ -67,7 +67,7 @@ const row = ( keys, text ) => `<div class="gm-guide-row"><span class="k">${ keys
 
 const CARDS = [
 	{
-		eyebrow: 'Welcome to Burning Horizons',
+		eyebrow: 'Welcome to ElseMesh',
 		title: 'Explore the island, find supplies and trade',
 		body: `<p>Search the shoreline for useful objects and clues. Press <b>J</b> or tap <b>Pick up</b> near a find, then open your bag with <b>I</b>. Find a fishing rod before you can fish. Watches, tools and lost phones can be used, dropped, sold or traded with another player.</p>
 			<p>Sell your catch to <b>Joe</b> at the general shop by the pier, then spend the credits on upgrades from <b>Marta</b> at the chandlery by the boathouse: stronger line, a faster reel, a bigger hold, a fish finder and lights for fishing at night.</p>`,
@@ -97,6 +97,30 @@ const CARDS = [
 			<div class="is-marta"><i></i><span><b>Marta</b> · chandlery by the boathouse</span><em data-where="marta"></em></div>
 		</div>
 		<p style="margin:0;color:var(--tw-ink-3);font-size:var(--tw-fs-sm)">Both are marked on the map in the lower right.</p>`,
+	},
+];
+
+const PORT_CARDS = [
+	{
+		eyebrow: 'Bracken Quay',
+		title: 'A working port at the edge of the Sound',
+		body: '<p>Follow the freight road through the checkpoint, warehouses and container yard. Service roads connect the quay, utility areas and the old depot.</p><p>Watch for moving traffic at the junctions. The roads form a connected circuit back to the port entrance.</p>',
+	},
+	{
+		eyebrow: 'On the road',
+		title: 'Walk, drive and make room for traffic',
+		body: `<div class="gm-guide-list">
+			${ row( k( 'F' ), 'Switch from the free camera to walking' ) }
+			${ row( k( 'E' ), 'Enter or leave the nearby car' ) }
+			${ row( k( 'W', 'A', 'S', 'D' ), 'Accelerate, reverse and steer' ) }
+			${ row( k( 'Space' ), 'Brake before tight junctions' ) }
+			${ row( k( 'R' ), 'Recover the car if it becomes stuck' ) }
+		</div>`,
+	},
+	{
+		eyebrow: 'Old Bracken depot',
+		title: 'The power is still out',
+		body: '<p>Drive toward the depot, park and enter on foot. The breaker inside controls its backup power. Press <b>E</b> beside it to change the state.</p><p>Return to the road through the open entrance.</p>',
 	},
 ];
 
@@ -141,9 +165,12 @@ export class Guide {
 		document.head.append( style );
 
 		this.seen = this._load();
+		this.portMode = new URLSearchParams( window.location.search ).get( 'view' ) === 'portCar';
+		this.cards = this.portMode ? PORT_CARDS : CARDS;
+		this.seenKey = this.portMode ? 'portIntro' : 'intro';
 		this.el = h( 'div', 'gm-guide tw-interactive', `<div class="gm-guide-card tw-glass" role="dialog" aria-modal="true" aria-live="polite">
 			<div class="gm-guide-eyebrow"></div><h2></h2><div class="gm-guide-body"></div>
-			<div class="gm-guide-foot"><div class="gm-guide-dots">${ CARDS.map( () => '<span></span>' ).join( '' ) }</div>
+			<div class="gm-guide-foot"><div class="gm-guide-dots">${ this.cards.map( () => '<span></span>' ).join( '' ) }</div>
 			<div class="gm-guide-btns"><span class="gm-guide-hint">Enter · Esc to skip</span><button type="button" class="gm-btn is-ghost gm-guide-skip">Skip</button><button type="button" class="gm-btn gm-guide-next">Next</button></div></div></div>` );
 		this.card = this.el.firstChild;
 		this.eyebrow = this.el.querySelector( '.gm-guide-eyebrow' );
@@ -171,7 +198,7 @@ export class Guide {
 
 		this.open = false;
 		this.step = 0;
-		this._wait = this.seen.intro ? - 1 : 0.8; // seconds after the start overlay before the intro
+		this._wait = this.seen[ this.seenKey ] ? - 1 : 0.8; // seconds after the start overlay before the intro
 		this._coachT = 0;
 		this._queue = [];
 		this._whereT = 0;
@@ -233,13 +260,13 @@ export class Guide {
 	show( i ) {
 
 		this.step = i;
-		const c = CARDS[ i ];
+		const c = this.cards[ i ];
 		this.eyebrow.textContent = c.eyebrow;
 		this.title.textContent = c.title;
 		this.body.innerHTML = c.body;
 		this.dots.forEach( ( d, j ) => d.classList.toggle( 'is-on', j === i ) );
-		this.nextBtn.textContent = i === CARDS.length - 1 ? 'Let\'s fish' : 'Next';
-		if ( this.minimap ) this.minimap.highlight( i === CARDS.length - 1 ? [ 'joe', 'marta' ] : [] );
+		this.nextBtn.textContent = i === this.cards.length - 1 ? ( this.portMode ? 'Explore the quay' : 'Let\'s fish' ) : 'Next';
+		if ( this.minimap ) this.minimap.highlight( ! this.portMode && i === this.cards.length - 1 ? [ 'joe', 'marta' ] : [] );
 		this._whereT = 0;
 		if ( ! this.open ) {
 
@@ -252,7 +279,7 @@ export class Guide {
 
 	next() {
 
-		if ( this.step < CARDS.length - 1 ) this.show( this.step + 1 );
+		if ( this.step < this.cards.length - 1 ) this.show( this.step + 1 );
 		else this.close();
 
 	}
@@ -263,7 +290,7 @@ export class Guide {
 		this.open = false;
 		this.el.classList.remove( 'is-on' );
 		if ( this.minimap ) this.minimap.highlight( [] );
-		this.seen.intro = true;
+		this.seen[ this.seenKey ] = true;
 		this._save();
 
 	}
@@ -310,7 +337,7 @@ export class Guide {
 
 			// live direction and distance to Joe and Marta
 			this._whereT -= dt;
-			if ( this._whereT <= 0 && this.step === CARDS.length - 1 ) {
+			if ( ! this.portMode && this._whereT <= 0 && this.step === this.cards.length - 1 ) {
 
 				this._whereT = 0.25;
 				const x = p.position.x, z = p.position.z;

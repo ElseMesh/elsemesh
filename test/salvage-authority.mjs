@@ -4,7 +4,7 @@ import { ItemEconomy } from '../src/game/ItemEconomy.js';
 import { PhysicalItems } from '../src/game/PhysicalItems.js';
 import { ITEM_SPAWNS } from '../src/game/ItemCatalog.js';
 import { sonarContacts } from '../src/game/SalvageAuthority.js';
-import { WebSocket } from 'ws';
+import { WebSocket } from './RoomTestSocket.mjs';
 import { createOnlineServer } from '../tools/networking/online-server.mjs';
 import { makeState } from '../src/network/PlayerProtocol.js';
 
@@ -67,7 +67,7 @@ test('solo update persists a completed hoist exactly when ownership transfers',(
 		const physical=Object.assign(Object.create(PhysicalItems.prototype),{id:'solo',ledger,meshes:new Map([[item.id,{visible:false}]]),game:{state,hud:null,boatCtl:null},app:{player:{position:{x:0,y:0,z:0},mode:'walk'},freeCam:false,input:{hit:()=>false},terrainData:{heightAt:()=>0}},crateLid:{rotation:{}},crateRope:{}});
 		physical.update();
 		assert.equal(writes.length,1);
-		assert.equal(writes[0][0],'burning-horizons.items.v1');
+		assert.equal(writes[0][0],'elsemesh.items.v1');
 		assert.equal(writes[0][1].items.find(entry=>entry.id===item.id).owner,'solo');
 		physical.update(); assert.equal(writes.length,1);
 	} finally { if(previousStorage===undefined)delete globalThis.localStorage;else globalThis.localStorage=previousStorage; }
@@ -117,14 +117,14 @@ test('load discards active transient salvage authority state',()=>{
 
 test('real room sockets serialize salvage claims and late join observes operator',async()=>{
 	const service=await createOnlineServer({root:process.cwd(),port:0}), sockets=[];
-	const origin=`http://127.0.0.1:${service.address.port}`, room='e'.repeat(32);
+	const origin=`http://127.0.0.1:${service.address.port}`, room=roomForHostKey('a'.repeat(32));
 	const connect=async(role)=>{
 		const ws=new WebSocket(`${origin.replace('http','ws')}/ws?room=${room}&role=${role}${role==='loz'?`&hostKey=${'a'.repeat(32)}`:''}`,{origin}); sockets.push(ws);
 		const messages=[]; ws.on('message',bytes=>messages.push(JSON.parse(bytes.toString())));
 		await new Promise((resolve,reject)=>{ws.once('open',resolve);ws.once('error',reject);});
 		return {ws,send:packet=>ws.send(JSON.stringify(packet)),wait:async predicate=>{const until=Date.now()+2000;while(Date.now()<until){const index=messages.findIndex(predicate);if(index>=0)return messages.splice(index,1)[0];await new Promise(resolve=>setTimeout(resolve,5));}throw Error('Expected packet missing');}};
 	};
-	const state=(role,letter,withBoat=false)=>makeState({playerId:`player:${role}`,nodeId:`bh-node:${letter.repeat(64)}`,sequence:1,player:{position:{x:64.5,y:0,z:36.5},yaw:0,mode:'deck',deckPos:{x:0,y:0,z:0},velocity:{lengthSq:()=>0}},boat:withBoat?{position:{x:64.5,y:0,z:36.5},quaternion:{x:0,y:0,z:0,w:1},velocity:{x:0,y:0,z:0},driven:false}:null});
+	const state=(role,letter,withBoat=false)=>makeState({playerId:`player:${role}`,nodeId:`elsemesh-node:${letter.repeat(64)}`,sequence:1,player:{position:{x:64.5,y:0,z:36.5},yaw:0,mode:'deck',deckPos:{x:0,y:0,z:0},velocity:{lengthSq:()=>0}},boat:withBoat?{position:{x:64.5,y:0,z:36.5},quaternion:{x:0,y:0,z:0,w:1},velocity:{x:0,y:0,z:0},driven:false}:null});
 	try {
 		const loz=await connect('loz'), ed=await connect('ed');
 		loz.send({type:'state',state:state('loz','a',true)}); ed.send({type:'state',state:state('ed','b')});
@@ -139,3 +139,4 @@ test('real room sockets serialize salvage claims and late join observes operator
 		assert.equal(snapshot.salvage.operator,winner);
 	} finally { for(const ws of sockets) ws.terminate(); await service.close(); }
 });
+import { roomForHostKey } from '../tools/networking/RoomSecurity.mjs';

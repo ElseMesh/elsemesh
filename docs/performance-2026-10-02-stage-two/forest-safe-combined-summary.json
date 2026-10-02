@@ -1,0 +1,186 @@
+{
+  "validation": {
+    "status": "complete",
+    "valid": true,
+    "stage": 2,
+    "motion": "fixed",
+    "completed": 8,
+    "total": 8,
+    "frameCounts": [
+      180
+    ],
+    "sizes": [
+      "[1200,675]"
+    ],
+    "incomplete": 0
+  },
+  "configuration": {
+    "requestedQuality": "balanced",
+    "profile": "balanced",
+    "renderScale": 0.75,
+    "autoResolution": false,
+    "aa": "taa",
+    "ssr": 0,
+    "ao": 1,
+    "bloom": 0.05,
+    "motionBlur": 0,
+    "exposure": 0.55,
+    "clockMode": "manual",
+    "timeSpeed": 0,
+    "postScale": 0.75,
+    "shadows": true,
+    "refractionEnabled": true,
+    "refractionScale": 0.35,
+    "hazeEnabled": 1,
+    "hazeDensity": 1.6,
+    "shafts": 1
+  },
+  "results": [
+    {
+      "name": "islandFourVilla/safeCombined",
+      "baseline": {
+        "frames": 720,
+        "meanMs": 36.36694444444438,
+        "meanFPS": 27.497498491456728,
+        "p95": 50.199999999953434,
+        "p99": 50.5,
+        "max": 116.90000000002328,
+        "over150": 0,
+        "runs": 4,
+        "cpuMs": 34.05416666679084,
+        "runFPS": [
+          26.93360865466634,
+          27.47923790913522,
+          27.834047225100026,
+          27.76149788704185
+        ],
+        "draws": [
+          {
+            "draws": 2452,
+            "triangles": 3029479,
+            "pipelines": 961
+          },
+          {
+            "draws": 2452,
+            "triangles": 3029479,
+            "pipelines": 961
+          },
+          {
+            "draws": 2452,
+            "triangles": 3029479,
+            "pipelines": 961
+          },
+          {
+            "draws": 2452,
+            "triangles": 3029479,
+            "pipelines": 961
+          }
+        ],
+        "forest": [
+          {
+            "detailedTrees": 77,
+            "transitionTrees": 0,
+            "farTrees": 0,
+            "jointUpdates": 693
+          },
+          {
+            "detailedTrees": 77,
+            "transitionTrees": 0,
+            "farTrees": 0,
+            "jointUpdates": 693
+          },
+          {
+            "detailedTrees": 77,
+            "transitionTrees": 0,
+            "farTrees": 0,
+            "jointUpdates": 693
+          },
+          {
+            "detailedTrees": 77,
+            "transitionTrees": 0,
+            "farTrees": 0,
+            "jointUpdates": 693
+          }
+        ],
+        "cycles": [
+          27.203687610987267,
+          27.797725219486306
+        ]
+      },
+      "candidate": {
+        "frames": 720,
+        "meanMs": 44.70194444444448,
+        "meanFPS": 22.370391543991982,
+        "p95": 50.40000000002328,
+        "p99": 67,
+        "max": 666.6999999999534,
+        "over150": 4,
+        "runs": 4,
+        "cpuMs": 42.01708333336024,
+        "runFPS": [
+          22.17458792224105,
+          22.97706123386812,
+          23.68358727401925,
+          20.848052444434092
+        ],
+        "draws": [
+          {
+            "draws": 2452,
+            "triangles": 3029479,
+            "pipelines": 961
+          },
+          {
+            "draws": 2452,
+            "triangles": 3029479,
+            "pipelines": 961
+          },
+          {
+            "draws": 2452,
+            "triangles": 3029479,
+            "pipelines": 961
+          },
+          {
+            "draws": 2452,
+            "triangles": 3029479,
+            "pipelines": 961
+          }
+        ],
+        "forest": [
+          {
+            "detailedTrees": 54,
+            "transitionTrees": 23,
+            "farTrees": 0,
+            "jointUpdates": 693
+          },
+          {
+            "detailedTrees": 54,
+            "transitionTrees": 23,
+            "farTrees": 0,
+            "jointUpdates": 693
+          },
+          {
+            "detailedTrees": 54,
+            "transitionTrees": 23,
+            "farTrees": 0,
+            "jointUpdates": 693
+          },
+          {
+            "detailedTrees": 54,
+            "transitionTrees": 23,
+            "farTrees": 0,
+            "jointUpdates": 693
+          }
+        ],
+        "cycles": [
+          22.568693460721004,
+          22.175544070813935
+        ]
+      },
+      "gainPercent": -18.645721351917523,
+      "cycleGains": [
+        -17.038109746541274,
+        -20.225328167253064
+      ]
+    }
+  ]
+}

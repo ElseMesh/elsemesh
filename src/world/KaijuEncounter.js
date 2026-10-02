@@ -5,7 +5,7 @@ import { standard } from '../materials/Materials.js';
 import { SPRAY } from '../fx/Spray.js';
 import { KAIJU_ROUTE, kaijuPoseAt } from './KaijuRoute.js';
 
-const MODEL_URL = ((import.meta.env && import.meta.env.BASE_URL) || '/') + 'models/godzilla/steam79-walk.glb';
+const MODEL_URL = null; // Character model excluded from the public asset set.
 const _p = new Vector3(), _q = new Vector3(), _v = new Vector3();
 const clamp01 = (v) => Math.max(0, Math.min(1, v));
 
@@ -84,6 +84,7 @@ export class KaijuEncounter {
 	}
 
 	async load() {
+		if (!MODEL_URL) return this;
 		const gltf = await loadGLB(MODEL_URL);
 		if (!gltf.skins.length) throw new Error('Steam79 model needs its Blender walk-rig export');
 		this.model = await SkinnedModel.create(gltf, { materials: ({ name }) =>

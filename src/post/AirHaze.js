@@ -169,9 +169,16 @@ export class AirHaze {
 	}
 
 	// record the march and the god ray passes (the post chain calls this before the composite)
-	render() {
+	render( optimizeDisabledEffects = false ) {
 
 		if ( ! this._passes ) this._build();
+		// Match the composite's gates exactly. Clear history validity so the
+		// first active frame never blends stale shafts from before an interruption.
+		if ( optimizeDisabledEffects && ( this.enabled.value <= 0.5 || this.shafts.value <= 0 || G.cameraUnderwater.value >= 0.5 ) ) {
+			this._histValid = false;
+			this.uniforms.fields.histValid.value = 0;
+			return;
+		}
 		const p = this._passes;
 		p.march.render( { colorViews: [ this.low.texture ], clear: CLR } );
 		// accumulate: 16 jittered steps per pixel are noisy, and the final temporal resolve clamps the

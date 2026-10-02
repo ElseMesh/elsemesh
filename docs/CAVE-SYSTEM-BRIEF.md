@@ -2,7 +2,7 @@
 
 Working name: **UNDERNEATH**
 
-This is the first large exploratory environment planned for Burning Horizons.
+This is the first large exploratory environment planned for ElseMesh.
 
 ## Player experience
 
@@ -29,7 +29,7 @@ The door is the destination for the first implementation. What is behind it is i
 - The entrance must be large enough to read from the water and to admit the current boat with believable clearance.
 - Include a safe place to stop/leave the boat before the walk-only passages.
 - Avoid placing underground geometry so close to the surface that it visibly clips through existing terrain.
-- Keep all cave authoring in `BH_Caves` or clearly named child collections.
+- Keep all cave authoring in `ELSEMESH_Caves` or clearly named child collections.
 - Maintain one-metre world scale and the documented game-to-Blender axis conversion.
 ## First playable scope
 
@@ -51,7 +51,7 @@ The first qualification target is intentionally bounded:
 Atmosphere, puzzles, enemies, narrative, keys, door opening and procedural cave generation are follow-on work, not blockers for the first physical cave.
 ## Implementation principle
 
-Treat the cave as additive world geometry loaded by Burning Horizons, not as a rewrite of `TerrainData`.
+Treat the cave as additive world geometry loaded by ElseMesh, not as a rewrite of `TerrainData`.
 
 The procedural terrain remains the canonical exterior heightfield. Blender is the authoring environment for geometry that heightfields cannot represent: caves, overhangs, interiors, ruins, tunnels and constructed spaces.
 

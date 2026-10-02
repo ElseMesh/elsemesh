@@ -19,7 +19,7 @@ import (
     ma "github.com/multiformats/go-multiaddr"
 )
 
-const proto = protocol.ID("/burning-horizons/qualify/1.0.0")
+const proto = protocol.ID("/elsemesh/qualify/1.0.0")
 
 type sample struct { Kind string `json:"kind"`; Data string `json:"data"`; Time int64 `json:"time"` }
 
@@ -88,7 +88,7 @@ func main() {
     }
     // Same bounded asset and manifest message sizes as the reference workload.
     for _, kind := range []string{"asset-request", "asset-reply", "manifest", "handoff"} {
-        payload, _ := json.Marshal(sample{Kind: kind, Data: "Burning Horizons bounded transport qualification", Time: time.Now().UnixNano()})
+        payload, _ := json.Marshal(sample{Kind: kind, Data: "ElseMesh bounded transport qualification", Time: time.Now().UnixNano()})
         writer.Write(payload); writer.WriteByte('\n'); writer.Flush()
         line, err := reader.ReadBytes('\n')
         if err != nil { panic(err) }

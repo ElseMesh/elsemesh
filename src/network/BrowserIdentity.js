@@ -1,6 +1,6 @@
 function openDatabase() {
 	return new Promise((resolve, reject) => {
-		const request = indexedDB.open('burning-horizons-demo-identities', 1);
+		const request = indexedDB.open('elsemesh-demo-identities', 1);
 		request.onupgradeneeded = () => request.result.createObjectStore('keys');
 		request.onsuccess = () => resolve(request.result);
 		request.onerror = () => reject(request.error);
@@ -27,6 +27,6 @@ export async function browserIdentity(role) {
 		}
 		const spki = await crypto.subtle.exportKey('spki', pair.publicKey);
 		const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', spki));
-		return { nodeId: `bh-node:${Array.from(digest, (n) => n.toString(16).padStart(2, '0')).join('')}`, publicKey: pair.publicKey, privateKey: pair.privateKey };
+		return { nodeId: `elsemesh-node:${Array.from(digest, (n) => n.toString(16).padStart(2, '0')).join('')}`, publicKey: pair.publicKey, privateKey: pair.privateKey };
 	} finally { db.close(); }
 }

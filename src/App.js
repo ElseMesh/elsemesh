@@ -2,6 +2,7 @@ import { Vector3, Euler, Color, MathUtils, Mesh } from './engine/index.js';
 import { GPU } from './engine/gpu/GPU.js';
 import { SunShadows } from './engine/render/Shadows.js';
 import { FrameUniforms } from './engine/render/Frame.js';
+import { FrameRate } from './engine/FrameTiming.js';
 
 import { Engine } from './core/Engine.js';
 import { Input } from './core/Input.js';
@@ -37,6 +38,7 @@ import { MonorailSystem } from './world/MonorailSystem.js';
 import { ThirdIslandSystem } from './world/ThirdIslandSystem.js';
 import { FourthIslandSystem } from './world/FourthIslandSystem.js';
 import { IslandFiveSystem } from './world/IslandFiveSystem.js';
+import { PortIslandSystem } from './world/PortIslandSystem.js';
 import { reviewCameraMinimumHeight } from './world/WorldLocation.js';
 
 import { OceanFFT } from './ocean/OceanFFT.js';
@@ -266,6 +268,7 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 			surface: this.surface, sky: this.sky, sceneCopy: this.sceneRenderer.opaqueCopy, sceneDepthHalf: this.sceneRenderer.opaqueDepthHalf.texture, refraction: this.refraction,
 			hullMask: this.sceneRenderer.hullMaskRT.texture, hullMaskActive: this.sceneRenderer.hullMaskActive,
 		} );
+		this.sceneRenderer.waterMaterial = this.waterMaterial;
 		this.waterMaterial.clouds = this.clouds;
 		this.ocean = new Mesh( this.oceanLOD.geometry, this.waterMaterial );
 		this.ocean.frustumCulled = false;
@@ -343,6 +346,7 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 		this.thirdIsland = new ThirdIslandSystem( this );
 		this.fourthIsland = new FourthIslandSystem( this );
 		this.fifthIsland = new IslandFiveSystem( this );
+		this.portIsland = new PortIslandSystem( this );
 		this.monorail.restorePlayer( this.player );
 		this.pistol = new SurvivalPistol( scene );
 		// birds, beach crabs, sanderlings (after spray / query / boat, which they use)
@@ -604,56 +608,60 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 
 	start() {
 
-		this.engine.start( ( dt, t ) => this.frame( dt, t ) );
+		this.engine.start( ( dt, t, timing ) => this.frame( dt, t, timing ) );
 
 	}
 
-	updateFPS( dt ) {
+	updateFPS( timing ) {
+		// Direct app.frame(dt) calls are controlled simulation/render work, not
+		// display samples. Their dt (often zero) must not drive FPS or adaptation.
+		if ( ! timing ) return;
+		const f = this._fps || ( this._fps = { el: document.getElementById( 'fps' ), meter: new FrameRate() } );
+		if ( timing.reset ) {
+			f.meter.reset();
+			this.adaptiveResolution.reset();
+		}
+		if ( ! timing.valid ) return;
+		const dt = timing.wallDt;
 		if (this.settings.autoResolution && !this.qs.has('bench') && !document.hidden) {
 			const scale = this.adaptiveResolution.update(dt, this.settings.renderScale, QUALITY[this.settings.qualityProfile].scale);
 			if (scale !== this.settings.renderScale) this.setRenderScale(scale);
 		}
 
-		const f = this._fps || ( this._fps = { el: document.getElementById( 'fps' ), acc: 0, n: 0, worst: 0 } );
-		f.acc += dt;
-		f.n ++;
-		f.worst = Math.max( f.worst, dt );
-		if ( f.acc >= 0.5 ) {
+		const sample = f.meter.update( dt );
+		if ( sample ) {
 
-			const fps = f.n / f.acc;
-			let text = `${ fps.toFixed( 0 ) } fps · ${ ( 1000 * f.acc / f.n ).toFixed( 1 ) } ms · max ${ ( f.worst * 1000 ).toFixed( 1 ) } ms`;
+			let text = `${ sample.fps.toFixed( 0 ) } fps · ${ sample.meanMs.toFixed( 1 ) } ms · max ${ sample.worstMs.toFixed( 1 ) } ms`;
 			if ( this.profiler && this.profiler.enabled ) {
 
 				const p = this.profiler.result;
-				text += ` · GPU c ${ p.compute.toFixed( 2 ) } r ${ p.render.toFixed( 2 ) }`;
+				text += ` · GPU partial sample (${ this.profiler.nodes.size } tracked passes): c ${ p.compute.toFixed( 2 ) } r ${ p.render.toFixed( 2 ) } ms`;
 
 			}
 
 			if ( f.el ) f.el.textContent = text;
-			this.fps = fps;
-			f.acc = 0;
-			f.n = 0;
-			f.worst = 0;
+			this.fps = sample.fps;
+			this.frameStats = sample;
 
 		}
 
 	}
 
-	frame( dt ) {
+	frame( dt, _elapsed, timing = this.engine?.activeFrameTiming ) {
 
 		const t0 = performance.now();
-		this._frame( dt );
+		this._frame( dt, timing );
 		const ms = performance.now() - t0;
 		this.cpuMs = this.cpuMs === undefined ? ms : this.cpuMs * 0.95 + ms * 0.05;
 
 	}
 
-	_frame( dt ) {
+	_frame( dt, timing ) {
 
 		GPU.beginFrame();
 		FrameUniforms.fields.frameIndex.value = GPU.frame;
 		const s = this.settings;
-		this.updateFPS( dt );
+		this.updateFPS( timing );
 		G.dt.value = dt;
 		G.time.value += dt;
 		if ( s.clockMode === 'local' ) {
@@ -707,14 +715,16 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 			}
 
 		}
-		else if ( this.monorail.state !== 'riding' && !this.thirdIsland.active ) this.player.update( dt );
+		else if ( this.monorail.state !== 'riding' && !this.thirdIsland.active && !this.portIsland.driving ) this.player.update( dt );
 		if ( ! this.freeCam && !this.thirdIsland.active ) this.monorail.update( dt, this.player, this.input, this.camera, ( message ) => this.ui?.ui.toast( message ) );
 		this.thirdIsland.update( dt );
 		this.fourthIsland.update( dt );
 		this.fifthIsland.update( dt );
+		this.portIsland.update( dt );
 		this.esmie.update( dt );
 		this.monorail.marine.update(dt, this.camera.position);
 		this.avatar.update( dt, this.player, this.camera, this.freeCam );
+		if ( this.portIsland.driving ) this.avatar.group.visible = false;
 		if ( this.networkDemo ) this.networkDemo.update( dt );
 		this.pistol.update( dt, this.camera, this.input, ! this.freeCam && this.monorail.state !== 'riding' && this.player.mode === 'walk', ( message ) => this.ui?.ui.toast( message ) );
 		this.game.update( dt );
@@ -799,8 +809,15 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 		// uniforms (setFrameCamera); shadows then render with this frame's sun and camera
 		this.post.beginFrame();
 		this.underwater.updateCamera( this.camera );
-		this.shadows.render( this.scene, this.engine.meshRenderer, this.shadows.update( this.camera, G.sunDir.value ) );
-		this.sceneRenderer.render();
+		// World simulation is complete. Main-scene transforms remain stable across
+		// shadow, opaque, refraction and transparent passes. Portraits and later
+		// auxiliary renders stay outside this optional optimization scope.
+		this.engine.meshRenderer.withSceneTransforms( this.scene, () => {
+
+			this.shadows.render( this.scene, this.engine.meshRenderer, this.shadows.update( this.camera, G.sunDir.value ) );
+			this.sceneRenderer.render();
+
+		} );
 		if ( this.post.flare ) this.post.flare.kernel.dispatch( 1 );
 		this.post.render();
 		this.post.endFrame();

@@ -64,7 +64,7 @@ export function recordHelicopterJourney(app=window.__app, {landingCheck=false}={
     caption='Home island reached · hover above the beach and village';if(stageTime>5){canvas.toBlob(blob=>fetch('http://127.0.0.1:5191/image',{method:'POST',body:blob}),'image/png');stop();return;}
    }
    oldFrame(dt);
-   ctx.drawImage(app.engine.domElement,0,0,1280,720);ctx.fillStyle='rgba(4,19,28,.82)';ctx.fillRect(0,0,1280,70);ctx.fillStyle='#effffb';ctx.font='bold 24px system-ui';ctx.fillText('BURNING HORIZONS · THIRD ISLAND',24,29);ctx.font='18px system-ui';ctx.fillText(caption,24,56);
+   ctx.drawImage(app.engine.domElement,0,0,1280,720);ctx.fillStyle='rgba(4,19,28,.82)';ctx.fillRect(0,0,1280,70);ctx.fillStyle='#effffb';ctx.font='bold 24px system-ui';ctx.fillText('ELSEMESH · THIRD ISLAND',24,29);ctx.font='18px system-ui';ctx.fillText(caption,24,56);
    if(h.active){const s=h.state;ctx.fillStyle='#081f2be8';ctx.fillRect(310,650,660,55);ctx.fillStyle='#85ffdb';ctx.font='17px monospace';ctx.fillText(`LOZ AIR   ${Math.round(Math.hypot(s.vx,s.vz)*1.944)} kt   AGL ${Math.round(s.y-h.ground(s.x,s.z))} m   ROTOR ${Math.round(s.rpm*100)}%`,340,673);ctx.font='14px monospace';ctx.fillText('WASD fly · Space/C altitude · mouse steer · ← → side windows',340,694);}
   }catch(e){stop(e.message);}
  };

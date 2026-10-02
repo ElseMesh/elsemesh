@@ -5,6 +5,7 @@ import { resolveViewedIsland, resolveWorldLocation, reviewCameraMinimumHeight } 
 test('HUD resolves every island and open water', () => {
   assert.equal(resolveWorldLocation(-500, 10, 650, 8), 'Cartoon Island · Island 4');
   assert.equal(resolveWorldLocation(-800, 12, 430, 10), 'Forest Island · Island 5');
+  assert.equal(resolveWorldLocation(760, 8, 425, 5), 'Bracken Quay · Port Island');
   assert.equal(resolveWorldLocation(115, 8, 650, 8), 'Helicopter Island · Island 3');
   assert.equal(resolveWorldLocation(-1200, 8, -30, 8), 'Station Island · Island 2');
   assert.equal(resolveWorldLocation(40, 8, -100, 8), 'Home Island · Island 1');

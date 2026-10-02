@@ -1,6 +1,6 @@
 import http from 'node:http';
 import fs from 'node:fs';
-const dir='D:/Downloads/Susie-journey';fs.mkdirSync(dir,{recursive:true});
+const dir='artifacts/video/Susie-journey';fs.mkdirSync(dir,{recursive:true});
 let index=0;
 http.createServer(async(req,res)=>{
  res.setHeader('Access-Control-Allow-Origin','http://127.0.0.1:5189');res.setHeader('Access-Control-Allow-Headers','Content-Type');

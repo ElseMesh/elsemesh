@@ -9,7 +9,7 @@ import { Program, MemoryManager, RuntimeStack, MemoryMap } from './runtime/index
 import { CONFIG } from './config.js';
 import { ExpressionEvaluator, isNumeric } from './parser/index.js';
 const readFileSync = (filename) => {
-    const value = globalThis.localStorage?.getItem(`burning-horizons:c64:${filename}`);
+    const value = globalThis.localStorage?.getItem(`elsemesh:c64:${filename}`);
     if (value == null) {
         const error = new Error(`File not found: ${filename}`);
         error.code = 'ENOENT';
@@ -20,7 +20,7 @@ const readFileSync = (filename) => {
 const writeFileSync = (filename, content) => {
     if (!globalThis.localStorage)
         throw new Error('Browser storage unavailable');
-    globalThis.localStorage.setItem(`burning-horizons:c64:${filename}`, content);
+    globalThis.localStorage.setItem(`elsemesh:c64:${filename}`, content);
 };
 export class Interpreter {
     program = new Program();

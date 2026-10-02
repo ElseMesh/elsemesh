@@ -18,8 +18,8 @@ test('appearance input rejects URLs, extra fields and malformed colours',()=>{
 test('late join and interpolation preserve distinct player appearances; stale state cannot overwrite',()=>{
 	const local={...DEFAULT_APPEARANCE}, other={...local,style:'female',shirt:'#33785b',skin:'#805136'};
 	const p={position:{x:1,y:2,z:3},velocity:{lengthSq:()=>0},yaw:0,mode:'walk',avatarAppearance:other};
-	const state=makeState({playerId:'player:ed',nodeId:`bh-node:${'b'.repeat(64)}`,sequence:1,player:p});
-	const remote=new RemoteState({ownPlayerId:'player:loz',ownNodeId:`bh-node:${'a'.repeat(64)}`});
+	const state=makeState({playerId:'player:ed',nodeId:`elsemesh-node:${'b'.repeat(64)}`,sequence:1,player:p});
+	const remote=new RemoteState({ownPlayerId:'player:loz',ownNodeId:`elsemesh-node:${'a'.repeat(64)}`});
 	assert.equal(remote.observe(JSON.parse(JSON.stringify(state))),true);
 	assert.deepEqual(remote.interpolated(null,1).appearance,other);
 	assert.notDeepEqual(remote.state.appearance,local);

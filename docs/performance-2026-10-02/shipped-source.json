@@ -1,0 +1,55 @@
+{
+  "base": "20bfaa0",
+  "defaults": "all three optimizations enabled; benchmark baseline overrides them",
+  "files": [
+    {
+      "file": "src/App.js",
+      "sha256": "c239302763e8fcf3b3f5c4ba73b28bbc4473af7353b6a146a63001938d9b98eb"
+    },
+    {
+      "file": "src/engine/render/MeshRenderer.js",
+      "sha256": "0c5e1de00ff000ba2419950feea1fdcefdec7a8aa0ef192a27bb5919804f94c5"
+    },
+    {
+      "file": "src/engine/render/SceneRenderer.js",
+      "sha256": "856d4446487ca4566245d241cbe315d1e49d1e943ebc1d5f1d60d8067256cede"
+    },
+    {
+      "file": "src/ocean/WaterMaterial.js",
+      "sha256": "50a8ed8818b06489a60c60583282dab39319d1489d76577feabaa5593b4641f5"
+    },
+    {
+      "file": "src/post/PostFX.js",
+      "sha256": "4efc2beb5dad783e3b036a0c95f35539fe6821d1d79ba1d4ee3572c1cd41d6b2"
+    },
+    {
+      "file": "src/post/GTAO.js",
+      "sha256": "c73ac140de834d2a02b6b087541fd971c4b09f08d4758cf8ba86196c77568dd8"
+    },
+    {
+      "file": "src/post/AirHaze.js",
+      "sha256": "c50ad53a231669e1e9598e67392c2d1cf44a5ecd3b6b164f8e4ee8facc125355"
+    },
+    {
+      "file": "src/core/Bench.js",
+      "sha256": "a74ef420d23e428829a3568288f4d26a994b2ffbe8c23eea5669802e6642b794"
+    },
+    {
+      "file": "src/core/RendererReview.js",
+      "sha256": "1754f62835795085719b7980af88d6e48fd5f348ffbfeec22355d7e49f4b3182"
+    },
+    {
+      "file": "src/core/DebugViews.js",
+      "sha256": "906d57ae5bf0cf9cd6602e3ded219ef14052bd4cb92a5e23486ab77ac708daa8"
+    },
+    {
+      "file": "test/scene-transform-cache.mjs",
+      "sha256": "09f914ff0e8bd2ea5089b132144175cf57a5207de33cd75b456fe1efccf8923f"
+    },
+    {
+      "file": "test/render-pass-scheduling.mjs",
+      "sha256": "1efdd6796e8654b47d8548d704b22fdfbb49dd1ca6b3b668ed023eebcfb51101"
+    }
+  ],
+  "hashConvention": "SHA256 of UTF-8 text with CRLF normalized to LF, matching Git source blobs"
+}

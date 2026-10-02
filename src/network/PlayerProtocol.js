@@ -1,12 +1,12 @@
 import { validateHelicopter } from './HelicopterLease.js';
 import { DEFAULT_APPEARANCE, validateAppearance } from '../player/AvatarAppearance.js';
-export const WORLD_ID = 'bh:burning-horizons';
-export const SECTOR_ID = 'bh:ISLAND-01';
+export const WORLD_ID = 'elsemesh:elsemesh';
+export const SECTOR_ID = 'elsemesh:ISLAND-01';
 export const ONLINE_ROLES = Object.freeze(['loz', 'ed', ...Array.from({ length: 8 }, (_, i) => `guest${i + 2}`)]);
 export const PLAYER_IDS = Object.freeze(Object.fromEntries(ONLINE_ROLES.map((role) => [role, `player:${role}`])));
 export const MAX_ROOM_PLAYERS = ONLINE_ROLES.length;
 export const roleLabel = (role) => role === 'loz' ? 'Loz' : role === 'ed' ? 'Player 2' : `Player ${Number(role.slice(5)) + 1}`;
-export const PLAYER_PROTOCOL = 'bh.player-state/1';
+export const PLAYER_PROTOCOL = 'elsemesh.player-state/1';
 
 export function makeState({ playerId, nodeId, sequence, player, boat = null, observedRemoteSequence = -1 }) {
 	const state = {
@@ -29,7 +29,7 @@ export function makeState({ playerId, nodeId, sequence, player, boat = null, obs
 
 export function validateState(state) {
 	if (!state || state.protocol !== PLAYER_PROTOCOL || state.worldId !== WORLD_ID || state.sectorId !== SECTOR_ID) throw new Error('Incompatible world or sector');
-	if (!Object.values(PLAYER_IDS).includes(state.playerId) || !/^bh-node:[0-9a-f]{64}$/.test(state.nodeId)) throw new Error('Invalid player or node identity');
+	if (!Object.values(PLAYER_IDS).includes(state.playerId) || !/^elsemesh-node:[0-9a-f]{64}$/.test(state.nodeId)) throw new Error('Invalid player or node identity');
 	if (!Number.isSafeInteger(state.sequence) || state.sequence < 0 || !Number.isSafeInteger(state.observedRemoteSequence) || state.observedRemoteSequence < -1) throw new Error('Invalid sequence');
 	if (!Array.isArray(state.position) || state.position.length !== 3 || !state.position.every((v) => Number.isFinite(v) && Math.abs(v) < 10000)) throw new Error('Invalid position');
 	if (!Number.isFinite(state.yaw) || Math.abs(state.yaw) > 1000 || typeof state.moving !== 'boolean' || !['walk', 'swim', 'deck', 'boat', 'helicopter'].includes(state.mode)) throw new Error('Invalid pose');

@@ -1,6 +1,6 @@
-"""Build the first UNDERNEATH cave in the imported Burning Horizons scene.
+"""Build the first UNDERNEATH cave in the imported ElseMesh scene.
 
-Open artifacts/blender/Burning-Horizons.blend, then run this file from Blender's
+Open artifacts/blender/ElseMesh.blend, then run this file from Blender's
 Python Console (exec(compile(open(path).read(), path, 'exec'))).
 Coordinates in underneath-layout.json use the game's X/Y/Z axes.
 """
@@ -15,9 +15,9 @@ ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
 with open(os.path.join(HERE, "underneath-layout.json"), encoding="utf8") as f:
     L = json.load(f)
 
-parent = bpy.data.collections.get("BH_Caves")
-if parent is None or bpy.data.objects.get("BH_Terrain") is None:
-    raise RuntimeError("Import the Burning Horizons world before building UNDERNEATH")
+parent = bpy.data.collections.get("ELSEMESH_Caves")
+if parent is None or bpy.data.objects.get("ELSEMESH_Terrain") is None:
+    raise RuntimeError("Import the ElseMesh world before building UNDERNEATH")
 
 for obj in list(bpy.data.objects):
     if obj.name.startswith("UN_"):
@@ -373,10 +373,10 @@ for i, (x, z, y) in enumerate([(-312, 75, 6.0), (-278, 63, 7.2), (-252, 48, 7.2)
     obj.scale = (0.8, 0.8, 1.35)
     obj.data.materials.append(salt)
 
-bpy.context.scene["burning_horizons_world"] = os.path.join(ROOT, "artifacts", "world")
+bpy.context.scene["elsemesh_world"] = os.path.join(ROOT, "artifacts", "world")
 bpy.context.scene["underneath_layout"] = os.path.join(HERE, "underneath-layout.json")
 bpy.context.scene.unit_settings.system = "METRIC"
 bpy.context.scene.unit_settings.scale_length = 1.0
-out = os.path.join(ROOT, "artifacts", "blender", "Burning-Horizons.blend")
+out = os.path.join(ROOT, "artifacts", "blender", "ElseMesh.blend")
 bpy.ops.wm.save_as_mainfile(filepath=out)
-print("UNDERNEATH authored in BH_Caves:", out)
+print("UNDERNEATH authored in ELSEMESH_Caves:", out)

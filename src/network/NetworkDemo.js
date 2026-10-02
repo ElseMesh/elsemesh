@@ -17,7 +17,9 @@ export class NetworkDemo {
 		const online = app.qs.get('demo') === 'online';
 		const requestedRole = app.qs.get('role');
 		if (!(online ? ['loz', 'ed', 'guest'] : ['loz', 'ed']).includes(requestedRole)) throw new Error('Invalid network role');
-		const transport = online ? new OnlineRoomTransport(app.qs.get('room') || '', requestedRole, app.qs.get('hostKey')) : null;
+		const credentials = online ? new URLSearchParams(location.hash.slice(1)) : null;
+		if (online) app.qs.set('room', credentials.get('room') || ''); // In-memory world seed; not an HTTP query.
+		const transport = online ? new OnlineRoomTransport(credentials.get('room') || '', requestedRole, credentials.get('hostKey')) : null;
 		const role = online ? await transport.ready : requestedRole;
 		const bridge = !online && app.qs.get('transport') === 'bridge' ? await BridgeTransport.connect(role) : null;
 		const identity = bridge ? { nodeId: bridge.nodeId } : await browserIdentity(role);
@@ -144,7 +146,7 @@ export class NetworkDemo {
 	}
 	#mountOverlay() {
 		const el = document.createElement('div');
-		el.className = 'bh-network-overlay';
+		el.className = 'elsemesh-network-overlay';
 		el.style.cssText = 'padding:11px 14px;color:#eaffff;font:12px/1.5 system-ui;pointer-events:auto;min-width:205px;text-shadow:0 1px 2px #000;';
 		const manager = this.app.ui?.ui?.windows;
 		if (manager) {
@@ -152,7 +154,7 @@ export class NetworkDemo {
 			this.networkWindow = networkWindow;
 			const launcher = document.createElement('button');
 			launcher.type = 'button';
-			launcher.className = 'bh-network-launcher tw-interactive';
+			launcher.className = 'elsemesh-network-launcher tw-interactive';
 			launcher.textContent = 'Network';
 			launcher.setAttribute('aria-label', 'Open Network Status');
 			launcher.addEventListener('click', () => networkWindow.show());
@@ -192,8 +194,8 @@ export class NetworkDemo {
 		if (verified && this.video && !this.video.started) this.video.start();
 		const authority = this.role === 'loz' ? this.identity.nodeId : received?.nodeId;
 		const distance = received ? Math.hypot(received.position[0] - player.position.x, received.position[2] - player.position.z) : null;
-		this.overlay.innerHTML = `<strong>${this.role.toUpperCase()} — ${this.role === 'loz' ? 'HUMAN' : 'AI'}</strong><br>Player ${this.playerId}<br>Node ${shortId(this.identity.nodeId)}<br>Sector ${SECTOR_ID}<br>Authority ${shortId(authority)}<br>${this.physical ? 'TWO PHYSICAL NODES' : 'LOCAL TWO-NODE DEMO'} · ${connected ? 'DIRECT' : 'WAITING'}<br>Protocol bh.player-state/1<br>RTT unavailable · loss unavailable<br>${verified ? '<strong style="color:#8dffad">NETWORK VERIFIED</strong>' : 'Awaiting bidirectional movement'}${this.agent ? `<br>AGENT ACTION: ${this.agent.command.tool}(${this.agent.command.playerId || ''})<br>Distance ${distance?.toFixed(1) ?? '—'} m` : ''}`;
-		window.parent?.postMessage({ type: 'bh-network-demo-status', role: this.role, verified, connected, localNodeId: this.identity.nodeId, remoteNodeId: received?.nodeId, localSequence: this.sequence - 1, remoteSequence: received?.sequence ?? -1 }, location.origin);
+		this.overlay.innerHTML = `<strong>${this.role.toUpperCase()} — ${this.role === 'loz' ? 'HUMAN' : 'AI'}</strong><br>Player ${this.playerId}<br>Node ${shortId(this.identity.nodeId)}<br>Sector ${SECTOR_ID}<br>Authority ${shortId(authority)}<br>${this.physical ? 'TWO PHYSICAL NODES' : 'LOCAL TWO-NODE DEMO'} · ${connected ? 'DIRECT' : 'WAITING'}<br>Protocol elsemesh.player-state/1<br>RTT unavailable · loss unavailable<br>${verified ? '<strong style="color:#8dffad">NETWORK VERIFIED</strong>' : 'Awaiting bidirectional movement'}${this.agent ? `<br>AGENT ACTION: ${this.agent.command.tool}(${this.agent.command.playerId || ''})<br>Distance ${distance?.toFixed(1) ?? '—'} m` : ''}`;
+		window.parent?.postMessage({ type: 'elsemesh-network-demo-status', role: this.role, verified, connected, localNodeId: this.identity.nodeId, remoteNodeId: received?.nodeId, localSequence: this.sequence - 1, remoteSequence: received?.sequence ?? -1 }, location.origin);
 	}
 }
 const escapeStatus = (value) => String(value).replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);

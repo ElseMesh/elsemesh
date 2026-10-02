@@ -4,7 +4,7 @@ import { dirname } from 'node:path';
 
 export const sha256 = (bytes) => createHash('sha256').update(bytes).digest('hex');
 export const assetId = (bytes) => `sha256:${sha256(bytes)}`;
-export const nodeId = (publicKeyPem) => `bh-node:${sha256(createPublicKey(publicKeyPem).export({ type: 'spki', format: 'der' }))}`;
+export const nodeId = (publicKeyPem) => `elsemesh-node:${sha256(createPublicKey(publicKeyPem).export({ type: 'spki', format: 'der' }))}`;
 
 export function newIdentity() {
   const { publicKey, privateKey } = generateKeyPairSync('ed25519');
@@ -19,7 +19,7 @@ export async function loadOrCreateIdentity(path) {
   try {
     const saved = JSON.parse(await readFile(path, 'utf8'));
     if (nodeId(saved.publicKeyPem) !== saved.nodeId || !saved.privateKeyPem) throw new Error('Invalid saved identity');
-    const probe = Buffer.from('burning-horizons-key-check');
+    const probe = Buffer.from('elsemesh-key-check');
     if (!verify(null, probe, saved.publicKeyPem, sign(null, probe, saved.privateKeyPem))) throw new Error('Keypair mismatch');
     return saved;
   } catch (error) {

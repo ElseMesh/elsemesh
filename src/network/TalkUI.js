@@ -6,14 +6,14 @@ export class TalkUI {
 		this.send = send;
 		this.open = false;
 		this.el = document.createElement('form');
-		this.el.className = 'bh-talk';
+		this.el.className = 'elsemesh-talk';
 		this.el.style.cssText = 'display:none;position:fixed;z-index:1400;left:50%;bottom:10%;transform:translateX(-50%);width:min(92vw,510px);padding:15px;background:rgba(5,22,32,.96);border:1px solid #70d8db;border-radius:12px;box-shadow:0 12px 35px #0009;color:#f0ffff;font:14px system-ui;';
 		const label = document.createElement('label');
 		label.textContent = 'Talk:';
-		label.htmlFor = 'bh-talk-text';
+		label.htmlFor = 'elsemesh-talk-text';
 		label.style.cssText = 'display:block;font-weight:700;margin-bottom:8px';
 		this.field = document.createElement('input');
-		this.field.id = 'bh-talk-text';
+		this.field.id = 'elsemesh-talk-text';
 		this.field.type = 'text';
 		this.field.maxLength = MAX_SPEECH_LENGTH;
 		this.field.autocomplete = 'off';

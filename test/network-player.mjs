@@ -3,8 +3,8 @@ import { test } from 'node:test';
 import { AgentInput } from '../src/network/AgentInput.js';
 import { makeState, RemoteState, validateState } from '../src/network/PlayerProtocol.js';
 
-const lozNode = `bh-node:${'a'.repeat(64)}`;
-const edNode = `bh-node:${'b'.repeat(64)}`;
+const lozNode = `elsemesh-node:${'a'.repeat(64)}`;
+const edNode = `elsemesh-node:${'b'.repeat(64)}`;
 const player = (x, z, moving = true) => ({ position: { x, y: 0, z }, yaw: 0, mode: 'walk', velocity: { lengthSq: () => moving ? 1 : 0 } });
 
 test('two player identities and node identities remain distinct', () => {
@@ -14,7 +14,7 @@ test('two player identities and node identities remain distinct', () => {
 	assert.notEqual(loz.nodeId, ed.nodeId);
 	assert.deepEqual(validateState(JSON.parse(JSON.stringify(loz))), loz);
 	assert.throws(() => validateState({ ...loz, position: [Infinity, 0, 0] }), /position/);
-	assert.throws(() => validateState({ ...loz, sectorId: 'bh:OTHER' }), /sector/);
+	assert.throws(() => validateState({ ...loz, sectorId: 'elsemesh:OTHER' }), /sector/);
 });
 
 test('remote sequence and interpolation reject stale movement', () => {

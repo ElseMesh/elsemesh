@@ -1,12 +1,12 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { WebSocket } from 'ws';
+import { WebSocket } from './RoomTestSocket.mjs';
 import { createOnlineServer } from '../tools/networking/online-server.mjs';
 import { makeState, ONLINE_ROLES, PLAYER_IDS } from '../src/network/PlayerProtocol.js';
 import { makeSpeechEvent } from '../src/network/SpeechProtocol.js';
 import { DEFAULT_APPEARANCE } from '../src/player/AvatarAppearance.js';
 
-const nodeId = (n) => `bh-node:${n.toString(16).repeat(64)}`;
+const nodeId = (n) => `elsemesh-node:${n.toString(16).repeat(64)}`;
 const player = (n) => ({ position: { x: 50 + n, y: 2, z: -70 }, yaw: 0, mode: 'walk', velocity: { lengthSq: () => 1 } });
 const boat = { position: { x: 0, y: 0, z: 0 }, quaternion: { x: 0, y: 0, z: 0, w: 1 }, velocity: { x: 0, y: 0, z: 0 }, driven: true };
 
@@ -37,7 +37,7 @@ async function connect(url, origin) {
 test('ten room slots relay player, boat and speech state; full rooms reject and freed slots reopen', async () => {
 	const service = await createOnlineServer({ root: process.cwd(), port: 0 });
 	const origin = `http://127.0.0.1:${service.address.port}`;
-	const url = `${origin.replace('http', 'ws')}/ws?room=${'c'.repeat(32)}&role=`;
+	const url = `${origin.replace('http', 'ws')}/ws?room=${roomForHostKey('d'.repeat(32))}&role=`;
 	const clients = [];
 	try {
 		for (let i = 0; i < 10; i++) {
@@ -90,3 +90,4 @@ test('ten room slots relay player, boat and speech state; full rooms reject and 
 		await service.close();
 	}
 });
+import { roomForHostKey } from '../tools/networking/RoomSecurity.mjs';

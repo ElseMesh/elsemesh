@@ -3,7 +3,7 @@
 export class RouteTable {
   #routes = new Map();
   set(nodeId, candidates) {
-    if (!/^bh-node:[0-9a-f]{64}$/.test(nodeId) || !Array.isArray(candidates) || candidates.length > 32) throw new Error('Invalid route set');
+    if (!/^elsemesh-node:[0-9a-f]{64}$/.test(nodeId) || !Array.isArray(candidates) || candidates.length > 32) throw new Error('Invalid route set');
     for (const candidate of candidates) {
       if (!candidate || !['direct', 'relay'].includes(candidate.kind) || typeof candidate.address !== 'string' || typeof candidate.scope !== 'string') throw new Error('Invalid route');
     }

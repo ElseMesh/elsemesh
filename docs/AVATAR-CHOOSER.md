@@ -1,7 +1,7 @@
 # Player avatars
 
 Use **Choose your avatar** before creating/joining a room, or **K / Avatar** in-game.
-Save applies the choice; Cancel restores it. Appearance is stored under `bh.avatar.v1`
+Save applies the choice; Cancel restores it. Appearance is stored under `elsemesh.avatar.v1`
 in this browser (not an account). Each running player has their own appearance snapshot.
 Refresh older game tabs after deployment to load the chooser and new assets.
 
@@ -18,7 +18,7 @@ Refresh older game tabs after deployment to load the chooser and new assets.
 
 ## Network
 
-`bh.player-state/1` includes optional `appearance` with exactly `style`, `shirt`,
+`elsemesh.player-state/1` includes optional `appearance` with exactly `style`, `shirt`,
 `trousers`, `skin`, `hair`. Style is an allowlisted ID; colours are lowercase six-digit
 hex. The relay validates it and refuses arbitrary models/URLs. State remains below
 the existing 4096-byte cap. Old packets without appearance use the default male.
@@ -39,7 +39,7 @@ remain on D:, outside Git. No personal scan is used for playable characters.
 2. Run `python tools/characters/prepare_stock_textures.py SOURCE PREPARED PREFIX`
    with `m014` (Male Adult 08) or `f001` (Female Adult 01).
 3. Run `python tools/characters/avatar_masks.py PREPARED PREFIX`.
-4. Set `BH_STOCK_PLAYER=1`, `BH_AVATAR_MASKS=1`, and `BH_STOCK_BLEND` to a D: `.blend`
+4. Set `ELSEMESH_STOCK_PLAYER=1`, `ELSEMESH_AVATAR_MASKS=1`, and `ELSEMESH_STOCK_BLEND` to a D: `.blend`
    output. Run Blender in background with `tools/characters/convert.py`, passing the
    avatar FBX, prepared texture directory, prefix, output GLB, and four donor FBXs.
    Walk/run donors are in `all_animations_max_motextr_xy`; idle/seated in `_static`.

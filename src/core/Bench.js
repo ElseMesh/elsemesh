@@ -28,6 +28,7 @@ export class Bench {
 		this.frames = [];
 		this._labels = [];
 		this._capture = false;
+		this.captureDiagnostics = { submitted: 0, captured: 0, ringDrops: 0, mapFailures: 0, invalidFrames: 0, truncatedPasses: 0, lastMapError: null };
 		if ( ! this.enabled ) return;
 		const d = GPU.device;
 		this.querySet = d.createQuerySet( { type: 'timestamp', count: MAX * 2 } );
@@ -44,7 +45,8 @@ export class Bench {
 		const rp = proto.beginRenderPass, cp = proto.beginComputePass;
 		const tag = ( desc, kind ) => {
 
-			if ( ! self._capture || self._labels.length >= MAX ) return desc;
+			if ( ! self._capture ) return desc;
+			if ( self._labels.length >= MAX ) { self.captureDiagnostics.truncatedPasses ++; return desc; }
 			const i = self._labels.length;
 			self._labels.push( ( desc && desc.label ) || kind );
 			return { ...( desc || {} ), timestampWrites: { querySet: self.querySet, beginningOfPassWriteIndex: i * 2, endOfPassWriteIndex: i * 2 + 1 } };
@@ -75,11 +77,12 @@ export class Bench {
 
 	_resolveFrame() {
 
+		this.captureDiagnostics.submitted ++;
 		const n = this._labels.length;
 		const labels = this._labels;
 		this._labels = [];
 		const slot = this.ring.find( ( s ) => ! s.busy );
-		if ( ! slot ) return;
+		if ( ! slot ) { this.captureDiagnostics.ringDrops ++; return; }
 		slot.busy = true;
 		const enc = GPU.encoder;
 		enc.resolveQuerySet( this.querySet, 0, n * 2, this.resolve, 0 );
@@ -93,9 +96,11 @@ export class Bench {
 				slot.busy = false;
 				this._frameResult( labels, t );
 
-			} ).catch( () => {
+			} ).catch( ( error ) => {
 
 				slot.busy = false;
+				this.captureDiagnostics.mapFailures ++;
+				this.captureDiagnostics.lastMapError = String( error.message || error ).slice( 0, 200 );
 
 			} );
 
@@ -120,7 +125,7 @@ export class Bench {
 
 		}
 
-		if ( first === null ) return;
+		if ( first === null ) { this.captureDiagnostics.invalidFrames ++; return; }
 		order.sort( ( x, y ) => ( x.b < y.b ? - 1 : x.b > y.b ? 1 : 0 ) );
 		const passes = new Map();
 		let prev = null;
@@ -134,6 +139,7 @@ export class Bench {
 		}
 
 		this.frames.push( { gpu: Number( last - first ) / 1e6, passes } );
+		this.captureDiagnostics.captured ++;
 
 	}
 

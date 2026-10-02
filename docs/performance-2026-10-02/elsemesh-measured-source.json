@@ -1,0 +1,51 @@
+{
+  "base": "20bfaa0",
+  "branch": "perf/rendering-review",
+  "defaults": "all candidate switches false; UI controls changes",
+  "files": [
+    {
+      "file": "src/App.js",
+      "sha256": "96668c8e91942f4ddb20e63c11cd007bcb5a6dcdc4232ea66755f33f19c71c0e"
+    },
+    {
+      "file": "src/engine/render/MeshRenderer.js",
+      "sha256": "5e27b8231a8e8592c6a8343bcf0936ae1e84aec1bf02f59a9868ff5fbfbcf007"
+    },
+    {
+      "file": "src/engine/render/SceneRenderer.js",
+      "sha256": "1bd92c0c63ca89c7036b912730cf108237978db93cc2e11e92d59f180842adea"
+    },
+    {
+      "file": "src/ocean/WaterMaterial.js",
+      "sha256": "da37dc6666236d15c1138d964757fb9190c6f1da8cad9ed5e8acce207faf9002"
+    },
+    {
+      "file": "src/post/PostFX.js",
+      "sha256": "b4d13698d0d9ea58b38f7bd6748b225ab055b6430682cfa1e86062c25568dbdb"
+    },
+    {
+      "file": "src/post/GTAO.js",
+      "sha256": "9ed56bba32ad13d35cdd0d2bf99141790d43a4db835186b3b9e84b7738fea944"
+    },
+    {
+      "file": "src/post/AirHaze.js",
+      "sha256": "e5114ab9a69e46ec6e1c4e44c60491d256ca90f171ff7501042cb4a9e64affd9"
+    },
+    {
+      "file": "src/core/RendererReview.js",
+      "sha256": "0ea496d81fa47b0453a987c5c064fb16d1956395732e0f6fde39d843b361c283"
+    },
+    {
+      "file": "src/core/DebugViews.js",
+      "sha256": "f39ce08a13b4dac4ea6304593429f8bd1b2872293060ff93432fa71fbd2aa784"
+    },
+    {
+      "file": "test/scene-transform-cache.mjs",
+      "sha256": "d8e20bcaa9827eb0151c454284c933a481df586622c91794bf2614c980797202"
+    },
+    {
+      "file": "test/render-pass-scheduling.mjs",
+      "sha256": "1efdd6796e8654b47d8548d704b22fdfbb49dd1ca6b3b668ed023eebcfb51101"
+    }
+  ]
+}

@@ -5,7 +5,7 @@ import { GroundBounce } from '../materials/GroundBounce.js';
 import { WindowManager } from './WindowManager.js';
 import { resolveViewedIsland, resolveWorldLocation } from '../world/WorldLocation.js';
 
-// Binds the Burning Horizons UI (panel + HUD) to the running app.
+// Binds the ElseMesh UI (panel + HUD) to the running app.
 const SEA = {
 	Calm: { wind: 3.5, fetch: 40, chop: 0.75, swell: 0.28, surf: 0.18, period: 11, whitecaps: 0.2 },
 	Breezy: { wind: 7, fetch: 120, chop: 0.9, swell: 0.48, surf: 0.34, period: 9, whitecaps: 0.5 },
@@ -360,11 +360,13 @@ export class AppUI {
 
 		}
 
-		const mode = p.mode === 'boat' ? `Boat · ${ p.camMode === 'first' ? '1st' : '3rd' } person`
+		const mode = app.portIsland?.driving ? 'Driving · Bracken Quay'
+			: p.mode === 'boat' ? `Boat · ${ p.camMode === 'first' ? '1st' : '3rd' } person`
 			: p.mode === 'helicopter' ? 'Helicopter · cockpit' : p.mode === 'deck' ? 'On deck'
 			: p.mode === 'swim' ? ( app.camera.position.y < ( app.cameraWaterHeight ?? 0 ) - 0.3 ? 'Diving' : 'Swimming' ) : 'Walking';
 		ui.setMode( mode );
-		if ( p.prompt ) ui.setPrompt( p.prompt.key, p.prompt.text );
+		if ( app.portIsland?.driving ) ui.setPrompt( 'E', 'Exit vehicle' );
+		else if ( p.prompt ) ui.setPrompt( p.prompt.key, p.prompt.text );
 		else ui.setPrompt( null );
 
 		const b = app.boatCtl;

@@ -192,7 +192,7 @@ export class LocalLights {
 
 		// lamps: on from dusk (same ramp as the lantern glass), nearest first
 		const on = smooth( G.night.value, 0.15, 0.75 ) * this.strength;
-		if ( on > 0.002 && this.enabled ) {
+		if ( this.enabled && (on > 0.002 || this.sources.some(s => s.alwaysOn && s.enabled !== false)) ) {
 
 			const cp = camera.position;
 			const list = this._list;
@@ -200,6 +200,8 @@ export class LocalLights {
 			for ( const s of this.sources ) {
 
 				if ( s.enabled === false ) continue;
+				// Powered interior fixtures must not follow the outdoor dusk timer.
+				if ( !s.alwaysOn && on <= 0.002 ) continue;
 				if ( s.update ) s.update();
 				s.d2 = s.position.distanceToSquared( cp );
 				list.push( s );
@@ -215,7 +217,7 @@ export class LocalLights {
 				const s = list[ i ];
 				const fade = Number.isFinite( dCut ) ? smooth( Math.sqrt( s.d2 ), dCut, dCut * 0.8 ) : 1;
 				const fl2 = s.flicker ? 1 + s.flicker * Math.sin( this.time * 9 + s.phase ) * Math.sin( this.time * 5.3 + s.phase * 0.37 ) : 1;
-				const k = s.intensity * on * fade * fl2 * ( s.scale ?? 1 );
+				const k = s.intensity * (s.alwaysOn ? this.strength : on) * fade * fl2 * ( s.scale ?? 1 );
 				if ( k <= 1e-4 ) continue;
 				const r = s.range;
 				pos[ n ].set( s.position.x, s.position.y, s.position.z, r * r );

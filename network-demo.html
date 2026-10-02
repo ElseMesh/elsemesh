@@ -3,29 +3,32 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Burning Horizons — Loz & Ed local two-node demo</title>
+  <title>ElseMesh — Loz & Ed local two-node demo</title>
   <style>
     *{box-sizing:border-box}body{margin:0;background:#061723;color:#e8f6f5;font:14px/1.4 system-ui,sans-serif}header{padding:12px 18px;background:#0c2733;border-bottom:1px solid #62b8c0;display:flex;align-items:center;justify-content:space-between;gap:16px}h1{font-size:16px;letter-spacing:.12em;margin:0}header p{margin:0;color:#a9cbd0}.panels{display:grid;grid-template-columns:1fr 1fr;height:calc(100vh - 74px)}section{min-width:0;position:relative;border-right:1px solid #62b8c0}section h2{position:absolute;right:14px;top:12px;z-index:2;background:#071c2bdc;padding:5px 9px;border-radius:4px;font-size:13px;letter-spacing:.08em}iframe{width:100%;height:100%;border:0}#status{font-weight:700;color:#efca89}@media(max-width:750px){.panels{grid-template-columns:1fr;height:auto}section{height:48vh}}
   </style>
 </head>
 <body>
-  <header><div><h1>BURNING HORIZONS · LOZ + ED</h1><p>LOCAL TWO-NODE DEMONSTRATION · separate browser contexts · click the Loz panel, then move with WASD</p></div><span id="status">Loading nodes…</span></header>
+  <header><div><h1>ELSEMESH · LOZ + ED</h1><p>LOCAL TWO-NODE DEMONSTRATION · separate browser contexts · click the Loz panel, then move with WASD</p></div><span id="status">Loading nodes…</span></header>
   <main class="panels">
     <section><h2>LOZ — HUMAN</h2><iframe id="loz" title="Loz game viewport" allow="fullscreen; autoplay"></iframe></section>
     <section><h2>ED — AI</h2><iframe id="ed" title="Ed game viewport" allow="fullscreen; autoplay"></iframe></section>
   </main>
   <script type="module">
+    import { DemoStatus } from './src/network/DemoStatus.js';
     const session = crypto.randomUUID().replaceAll('-', '');
     for (const role of ['loz', 'ed']) document.getElementById(role).src = `./index.html?demo=network&role=${role}&session=${session}&scale=0.6&noAudio${role === 'loz' && new URLSearchParams(location.search).has('record') ? '&record&recordReceiver=42908' : ''}`;
-    const states = new Map();
-    window.addEventListener('message', (event) => {
-      if (event.origin !== location.origin || event.data?.type !== 'bh-network-demo-status') return;
-      states.set(event.data.role, event.data);
-      const verified = states.get('loz')?.verified && states.get('ed')?.verified;
+    const states = new DemoStatus(location.origin, Object.fromEntries(['loz','ed'].map(role => [role, document.getElementById(role).contentWindow])));
+    const render = () => {
       const status = document.getElementById('status');
-      status.textContent = verified ? 'NETWORK VERIFIED · LOCAL' : 'Move Loz to verify both directions';
-      status.style.color = verified ? '#8dffad' : '#efca89';
+      status.textContent = states.label(performance.now());
+      status.style.color = status.textContent === 'NETWORK VERIFIED · LOCAL ONLY' ? '#8dffad' : '#efca89';
+    };
+    document.getElementById('status').setAttribute('role', 'status');
+    window.addEventListener('message', (event) => {
+      if (states.observe(event, performance.now())) render();
     });
+    setInterval(render, 500);
   </script>
 </body>
 </html>

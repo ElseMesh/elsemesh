@@ -1,11 +1,11 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { WebSocket } from 'ws';
+import { WebSocket } from './RoomTestSocket.mjs';
 import { createOnlineServer } from '../tools/networking/online-server.mjs';
 import { makeSpeechEvent, validateSpeechEvent } from '../src/network/SpeechProtocol.js';
 import { makeState, validateState } from '../src/network/PlayerProtocol.js';
 
-const node = (c) => `bh-node:${c.repeat(64)}`;
+const node = (c) => `elsemesh-node:${c.repeat(64)}`;
 const player = (mode = 'walk') => ({ position: { x: 53, y: 2, z: -70 }, yaw: 0, mode, velocity: { lengthSq: () => 0 }, deckPos: { x: 0.4, y: 0.35, z: -1.5 } });
 const waitFor = (ws, predicate) => new Promise((resolve, reject) => {
 	const timeout = setTimeout(() => { ws.off('message', receive); reject(new Error('Timed out')); }, 2500);
@@ -35,7 +35,7 @@ test('both room peers receive speech and voice; duplicate speech produces one sy
 		async synthesize() { syntheses++; return { audio: wav, mime: 'audio/wav', provider: 'test', synthesisMs: 12, durationSeconds: 0.1 }; },
 	} });
 	const base = `http://127.0.0.1:${service.address.port}`;
-	const room = 'c'.repeat(32);
+	const room = roomForHostKey('d'.repeat(32));
 	const sockets = [];
 	try {
 		const host = await connect(base, room, 'loz'); sockets.push(host);
@@ -57,3 +57,4 @@ test('both room peers receive speech and voice; duplicate speech produces one sy
 		assert.equal(syntheses, 1);
 	} finally { for (const ws of sockets) ws.terminate(); await service.close(); }
 });
+import { roomForHostKey } from '../tools/networking/RoomSecurity.mjs';

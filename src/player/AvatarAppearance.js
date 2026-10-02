@@ -11,11 +11,11 @@ export function validateAppearance(value) {
 	return value;
 }
 export function loadAppearance(storage) {
-	try { return { ...validateAppearance(JSON.parse((storage || globalThis.localStorage).getItem('bh.avatar.v1'))) }; }
+	try { return { ...validateAppearance(JSON.parse((storage || globalThis.localStorage).getItem('elsemesh.avatar.v1'))) }; }
 	catch { return { ...DEFAULT_APPEARANCE }; }
 }
 export function saveAppearance(value, storage) {
 	validateAppearance(value);
-	try { (storage || globalThis.localStorage).setItem('bh.avatar.v1',JSON.stringify(value)); return true; } catch { return false; }
+	try { (storage || globalThis.localStorage).setItem('elsemesh.avatar.v1',JSON.stringify(value)); return true; } catch { return false; }
 }
 export function appearanceKey(value) { return fields.map(k => value[k]).join('|'); }

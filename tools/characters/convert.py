@@ -2,7 +2,7 @@
 # blender -b --python convert.py -- <avatar.fbx> <texdir (prepared jpg/png)> <prefix m106> <out.glb> <anim1.fbx> [anim2.fbx ...]
 import bpy, sys, os
 from mathutils import Vector
-stock_player = os.environ.get('BH_STOCK_PLAYER') == '1'
+stock_player = os.environ.get('ELSEMESH_STOCK_PLAYER') == '1'
 argv = sys.argv[sys.argv.index('--') + 1:]
 avatar, texdir, prefix, out = argv[:4]
 anims = argv[4:]
@@ -59,7 +59,7 @@ for slot in mesh.material_slots:
     nt.links.new(o.outputs['Color'], sep.inputs['Color'])
     nt.links.new(sep.outputs['Green'], bsdf.inputs['Roughness'])
     nt.links.new(sep.outputs['Blue'], bsdf.inputs['Metallic'])
-    if os.environ.get('BH_AVATAR_MASKS') == '1':
+    if os.environ.get('ELSEMESH_AVATAR_MASKS') == '1':
         # Export ORM red via glTF occlusion; runtime interprets it as the tint-zone ID.
         group = bpy.data.node_groups.get('glTF Material Output') or bpy.data.node_groups.new('glTF Material Output','ShaderNodeTree')
         if not group.interface.items_tree: group.interface.new_socket(name='Occlusion',in_out='INPUT',socket_type='NodeSocketFloat')
@@ -134,7 +134,7 @@ for a in list(bpy.data.actions):
 arm.animation_data.action = None
 
 if stock_player:
-    bpy.ops.wm.save_as_mainfile(filepath=os.environ['BH_STOCK_BLEND'])
+    bpy.ops.wm.save_as_mainfile(filepath=os.environ['ELSEMESH_STOCK_BLEND'])
 
 bpy.ops.export_scene.gltf(
     filepath=out, export_format='GLB', export_image_format='AUTO', export_jpeg_quality=88,

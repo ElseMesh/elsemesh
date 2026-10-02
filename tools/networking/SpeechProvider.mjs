@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 
 // Game-side adapter for the existing authenticated Voice Lab worker contract.
-// The worker and the accepted profile remain private on hpubuntu.
+// The worker and accepted voice profile stay in the operator's private environment.
 export class OmniVoiceSpeechProvider {
 	constructor({ endpoint, token, representation, version, profileId }) {
 		const url = new URL(endpoint);

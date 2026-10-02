@@ -86,7 +86,7 @@ export class MonorailSystem {
 		this.signalRestored = false;
 		this.checkpoint = 'home';
 		try {
-			const saved = JSON.parse(localStorage.getItem('burning-horizons.mystery.v1') || 'null');
+			const saved = JSON.parse(localStorage.getItem('elsemesh.mystery.v1') || 'null');
 			if (saved) {
 				this.mapUnlocked = !!saved.mapUnlocked;
 				this.logFound = !!saved.logFound;
@@ -100,7 +100,7 @@ export class MonorailSystem {
 	}
 
 	save() {
-		try { localStorage.setItem('burning-horizons.mystery.v1', JSON.stringify({ mapUnlocked: this.mapUnlocked, logFound: this.logFound, signalRestored: this.signalRestored, checkpoint: this.checkpoint })); } catch { /* optional */ }
+		try { localStorage.setItem('elsemesh.mystery.v1', JSON.stringify({ mapUnlocked: this.mapUnlocked, logFound: this.logFound, signalRestored: this.signalRestored, checkpoint: this.checkpoint })); } catch { /* optional */ }
 	}
 
 	restorePlayer(player) {
@@ -180,7 +180,7 @@ export class MonorailSystem {
 		el.setAttribute('role', 'dialog');
 		el.setAttribute('aria-label', 'Three-island world map');
 		el.style.cssText = 'position:fixed;inset:12% 18%;z-index:1000;display:none;background:rgba(7,22,30,.94);border:1px solid #5eb9c9;border-radius:16px;color:#e2f5f5;font:18px system-ui;padding:24px;box-shadow:0 12px 50px #000b;pointer-events:none';
-		el.innerHTML = `<h2>ARCHIPELAGO</h2><p>N to close · Sail south past Godzilla to Loz's Helicopter Rental</p><svg viewBox="0 0 800 460" style="width:100%;height:70%"><g fill="#788763" stroke="#9ed1c8" stroke-width="3"><ellipse cx="150" cy="110" rx="90" ry="55"/><ellipse cx="550" cy="110" rx="140" ry="65"/><ellipse cx="550" cy="360" rx="100" ry="55"/></g><path d="M240 110 H410" stroke="#71deea" stroke-width="5" stroke-dasharray="10 7"/><path d="M545 165 Q630 250 560 303" fill="none" stroke="#ffbd7a" stroke-width="4" stroke-dasharray="8 6"/><g fill="white" font-family="system-ui" font-size="18" text-anchor="middle"><text x="150" y="105">SECOND ISLAND</text><text x="150" y="130">Station B</text><text x="550" y="105">HOME ISLAND</text><text x="550" y="130">Boat · cave / Station A</text><text x="322" y="90">UNDERSEA RAIL</text><text x="440" y="235">GODZILLA</text><text x="665" y="260">BOAT ROUTE</text><text x="550" y="351">THIRD ISLAND</text><text x="550" y="378">Loz · keys · helipad</text></g></svg>`;
+		el.innerHTML = `<h2>ARCHIPELAGO</h2><p>N to close · Sail south to Loz's Helicopter Rental</p><svg viewBox="0 0 800 460" style="width:100%;height:70%"><g fill="#788763" stroke="#9ed1c8" stroke-width="3"><ellipse cx="150" cy="110" rx="90" ry="55"/><ellipse cx="550" cy="110" rx="140" ry="65"/><ellipse cx="550" cy="360" rx="100" ry="55"/></g><path d="M240 110 H410" stroke="#71deea" stroke-width="5" stroke-dasharray="10 7"/><path d="M545 165 Q630 250 560 303" fill="none" stroke="#ffbd7a" stroke-width="4" stroke-dasharray="8 6"/><g fill="white" font-family="system-ui" font-size="18" text-anchor="middle"><text x="150" y="105">SECOND ISLAND</text><text x="150" y="130">Station B</text><text x="550" y="105">HOME ISLAND</text><text x="550" y="130">Boat · cave / Station A</text><text x="322" y="90">UNDERSEA RAIL</text><text x="440" y="235">OPEN SEA</text><text x="665" y="260">BOAT ROUTE</text><text x="550" y="351">THIRD ISLAND</text><text x="550" y="378">Loz · keys · helipad</text></g></svg>`;
 		document.body.appendChild(el);
 		this.mapEl = el;
 	}

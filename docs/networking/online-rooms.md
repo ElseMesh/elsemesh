@@ -1,10 +1,10 @@
 # Online rooms for up to ten players
 
-The online room is a separate, opt-in game mode. It does not change solo play or the local Loz/Ed AI demonstration. Up to ten browsers connect to one HTTPS origin; its WebSocket server relays validated `bh.player-state/1` and `bh.character-speech/1` messages between one host and nine guests. Browser identities remain distinct. The random 128-bit room code is the invitation secret. [The multi-player node guide](multi-player-nodes.md) documents the topology and qualification limits.
+The online room is a separate, opt-in game mode. It does not change solo play or the local Loz/Ed AI demonstration. Up to ten browsers connect to one HTTPS origin; its WebSocket server relays validated `elsemesh.player-state/1` and `elsemesh.character-speech/1` messages between one host and nine guests. Browser identities remain distinct. The 128-bit room code derived from the random host key is the invitation secret. [The multi-player node guide](multi-player-nodes.md) documents the topology and qualification limits.
 
 ## Play
 
-Open the server's `/play-online.html`, create a private room, copy the invitation, then start the host game. Up to nine friends can use the same invitation and choose **Join game**. Keep the host game URL private: it contains a separate host key for the boat helm. Each client needs a WebGPU-capable browser. The first visit may spend a minute or two compiling shaders. No account or Tailscale installation is needed for a public HTTPS endpoint. The server assigns guest slots in arrival order. A full room rejects the eleventh connection; a vacated guest slot becomes available again.
+Open the server's `/play-online.html`, create a private room, copy the invitation, then start the host game. Up to nine friends can use the same invitation and choose **Join game**. Keep the host game URL private: its fragment contains a separate host key for the boat helm. Invitations also use fragments, and credentials are sent in the first WebSocket join message rather than an HTTP query. Each client needs a WebGPU-capable browser. The first visit may spend a minute or two compiling shaders. No account or Tailscale installation is needed for a public HTTPS endpoint. The server assigns guest slots in arrival order. A full room rejects the eleventh connection; a vacated guest slot becomes available again.
 
 ## Run
 
@@ -15,9 +15,9 @@ npm run test:network
 npm run online
 ```
 
-The server binds to `127.0.0.1:5200` by default. Serve it through a reverse proxy with HTTPS and WebSocket upgrades. Public static hosting such as GitHub Pages cannot run the room server. The root URL opens the room lobby; `/index.html` remains the game. `BH_ONLINE_HOST` and `BH_ONLINE_PORT` configure the binding. `tools/networking/probe-online.mjs https://YOUR-HOST` checks a real external HTTPS/WebSocket route without entering the game.
+The server binds to `127.0.0.1:5200` by default. Serve it through a reverse proxy with HTTPS and WebSocket upgrades. Public static hosting such as GitHub Pages cannot run the room server. The root URL opens the room lobby; `/index.html` remains the game. `ELSEMESH_ONLINE_HOST` and `ELSEMESH_ONLINE_PORT` configure the binding. `tools/networking/probe-online.mjs https://YOUR-HOST` checks a real external HTTPS/WebSocket route without entering the game.
 
-On hpubuntu, the isolated checkout is `/home/loz/burning-horizons-online`, the user unit is `deploy/burning-horizons-online.service`, and Tailscale Funnel proxies HTTPS port 443 to loopback port 5200. The user service is enabled on login; user lingering is already enabled. Existing tailnet Serve on port 19441 is separate. To update, fast-forward the checkout to the approved branch, run `npm ci` and `npm run build`, then `systemctl --user restart burning-horizons-online.service`. To stop public access, run `sudo tailscale funnel --https=443 off`; stopping the user service alone also makes the game unavailable.
+For a production server, set `NODE_ENV=production` and `ELSEMESH_PUBLIC_ORIGIN` to your exact public HTTPS origin, with no trailing slash. The listener accepts only a loopback IP and trusts a same-machine TLS proxy. See the generic [deployment templates](../../deploy/README.md). Keep private configuration outside `dist/`; this repository does not configure an existing hosted room service.
 
 ## Current gameplay boundary
 

@@ -1,4 +1,4 @@
-const SAVE_KEY = 'burning-horizons.survival.v1';
+const SAVE_KEY = 'elsemesh.survival.v1';
 
 export class SurvivalNeeds {
 	constructor(game) {

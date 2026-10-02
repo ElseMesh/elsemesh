@@ -7,7 +7,7 @@ def arg(name, default=None):
     except (ValueError, IndexError): return default
 
 out = os.path.abspath(arg("--out", os.path.join(os.getcwd(), "public", "models", "world", "caves.glb")))
-collection_name = arg("--collection", "BH_Caves")
+collection_name = arg("--collection", "ELSEMESH_Caves")
 collection = bpy.data.collections.get(collection_name)
 if not collection:
     raise RuntimeError(f"Collection {collection_name!r} not found")

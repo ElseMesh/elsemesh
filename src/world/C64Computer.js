@@ -20,24 +20,24 @@ export class C64Computer {
     this.app=app; this.lines=[]; this.active=false; this.loggedIn=false; this.username=''; this.commandQueue=Promise.resolve();
     this.console=new ScreenConsole((text,newline)=>this.write(text,newline));
     this.interpreter=new Interpreter(this.console);
-    this.dialog=document.createElement('dialog'); this.dialog.className='bh-c64-terminal';
+    this.dialog=document.createElement('dialog'); this.dialog.className='elsemesh-c64-terminal';
     this.dialog.setAttribute('aria-label','Commodore 64 computer');
     this.dialog.innerHTML=`<style>
-      .bh-c64-terminal{width:100vw;height:100vh;max-width:none;max-height:none;margin:0;padding:0;border:0;background:radial-gradient(circle at 50% 35%,#514638,#151310 72%);color:#b9c8ff;font-family:ui-monospace,"Courier New",monospace}
-      .bh-c64-terminal::backdrop{background:#050505}.bh-c64-shell{height:100%;display:grid;place-items:center;padding:3vh;box-sizing:border-box}
-      .bh-c64-monitor{width:min(1080px,94vw);height:min(760px,86vh);display:flex;flex-direction:column;gap:14px;padding:28px;border:18px solid #b6a27b;border-radius:28px;background:#3c3429;box-shadow:0 28px 90px #000,inset 0 0 0 3px #e1d0a2}
-      .bh-c64-screen{flex:1;overflow:hidden;white-space:pre-wrap;padding:34px 42px;background:#3155a4;color:#a9c7ff;border:12px solid #171918;border-radius:30px;box-shadow:inset 0 0 60px #07153c,0 0 28px #3a61ad66;font-size:clamp(15px,2.1vw,27px);line-height:1.12;text-transform:uppercase;text-shadow:0 0 7px #bed5ff88}
-      .bh-c64-form{display:flex;gap:10px}.bh-c64-input{flex:1;background:#24201a;color:#fff1c8;border:1px solid #d8c69b;border-radius:7px;padding:12px 14px;font:18px ui-monospace,monospace;text-transform:uppercase}
-      .bh-c64-form button,.bh-c64-exit{background:#6c5840;color:#fff6dc;border:1px solid #cfb98e;border-radius:7px;padding:10px 17px;font-weight:700;cursor:pointer}
-      .bh-c64-meta{display:flex;justify-content:space-between;gap:14px;color:#e9d6aa;font:13px system-ui}.bh-c64-meta span:last-child{text-align:right}
-      @media(max-width:650px){.bh-c64-monitor{padding:12px;border-width:9px}.bh-c64-screen{padding:18px 14px;border-width:7px}.bh-c64-meta span:last-child{display:none}}
-    </style><div class="bh-c64-shell"><section class="bh-c64-monitor"><div class="bh-c64-screen" role="log" aria-live="polite"></div><form class="bh-c64-form"><input class="bh-c64-input" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="C64 command"><button>RETURN</button><button type="button" class="bh-c64-exit">LEAVE</button></form><div class="bh-c64-meta"><span>COMMODORE 64 · MICROSOFT 6502 BASIC 1.1</span><span>ENTER PROGRAM LINES · RUN · LIST · SAVE "NAME" · ESC LEAVES</span></div></section></div>`;
+      .elsemesh-c64-terminal{width:100vw;height:100vh;max-width:none;max-height:none;margin:0;padding:0;border:0;background:radial-gradient(circle at 50% 35%,#514638,#151310 72%);color:#b9c8ff;font-family:ui-monospace,"Courier New",monospace}
+      .elsemesh-c64-terminal::backdrop{background:#050505}.elsemesh-c64-shell{height:100%;display:grid;place-items:center;padding:3vh;box-sizing:border-box}
+      .elsemesh-c64-monitor{width:min(1080px,94vw);height:min(760px,86vh);display:flex;flex-direction:column;gap:14px;padding:28px;border:18px solid #b6a27b;border-radius:28px;background:#3c3429;box-shadow:0 28px 90px #000,inset 0 0 0 3px #e1d0a2}
+      .elsemesh-c64-screen{flex:1;overflow:hidden;white-space:pre-wrap;padding:34px 42px;background:#3155a4;color:#a9c7ff;border:12px solid #171918;border-radius:30px;box-shadow:inset 0 0 60px #07153c,0 0 28px #3a61ad66;font-size:clamp(15px,2.1vw,27px);line-height:1.12;text-transform:uppercase;text-shadow:0 0 7px #bed5ff88}
+      .elsemesh-c64-form{display:flex;gap:10px}.elsemesh-c64-input{flex:1;background:#24201a;color:#fff1c8;border:1px solid #d8c69b;border-radius:7px;padding:12px 14px;font:18px ui-monospace,monospace;text-transform:uppercase}
+      .elsemesh-c64-form button,.elsemesh-c64-exit{background:#6c5840;color:#fff6dc;border:1px solid #cfb98e;border-radius:7px;padding:10px 17px;font-weight:700;cursor:pointer}
+      .elsemesh-c64-meta{display:flex;justify-content:space-between;gap:14px;color:#e9d6aa;font:13px system-ui}.elsemesh-c64-meta span:last-child{text-align:right}
+      @media(max-width:650px){.elsemesh-c64-monitor{padding:12px;border-width:9px}.elsemesh-c64-screen{padding:18px 14px;border-width:7px}.elsemesh-c64-meta span:last-child{display:none}}
+    </style><div class="elsemesh-c64-shell"><section class="elsemesh-c64-monitor"><div class="elsemesh-c64-screen" role="log" aria-live="polite"></div><form class="elsemesh-c64-form"><input class="elsemesh-c64-input" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="C64 command"><button>RETURN</button><button type="button" class="elsemesh-c64-exit">LEAVE</button></form><div class="elsemesh-c64-meta"><span>COMMODORE 64 · MICROSOFT 6502 BASIC 1.1</span><span>ENTER PROGRAM LINES · RUN · LIST · SAVE "NAME" · ESC LEAVES</span></div></section></div>`;
     document.body.append(this.dialog);
-    this.screen=this.dialog.querySelector('.bh-c64-screen'); this.input=this.dialog.querySelector('.bh-c64-input');
+    this.screen=this.dialog.querySelector('.elsemesh-c64-screen'); this.input=this.dialog.querySelector('.elsemesh-c64-input');
     this.dialog.querySelector('form').addEventListener('submit',event=>{event.preventDefault();const command=this.input.value;this.input.value='';this.commandQueue=this.commandQueue.then(()=>this.submit(command));});
-    this.dialog.querySelector('.bh-c64-exit').onclick=()=>this.close();
+    this.dialog.querySelector('.elsemesh-c64-exit').onclick=()=>this.close();
     this.dialog.addEventListener('cancel',event=>{event.preventDefault();this.close();});
-    this.write('BURNING HORIZONS WAREHOUSE NETWORK',true); this.write('COMMODORE 64 TERMINAL 01',true); this.write('',true); this.write('LOGIN:',true);
+    this.write('ELSEMESH WAREHOUSE NETWORK',true); this.write('COMMODORE 64 TERMINAL 01',true); this.write('',true); this.write('LOGIN:',true);
   }
   write(text,newline=true) {
     if(text==='\f')this.lines=[];

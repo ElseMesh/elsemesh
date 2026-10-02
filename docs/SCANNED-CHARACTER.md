@@ -17,11 +17,10 @@ was changed.
 
 - Supplied KIRI project: `Project 2`, Featureless Scan, OBJ, high polygon
   count, 4K texture, object masking off.
-- Shared download: `https://www.kiriengine.app/share/download/2be6fa5a4ed549ec93fb01edee28641d`.
-- Untouched archive on D: `D:\Codex\Burning-Horizons-character-source\project-2-20260926\kiri-project-2-source-obj.zip`.
+- The original download link remains private.
+- The untouched source archive remains outside this public repository.
 - Archive SHA-256: `194a9d562f2fbc92f691d66ce5f545dbdffa1827e5b0b7272b18a8ff1b8ec839`.
-- Full baseline report, imported Blender file, and five textured views plus
-  wireframe are under `D:\Codex\Burning-Horizons-character-source\project-2-20260926\evidence`.
+- The baseline report, imported Blender file and validation renders remain private.
 - The personal source archive and `.blend` files are deliberately outside
   the public game repository. The runtime GLB is in
   `public/models/characters/scanned-explorer.glb`.
@@ -72,7 +71,7 @@ source or the qualified game asset.
 ## Rebuild and verify
 
 See [`tools/character_pipeline/README.md`](../tools/character_pipeline/README.md)
-for commands. The source report and validation images stay on D:. Run the
+for commands. Keep personal source reports and validation images private. Run the
 character smoke test, `npm test`, and `npm run build` after changing the
 asset or integration. The game shows the scan to other players/cameras;
 normal walking remains first person at the existing camera position.

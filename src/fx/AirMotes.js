@@ -44,7 +44,9 @@ export class AirMotes {
 		this.reversedDepth = reversedDepth;
 		this.uniforms = new UniformBlock( 'AirMotesParams', {
 			camPos: [ 'vec3f', new Vector3() ],
-			intensity: [ 'f32', 1 ],
+			// Opt-in until the transparent specks' temporal trails are qualified.
+			// The Effects slider still enables them for diagnosis/experimentation.
+			intensity: [ 'f32', 0 ],
 			drift: [ 'vec2f', new Vector2() ], // wind drift, wrapped to the box (m)
 		}, { label: 'airMotes' } );
 		this.camPos = this.uniforms.fields.camPos;

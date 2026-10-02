@@ -153,6 +153,14 @@ export class TemporalUpscale {
 
 	}
 
+	// A discontinuous review-camera change has no valid reprojection history.
+	resetHistory() {
+		this._needsRestart = true;
+		this._hasPrevInvVP = false;
+		this._nextPrev = null;
+		this._camPrev = null;
+	}
+
 	setSize( w, h ) {
 
 		const a = this.history[ 0 ].setSize( w, h );

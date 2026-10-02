@@ -7,8 +7,10 @@ import { createTreeBarkMaterial } from './vegetation/ScannedBark.js';
 import { FOURTH, fourthIslandContains } from './FourthIslandLayout.js';
 import { TreeWildlife } from './TreeWildlife.js';
 import { fruitTreeCrownGeometry, fruitTreeLeafMaterial } from './vegetation/FruitTreeCrown.js';
+import { DistantForest, ForestTreeRoot } from './vegetation/DistantForest.js';
+import { AnimatedForest } from './vegetation/AnimatedForest.js';
 
-const ASSET = (import.meta.env.BASE_URL || '/') + 'models/buildings/forest-cabin.glb';
+const ASSET = (import.meta.env?.BASE_URL || '/') + 'models/buildings/forest-cabin.glb';
 const leaf = standard({name:'Island Four forest canopy',color:0x315f32,roughness:.92});
 leaf.underwaterLighting='none';leaf.localLightsCheap=true;
 const bananaLeaf = standard({name:'Cartoon banana leaves',color:0x39a84d,roughness:.82});
@@ -81,8 +83,12 @@ async function loadVilla() {
 
 export class FourthIslandSystem {
   constructor(app) {
-    this.app=app;this.time=0;this.group=new Group();this.group.name='Cartoon Island — forest villa';app.scene.add(this.group);
+    this.app=app;this.time=0;this.optimizeDistantForest=true;this.optimizeAnimatedForest=true;this.group=new Group();this.group.name='Cartoon Island — forest villa';app.scene.add(this.group);
     this.bark=createTreeBarkMaterial();this.buildForest();this.wildlife=new TreeWildlife(this.group,this.trees,this.bark);this.addCollision();
+    this.distantForest=new DistantForest(this.trees,this.group);
+    this.forestStats=this.distantForest.stats;
+    this.animatedForest=new AnimatedForest(this.trees,this.group);
+    this.animatedForestStats=this.animatedForest.stats;
     const y=app.terrainData.heightAt(FOURTH.villa.x,FOURTH.villa.z);
     this.ready=loadVilla().then(model=>{
       this.model=model;model.rotation.y=FOURTH.villa.yaw;model.scale.setScalar(1.16);model.updateMatrixWorld(true);
@@ -104,7 +110,7 @@ export class FourthIslandSystem {
       if(Math.hypot(x-FOURTH.villa.x,(z-FOURTH.villa.z)*.82)<24)continue;
       if(z>FOURTH.villa.z-8&&Math.abs(x-FOURTH.villa.x)<38)continue;
       const y=terrain.heightAt(x,z);if(y<2.2)continue;
-      const height=6.8+(index%7)*.72, root=new Group(), joints=[], crowns=[];root.position.set(x,y,z);root.rotation.y=(index*.71)%6.283;this.group.add(root);
+      const height=6.8+(index%7)*.72, root=new ForestTreeRoot(), joints=[], crowns=[];root.position.set(x,y,z);root.rotation.y=(index*.71)%6.283;this.group.add(root);
       let parent=root;
       for(let jointIndex=0;jointIndex<9;jointIndex++){
         const joint=new Group();joint.position.y=jointIndex?height/9:0;parent.add(joint);joints.push(joint);
@@ -125,7 +131,8 @@ export class FourthIslandSystem {
         branch.position.copy(direction).multiplyScalar(.5);branch.quaternion.setFromUnitVectors(new Vector3(0,1,0),direction.clone().normalize());branch.castShadow=true;joint.add(branch);
         const sideCrown=new Mesh(crownGeometry,crownMaterial);sideCrown.position.copy(direction);sideCrown.scale.set(1.2,.78,1.0);sideCrown.castShadow=true;joint.add(sideCrown);crowns.push(sideCrown);
       }
-      this.trees.push({root,joints,crowns});colliders.addCylinder(x,z,.54,y,y+height,{tag:'cartoon-island-tree'});
+      const meshes=[];root.traverse(node=>{if(node.isMesh)meshes.push(node);});
+      this.trees.push({root,joints,crowns,meshes});colliders.addCylinder(x,z,.54,y,y+height,{tag:'cartoon-island-tree'});
     }
     this.buildBananaGrove(terrain,colliders);
   }
@@ -155,14 +162,8 @@ export class FourthIslandSystem {
   }
   update(dt) {
     this.time+=dt;
-    for(let treeIndex=0;treeIndex<this.trees.length;treeIndex++){
-      const tree=this.trees[treeIndex];
-      for(let jointIndex=0;jointIndex<tree.joints.length;jointIndex++){
-        const flex=jointIndex/(tree.joints.length-1);
-        tree.joints[jointIndex].rotation.z=flex*Math.sin(this.time*.9+treeIndex*.37-jointIndex*.15)*.026;
-        tree.joints[jointIndex].rotation.x=flex*Math.cos(this.time*.7+treeIndex*.29)*.016;
-      }
-    }
+    this.distantForest.update(this.time,this.app.camera.position,this.optimizeDistantForest);
+    this.animatedForest.update(this.optimizeAnimatedForest);
     this.wildlife?.update(dt,this.app.camera.position);
   }
 }
