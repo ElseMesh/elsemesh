@@ -7,6 +7,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createWorldSource } from '../src/network/WorldSource.js';
 import { createAITaskBundle } from '../tools/create-ai-edit-task.mjs';
+import { prepareAIEditPublication } from '../tools/prepare-ai-edit-publication.mjs';
 import { runAIEditWorker } from '../tools/run-ai-edit-worker.mjs';
 
 if ( process.env.ELSEMESH_RUN_BLENDER_WORKER !== '1' ) {
@@ -26,6 +27,7 @@ try {
 	const assetsPath = path.join( temporaryRoot, 'assets' );
 	const taskPath = path.join( temporaryRoot, 'task' );
 	const outputPath = path.join( temporaryRoot, 'candidate' );
+	const publicationPath = path.join( temporaryRoot, 'publication-package' );
 	await mkdir( assetsPath );
 	const source = createWorldSource( { worldId: 'tw-world:ai-worker-runtime' } );
 	await writeFile( sourcePath, `${JSON.stringify( source, null, 2 )}\n` );
@@ -93,7 +95,16 @@ try {
 	assert.ok( reviewHTML.includes( 'Unsigned candidate' ) );
 	assert.ok( reviewHTML.includes( generatedAssetId ) );
 	assert.ok( reviewHTML.includes( 'review-preview.png' ) );
-	console.log( 'ok isolated Blender worker created an unsigned candidate with verified GLB and rendered review preview' );
+	const prepared = await prepareAIEditPublication( { baseSourcePath: sourcePath, baseAssetsPath: assetsPath, candidatePath: outputPath, outputPath: publicationPath } );
+	assert.equal( prepared.published, false );
+	assert.equal( prepared.preview, true );
+	assert.equal( prepared.generatedAssets, 1 );
+	assert.deepEqual( await readFile( path.join( publicationPath, 'assets', generatedAssetId.slice( 7 ) ) ), await readFile( generatedAsset ) );
+	assert.deepEqual( await readFile( path.join( publicationPath, 'review-preview.png' ) ), previewBytes );
+	const preparedReview = JSON.parse( await readFile( path.join( publicationPath, 'review.json' ), 'utf8' ) );
+	assert.deepEqual( preparedReview.addedObjectIds, [ objectId ] );
+	assert.ok( ( await readFile( path.join( publicationPath, 'PUBLISHING.md' ), 'utf8' ) ).includes( 'still unsigned and unpublished' ) );
+	console.log( 'ok isolated Blender worker produced a verified candidate and complete, unsigned owner publication package' );
 } finally {
 	await rm( temporaryRoot, { recursive: true, force: true } );
 }
