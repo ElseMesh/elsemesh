@@ -1,0 +1,18 @@
+# Draft: do not enable before certificate issuance and apachectl configtest.
+<VirtualHost *:443>
+    ServerName game.example.com
+    SSLEngine On
+    SSLCertificateFile /etc/letsencrypt/live/game.example.com/fullchain.pem
+    SSLCertificateKeyFile /etc/letsencrypt/live/game.example.com/privkey.pem
+    SSLProtocol -all +TLSv1.2 +TLSv1.3
+    Header always set Strict-Transport-Security "max-age=86400"
+    ProxyRequests Off
+    ProxyPreserveHost On
+    ProxyTimeout 60
+    ProxyPass /ws ws://127.0.0.1:5200/ws
+    ProxyPassReverse /ws ws://127.0.0.1:5200/ws
+    ProxyPass / http://127.0.0.1:5200/
+    ProxyPassReverse / http://127.0.0.1:5200/
+    ErrorLog ${APACHE_LOG_DIR}/game-error.log
+    CustomLog ${APACHE_LOG_DIR}/game-access.log combined
+</VirtualHost>

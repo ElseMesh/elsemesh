@@ -1,0 +1,20 @@
+{
+  "id": "agent-control-island-five-v1",
+  "task": "Island Five forest-only implementation",
+  "agentControlOutcome": "PARTIAL_WITH_GOVERNED_FAILURES",
+  "agentControlFilesAccepted": [
+    "src/world/IslandFiveLayout.js",
+    "src/world/IslandFiveSystem.js",
+    "test/island-five.mjs",
+    "docs/ISLAND-FIVE-AGENT-CONTROL.md"
+  ],
+  "codexCorrections": [
+    "moved the island to remove overlap with Island Four",
+    "filled the unintended central clearing and used the declared 180-tree budget",
+    "added runtime and terrain integration",
+    "added scanned bark material and integration tests",
+    "recorded the nested-path denial"
+  ],
+  "integration": true,
+  "forestOnly": true
+}

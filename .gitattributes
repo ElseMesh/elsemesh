@@ -1,0 +1,9 @@
+* text=auto
+public/models/port/licensing/** -text
+*.glb -text
+*.blend -text
+*.png -text
+*.jpg -text
+*.webp -text
+*.wav -text
+*.ogg -text

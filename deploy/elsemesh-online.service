@@ -1,0 +1,17 @@
+[Unit]
+Description=ElseMesh ten-player room server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/elsemesh-online
+Environment=NODE_ENV=production
+EnvironmentFile=%h/.config/elsemesh/online.env
+ExecStart=/usr/bin/node tools/networking/online-server.mjs
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+
+[Install]
+WantedBy=default.target

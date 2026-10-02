@@ -1,0 +1,16 @@
+# Enable only after checking the dedicated DNS record. This challenge-only
+# bootstrap never serves the game over unencrypted HTTP.
+<VirtualHost *:80>
+    ServerName game.example.com
+    DocumentRoot /var/www/game-acme
+    <Directory /var/www/game-acme>
+        Options -Indexes
+        AllowOverride None
+        Require all granted
+    </Directory>
+    RewriteEngine On
+    RewriteCond %{REQUEST_URI} !^/\.well-known/acme-challenge/
+    RewriteRule ^ https://game.example.com%{REQUEST_URI} [R=308,L,NE]
+    ErrorLog ${APACHE_LOG_DIR}/game-error.log
+    CustomLog ${APACHE_LOG_DIR}/game-access.log combined
+</VirtualHost>

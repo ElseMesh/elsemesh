@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1" />
+	<title>ElseMesh</title>
+	<link rel="preload" as="image" href="ui/keyart-720.jpg" imagesrcset="ui/keyart-720.jpg 1280w, ui/keyart.jpg 2560w" imagesizes="100vw" />
+	<link rel="preconnect" href="https://fonts.googleapis.com" />
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+	<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Caveat+Brush&family=Kalam:wght@400;700&display=swap" rel="stylesheet" />
+	<link rel="stylesheet" href="/src/ui/ui.css" />
+	<style>
+		html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #000; }
+		#app, #app canvas { display: block; }
+		#fps { position: fixed; top: 10px; left: 12px; z-index: 50; font: 500 12px/1.2 'JetBrains Mono', ui-monospace, monospace;
+			color: #e8f6ff; background: rgba(8, 14, 22, 0.55); padding: 5px 9px; border-radius: 6px; pointer-events: none;
+			backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); letter-spacing: 0.02em; }
+	</style>
+</head>
+<body>
+	<div id="app"></div>
+	<div id="fps">-- fps</div>
+	<div id="loader" role="status" aria-live="polite" aria-label="Loading ElseMesh">
+		<img class="loader-art" src="ui/keyart-720.jpg" srcset="ui/keyart-720.jpg 1280w, ui/keyart.jpg 2560w" sizes="100vw" alt="" decoding="async" fetchpriority="high" onload="this.classList.add('is-in')" />
+		<div class="loader-scrim"></div>
+		<div class="loader-inner">
+			<div class="loader-brand">
+				<p class="loader-kicker">An island mystery</p>
+				<h1 class="loader-title">ELSEMESH</h1>
+				<p class="loader-tagline">Explore the cave, follow the hidden rail beneath the sea, and discover what happened on the second island. Your island mystery awaits.</p>
+			</div>
+			<div class="loader-panel">
+				<div class="loader-row">
+					<span class="loader-status">Starting…</span>
+					<span class="loader-meta"><span class="loader-pct">0%</span><span class="loader-time">0:00</span></span>
+				</div>
+				<div class="loader-bar"><div class="loader-fill"></div><div class="loader-glint"></div></div>
+				<div class="loader-note">The first launch compiles the shaders and can take a minute or two. Later visits load much faster.</div>
+				<div class="loader-tips">
+					<span class="loader-tip-label">Tip</span>
+					<div class="loader-tip-list">
+						<p class="loader-tip">Take the boat around the western headland. The sheltered cave entrance leads to a hidden station.</p>
+						<p class="loader-tip">Open the cave's final door with <kbd>E</kbd>, then board the undersea monorail to a second island.</p>
+						<p class="loader-tip">Press <kbd>N</kbd> for the three-island map. Sail south to Loz's Helicopter Rental, collect a key with <kbd>E</kbd>, and follow the path to the helipad. In the helicopter: WASD to fly, Space/C for altitude, mouse to steer and left/right cursor keys to look through the side windows.</p>
+						<p class="loader-tip">Read the expedition log in Station B, then find the silent signal mast above ground.</p>
+						<p class="loader-tip">Press <kbd>G</kbd> to equip the sidearm, click to fire and press <kbd>X</kbd> to reload.</p>
+						<p class="loader-tip">Hunger is off by default. Fishing and trading remain available. Optional hunger can be enabled in Gameplay settings.</p>
+						<p class="loader-tip">The sky follows your local time. Open Sky settings to preview sunset, moon and stars at any time.</p>
+						<p class="loader-tip">The monorail runs both ways. You can return to the home island and boat.</p>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+	<script type="module" src="/src/main.js"></script>
+<a href="./credits.html" target="_blank" rel="noopener" style="position:fixed;bottom:8px;right:12px;z-index:2000;color:#deeee8;font:12px system-ui;background:#0b202acc;padding:5px 9px;border-radius:4px">Credits &amp; licences</a>
+</body>
+</html>

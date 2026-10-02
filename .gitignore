@@ -1,0 +1,12 @@
+node_modules
+dist
+.DS_Store
+*.log
+artifacts/world/
+artifacts/blender/
+artifacts/video/
+artifacts/network/
+*.pcap
+*.pcapng
+*.pem
+*.key
