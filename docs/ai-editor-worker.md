@@ -50,4 +50,18 @@ Successful output contains an unsigned candidate source, a candidate `.blend`, a
 
 ## Current boundary
 
-This worker supplies a provider-neutral task and execution format that Blender-capable assistants can use, plus a local artifact review page with a rendered candidate image. Model selection, paid-service credentials, remote task hosting, an acceptance flow, and automated training-data collection are separate service work and are not implemented here. The worker currently requires Linux user namespaces and Bubblewrap; a portable Blender runtime is supported via an explicit trusted prefix. On 2026-10-02, the isolated worker test ran with Blender 4.3.2 and created an unsigned candidate source, `.blend`, content-hash-verified GLB, and review report. It is not a Termux execution path. The source and world-node formats remain usable without this worker.
+This worker supplies a provider-neutral task and execution format that Blender-capable assistants can use, plus a local artifact review page with a rendered candidate image and a CLI that prepares a hash-verified owner publication package. An interactive accept/reject UI, model selection, paid-service credentials, remote task hosting, and automated training-data collection are separate service work and are not implemented here. Publication still requires the owner's separate explicit command. The worker currently requires Linux user namespaces and Bubblewrap; a portable Blender runtime is supported via an explicit trusted prefix. On 2026-10-02, the isolated worker test ran with Blender 4.3.2 and created an unsigned candidate source, `.blend`, content-hash-verified GLB, and review report. It is not a Termux execution path. The source and world-node formats remain usable without this worker.
+
+## Prepare an owner publication package
+
+After reviewing the worker's `review.html`, use the preparation command to make a separate, complete package for owner review. It verifies that the review report hashes match the exact base and candidate source bytes, validates both sources, hashes every referenced asset, collects the complete content-addressed asset set from the base package and worker output, and regenerates the review page from validated source records. It refuses to overwrite an existing output directory. It does not sign or publish the candidate.
+
+```sh
+node tools/prepare-ai-edit-publication.mjs \
+  --base-source ./worlds/island/world-source.json \
+  --base-assets ./worlds/island/assets \
+  --candidate /var/tmp/elsemesh-fish-table-candidate \
+  --out /var/tmp/elsemesh-fish-table-publication
+```
+
+Open `review.html` in the prepared package, compare `base.world-source.json` with `candidate.world-source.json`, and inspect `candidate.blend`. `PUBLISHING.md` contains the separate owner-only `publish-world-source.mjs` command template. Set its paths to the selected owner profile and review them before running it. Publication still checks that the base source matches the active signed manifest, verifies/imports the package, and uses only the local owner's key. Stale source hashes, changed assets, mismatched reports, and existing output paths fail closed. This is a local handoff aid, not yet an interactive acceptance UI or hosted AI service.

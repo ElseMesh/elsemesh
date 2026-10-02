@@ -26,7 +26,7 @@ export function renderAIEditReviewHTML(report) {
 <h2>Portal changes</h2><section class="changes" id="portals"></section>
 <h2>World field changes</h2><section class="changes" id="world"></section>
 <h2>Generated assets</h2><section class="card" id="assets"></section>
-<h2>Candidate files</h2><section class="card"><ul><li><a href="./candidate.world-source.json">Unsigned world source</a></li><li><a href="./candidate.blend">Blender scene</a></li><li><a href="./review.json">Machine-readable review</a></li></ul></section>
+<h2>Candidate files</h2><section class="card" id="candidate-files"><ul><li><a href="./candidate.world-source.json">Unsigned world source</a></li><li><a href="./candidate.blend">Blender scene</a></li><li><a href="./review.json">Machine-readable review</a></li></ul></section>
 <script type="application/json" id="review-data">${encodedReport}</script>
 <script>
 const report=JSON.parse(document.getElementById('review-data').textContent);
@@ -40,6 +40,8 @@ card(summary,'Source binding',text('pre','Base: '+report.baseSourceHash+'\\nCand
 card(summary,'Validation',text('pre',JSON.stringify(report.validation,null,2)));
 const preview=document.getElementById('preview');
 if(report.preview?.file==='review-preview.png'){const image=document.createElement('img');image.className='preview';image.src='./review-preview.png';image.alt='Offline Blender preview of the candidate scene';preview.append(image);const note=text('p','Workbench render of the candidate geometry. It is a review aid, not the game renderer or a material-fidelity comparison.','muted');preview.append(note);}else preview.append(text('p','Blender found no renderable mesh geometry for a preview.','empty'));
+if(report.baseSourceFile==='base.world-source.json'){const baseLink=document.createElement('li');const anchor=document.createElement('a');anchor.href='./base.world-source.json';anchor.textContent='Base world source';baseLink.append(anchor);document.querySelector('#candidate-files ul').prepend(baseLink);}
+if(report.baseSourceFile==='base.world-source.json'){const publishLink=document.createElement('li');const anchor=document.createElement('a');anchor.href='./PUBLISHING.md';anchor.textContent='Owner publication checklist';publishLink.append(anchor);document.querySelector('#candidate-files ul').append(publishLink);}
 function renderChanges(target,changes){if(!changes.length){target.append(text('p','No changes', 'empty'));return;}for(const change of changes){const before=text('pre',change.before===null?'(new record)':JSON.stringify(change.before,null,2));const after=text('pre',change.after===null?'(removed)':JSON.stringify(change.after,null,2));const body=document.createElement('div');body.append(text('p',change.status+' · '+change.id,'status'));body.append(text('h4','Before'));body.append(before);body.append(text('h4','After'));body.append(after);card(target,change.id,body);}}
 renderChanges(document.getElementById('objects'),report.objectChanges||[]);
 renderChanges(document.getElementById('portals'),report.portalChanges||[]);

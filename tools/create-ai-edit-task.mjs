@@ -45,7 +45,7 @@ async function hashFile(file) {
 	return `sha256:${hasher.digest( 'hex' )}`;
 }
 
-function sourceAssetIDs(source) {
+export function sourceAssetIDs(source) {
 	const ids = new Set( source.objects.map( ( object ) => object.assetId ).filter( ( id ) => ASSET_ID.test( id || '' ) ) );
 	for ( const component of source.components || [] ) {
 		if ( ASSET_ID.test( component.placementAssetId || '' ) ) ids.add( component.placementAssetId );
