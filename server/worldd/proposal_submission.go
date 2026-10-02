@@ -14,6 +14,8 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
+	"strings"
 	"time"
 )
 
@@ -48,6 +50,199 @@ type worldProposalHeader struct {
 	SourceHash string            `json:"sourceHash"`
 	Operations []json.RawMessage `json:"operations"`
 }
+
+type queuedWorldProposal struct {
+	ID                    string `json:"id"`
+	AccountKeyFingerprint string `json:"accountKeyFingerprint"`
+	GrantID               string `json:"grantId"`
+	SourceHash            string `json:"sourceHash"`
+	OperationCount        int    `json:"operationCount"`
+}
+
+// listWorldProposals reads the private local inbox and verifies that each
+// entry is still the exact content-addressed, account-signed submission that
+// was accepted by the HTTP intake path.
+func listWorldProposals(directory, worldID, ownerPeerID string) ([]queuedWorldProposal, error) {
+	if err := validatePrivateProposalInbox(directory); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return nil, err
+	}
+	entries, err := os.ReadDir(directory)
+	if errors.Is(err, os.ErrNotExist) {
+		return []queuedWorldProposal{}, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	result := make([]queuedWorldProposal, 0, len(entries))
+	for _, entry := range entries {
+		if !strings.HasSuffix(entry.Name(), ".json") || len(entry.Name()) != 64+len(".json") {
+			return nil, errors.New("proposal inbox contains an unexpected entry")
+		}
+		if entry.Type()&os.ModeSymlink != 0 {
+			return nil, errors.New("proposal inbox contains a symbolic link")
+		}
+		id := "sha256:" + stringsTrimSuffixJSON(entry.Name())
+		item, err := readQueuedWorldProposal(filepath.Join(directory, entry.Name()), id, worldID, ownerPeerID)
+		if err != nil {
+			return nil, fmt.Errorf("proposal %s: %w", id, err)
+		}
+		result = append(result, item)
+	}
+	sort.Slice(result, func(i, j int) bool { return result[i].ID < result[j].ID })
+	return result, nil
+}
+
+func exportWorldProposal(directory, id, worldID, ownerPeerID, destination string) (queuedWorldProposal, error) {
+	if !proposalSourceHashPattern.MatchString(id) {
+		return queuedWorldProposal{}, errors.New("proposal ID must be a sha256 content ID")
+	}
+	if err := validatePrivateProposalInbox(directory); err != nil {
+		return queuedWorldProposal{}, err
+	}
+	path := filepath.Join(directory, stringsTrimPrefixSHA256(id)+".json")
+	item, err := readQueuedWorldProposal(path, id, worldID, ownerPeerID)
+	if err != nil {
+		return queuedWorldProposal{}, err
+	}
+	var submission worldProposalSubmission
+	if err := decodeStrictJSONFile(path, &submission); err != nil {
+		return queuedWorldProposal{}, err
+	}
+	proposal, err := json.MarshalIndent(json.RawMessage(submission.Proposal), "", "  ")
+	if err != nil {
+		return queuedWorldProposal{}, err
+	}
+	if err := writeNewPrivateFile(destination, append(proposal, '\n')); err != nil {
+		return queuedWorldProposal{}, err
+	}
+	return item, nil
+}
+
+func validatePrivateProposalInbox(directory string) error {
+	info, err := os.Lstat(directory)
+	if err != nil {
+		return err
+	}
+	if !info.IsDir() || info.Mode()&os.ModeSymlink != 0 || info.Mode().Perm() != 0700 {
+		return fmt.Errorf("proposal inbox must be a private 0700 directory (got %s)", info.Mode().Perm())
+	}
+	return nil
+}
+
+func readQueuedWorldProposal(path, id, worldID, ownerPeerID string) (queuedWorldProposal, error) {
+	var item queuedWorldProposal
+	info, err := os.Lstat(path)
+	if err != nil {
+		return item, err
+	}
+	if !info.Mode().IsRegular() || info.Mode().Perm() != 0600 || info.Size() > maxProposalSubmissionBytes {
+		return item, errors.New("stored proposal is not a private regular file within the size limit")
+	}
+	encoded, err := os.ReadFile(path)
+	if err != nil {
+		return item, err
+	}
+	var submission worldProposalSubmission
+	if err := decodeStrictJSON(encoded, &submission); err != nil {
+		return item, errors.New("invalid stored submission")
+	}
+	canonical, err := canonicalJSON(submission)
+	if err != nil {
+		return item, err
+	}
+	digest := sha256.Sum256(canonical)
+	if "sha256:"+hex.EncodeToString(digest[:]) != id {
+		return item, errors.New("stored content does not match its proposal ID")
+	}
+	if submission.Protocol != worldProposalSubmissionProtocol {
+		return item, errors.New("unsupported submission protocol")
+	}
+	if err := verifyDocument(submission.Grant, worldRoleGrantProtocol); err != nil || submission.Grant.Signer != ownerPeerID {
+		return item, errors.New("owner role-grant signature is invalid")
+	}
+	publicKey, err := base64.RawURLEncoding.DecodeString(submission.AccountPublicKey)
+	if err != nil || len(publicKey) != ed25519.PublicKeySize {
+		return item, errors.New("invalid account public key")
+	}
+	signature, err := base64.RawURLEncoding.DecodeString(submission.Signature)
+	if err != nil || len(signature) != ed25519.SignatureSize {
+		return item, errors.New("invalid account signature")
+	}
+	unsigned := unsignedWorldProposalSubmission{Protocol: submission.Protocol, AccountPublicKey: submission.AccountPublicKey, Grant: submission.Grant, Proposal: submission.Proposal}
+	message, err := canonicalJSON(unsigned)
+	if err != nil {
+		return item, err
+	}
+	message = append([]byte(worldProposalSubmissionDomain), message...)
+	if !ed25519.Verify(ed25519.PublicKey(publicKey), message, signature) {
+		return item, errors.New("account submission signature is invalid")
+	}
+	var grant worldRoleGrant
+	if err := json.Unmarshal(submission.Grant.Payload, &grant); err != nil || grant.WorldID != worldID || grant.OwnerPeerID != ownerPeerID {
+		return item, errors.New("role grant does not target this world owner")
+	}
+	fingerprintBytes := sha256.Sum256(publicKey)
+	fingerprint := "sha256:" + hex.EncodeToString(fingerprintBytes[:])
+	if grant.AccountKeyFingerprint != fingerprint || !containsRoleScope(grant.Scopes, "world.content.edit") {
+		return item, errors.New("role grant does not authorize this account for content edits")
+	}
+	var proposal worldProposalHeader
+	if err := decodeStrictJSON(submission.Proposal, &proposal); err != nil || proposal.Protocol != "elsemesh.world-proposal/1" || proposal.WorldID != worldID || !proposalSourceHashPattern.MatchString(proposal.SourceHash) || len(proposal.Operations) == 0 || len(proposal.Operations) > 1000 {
+		return item, errors.New("invalid proposal document")
+	}
+	return queuedWorldProposal{ID: id, AccountKeyFingerprint: fingerprint, GrantID: grant.GrantID, SourceHash: proposal.SourceHash, OperationCount: len(proposal.Operations)}, nil
+}
+
+func decodeStrictJSON(data []byte, destination any) error {
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(destination); err != nil {
+		return err
+	}
+	var trailing any
+	if err := decoder.Decode(&trailing); !errors.Is(err, io.EOF) {
+		return errors.New("trailing JSON data")
+	}
+	return nil
+}
+
+func decodeStrictJSONFile(path string, destination any) error {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return err
+	}
+	return decodeStrictJSON(data, destination)
+}
+
+func writeNewPrivateFile(path string, data []byte) error {
+	file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
+	if err != nil {
+		return err
+	}
+	if _, err := file.Write(data); err != nil {
+		_ = file.Close()
+		_ = os.Remove(path)
+		return err
+	}
+	if err := file.Sync(); err != nil {
+		_ = file.Close()
+		_ = os.Remove(path)
+		return err
+	}
+	if err := file.Close(); err != nil {
+		_ = os.Remove(path)
+		return err
+	}
+	directory, err := os.Open(filepath.Dir(path))
+	if err != nil {
+		_ = os.Remove(path)
+		return err
+	}
+	defer directory.Close()
+	return directory.Sync()
+}
+
+func stringsTrimSuffixJSON(name string) string { return strings.TrimSuffix(name, ".json") }
 
 func (d *daemon) handleWorldProposalSubmission(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")

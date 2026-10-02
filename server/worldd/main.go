@@ -88,6 +88,9 @@ func run() error {
 	worldsDir := flag.String("worlds-dir", filepath.Join(configDir, "elsemesh", "worlds"), "directory containing named local ThruHold profiles")
 	worldProfile := flag.String("world-profile", "", "select a named local ThruHold profile (uses a separate node identity and data directory)")
 	listWorldProfiles := flag.Bool("list-world-profiles", false, "list named local ThruHold profiles, then exit")
+	listProposals := flag.Bool("list-proposals", false, "list this owner's locally queued edit proposals, then exit (requires --manifest)")
+	exportProposalID := flag.String("export-proposal", "", "export one verified queued proposal patch by sha256 ID (requires --manifest and --proposal-out)")
+	proposalOut := flag.String("proposal-out", "", "new private output file for --export-proposal")
 	dataDir := flag.String("data", defaultData, "private daemon data directory")
 	manifestPath := flag.String("manifest", "", "owner-signed world manifest JSON")
 	signManifestPath := flag.String("sign-manifest", "", "validate and owner-sign an unsigned runtime world manifest, then exit")
@@ -131,13 +134,13 @@ func run() error {
 		return nil
 	}
 	operationCount := 0
-	for _, requested := range []bool{*printNodeID, *exportNodeKey != "", *importNodeKey != "", *importAssetPath != "", *importPackagePath != "", *signManifestPath != "", *signRoleGrantPath != "", *signRoleRevocationsPath != "", *listWorldProfiles} {
+	for _, requested := range []bool{*printNodeID, *exportNodeKey != "", *importNodeKey != "", *importAssetPath != "", *importPackagePath != "", *signManifestPath != "", *signRoleGrantPath != "", *signRoleRevocationsPath != "", *listWorldProfiles, *listProposals, *exportProposalID != ""} {
 		if requested {
 			operationCount++
 		}
 	}
-	if operationCount > 1 || (*manifestOut != "" && *signManifestPath == "") || (*roleDocumentOut != "" && *signRoleGrantPath == "" && *signRoleRevocationsPath == "") || ((*signRoleGrantPath != "" || *signRoleRevocationsPath != "") && *roleDocumentOut == "") || (*signRoleGrantPath != "" && *signRoleRevocationsPath != "") {
-		return errors.New("choose one one-shot identity, asset, package, or signing operation; output flags require their matching signing operation")
+	if operationCount > 1 || (*manifestOut != "" && *signManifestPath == "") || (*roleDocumentOut != "" && *signRoleGrantPath == "" && *signRoleRevocationsPath == "") || ((*signRoleGrantPath != "" || *signRoleRevocationsPath != "") && *roleDocumentOut == "") || (*signRoleGrantPath != "" && *signRoleRevocationsPath != "") || (*proposalOut != "" && *exportProposalID == "") || (*exportProposalID != "" && (*proposalOut == "" || *manifestPath == "")) || (*listProposals && *manifestPath == "") {
+		return errors.New("choose one one-shot operation; signing and proposal export output flags require their matching operation")
 	}
 	if *listWorldProfiles {
 		if *worldProfile != "" {
@@ -197,6 +200,16 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("allow-browser-origin: %w", err)
 	}
+	if *listProposals || *exportProposalID != "" {
+		identityPath := filepath.Join(*dataDir, "node.key")
+		info, statErr := os.Lstat(identityPath)
+		if statErr != nil {
+			return fmt.Errorf("proposal review requires an existing owner node key at %s: %w", identityPath, statErr)
+		}
+		if !info.Mode().IsRegular() {
+			return errors.New("proposal review requires a regular owner node key file")
+		}
+	}
 	if err := os.MkdirAll(*dataDir, 0700); err != nil {
 		return err
 	}
@@ -226,6 +239,42 @@ func run() error {
 			return exportErr
 		}
 		fmt.Println(id)
+		return nil
+	}
+	if *listProposals || *exportProposalID != "" {
+		document, loadErr := loadWorldManifest(*manifestPath, *dataDir, *worldName, localID.String(), key)
+		if loadErr != nil {
+			return loadErr
+		}
+		world, decodeErr := decodeManifest(document, localID.String(), time.Now())
+		if decodeErr != nil {
+			return fmt.Errorf("world manifest: %w", decodeErr)
+		}
+		if world.OwnerPeerID != localID.String() {
+			return errors.New("proposal inbox commands are available only on the world owner node")
+		}
+		inbox := filepath.Join(*dataDir, "proposals")
+		if *listProposals {
+			proposals, listErr := listWorldProposals(inbox, world.WorldID, world.OwnerPeerID)
+			if listErr != nil {
+				return listErr
+			}
+			encoded, marshalErr := json.MarshalIndent(proposals, "", "  ")
+			if marshalErr != nil {
+				return marshalErr
+			}
+			fmt.Println(string(encoded))
+			return nil
+		}
+		proposal, exportErr := exportWorldProposal(inbox, *exportProposalID, world.WorldID, world.OwnerPeerID, *proposalOut)
+		if exportErr != nil {
+			return exportErr
+		}
+		encoded, marshalErr := json.Marshal(proposal)
+		if marshalErr != nil {
+			return marshalErr
+		}
+		fmt.Println(string(encoded))
 		return nil
 	}
 	if *importAssetPath != "" {

@@ -57,7 +57,23 @@ curl --fail --request PUT --header 'Content-Type: application/json' \
 
 Publish a fresh revocation snapshot before accepting delegated proposals, including an empty snapshot when no grants have been revoked yet. Republish before the 15-minute freshness window expires. Grant `issuedAt` and `expiresAt` are Unix seconds; grants may live for at most 90 days.
 
-Queueing is not acceptance: proposals remain unsigned and are not visible in the runtime manifest. An owner must inspect the stored proposal, apply it to the exact source snapshot with `tools/apply-world-proposal.mjs`, review the candidate and assets, then use the existing conversion and owner-signing workflow. A review UI, proposal listing/cleanup command, automatic source-hash-currentness check, and publication integration remain future work. Do not expose the private proposal inbox through the static web root.
+Queueing is not acceptance: proposals remain unsigned and are not visible in the runtime manifest. Local owner commands list and export proposals; they require the matching signed manifest and the local identity key to be the manifest owner. They do not create an HTTP read endpoint, and reject inbox files whose content no longer matches the content ID or account signature.
+
+```sh
+# List IDs, account fingerprints, grant IDs, base-source hashes, and operation counts.
+# Point --manifest at the signed world.json in the selected profile directory.
+worldd --world-profile island --manifest /path/to/island/world.json --list-proposals
+
+# Export only the unsigned patch; the destination must not already exist.
+worldd --world-profile island --manifest /path/to/island/world.json \
+  --export-proposal sha256:<proposal-id> --proposal-out ./proposal.json
+
+# Apply it to the exact source snapshot named by its sourceHash, then review the diff.
+node tools/apply-world-proposal.mjs --source ./island.world-source.json \
+  --proposal ./proposal.json --out ./candidate.world-source.json
+```
+
+Export verifies the stored submission content ID and account signature, and checks that the owner-signed grant still names this world and account with `world.content.edit`. A queued submission was authorized against fresh revocation state when it arrived; export does not make it accepted and does not override a later revocation. The owner must review the patch and candidate assets, check that its source snapshot is still current, then use the existing conversion and owner-signing workflow. Proposal rejection/cleanup, automatic current-source checks, a review UI, and publication integration remain future work. Do not expose the private proposal inbox through the static web root.
 
 ## Revocation, deletion, and recovery
 

@@ -2,8 +2,11 @@ package main
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -100,6 +103,102 @@ func TestWorldProposalCanonicalEnvelopeEscapesHTMLLikeBrowserSigner(t *testing.T
 	want := `{"accountPublicKey":"AQID","grant":{"payload":{"n":1,"name":"\u003cA\u0026B\u003e"},"protocol":"tidewater.world-role/1","publicKey":"public","signature":"signature","signer":"owner"},"proposal":{"operations":[],"protocol":"elsemesh.world-proposal/1","sourceHash":"sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef","title":"\u003cA\u0026B\u003e","worldId":"tw-world:canonical"},"protocol":"elsemesh.world-proposal-submission/1"}`
 	if string(canonical) != want {
 		t.Fatalf("canonical submission = %s, want %s", canonical, want)
+	}
+}
+
+func TestOwnerCanListAndExportVerifiedQueuedWorldProposal(t *testing.T) {
+	now := time.Now().Truncate(time.Second)
+	owner, member := testKey(t), testKey(t)
+	ownerID := peerIDForTest(t, owner.GetPublic())
+	worldID := "tw-world:proposal-review"
+	fingerprint, err := accountKeyFingerprint(member.GetPublic())
+	if err != nil {
+		t.Fatal(err)
+	}
+	grant := worldRoleGrant{
+		Protocol: worldRoleGrantProtocol, WorldID: worldID, OwnerPeerID: ownerID,
+		GrantID: "grant_0123456789ab", Version: 1, AccountKeyFingerprint: fingerprint,
+		Scopes: []string{"world.content.edit"}, IssuedAt: now.Add(-time.Minute).Unix(), ExpiresAt: now.Add(time.Hour).Unix(),
+	}
+	grantDocument, err := signDocument(worldRoleGrantProtocol, grant, owner)
+	if err != nil {
+		t.Fatal(err)
+	}
+	submission := makeSignedProposalSubmission(t, member, grantDocument, proposalForTest(worldID, "world.update"))
+	canonical, err := canonicalJSON(submission)
+	if err != nil {
+		t.Fatal(err)
+	}
+	digest := sha256.Sum256(canonical)
+	id := "sha256:" + hex.EncodeToString(digest[:])
+	inbox := filepath.Join(t.TempDir(), "proposals")
+	if err := prepareProposalInbox(inbox); err != nil {
+		t.Fatal(err)
+	}
+	if err := writeNewPrivateFile(filepath.Join(inbox, stringsTrimPrefixSHA256(id)+".json"), append(canonical, '\n')); err != nil {
+		t.Fatal(err)
+	}
+	listed, err := listWorldProposals(inbox, worldID, ownerID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(listed) != 1 || listed[0].ID != id || listed[0].AccountKeyFingerprint != fingerprint || listed[0].GrantID != grant.GrantID || listed[0].OperationCount != 1 {
+		t.Fatalf("unexpected proposal list: %+v", listed)
+	}
+	output := filepath.Join(t.TempDir(), "proposal.json")
+	exported, err := exportWorldProposal(inbox, id, worldID, ownerID, output)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if exported.ID != id {
+		t.Fatalf("exported proposal ID = %s, want %s", exported.ID, id)
+	}
+	info, err := os.Stat(output)
+	if err != nil || info.Mode().Perm() != 0600 {
+		t.Fatalf("proposal export is not private: stat=%v err=%v", info, err)
+	}
+	var proposal worldProposalHeader
+	if err := decodeStrictJSONFile(output, &proposal); err != nil || proposal.WorldID != worldID || len(proposal.Operations) != 1 {
+		t.Fatalf("export is not the unsigned proposal patch: proposal=%+v err=%v", proposal, err)
+	}
+	if _, err := exportWorldProposal(inbox, id, worldID, ownerID, output); !errors.Is(err, os.ErrExist) {
+		t.Fatalf("export overwrote existing file: err=%v", err)
+	}
+}
+
+func TestOwnerProposalReviewRejectsTamperedInboxEntry(t *testing.T) {
+	owner, member := testKey(t), testKey(t)
+	ownerID := peerIDForTest(t, owner.GetPublic())
+	worldID := "tw-world:proposal-tamper"
+	fingerprint, err := accountKeyFingerprint(member.GetPublic())
+	if err != nil {
+		t.Fatal(err)
+	}
+	grant := worldRoleGrant{Protocol: worldRoleGrantProtocol, WorldID: worldID, OwnerPeerID: ownerID, GrantID: "grant_0123456789ab", Version: 1, AccountKeyFingerprint: fingerprint, Scopes: []string{"world.content.edit"}, IssuedAt: time.Now().Add(-time.Minute).Unix(), ExpiresAt: time.Now().Add(time.Hour).Unix()}
+	grantDocument, err := signDocument(worldRoleGrantProtocol, grant, owner)
+	if err != nil {
+		t.Fatal(err)
+	}
+	submission := makeSignedProposalSubmission(t, member, grantDocument, proposalForTest(worldID, "world.update"))
+	canonical, err := canonicalJSON(submission)
+	if err != nil {
+		t.Fatal(err)
+	}
+	digest := sha256.Sum256(canonical)
+	id := "sha256:" + hex.EncodeToString(digest[:])
+	inbox := filepath.Join(t.TempDir(), "proposals")
+	if err := prepareProposalInbox(inbox); err != nil {
+		t.Fatal(err)
+	}
+	filename := filepath.Join(inbox, stringsTrimPrefixSHA256(id)+".json")
+	if err := writeNewPrivateFile(filename, append(canonical, '\n')); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filename, []byte(`{"protocol":"tampered"}`), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := listWorldProposals(inbox, worldID, ownerID); err == nil {
+		t.Fatal("tampered inbox entry was listed")
 	}
 }
 
