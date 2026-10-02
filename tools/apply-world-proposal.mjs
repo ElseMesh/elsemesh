@@ -24,9 +24,10 @@ function parseArgs( argv ) {
 }
 
 export function applyWorldProposal( sourceBytes, proposal ) {
-	if ( proposal?.protocol !== 'elsemesh.world-proposal/1' || ! /^sha256:[0-9a-f]{64}$/.test( proposal.sourceHash || '' ) || ! Array.isArray( proposal.operations ) || proposal.operations.length > MAX_OPERATIONS ) throw new Error( 'Invalid world proposal header' );
+	if ( proposal?.protocol !== 'elsemesh.world-proposal/1' || typeof proposal.worldId !== 'string' || ! /^tw-world:[\w.-]{1,128}$/.test( proposal.worldId ) || ! /^sha256:[0-9a-f]{64}$/.test( proposal.sourceHash || '' ) || ! Array.isArray( proposal.operations ) || proposal.operations.length > MAX_OPERATIONS ) throw new Error( 'Invalid world proposal header' );
 	if ( ! ( sourceBytes instanceof Uint8Array ) || `sha256:${createHash( 'sha256' ).update( sourceBytes ).digest( 'hex' )}` !== proposal.sourceHash ) throw new Error( 'Proposal source hash mismatch' );
 	const source = JSON.parse( sourceBytes );
+	if ( source.worldId !== proposal.worldId ) throw new Error( 'Proposal world ID does not match the source world' );
 	const result = JSON.parse( JSON.stringify( validateWorldSource( source ) ) );
 	const counts = { added: 0, updated: 0, removed: 0 };
 	for ( const operation of proposal.operations ) {

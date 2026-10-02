@@ -3,6 +3,8 @@ const STORE_NAME = 'device-keys';
 const KEY_ID = 'account-key';
 const GIS_URL = 'https://accounts.google.com/gsi/client';
 const PROOF_DOMAIN = 'elsemesh.account-proof/1\n';
+const WORLD_PROPOSAL_DOMAIN = 'elsemesh.world-proposal-submission/1\n';
+const WORLD_PROPOSAL_PROTOCOL = 'elsemesh.world-proposal-submission/1';
 
 export function accountConfiguration( config = globalThis.ELSEMESH_CONFIG ) {
 	if ( ! config || typeof config !== 'object' ) return null;
@@ -18,6 +20,31 @@ export function accountConfiguration( config = globalThis.ELSEMESH_CONFIG ) {
 
 export function createAccountProofMessage( challenge, origin ) {
 	return new TextEncoder().encode( `${ PROOF_DOMAIN }${ challenge.challengeId}\n${ challenge.nonce}\n${ origin}` );
+}
+
+export async function createWorldProposalSubmission( proposal, grant, keyPair ) {
+	if ( ! keyPair?.privateKey || ! keyPair?.publicKey || proposal?.protocol !== 'elsemesh.world-proposal/1' || ! /^tw-world:[\w.-]{1,128}$/.test( proposal.worldId || '' ) || grant?.protocol !== 'tidewater.world-role/1' ) throw new Error( 'Invalid world proposal submission inputs' );
+	const accountPublicKey = encodeBase64URL( new Uint8Array( await crypto.subtle.exportKey( 'raw', keyPair.publicKey ) ) );
+	const unsigned = { protocol: WORLD_PROPOSAL_PROTOCOL, accountPublicKey, grant: JSON.parse( JSON.stringify( grant ) ), proposal: JSON.parse( JSON.stringify( proposal ) ) };
+	const message = new TextEncoder().encode( WORLD_PROPOSAL_DOMAIN + canonicalJSONStringify( unsigned ) );
+	const signature = encodeBase64URL( new Uint8Array( await crypto.subtle.sign( { name: 'Ed25519' }, keyPair.privateKey, message ) ) );
+	return { ...unsigned, signature };
+}
+
+function canonicalJSONStringify( value ) {
+	const normalized = JSON.parse( JSON.stringify( value ) );
+	return canonicalJSONValue( normalized );
+}
+
+function canonicalJSONValue( value ) {
+	if ( Array.isArray( value ) ) return `[${ value.map( canonicalJSONValue ).join( ',' ) }]`;
+	if ( value && typeof value === 'object' ) return `{${ Object.keys( value ).sort().map( ( key ) => `${ quoteCanonicalString( key ) }:${ canonicalJSONValue( value[ key ] ) }` ).join( ',' ) }}`;
+	if ( typeof value === 'string' ) return quoteCanonicalString( value );
+	return JSON.stringify( value );
+}
+
+function quoteCanonicalString( value ) {
+	return JSON.stringify( value ).replace( /[<>&\u2028\u2029]/g, ( character ) => `\\u${ character.charCodeAt( 0 ).toString( 16 ).padStart( 4, '0' )}` );
 }
 
 export class AccountClient {
@@ -99,6 +126,29 @@ export class AccountClient {
 		await this.#deleteKeyPair();
 		this.#clearSession();
 		this.#changed();
+	}
+
+	async submitWorldProposal( gateway, proposal, grant ) {
+		if ( ! this.signedIn ) throw new Error( 'Sign in before submitting a world proposal' );
+		if ( ! globalThis.crypto?.subtle || ! globalThis.indexedDB ) throw new Error( 'Secure context, WebCrypto, and IndexedDB are required' );
+		const keyPair = await this.#keyPair();
+		const publicKey = new Uint8Array( await crypto.subtle.exportKey( 'raw', keyPair.publicKey ) );
+		const fingerprintBytes = new Uint8Array( await crypto.subtle.digest( 'SHA-256', publicKey ) );
+		const fingerprint = `sha256:${ Array.from( fingerprintBytes, ( byte ) => byte.toString( 16 ).padStart( 2, '0' ) ).join( '' )}`;
+		if ( fingerprint !== this.fingerprint ) throw new Error( 'Signed-in account key no longer matches this browser key' );
+		const endpoint = new URL( gateway );
+		const localGateway = endpoint.protocol === 'http:' && [ 'localhost', '127.0.0.1', '[::1]' ].includes( endpoint.hostname );
+		if ( ( endpoint.protocol !== 'https:' && ! localGateway ) || endpoint.username || endpoint.password || endpoint.search || endpoint.hash ) throw new Error( 'World proposal gateway must use HTTPS (or loopback HTTP for development)' );
+		const submission = await createWorldProposalSubmission( proposal, grant, keyPair );
+		const response = await fetch( new URL( '/api/world/proposals', endpoint.origin ), {
+			method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify( submission ),
+			credentials: 'omit', cache: 'no-store', redirect: 'error',
+		} );
+		if ( ! response.ok ) {
+			const detail = ( await response.text() ).trim().slice( 0, 240 );
+			throw new Error( detail || `World proposal gateway returned HTTP ${ response.status}` );
+		}
+		return response.json();
 	}
 
 	async #request( path, { method = 'GET', body, authenticated = false } = {} ) {

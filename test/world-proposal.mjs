@@ -19,7 +19,7 @@ try {
 	const sourceBytes = Buffer.from( `${JSON.stringify( source, null, 2 )}\n` );
 	const sourceHash = `sha256:${createHash( 'sha256' ).update( sourceBytes ).digest( 'hex' )}`;
 	const proposal = {
-		protocol: 'elsemesh.world-proposal/1', sourceHash,
+		protocol: 'elsemesh.world-proposal/1', worldId: source.worldId, sourceHash,
 		operations: [
 			{ op: 'object.update', id: 'tw-object:crate', fields: { transform: { position: [ 4, 0, 0 ], yaw: 0 }, priority: 'nearby' } },
 			{ op: 'object.add', object: { id: 'tw-object:lamp', kind: 'asset-instance', label: 'Lamp', transform: { position: [ 2, 0, 0 ], yaw: 0 }, scale: [ 1, 1, 1 ], collision: { shape: 'none', enabled: false } } },
@@ -36,6 +36,7 @@ try {
 	assert.throws( () => applyWorldProposal( sourceBytes, { ...proposal, operations: [ { op: 'object.add', object: source.objects[ 0 ] } ] } ), /Invalid or duplicate object/ );
 	assert.throws( () => applyWorldProposal( sourceBytes, { ...proposal, operations: [ { op: 'run-python', script: 'raise SystemExit' } ] } ), /Unsupported proposal operation/ );
 	assert.throws( () => applyWorldProposal( sourceBytes, { ...proposal, sourceHash: `sha256:${'0'.repeat( 64 )}` } ), /source hash mismatch/ );
+	assert.throws( () => applyWorldProposal( sourceBytes, { ...proposal, worldId: 'tw-world:someone-elses-world' } ), /world ID does not match/ );
 
 	const sourcePath = path.join( root, 'source.json' );
 	const proposalPath = path.join( root, 'proposal.json' );

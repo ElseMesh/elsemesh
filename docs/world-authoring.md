@@ -62,7 +62,7 @@ The package operation requires the owner or an active `content-cache` grant, req
 
 ### Apply a reviewable proposal
 
-`tools/apply-world-proposal.mjs` applies a bounded unsigned patch to one exact source snapshot. The proposal format is defined in [`schemas/world-proposal.schema.json`](schemas/world-proposal.schema.json). Its `sourceHash` is SHA-256 of the source file bytes, so a proposal for an older edit is rejected instead of silently rebasing. The allowlisted operations add, update, or remove stable-ID objects and portals, or update selected world metadata. Protected IDs and arbitrary script execution are not accepted.
+`tools/apply-world-proposal.mjs` applies a bounded unsigned patch to one exact source snapshot. The proposal format is defined in [`schemas/world-proposal.schema.json`](schemas/world-proposal.schema.json). It binds both `worldId` and `sourceHash`; the hash is SHA-256 of the source file bytes, so a proposal for another world or an older edit is rejected instead of silently rebasing. The allowlisted operations add, update, or remove stable-ID objects and portals, or update selected world metadata. Protected IDs and arbitrary script execution are not accepted.
 
 ```sh
 node tools/apply-world-proposal.mjs --source ./island.world-source.json \
@@ -70,6 +70,8 @@ node tools/apply-world-proposal.mjs --source ./island.world-source.json \
 ```
 
 The tool applies operations to a copy, runs the same source validator used by Blender/client code, and creates a new output file only if the complete result is valid. Review the resulting diff and candidate assets before converting or signing. The proposal tool never imports Blender scripts, signs a manifest, or publishes content.
+
+An account with an owner-issued `world.content.edit` grant can submit the unsigned proposal to the owner's `worldd` using `AccountClient.submitWorldProposal(gateway, proposal, grant)`. The owner node requires fresh signed revocation state and stores the signed submission under `<worldd --data>/proposals/` for manual review. See [account-roles.md](account-roles.md) for the envelope, limits, and security boundary. Queueing a proposal does not accept, apply, or publish it; owners still review the source diff and candidate assets and perform the normal signing workflow themselves.
 
 ### Apply typed Blender preview actions
 

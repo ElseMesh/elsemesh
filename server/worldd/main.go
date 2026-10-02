@@ -68,6 +68,8 @@ type daemon struct {
 	roleState             signedDocument
 	roleStateSerial       uint64
 	roleStatePath         string
+	proposalDir           string
+	proposalMu            sync.Mutex
 }
 
 func main() {
@@ -317,7 +319,7 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("world manifest: %w", err)
 	}
-	d := &daemon{ctx: ctx, host: p2pHost, dht: router, discovery: routing.NewRoutingDiscovery(router), manifest: manifest, world: world, key: key, assetsDir: filepath.Join(*dataDir, "assets"), webRoot: *webRoot, publicGateway: *publicGateway, directoryURL: *directoryURL, allowedBrowserOrigins: allowedBrowserOrigins, authorityChanged: make(chan struct{}, 1), verifiedAssets: make(map[string]assetFileStamp), roleStatePath: roleRevocationStatePath(*dataDir, world.WorldID)}
+	d := &daemon{ctx: ctx, host: p2pHost, dht: router, discovery: routing.NewRoutingDiscovery(router), manifest: manifest, world: world, key: key, assetsDir: filepath.Join(*dataDir, "assets"), proposalDir: filepath.Join(*dataDir, "proposals"), webRoot: *webRoot, publicGateway: *publicGateway, directoryURL: *directoryURL, allowedBrowserOrigins: allowedBrowserOrigins, authorityChanged: make(chan struct{}, 1), verifiedAssets: make(map[string]assetFileStamp), roleStatePath: roleRevocationStatePath(*dataDir, world.WorldID)}
 	if err := d.loadRoleRevocations(); err != nil {
 		return fmt.Errorf("load persisted role revocations: %w", err)
 	}
@@ -325,6 +327,9 @@ func run() error {
 		go d.maintainFailoverAuthority()
 	}
 	if err := os.MkdirAll(d.assetsDir, 0700); err != nil {
+		return err
+	}
+	if err := prepareProposalInbox(d.proposalDir); err != nil {
 		return err
 	}
 	cacheSources := make([]peer.ID, 0, len(cacheFrom))
@@ -365,6 +370,7 @@ func run() error {
 	mux.HandleFunc("/api/lookup", d.handleLookup)
 	mux.HandleFunc("/api/world/manifest", d.handleManifest)
 	mux.HandleFunc("/api/world/roles/revocations", d.handleRoleRevocations)
+	mux.HandleFunc("/api/world/proposals", d.handleWorldProposalSubmission)
 	mux.HandleFunc("/api/assets/", d.handleAsset)
 	mux.HandleFunc("/gateway", d.handleBrowserGateway)
 	var wtServer *webtransport.Server

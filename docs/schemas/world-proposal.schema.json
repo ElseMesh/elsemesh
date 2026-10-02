@@ -4,9 +4,10 @@
   "title": "ElseMesh World Source Proposal",
   "description": "Unsigned, reviewable operations against one exact world-source snapshot. This document cannot authorize or publish a world.",
   "type": "object",
-  "required": ["protocol", "sourceHash", "operations"],
+  "required": ["protocol", "worldId", "sourceHash", "operations"],
   "properties": {
     "protocol": { "const": "elsemesh.world-proposal/1" },
+    "worldId": { "type": "string", "pattern": "^tw-world:[\\w.-]{1,128}$" },
     "sourceHash": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
     "operations": {
       "type": "array",
