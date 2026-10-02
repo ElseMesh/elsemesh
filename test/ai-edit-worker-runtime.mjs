@@ -78,6 +78,9 @@ try {
 	assert.deepEqual( report.generatedAssets, [ { id: generatedAssetId, bytes: ( await readFile( generatedAsset ) ).length } ] );
 	assert.ok( ( await readFile( path.join( outputPath, 'candidate.blend' ) ) ).length > 100_000 );
 	assert.equal( JSON.parse( await readFile( path.join( outputPath, 'review.json' ), 'utf8' ) ).candidateSourceHash, report.candidateSourceHash );
+	const reviewHTML = await readFile( path.join( outputPath, 'review.html' ), 'utf8' );
+	assert.ok( reviewHTML.includes( 'Unsigned candidate' ) );
+	assert.ok( reviewHTML.includes( generatedAssetId ) );
 	console.log( 'ok isolated Blender worker created an unsigned candidate with a verified generated GLB and review report' );
 } finally {
 	await rm( temporaryRoot, { recursive: true, force: true } );

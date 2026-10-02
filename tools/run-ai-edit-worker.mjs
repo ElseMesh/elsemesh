@@ -6,6 +6,7 @@ import { access, chmod, lstat, mkdir, readFile, readdir, realpath, rm, stat, wri
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { validateWorldSource } from '../src/network/WorldSource.js';
+import { renderAIEditReviewHTML } from './ai-edit-review-html.mjs';
 import { AI_TASK_PROTOCOL, MAX_ASSET_BYTES, MAX_BLEND_BYTES, MAX_SOURCE_BYTES, MAX_TASK_BYTES } from './create-ai-edit-task.mjs';
 
 export const MAX_PLAN_BYTES = 16 * 1024 * 1024;
@@ -323,7 +324,7 @@ export async function runAIEditWorker({ taskPath, outputPath, blender, blenderPr
 		const worldChanges = [ 'title', 'styleGuide', 'rules', 'hosts', 'components' ].filter( ( key ) => ! equalRecord( candidate[ key ], bundle.source[ key ] ) ).map( ( field ) => ( { field, before: bundle.source[ field ], after: candidate[ field ] } ) );
 		const generatedAssets = bundle.outputAssetsRequired ? ( await readdir( path.join( output, 'assets' ) ) ).sort().map( ( name ) => ( { id: `sha256:${name}`, bytes: statSync( path.join( output, 'assets', name ) ).size } ) ) : [];
 		const report = {
-			protocol: 'elsemesh.ai-edit-review/1', taskId: bundle.task.taskId, worldId: bundle.task.worldId,
+			protocol: 'elsemesh.ai-edit-review/1', taskId: bundle.task.taskId, worldId: bundle.task.worldId, worldTitle: bundle.task.worldTitle, instruction: bundle.task.instruction,
 			baseSourceHash: bundle.task.sourceHash, candidateSourceHash: `sha256:${createHash( 'sha256' ).update( candidateBytes ).digest( 'hex' )}`,
 			candidateSourceBytes: candidateInfo.size, outputBytes, actionCounts: bundle.actionCounts,
 			objectChanges, portalChanges, worldChanges, generatedAssets,
@@ -338,6 +339,7 @@ export async function runAIEditWorker({ taskPath, outputPath, blender, blenderPr
 			signed: false, published: false,
 		};
 		await writeFile( path.join( output, 'review.json' ), `${JSON.stringify( report, null, 2 )}\n`, { mode: 0o600, flag: 'wx' } );
+		await writeFile( path.join( output, 'review.html' ), renderAIEditReviewHTML( report ), { mode: 0o600, flag: 'wx' } );
 		return report;
 	} catch ( error ) {
 		await rm( output, { recursive: true, force: true } );
