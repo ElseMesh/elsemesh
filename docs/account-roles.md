@@ -73,7 +73,21 @@ node tools/apply-world-proposal.mjs --source ./island.world-source.json \
   --proposal ./proposal.json --out ./candidate.world-source.json
 ```
 
-Export verifies the stored submission content ID and account signature, and checks that the owner-signed grant still names this world and account with `world.content.edit`. A queued submission was authorized against fresh revocation state when it arrived; export does not make it accepted and does not override a later revocation. The owner must review the patch and candidate assets, check that its source snapshot is still current, then use the existing conversion and owner-signing workflow. Proposal rejection/cleanup, automatic current-source checks, a review UI, and publication integration remain future work. Do not expose the private proposal inbox through the static web root.
+Export verifies the stored submission content ID and account signature, and checks that the owner-signed grant still names this world and account with `world.content.edit`. A queued submission was authorized against fresh revocation state when it arrived; export does not make it accepted and does not override a later revocation. The owner must review the patch and candidate assets, apply it to the exact source snapshot named by its `sourceHash`, and inspect the resulting candidate before invoking publication. Publishing is an explicit local owner action; proposal intake never publishes automatically. Do not expose the private proposal inbox through the static web root.
+
+### Owner publication
+
+After reviewing the candidate source and its assets, publish it to the selected owner profile with:
+
+```sh
+node tools/publish-world-source.mjs \
+  --worldd ./worldd \
+  --data ~/.config/elsemesh/worlds/island \
+  --source ./candidate.world-source.json \
+  --assets ./worlds/island/assets
+```
+
+The command first asks `worldd` to verify the active signed manifest and confirm that the local node key is its owner. It preserves the current discoverability setting and authority epoch, requires the source to name the same world, constructs exactly the next manifest version, verifies and imports every referenced content-addressed asset, archives the previous signed manifest under `manifest-history/`, then atomically activates the new signed `world.json`. A failed validation or package import leaves the active manifest untouched. A publication lock prevents concurrent publishers; after a process crash, remove `.publish.lock` only after confirming no publisher is running. Restart the running `worldd` process after successful publication so it loads the new manifest. The owner profile and private proposal inbox must remain outside any static web root.
 
 ## Revocation, deletion, and recovery
 

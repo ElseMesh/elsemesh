@@ -89,6 +89,8 @@ func run() error {
 	worldProfile := flag.String("world-profile", "", "select a named local ThruHold profile (uses a separate node identity and data directory)")
 	listWorldProfiles := flag.Bool("list-world-profiles", false, "list named local ThruHold profiles, then exit")
 	listProposals := flag.Bool("list-proposals", false, "list this owner's locally queued edit proposals, then exit (requires --manifest)")
+	inspectManifest := flag.Bool("inspect-manifest", false, "verify and print the current owner-signed manifest payload, then exit")
+	publishManifestPath := flag.String("publish-manifest", "", "publish an unsigned next-version manifest after importing its package assets")
 	exportProposalID := flag.String("export-proposal", "", "export one verified queued proposal patch by sha256 ID (requires --manifest and --proposal-out)")
 	proposalOut := flag.String("proposal-out", "", "new private output file for --export-proposal")
 	dataDir := flag.String("data", defaultData, "private daemon data directory")
@@ -134,13 +136,17 @@ func run() error {
 		return nil
 	}
 	operationCount := 0
-	for _, requested := range []bool{*printNodeID, *exportNodeKey != "", *importNodeKey != "", *importAssetPath != "", *importPackagePath != "", *signManifestPath != "", *signRoleGrantPath != "", *signRoleRevocationsPath != "", *listWorldProfiles, *listProposals, *exportProposalID != ""} {
+	for _, requested := range []bool{*printNodeID, *exportNodeKey != "", *importNodeKey != "", *importAssetPath != "", *importPackagePath != "", *signManifestPath != "", *signRoleGrantPath != "", *signRoleRevocationsPath != "", *listWorldProfiles, *listProposals, *inspectManifest, *publishManifestPath != "", *exportProposalID != ""} {
 		if requested {
 			operationCount++
 		}
 	}
-	if operationCount > 1 || (*manifestOut != "" && *signManifestPath == "") || (*roleDocumentOut != "" && *signRoleGrantPath == "" && *signRoleRevocationsPath == "") || ((*signRoleGrantPath != "" || *signRoleRevocationsPath != "") && *roleDocumentOut == "") || (*signRoleGrantPath != "" && *signRoleRevocationsPath != "") || (*proposalOut != "" && *exportProposalID == "") || (*exportProposalID != "" && (*proposalOut == "" || *manifestPath == "")) || (*listProposals && *manifestPath == "") {
-		return errors.New("choose one one-shot operation; signing and proposal export output flags require their matching operation")
+	publishOperation := *publishManifestPath != "" && *importPackagePath != "" && *manifestPath != ""
+	if publishOperation {
+		operationCount-- // publishing is one combined import-and-activate operation
+	}
+	if operationCount > 1 || (*publishManifestPath != "" && !publishOperation) || (*inspectManifest && *manifestPath == "") || (*manifestOut != "" && *signManifestPath == "") || (*roleDocumentOut != "" && *signRoleGrantPath == "" && *signRoleRevocationsPath == "") || ((*signRoleGrantPath != "" || *signRoleRevocationsPath != "") && *roleDocumentOut == "") || (*signRoleGrantPath != "" && *signRoleRevocationsPath != "") || (*proposalOut != "" && *exportProposalID == "") || (*exportProposalID != "" && (*proposalOut == "" || *manifestPath == "")) || (*listProposals && *manifestPath == "") {
+		return errors.New("choose one one-shot operation; publish, signing, and proposal export flags require their matching inputs")
 	}
 	if *listWorldProfiles {
 		if *worldProfile != "" {
@@ -200,7 +206,7 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("allow-browser-origin: %w", err)
 	}
-	if *listProposals || *exportProposalID != "" {
+	if *listProposals || *exportProposalID != "" || *inspectManifest || *publishManifestPath != "" {
 		identityPath := filepath.Join(*dataDir, "node.key")
 		info, statErr := os.Lstat(identityPath)
 		if statErr != nil {
@@ -275,6 +281,30 @@ func run() error {
 			return marshalErr
 		}
 		fmt.Println(string(encoded))
+		return nil
+	}
+	if *inspectManifest || *publishManifestPath != "" {
+		activePath := filepath.Join(*dataDir, "world.json")
+		if *manifestPath != activePath {
+			return errors.New("manifest inspection and publication require --manifest to be this profile's data/world.json")
+		}
+		if *inspectManifest {
+			world, _, inspectErr := readOwnedWorldManifest(activePath, localID.String(), key, time.Now())
+			if inspectErr != nil {
+				return inspectErr
+			}
+			encoded, marshalErr := json.Marshal(world)
+			if marshalErr != nil {
+				return marshalErr
+			}
+			fmt.Println(string(encoded))
+			return nil
+		}
+		count, totalBytes, publishErr := publishOwnerWorldManifest(activePath, *publishManifestPath, *importPackagePath, *dataDir, localID.String(), key, time.Now())
+		if publishErr != nil {
+			return publishErr
+		}
+		fmt.Printf("Published world version after importing %d verified package assets (%d bytes); restart worldd to load the new manifest.\n", count, totalBytes)
 		return nil
 	}
 	if *importAssetPath != "" {
