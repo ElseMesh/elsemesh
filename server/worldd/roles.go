@@ -8,6 +8,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
+	"path/filepath"
 	"regexp"
 	"time"
 
@@ -160,6 +162,95 @@ func roleGrantIsRevoked(grant worldRoleGrant, state worldRoleRevocations) bool {
 		}
 	}
 	return false
+}
+
+func signWorldRoleGrantFile(source, destination string, world worldManifest, key crypto.PrivKey, now time.Time) error {
+	var grant worldRoleGrant
+	if err := readRolePayload(source, &grant); err != nil {
+		return err
+	}
+	document, err := signDocument(worldRoleGrantProtocol, grant, key)
+	if err != nil {
+		return err
+	}
+	if _, err := validateWorldRoleGrant(document, world.WorldID, world.OwnerPeerID, now); err != nil {
+		return fmt.Errorf("role grant validation: %w", err)
+	}
+	return writeNewSignedRoleDocument(destination, document)
+}
+
+func signWorldRoleRevocationsFile(source, destination string, world worldManifest, minimumSerial uint64, key crypto.PrivKey, now time.Time) error {
+	var state worldRoleRevocations
+	if err := readRolePayload(source, &state); err != nil {
+		return err
+	}
+	document, err := signDocument(worldRoleRevocationsProtocol, state, key)
+	if err != nil {
+		return err
+	}
+	if _, err := validateWorldRoleRevocations(document, world.WorldID, world.OwnerPeerID, minimumSerial+1, now); err != nil {
+		return fmt.Errorf("role revocation validation: %w", err)
+	}
+	return writeNewSignedRoleDocument(destination, document)
+}
+
+func readRolePayload(path string, target any) error {
+	file, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+	info, err := file.Stat()
+	if err != nil {
+		return err
+	}
+	if !info.Mode().IsRegular() || info.Size() < 1 || info.Size() > maxManifestBytes {
+		return errors.New("role payload must be a regular file no larger than 1 MiB")
+	}
+	decoder := json.NewDecoder(io.LimitReader(file, maxManifestBytes+1))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(target); err != nil {
+		return err
+	}
+	var trailing any
+	if err := decoder.Decode(&trailing); !errors.Is(err, io.EOF) {
+		return errors.New("role payload must contain exactly one JSON document")
+	}
+	return nil
+}
+
+func writeNewSignedRoleDocument(destination string, document signedDocument) error {
+	// Keep the signed payload's compact canonical bytes intact. Indenting a
+	// RawMessage would make strict role-payload validation reject the result.
+	encoded, err := json.Marshal(document)
+	if err != nil {
+		return err
+	}
+	file, err := os.OpenFile(destination, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
+	if err != nil {
+		return err
+	}
+	if _, err := file.Write(append(encoded, '\n')); err != nil {
+		_ = file.Close()
+		_ = os.Remove(destination)
+		return err
+	}
+	if err := file.Sync(); err != nil {
+		_ = file.Close()
+		_ = os.Remove(destination)
+		return err
+	}
+	if err := file.Close(); err != nil {
+		_ = os.Remove(destination)
+		return err
+	}
+	directory, err := os.Open(filepath.Dir(destination))
+	if err != nil {
+		_ = os.Remove(destination)
+		return err
+	}
+	defer directory.Close()
+	return directory.Sync()
 }
 
 func validateSignedTimeWindow(issuedAt, expiresAt int64, maxLifetime time.Duration, now time.Time) error {

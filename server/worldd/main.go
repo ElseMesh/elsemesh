@@ -92,6 +92,9 @@ func run() error {
 	manifestPath := flag.String("manifest", "", "owner-signed world manifest JSON")
 	signManifestPath := flag.String("sign-manifest", "", "validate and owner-sign an unsigned runtime world manifest, then exit")
 	manifestOut := flag.String("manifest-out", "", "output path for --sign-manifest (must not already exist)")
+	signRoleGrantPath := flag.String("sign-role-grant", "", "validate and owner-sign a world role grant payload, then exit")
+	signRoleRevocationsPath := flag.String("sign-role-revocations", "", "validate and owner-sign a role revocation payload, then exit")
+	roleDocumentOut := flag.String("role-document-out", "", "new private output path for --sign-role-grant or --sign-role-revocations")
 	importAssetPath := flag.String("import-asset", "", "import one asset into the content-addressed store, print its sha256 ID, then exit")
 	importPackagePath := flag.String("import-package", "", "verify and import all assets referenced by --manifest from this hash-named assets directory, then exit")
 	printNodeID := flag.Bool("print-node-id", false, "print this data directory's persistent node PeerID, then exit")
@@ -128,13 +131,13 @@ func run() error {
 		return nil
 	}
 	operationCount := 0
-	for _, requested := range []bool{*printNodeID, *exportNodeKey != "", *importNodeKey != "", *importAssetPath != "", *importPackagePath != "", *signManifestPath != "", *listWorldProfiles} {
+	for _, requested := range []bool{*printNodeID, *exportNodeKey != "", *importNodeKey != "", *importAssetPath != "", *importPackagePath != "", *signManifestPath != "", *signRoleGrantPath != "", *signRoleRevocationsPath != "", *listWorldProfiles} {
 		if requested {
 			operationCount++
 		}
 	}
-	if operationCount > 1 || (*manifestOut != "" && *signManifestPath == "") {
-		return errors.New("choose only one one-shot identity, asset, package, or signing operation; --manifest-out requires --sign-manifest")
+	if operationCount > 1 || (*manifestOut != "" && *signManifestPath == "") || (*roleDocumentOut != "" && *signRoleGrantPath == "" && *signRoleRevocationsPath == "") || ((*signRoleGrantPath != "" || *signRoleRevocationsPath != "") && *roleDocumentOut == "") || (*signRoleGrantPath != "" && *signRoleRevocationsPath != "") {
+		return errors.New("choose one one-shot identity, asset, package, or signing operation; output flags require their matching signing operation")
 	}
 	if *listWorldProfiles {
 		if *worldProfile != "" {
@@ -253,6 +256,30 @@ func run() error {
 			return errors.New("--manifest-out is required with --sign-manifest")
 		}
 		return signManifestFile(*signManifestPath, *manifestOut, localID.String(), key, time.Now())
+	}
+	if *signRoleGrantPath != "" || *signRoleRevocationsPath != "" {
+		if *manifestPath == "" {
+			return errors.New("role documents require --manifest for the exact world being authorized")
+		}
+		if *roleDocumentOut == *signRoleGrantPath || *roleDocumentOut == *signRoleRevocationsPath {
+			return errors.New("role-document output must differ from its unsigned input")
+		}
+		document, loadErr := loadWorldManifest(*manifestPath, *dataDir, *worldName, localID.String(), key)
+		if loadErr != nil {
+			return loadErr
+		}
+		world, decodeErr := decodeManifest(document, localID.String(), time.Now())
+		if decodeErr != nil {
+			return fmt.Errorf("world manifest: %w", decodeErr)
+		}
+		if *signRoleGrantPath != "" {
+			return signWorldRoleGrantFile(*signRoleGrantPath, *roleDocumentOut, world, key, time.Now())
+		}
+		state := &daemon{world: world, roleStatePath: roleRevocationStatePath(*dataDir, world.WorldID)}
+		if err := state.loadRoleRevocations(); err != nil {
+			return fmt.Errorf("load persisted role revocations: %w", err)
+		}
+		return signWorldRoleRevocationsFile(*signRoleRevocationsPath, *roleDocumentOut, world, state.roleStateSerial, key, time.Now())
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()

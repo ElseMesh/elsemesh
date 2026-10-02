@@ -2,6 +2,8 @@ package main
 
 import (
 	"encoding/json"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -39,6 +41,76 @@ func TestWorldRoleGrantRequiresOwnerSignatureAndKnownScopes(t *testing.T) {
 	}
 	if _, err := validateWorldRoleGrant(document, grant.WorldID, ownerID.String(), now); err == nil {
 		t.Fatal("unknown role scope was accepted")
+	}
+}
+
+func TestOwnerRoleDocumentSigningCommandsValidateAndCreatePrivateOutputs(t *testing.T) {
+	now := time.Unix(1_800_000_000, 0)
+	owner, member := testKey(t), testKey(t)
+	ownerID := peerIDForTest(t, owner.GetPublic())
+	world := worldManifest{WorldID: "tw-world:role-signing", OwnerPeerID: ownerID}
+	fingerprint, err := accountKeyFingerprint(member.GetPublic())
+	if err != nil {
+		t.Fatal(err)
+	}
+	dir := t.TempDir()
+	grantPath := filepath.Join(dir, "grant.json")
+	grantOut := filepath.Join(dir, "grant.signed.json")
+	grant := worldRoleGrant{
+		Protocol: worldRoleGrantProtocol, WorldID: world.WorldID, OwnerPeerID: ownerID,
+		GrantID: "grant_0123456789ab", Version: 1, AccountKeyFingerprint: fingerprint,
+		Scopes: []string{"world.content.edit"}, IssuedAt: now.Unix(), ExpiresAt: now.Add(time.Hour).Unix(),
+	}
+	grantBytes, _ := json.Marshal(grant)
+	if err := os.WriteFile(grantPath, grantBytes, 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := signWorldRoleGrantFile(grantPath, grantOut, world, owner, now); err != nil {
+		t.Fatalf("valid role grant could not be signed: %v", err)
+	}
+	grantDocBytes, err := os.ReadFile(grantOut)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var grantDocument signedDocument
+	if err := json.Unmarshal(grantDocBytes, &grantDocument); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := validateWorldRoleGrant(grantDocument, world.WorldID, ownerID, now); err != nil {
+		t.Fatalf("signed grant is invalid: %v", err)
+	}
+	grantInfo, err := os.Stat(grantOut)
+	if err != nil || grantInfo.Mode().Perm() != 0600 {
+		t.Fatalf("signed grant output permissions: info=%v err=%v", grantInfo, err)
+	}
+	if err := signWorldRoleGrantFile(grantPath, grantOut, world, owner, now); !os.IsExist(err) {
+		t.Fatalf("signer overwrote existing output: %v", err)
+	}
+
+	revocationsPath := filepath.Join(dir, "revocations.json")
+	revocationsOut := filepath.Join(dir, "revocations.signed.json")
+	state := worldRoleRevocations{
+		Protocol: worldRoleRevocationsProtocol, WorldID: world.WorldID, OwnerPeerID: ownerID,
+		Serial: 1, IssuedAt: now.Unix(), ExpiresAt: now.Add(10 * time.Minute).Unix(),
+		GrantIDs: []string{}, AccountKeyFingerprints: []string{},
+	}
+	stateBytes, _ := json.Marshal(state)
+	if err := os.WriteFile(revocationsPath, stateBytes, 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := signWorldRoleRevocationsFile(revocationsPath, revocationsOut, world, 0, owner, now); err != nil {
+		t.Fatalf("valid initial revocation state could not be signed: %v", err)
+	}
+	stateBytes = mustJSON(t, map[string]any{
+		"protocol": worldRoleRevocationsProtocol, "worldId": world.WorldID, "ownerPeerId": ownerID,
+		"serial": 1, "issuedAt": now.Unix(), "expiresAt": now.Add(10 * time.Minute).Unix(),
+		"grantIds": []string{}, "accountKeyFingerprints": []string{},
+	})
+	if err := os.WriteFile(revocationsPath, stateBytes, 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := signWorldRoleRevocationsFile(revocationsPath, filepath.Join(dir, "rollback.json"), world, 1, owner, now); err == nil {
+		t.Fatal("revocation signer allowed serial rollback")
 	}
 }
 

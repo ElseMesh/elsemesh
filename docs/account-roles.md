@@ -42,6 +42,21 @@ The owner publishes signed revocation state with a monotonically increasing seri
 
 The node checks the account-key fingerprint, `world.content.edit` scope, grant signature and lifetime, fresh owner revocation state, grant/key revocation, proposal world ID, source-hash syntax, and allowlisted operation names before storing anything. Missing or expired revocation state fails closed for this write; guest reads and portal travel remain available. Identical submissions are idempotent. The owner node stores accepted envelopes under its private `--data` directory at `proposals/`, with mode `0700` for the inbox and `0600` for each file. The inbox is bounded to 4096 entries and 256 MiB, with a 16 MiB request limit.
 
+Owners can create the signed role documents with `worldd`; the input JSON is the unsigned payload only. Both commands require the selected profile's `node.key` and exact signed `--manifest`, validate the world and time bounds, write a new `0600` file, and refuse to overwrite an existing output. A role grant input contains `protocol`, `worldId`, `ownerPeerId`, `grantId`, `version`, `accountKeyFingerprint`, `scopes`, `issuedAt`, and `expiresAt`. Revocation input contains `protocol`, `worldId`, `ownerPeerId`, `serial`, `issuedAt`, `expiresAt`, `grantIds`, and `accountKeyFingerprints`; its serial must exceed the persisted rollback floor.
+
+```sh
+worldd --world-profile island --manifest ./island.world.signed.json \
+  --sign-role-grant ./grant.json --role-document-out ./grant.signed.json
+
+worldd --world-profile island --manifest ./island.world.signed.json \
+  --sign-role-revocations ./revocations.json --role-document-out ./revocations.signed.json
+
+curl --fail --request PUT --header 'Content-Type: application/json' \
+  --data-binary @revocations.signed.json https://world.example/api/world/roles/revocations
+```
+
+Publish a fresh revocation snapshot before accepting delegated proposals, including an empty snapshot when no grants have been revoked yet. Republish before the 15-minute freshness window expires. Grant `issuedAt` and `expiresAt` are Unix seconds; grants may live for at most 90 days.
+
 Queueing is not acceptance: proposals remain unsigned and are not visible in the runtime manifest. An owner must inspect the stored proposal, apply it to the exact source snapshot with `tools/apply-world-proposal.mjs`, review the candidate and assets, then use the existing conversion and owner-signing workflow. A review UI, proposal listing/cleanup command, automatic source-hash-currentness check, and publication integration remain future work. Do not expose the private proposal inbox through the static web root.
 
 ## Revocation, deletion, and recovery
@@ -54,7 +69,7 @@ Queueing is not acceptance: proposals remain unsigned and are not visible in the
 
 ## Implementation sequence
 
-1. Implement and test the owner-signed role-grant and revocation document formats, with bounded fields, exact-world binding, key fingerprints, and safe-integer timestamps. This validation foundation is present in `server/worldd/roles.go` and is consumed by the proposal-inbox write path.
+1. Implement and test the owner-signed role-grant and revocation document formats, with bounded fields, exact-world binding, key fingerprints, and safe-integer timestamps. The validation foundation, owner signing commands, and proposal-inbox consumer are present in `server/worldd`.
 2. Implement the optional browser integration for the `accountd` broker. Server-side Google ID-token verification, nonce replay prevention, key proof-of-possession, private account-key mapping, short-lived sessions, exact-origin CORS, unlink, and deletion are implemented. The client UI and local key storage are also implemented; a production OAuth client ID and domain deployment remain operator configuration.
 3. Persist owner-signed revocation state at each node and enforce increasing serials. The gateway storage API, opt-in libp2p synchronization, and fresh-state checks before proposal intake are implemented. Extend enforcement to future delegated actions as they are added. Keep asset reads and guest travel available without login.
 4. Deploy no Google client ID or account broker by default. Each operator opts in and configures their own Google OAuth web client.
