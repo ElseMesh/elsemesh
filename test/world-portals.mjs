@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { alignPortalPreview, crossedPortalPlane, mapPortalCamera, portalExitClipPlane, rotatePortalVelocity } from '../src/network/PortalHandoff.js';
+import { alignPortalPreview, crossedPortalPlane, mapPortalCamera, portalExitClipPlane, rotatePortalVelocity, updatePortalPreviewComponents } from '../src/network/PortalHandoff.js';
 import { PerspectiveCamera } from '../src/engine/scene/Camera.js';
 import { Vector3 } from '../src/engine/math/Vector3.js';
 import { Vector4 } from '../src/engine/math/Vector4.js';
@@ -13,6 +13,15 @@ import { VEGETATION_PLACEMENT_KINDS, decodeVegetationPlacements, encodeVegetatio
 import { disposeWorldPackage, loadWorldPackage } from '../src/network/WorldPackage.js';
 
 const portal = { entry: { position: [ 0, 1, 0 ], yaw: 0 } };
+const previewDeltas = [];
+const previewCamera = {};
+const previewComponents = [ { update( dt, camera ) { previewDeltas.push( [ dt, camera ] ); } }, {} ];
+assert.equal( updatePortalPreviewComponents( previewComponents, 1000, -Infinity, previewCamera ), 0, 'first portal render starts without a synthetic time jump' );
+assert.equal( updatePortalPreviewComponents( previewComponents, 1100, 1000, previewCamera ), 0.1, 'portal animations advance during the normal 10 Hz preview cadence' );
+assert.equal( updatePortalPreviewComponents( previewComponents, 5000, 1100, previewCamera ), 0.1, 'portal animation delta is capped after a hidden or paused interval' );
+assert.equal( updatePortalPreviewComponents( previewComponents, 4900, 5000, previewCamera ), 0, 'out-of-order preview timestamps do not reverse component time' );
+assert.ok( previewDeltas.every( ( [ _dt, camera ] ) => camera === previewCamera ), 'preview components receive the mapped destination camera' );
+assert.deepEqual( previewDeltas.map( ( [ dt ] ) => dt ), [ 0, 0.1, 0.1, 0 ], 'all preview components receive the bounded animation delta' );
 const sequentialFailoverGrants = [
 	{ peerId: '12D3KooWAbcdefghijk1234567890123456', scopes: [ 'failover-authority' ], expiresAt: 2000, epoch: 1, failoverAfter: 1000, failoverSeconds: 60 },
 	{ peerId: '12D3KooWAbcdefghijk1234567890123457', scopes: [ 'failover-authority' ], expiresAt: 2000, epoch: 1, failoverAfter: 1060, failoverSeconds: 60 },

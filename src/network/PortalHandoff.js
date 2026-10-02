@@ -8,6 +8,16 @@ const _portalPlane = new Vector4();
 const _portalFarCorner = new Vector4();
 const _transpose = new Matrix4();
 
+// Open portal previews render at a bounded rate, so advance their self-contained
+// component animations by the time between preview renders without simulating a
+// long hidden-tab pause in one large step.
+export function updatePortalPreviewComponents(components, now, lastRenderedAt, camera) {
+	const elapsed = Number.isFinite( lastRenderedAt ) ? ( now - lastRenderedAt ) / 1000 : 0;
+	const dt = Number.isFinite( elapsed ) ? Math.min( 0.1, Math.max( 0, elapsed ) ) : 0;
+	for ( const component of components || [] ) component.update?.( dt, camera );
+	return dt;
+}
+
 // Portal entries face local -Z. Only a front-to-back crossing inside the opening transfers worlds.
 export function crossedPortalPlane( previous, current, portal, { halfWidth = 1.25, halfHeight = 2.5 } = {} ) {
 	const entry = portal?.entry;

@@ -5,7 +5,7 @@ import { createViewUniforms, setFrameCamera } from '../engine/render/Frame.js';
 import { DEPTH_FORMAT, SCENE_FORMATS } from '../engine/render/SceneRenderer.js';
 import { Mesh } from '../engine/scene/Mesh.js';
 import { Vector3 } from '../engine/math/Vector3.js';
-import { mapPortalCamera, portalExitClipPlane } from './PortalHandoff.js';
+import { mapPortalCamera, portalExitClipPlane, updatePortalPreviewComponents } from './PortalHandoff.js';
 
 const PORTAL_WIDTH = 2.42;
 const PORTAL_HEIGHT = 4.9;
@@ -57,7 +57,7 @@ export class WorldPortalView {
 		const { root, portal } = this.active;
 		mapPortalCamera( sourceCamera, this.camera, portal.entry, portal.exit );
 		setFrameCamera( this.camera, this.target.width, this.target.height, { block: this.frameBlock } );
-		for ( const component of root.userData.worldComponents || [] ) component.update( 0, this.camera );
+		updatePortalPreviewComponents( root.userData.worldComponents, now, this.lastRenderAt, this.camera );
 		this.frameBlock.fields.portalClipPlane.value.set( ...portalExitClipPlane( portal.exit ) );
 		this.meshRenderer.render( root, {
 			label: 'portal destination view', kind: 'main', camera: this.camera, frameBlock: this.frameBlock,
