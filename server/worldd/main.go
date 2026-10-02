@@ -94,6 +94,7 @@ func run() error {
 	baseSourcePath := flag.String("base-source", "", "exact world-source file used as the publication base")
 	candidateSourcePath := flag.String("source", "", "world-source file represented by --publish-manifest")
 	exportProposalID := flag.String("export-proposal", "", "export one verified queued proposal patch by sha256 ID (requires --manifest and --proposal-out)")
+	removeProposalID := flag.String("remove-proposal", "", "remove one verified queued proposal by sha256 ID after owner review (requires --manifest)")
 	proposalOut := flag.String("proposal-out", "", "new private output file for --export-proposal")
 	dataDir := flag.String("data", defaultData, "private daemon data directory")
 	manifestPath := flag.String("manifest", "", "owner-signed world manifest JSON")
@@ -138,7 +139,7 @@ func run() error {
 		return nil
 	}
 	operationCount := 0
-	for _, requested := range []bool{*printNodeID, *exportNodeKey != "", *importNodeKey != "", *importAssetPath != "", *importPackagePath != "", *signManifestPath != "", *signRoleGrantPath != "", *signRoleRevocationsPath != "", *listWorldProfiles, *listProposals, *inspectManifest, *publishManifestPath != "", *exportProposalID != ""} {
+	for _, requested := range []bool{*printNodeID, *exportNodeKey != "", *importNodeKey != "", *importAssetPath != "", *importPackagePath != "", *signManifestPath != "", *signRoleGrantPath != "", *signRoleRevocationsPath != "", *listWorldProfiles, *listProposals, *inspectManifest, *publishManifestPath != "", *exportProposalID != "", *removeProposalID != ""} {
 		if requested {
 			operationCount++
 		}
@@ -147,7 +148,7 @@ func run() error {
 	if publishOperation {
 		operationCount-- // publishing is one combined import-and-activate operation
 	}
-	if operationCount > 1 || (*publishManifestPath != "" && !publishOperation) || ((*baseSourcePath != "" || *candidateSourcePath != "") && *publishManifestPath == "") || (*inspectManifest && *manifestPath == "") || (*manifestOut != "" && *signManifestPath == "") || (*roleDocumentOut != "" && *signRoleGrantPath == "" && *signRoleRevocationsPath == "") || ((*signRoleGrantPath != "" || *signRoleRevocationsPath != "") && *roleDocumentOut == "") || (*signRoleGrantPath != "" && *signRoleRevocationsPath != "") || (*proposalOut != "" && *exportProposalID == "") || (*exportProposalID != "" && (*proposalOut == "" || *manifestPath == "")) || (*listProposals && *manifestPath == "") {
+	if operationCount > 1 || (*publishManifestPath != "" && !publishOperation) || ((*baseSourcePath != "" || *candidateSourcePath != "") && *publishManifestPath == "") || (*inspectManifest && *manifestPath == "") || (*manifestOut != "" && *signManifestPath == "") || (*roleDocumentOut != "" && *signRoleGrantPath == "" && *signRoleRevocationsPath == "") || ((*signRoleGrantPath != "" || *signRoleRevocationsPath != "") && *roleDocumentOut == "") || (*signRoleGrantPath != "" && *signRoleRevocationsPath != "") || (*proposalOut != "" && *exportProposalID == "") || (*exportProposalID != "" && (*proposalOut == "" || *manifestPath == "")) || ((*listProposals || *removeProposalID != "") && *manifestPath == "") {
 		return errors.New("choose one one-shot operation; publish, signing, and proposal export flags require their matching inputs")
 	}
 	if *listWorldProfiles {
@@ -208,7 +209,7 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("allow-browser-origin: %w", err)
 	}
-	if *listProposals || *exportProposalID != "" || *inspectManifest || *publishManifestPath != "" {
+	if *listProposals || *removeProposalID != "" || *exportProposalID != "" || *inspectManifest || *publishManifestPath != "" {
 		identityPath := filepath.Join(*dataDir, "node.key")
 		info, statErr := os.Lstat(identityPath)
 		if statErr != nil {
@@ -249,7 +250,7 @@ func run() error {
 		fmt.Println(id)
 		return nil
 	}
-	if *listProposals || *exportProposalID != "" {
+	if *listProposals || *removeProposalID != "" || *exportProposalID != "" {
 		document, loadErr := loadWorldManifest(*manifestPath, *dataDir, *worldName, localID.String(), key)
 		if loadErr != nil {
 			return loadErr
@@ -274,9 +275,15 @@ func run() error {
 			fmt.Println(string(encoded))
 			return nil
 		}
-		proposal, exportErr := exportWorldProposal(inbox, *exportProposalID, world.WorldID, world.OwnerPeerID, *proposalOut)
-		if exportErr != nil {
-			return exportErr
+		var proposal queuedWorldProposal
+		var reviewErr error
+		if *removeProposalID != "" {
+			proposal, reviewErr = removeWorldProposal(inbox, *removeProposalID, world.WorldID, world.OwnerPeerID)
+		} else {
+			proposal, reviewErr = exportWorldProposal(inbox, *exportProposalID, world.WorldID, world.OwnerPeerID, *proposalOut)
+		}
+		if reviewErr != nil {
+			return reviewErr
 		}
 		encoded, marshalErr := json.Marshal(proposal)
 		if marshalErr != nil {

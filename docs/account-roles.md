@@ -73,6 +73,15 @@ node tools/apply-world-proposal.mjs --source ./island.world-source.json \
   --proposal ./proposal.json --out ./candidate.world-source.json
 ```
 
+After rejecting a proposal or completing its publication, remove that exact queued submission:
+
+```sh
+worldd --world-profile island --manifest /path/to/island/world.json \
+  --remove-proposal sha256:<proposal-id>
+```
+
+Removal requires the existing local owner key and matching signed manifest. It verifies the submission content ID, account signature, owner grant and world binding before deleting the private inbox file and syncing the directory. The command prints the removed submission metadata and preserves exported patches and world content. Missing, tampered, symlinked or wrong-world entries fail without removal. This is explicit inbox cleanup, not a publication or grant revocation: an editor with a still-valid grant can submit the same proposal again. Revoke the grant or account key when further submissions should be disallowed. Export any review record you want to retain before cleanup.
+
 Export verifies the stored submission content ID and account signature, and checks that the owner-signed grant still names this world and account with `world.content.edit`. A queued submission was authorized against fresh revocation state when it arrived; export does not make it accepted and does not override a later revocation. The owner must review the patch and candidate assets, apply it to the exact source snapshot named by its `sourceHash`, and inspect the resulting candidate before invoking publication. Publishing is an explicit local owner action; proposal intake never publishes automatically. Do not expose the private proposal inbox through the static web root.
 
 ### Owner publication

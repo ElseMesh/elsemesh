@@ -118,6 +118,34 @@ func exportWorldProposal(directory, id, worldID, ownerPeerID, destination string
 	return item, nil
 }
 
+// removeWorldProposal removes exactly one reviewed submission. Verification is
+// required even for cleanup so an ID cannot delete an unrelated inbox file.
+func removeWorldProposal(directory, id, worldID, ownerPeerID string) (queuedWorldProposal, error) {
+	if !proposalSourceHashPattern.MatchString(id) {
+		return queuedWorldProposal{}, errors.New("proposal ID must be a sha256 content ID")
+	}
+	if err := validatePrivateProposalInbox(directory); err != nil {
+		return queuedWorldProposal{}, err
+	}
+	path := filepath.Join(directory, stringsTrimPrefixSHA256(id)+".json")
+	item, err := readQueuedWorldProposal(path, id, worldID, ownerPeerID)
+	if err != nil {
+		return queuedWorldProposal{}, err
+	}
+	if err := os.Remove(path); err != nil {
+		return queuedWorldProposal{}, err
+	}
+	inbox, err := os.Open(directory)
+	if err != nil {
+		return item, fmt.Errorf("proposal removed but inbox durability could not be confirmed: %w", err)
+	}
+	defer inbox.Close()
+	if err := inbox.Sync(); err != nil {
+		return item, fmt.Errorf("proposal removed but inbox durability could not be confirmed: %w", err)
+	}
+	return item, nil
+}
+
 func validatePrivateProposalInbox(directory string) error {
 	info, err := os.Lstat(directory)
 	if err != nil {

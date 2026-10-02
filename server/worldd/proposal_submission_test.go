@@ -164,6 +164,33 @@ func TestOwnerCanListAndExportVerifiedQueuedWorldProposal(t *testing.T) {
 	if _, err := exportWorldProposal(inbox, id, worldID, ownerID, output); !errors.Is(err, os.ErrExist) {
 		t.Fatalf("export overwrote existing file: err=%v", err)
 	}
+	for _, wrong := range []struct{ id, world, owner string }{
+		{"../outside", worldID, ownerID},
+		{id, "tw-world:other", ownerID},
+		{id, worldID, peerIDForTest(t, member.GetPublic())},
+	} {
+		if _, err := removeWorldProposal(inbox, wrong.id, wrong.world, wrong.owner); err == nil {
+			t.Fatal("cleanup accepted an invalid ID or wrong world owner")
+		}
+	}
+	if _, err := os.Stat(filepath.Join(inbox, stringsTrimPrefixSHA256(id)+".json")); err != nil {
+		t.Fatalf("failed cleanup changed the inbox: %v", err)
+	}
+	removed, err := removeWorldProposal(inbox, id, worldID, ownerID)
+	if err != nil || removed.ID != id {
+		t.Fatalf("verified cleanup failed: item=%+v err=%v", removed, err)
+	}
+	listed, err = listWorldProposals(inbox, worldID, ownerID)
+	if err != nil || len(listed) != 0 {
+		t.Fatalf("removed proposal remains queued: %+v %v", listed, err)
+	}
+	if _, err := os.Stat(output); err != nil {
+		t.Fatalf("cleanup removed the exported review patch: %v", err)
+	}
+	if _, err := removeWorldProposal(inbox, id, worldID, ownerID); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("missing proposal cleanup: %v", err)
+	}
+
 }
 
 func TestOwnerProposalReviewRejectsTamperedInboxEntry(t *testing.T) {
@@ -200,6 +227,32 @@ func TestOwnerProposalReviewRejectsTamperedInboxEntry(t *testing.T) {
 	if _, err := listWorldProposals(inbox, worldID, ownerID); err == nil {
 		t.Fatal("tampered inbox entry was listed")
 	}
+	if _, err := removeWorldProposal(inbox, id, worldID, ownerID); err == nil {
+		t.Fatal("cleanup removed a tampered submission")
+	}
+	if _, err := os.Lstat(filename); err != nil {
+		t.Fatalf("tampered submission was deleted: %v", err)
+	}
+	if err := os.Remove(filename); err != nil {
+		t.Fatal(err)
+	}
+	outside := filepath.Join(t.TempDir(), "outside.json")
+	if err := writeNewPrivateFile(outside, append(canonical, '\n')); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(outside, filename); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := removeWorldProposal(inbox, id, worldID, ownerID); err == nil {
+		t.Fatal("cleanup followed an inbox symlink")
+	}
+	if _, err := os.Lstat(filename); err != nil {
+		t.Fatalf("symlink was deleted: %v", err)
+	}
+	if _, err := os.Stat(outside); err != nil {
+		t.Fatalf("symlink target was deleted: %v", err)
+	}
+
 }
 
 func TestWorldProposalSubmissionRejectsMissingStaleRevokedAndNonOwnerCases(t *testing.T) {
