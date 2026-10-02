@@ -38,7 +38,7 @@ export async function loadWorldPackage( connector, { signal, assets: preloadedAs
 	const assets = preloadedAssets || await connector.preload();
 	const root = new Group();
 	root.name = `world:${connector.worldId}`;
-	root.userData.worldPackage = { parsed: new Map(), loadedObjects: new Set(), connector, materialContext };
+	root.userData.worldPackage = { parsed: new Map(), loadedObjects: new Set(), replacedByComponents: new Set(), connector, materialContext };
 	try {
 		await appendWorldPackageAssets( connector, root, assets, { signal, objectIDs } );
 		return root;
@@ -75,6 +75,7 @@ export async function appendWorldPackageAssets( connector, root, assets, { signa
 		const instance = cloneScene( gltf );
 		instance.name = object.label || object.id;
 		instance.userData.worldObjectId = object.id;
+		if ( state.replacedByComponents?.has( object.id ) ) instance.visible = false;
 		const t = object.transform || {};
 		instance.position.set( ...( t.position || [ 0, 0, 0 ] ) );
 		if ( t.rotation ) instance.quaternion.set( ...t.rotation );

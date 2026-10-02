@@ -1,0 +1,23 @@
+import defaultIslandExperience from '../../worlds/island/presentation.json' with { type: 'json' };
+
+const EXPERIENCE_FIELDS = [ 'genre', 'tagline', 'loadingNote', 'tips', 'stages' ];
+const LOADING_STAGES = new Set( [ 'gpu', 'atmosphere', 'terrain', 'village', 'vegetation', 'ocean', 'reef', 'simulation', 'shaders', 'world', 'compile', 'warmup' ] );
+
+export const DEFAULT_WORLD_EXPERIENCE = Object.freeze( validateWorldExperience( defaultIslandExperience ) );
+export const GENERIC_WORLD_EXPERIENCE = Object.freeze( validateWorldExperience( {
+	genre: 'A connected world',
+	tagline: 'Explore a place shaped by its owner.',
+	loadingNote: 'Preparing this ThruHold. Its first launch may take longer while shaders compile.',
+	tips: [ 'World details and activities are provided by this ThruHold.' ],
+	stages: Object.fromEntries( [ ...LOADING_STAGES ].map( ( stage ) => [ stage, 'Preparing this ThruHold…' ] ) ),
+} ) );
+
+export function validateWorldExperience( experience ) {
+	if ( experience === undefined ) return undefined;
+	if ( ! experience || typeof experience !== 'object' || Array.isArray( experience ) || Object.keys( experience ).some( ( key ) => ! EXPERIENCE_FIELDS.includes( key ) ) ) throw new Error( 'Invalid ThruHold experience descriptor' );
+	for ( const key of [ 'genre', 'tagline', 'loadingNote' ] ) if ( typeof experience[ key ] !== 'string' || ! experience[ key ].trim() || experience[ key ].length > 240 ) throw new Error( `Invalid ThruHold experience ${key}` );
+	if ( ! Array.isArray( experience.tips ) || experience.tips.length < 1 || experience.tips.length > 12 || experience.tips.some( ( tip ) => typeof tip !== 'string' || ! tip.trim() || tip.length > 320 ) ) throw new Error( 'Invalid ThruHold loading tips' );
+	if ( ! experience.stages || typeof experience.stages !== 'object' || Array.isArray( experience.stages ) || Object.keys( experience.stages ).length > LOADING_STAGES.size ) throw new Error( 'Invalid ThruHold loading stages' );
+	for ( const [ stage, text ] of Object.entries( experience.stages ) ) if ( ! LOADING_STAGES.has( stage ) || typeof text !== 'string' || ! text.trim() || text.length > 120 ) throw new Error( `Invalid ThruHold loading stage ${stage}` );
+	return experience;
+}

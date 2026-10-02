@@ -273,17 +273,32 @@ fn terrainMeadowTone( mA: f32, mB: f32, slope: f32, south: f32, detail: f32, has
 
 let _module = null;
 let _detailSpec = null;
+const _modulesByDetail = new WeakMap();
 
 // the binding spec of the shared detail texture (terrain, rocks, debris, vegetation), bound under
 // the name `terrainDetailTex`
-export function detailBinding() {
+export function detailBinding( texture = null ) {
 
+	if ( texture ) return { texture };
 	return _detailSpec || ( _detailSpec = { texture: getDetailTexture() } );
 
 }
 
-export function terrainShadingModule() {
+export function terrainShadingModule( detailTexture = null ) {
 
+	if ( detailTexture ) {
+		let module = _modulesByDetail.get( detailTexture );
+		if ( ! module ) {
+			module = new ShaderModule( {
+				name: 'terrainShading',
+				deps: [ commonModule ],
+				bindings: { terrainDetailTex: detailBinding( detailTexture ) },
+				code: SHADING_WGSL,
+			} );
+			_modulesByDetail.set( detailTexture, module );
+		}
+		return module;
+	}
 	if ( _module ) return _module;
 	_module = new ShaderModule( {
 		name: 'terrainShading',

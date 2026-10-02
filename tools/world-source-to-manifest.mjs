@@ -55,6 +55,7 @@ async function main() {
 		const priority = component.priority || 'portal-preview';
 		const references = [
 			...( component.placementAssetId ? [ { id: component.placementAssetId, kind: component.type === 'tidewater.static-reef/1' ? 'reef-placement/1' : 'vegetation-placement/1', limit: 16 * 1024 * 1024 } ] : [] ),
+			...( component.dataAssetId ? [ { id: component.dataAssetId, kind: 'terrain-surface/1', limit: 128 * 1024 * 1024 } ] : [] ),
 			...( component.beds || [] ).map( ( bed ) => ( { id: bed.assetId, kind: 'audio/ogg', limit: 16 * 1024 * 1024 } ) ),
 		];
 		for ( const { id, kind, limit } of references ) {
@@ -87,6 +88,7 @@ async function main() {
 		discoverable: args.discoverable === 'true',
 		version,
 		title: source.title,
+		...( source.experience === undefined ? {} : { experience: source.experience } ),
 		...( source.spawn === undefined ? {} : { spawn: source.spawn } ),
 		rules: { ...source.rules, styleGuide: source.styleGuide },
 		assets: [ ...assets.values() ],

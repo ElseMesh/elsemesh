@@ -79,13 +79,14 @@ export class Engine {
 
 	start( update, maxFps = 0 ) {
 
-		const frameInterval = maxFps > 0 ? 1000 / maxFps : 0;
+		this.maxFps = Math.max( 0, Number( maxFps ) || 0 );
 		let pendingDt = 0;
 		let nextFrame = null;
 		const loop = ( t ) => {
 
 			this.clock.update( t );
 			pendingDt += this.clock.getDelta();
+			const frameInterval = this.maxFps > 0 ? 1000 / this.maxFps : 0;
 			if ( ! frameInterval || nextFrame === null || t >= nextFrame ) {
 
 				const dt = Math.min( pendingDt, 0.1 );
@@ -110,6 +111,12 @@ export class Engine {
 		};
 
 		this._raf = requestAnimationFrame( loop );
+
+	}
+
+	setFrameRateLimit( maxFps = 0 ) {
+
+		this.maxFps = Math.max( 0, Number( maxFps ) || 0 );
 
 	}
 

@@ -3333,6 +3333,30 @@ export class UI {
 	// scripts run. setLoadingDetail( done, total ): sub-progress of the current stage (e.g. pipelines
 	// compiled / total), mapped between p and `until`. setLoadingError( message ).
 
+	setLoadingPresentation( title, experience ) {
+
+		if ( ! experience ) return;
+		const L = document.getElementById( 'loader' );
+		if ( ! L ) return;
+		const setText = ( selector, value ) => { const element = L.querySelector( selector ); if ( element ) element.textContent = value; };
+		setText( '.loader-kicker', title || 'ThruHold' );
+		setText( '.loader-title', experience.genre );
+		setText( '.loader-tagline', experience.tagline );
+		setText( '.loader-note', experience.loadingNote );
+		L.setAttribute( 'aria-label', `Loading ${ title || 'ThruHold' }` );
+		document.title = `${ title || 'ThruHold' } — ElseMesh`;
+		const list = L.querySelector( '.loader-tip-list' );
+		if ( list ) list.replaceChildren( ...experience.tips.map( ( tip, index ) => {
+			const item = document.createElement( 'p' );
+			item.className = 'loader-tip';
+			item.textContent = tip;
+			item.style.animationDuration = `${ experience.tips.length * 6 }s`;
+			item.style.animationDelay = `${ - 0.8 - index * 6 }s`;
+			return item;
+		} ) );
+
+	}
+
 	setLoading( progress01, status, until ) {
 
 		const L = document.getElementById( 'loader' );

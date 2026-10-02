@@ -2,6 +2,7 @@ import { validatePortalBack } from './PortalSideContract.js';
 import { validateObjectLODs, validateWorldSpawn } from './WorldSource.js';
 import { validatePresencePose } from './PlayerPresence.js';
 import { validateWorldRequirements } from './WorldRules.js';
+import { validateWorldExperience } from './WorldExperience.js';
 
 const ASSET_CHUNK_BYTES = 128 * 1024;
 const MAX_ASSET_BYTES = 2 * 1024 * 1024 * 1024;
@@ -149,6 +150,7 @@ export class WorldConnector {
 		await verifySignedDocument( reply.document, 'tidewater.world/1' );
 		invariant( reply.document.payload.protocol === 'tidewater.world/1' && reply.document.payload.worldId === this.worldId, 'Manifest belongs to another world or protocol' );
 		validateWorldRequirements( reply.document.payload );
+		validateWorldExperience( reply.document.payload.experience );
 		validateWorldSpawn( reply.document.payload.spawn );
 		const entityIDs = validateWorldObjects( reply.document.payload.objects, reply.document.payload.assets );
 		validateWorldPortals( reply.document.payload.portals, entityIDs, reply.document.payload.rules );
@@ -578,7 +580,9 @@ export function validateWorldComponents( components = [], rules, ids = new Set()
 		const waterBody = component.type === 'tidewater.water-body/1' && ( component.profile === undefined || [ 'deep-ocean', 'calm-lagoon', 'storm' ].includes( component.profile ) ) && Array.isArray( component.center ) && component.center.length === 2 && Number.isFinite( component.extent ) && component.extent >= 8 && component.extent <= 100000 && component.center.every( ( n ) => Number.isFinite( n ) && Math.abs( n ) + component.extent <= 1e6 ) && Object.keys( component ).every( ( key ) => [ 'id', 'type', 'priority', 'center', 'extent', 'profile', 'streamingBounds' ].includes( key ) );
 		const ambientAudio = component.type === 'tidewater.ambient-audio/1' && Object.keys( component ).every( ( key ) => [ 'id', 'type', 'priority', 'streamingBounds', 'beds' ].includes( key ) ) && Array.isArray( component.beds ) && component.beds.length > 0 && component.beds.length <= 16 && component.beds.every( ( bed ) => validAudioBed( bed, assetRefs, component.priority || 'portal-preview' ) );
 		const boat = component.type === 'tidewater.downeast-boat/1' && typeof component.objectId === 'string' && /^tw-object:[\w.-]{1,128}$/.test( component.objectId ) && Object.keys( component ).every( ( key ) => [ 'id', 'type', 'priority', 'objectId' ].includes( key ) );
-		invariant( ( vegetation || staticVegetation || staticReef || islandOcean || waterBody || ambientAudio || boat ) && ( component.priority === undefined || [ 'portal-preview', 'visible', 'nearby', 'background' ].includes( component.priority ) ), `Unsupported or invalid world component ${component.id}` );
+		const proceduralTerrain = component.type === 'tidewater.procedural-island-terrain/1' && component.profile === 'example-island-v1' && typeof component.objectId === 'string' && objectRefs.get( component.objectId )?.kind === 'asset-instance' && Object.keys( component ).every( ( key ) => [ 'id', 'type', 'profile', 'priority', 'objectId', 'streamingBounds' ].includes( key ) );
+		const terrainSurface = component.type === 'tidewater.terrain-surface/1' && component.profile === 'example-island-v1' && typeof component.objectId === 'string' && objectRefs.get( component.objectId )?.kind === 'asset-instance' && /^sha256:[0-9a-f]{64}$/.test( component.dataAssetId || '' ) && Object.keys( component ).every( ( key ) => [ 'id', 'type', 'profile', 'priority', 'objectId', 'dataAssetId', 'streamingBounds' ].includes( key ) );
+		invariant( ( vegetation || staticVegetation || staticReef || islandOcean || proceduralTerrain || terrainSurface || waterBody || ambientAudio || boat ) && ( component.priority === undefined || [ 'portal-preview', 'visible', 'nearby', 'background' ].includes( component.priority ) ), `Unsupported or invalid world component ${component.id}` );
 		if ( islandOcean ) invariant( ++ islandOceanCount === 1, 'World manifest may declare only one island ocean component' );
 		if ( waterBody ) invariant( ++ waterBodyCount <= 4 && rules.seaLevel !== undefined && islandOceanCount === 0, 'Portable water requires seaLevel, allows at most four bodies, and cannot be combined with island-ocean' );
 		if ( islandOcean ) invariant( waterBodyCount === 0, 'A world cannot combine portable water and island-ocean components' );
@@ -598,6 +602,10 @@ export function validateWorldComponents( components = [], rules, ids = new Set()
 		if ( component.placementAssetId !== undefined ) {
 			const expectedKind = staticReef ? 'reef-placement/1' : 'vegetation-placement/1';
 			invariant( /^sha256:[0-9a-f]{64}$/.test( component.placementAssetId ) && assetRefs.get( component.placementAssetId )?.kind === expectedKind && assetRefs.get( component.placementAssetId )?.priority === ( component.priority || 'portal-preview' ), `World component ${component.id} has an invalid placement asset reference` );
+		}
+		if ( terrainSurface ) {
+			const asset = assetRefs.get( component.dataAssetId );
+			invariant( asset?.kind === 'terrain-surface/1' && asset.priority === ( component.priority || 'portal-preview' ) && asset.bytes > 0 && asset.bytes <= 128 * 1024 * 1024, `World component ${component.id} has an invalid terrain surface asset` );
 		}
 		if ( component.type === 'tidewater.static-vegetation/1' ) invariant( typeof component.placementAssetId === 'string', `Static vegetation component ${component.id} requires placement data` );
 		if ( staticReef ) invariant( typeof component.placementAssetId === 'string', `Static reef component ${component.id} requires placement data` );

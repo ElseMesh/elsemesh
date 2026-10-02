@@ -258,6 +258,62 @@ func TestWorldManifestValidatesProceduralComponents(t *testing.T) {
 	}
 }
 
+func TestWorldManifestValidatesProceduralIslandTerrain(t *testing.T) {
+	owner := testKey(t)
+	ownerID, err := peer.IDFromPublicKey(owner.GetPublic())
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifest := newStarterManifest("Terrain fidelity", ownerID.String())
+	manifest.WorldID = "tw-world:terrain-fidelity"
+	manifest.Rules.RequiredFeatures = []string{"tidewater.procedural-island-terrain/1"}
+	assetID := "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+	manifest.Assets = []assetRef{{ID: assetID, Bytes: 1, Kind: "glb", Priority: "visible"}}
+	var fallback worldObject
+	if err := json.Unmarshal([]byte(`{"id":"tw-object:terrain-fallback","kind":"asset-instance","label":"Terrain fallback","assetId":"`+assetID+`","transform":{"position":[0,0,0],"yaw":0},"scale":[1,1,1],"collision":{"shape":"none","enabled":false}}`), &fallback); err != nil {
+		t.Fatal(err)
+	}
+	manifest.Objects = []worldObject{fallback}
+	manifest.Components = []worldComponent{{
+		ID: "tw-component:procedural-terrain", Type: "tidewater.procedural-island-terrain/1",
+		Profile: "example-island-v1", ObjectID: manifest.Objects[0].ID, Priority: "visible",
+	}}
+	if err := validateManifest(manifest, ownerID.String(), time.Now()); err != nil {
+		t.Fatalf("valid procedural terrain component rejected: %v", err)
+	}
+	manifest.Components[0].Profile = "unknown-profile"
+	if err := validateManifest(manifest, ownerID.String(), time.Now()); err == nil {
+		t.Fatal("unsupported procedural terrain profile accepted")
+	}
+}
+
+func TestWorldManifestValidatesPortableTerrainSurface(t *testing.T) {
+	owner := testKey(t)
+	ownerID, err := peer.IDFromPublicKey(owner.GetPublic())
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifest := newStarterManifest("Portable terrain", ownerID.String())
+	manifest.WorldID = "tw-world:portable-terrain"
+	manifest.Rules.RequiredFeatures = []string{"tidewater.terrain-surface/1"}
+	glbID := "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+	dataID := "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+	manifest.Assets = []assetRef{{ID: glbID, Bytes: 1, Kind: "glb", Priority: "visible"}, {ID: dataID, Bytes: 100, Kind: "terrain-surface/1", Priority: "visible"}}
+	var fallback worldObject
+	if err := json.Unmarshal([]byte(`{"id":"tw-object:terrain-fallback","kind":"asset-instance","label":"Terrain fallback","assetId":"`+glbID+`","priority":"visible","transform":{"position":[0,0,0],"yaw":0},"scale":[1,1,1],"collision":{"shape":"heightfield","enabled":true,"columns":2,"rows":2,"walkable":true,"solid":true}}`), &fallback); err != nil {
+		t.Fatal(err)
+	}
+	manifest.Objects = []worldObject{fallback}
+	manifest.Components = []worldComponent{{ID: "tw-component:terrain-surface", Type: "tidewater.terrain-surface/1", Profile: "example-island-v1", ObjectID: fallback.ID, DataAssetID: dataID, Priority: "visible"}}
+	if err := validateManifest(manifest, ownerID.String(), time.Now()); err != nil {
+		t.Fatalf("valid portable terrain surface rejected: %v", err)
+	}
+	manifest.Components[0].DataAssetID = glbID
+	if err := validateManifest(manifest, ownerID.String(), time.Now()); err == nil {
+		t.Fatal("terrain component referencing a non-terrain asset accepted")
+	}
+}
+
 func TestWorldManifestValidatesHostedBoatBerthAsset(t *testing.T) {
 	owner, _, err := crypto.GenerateEd25519Key(rand.Reader)
 	if err != nil {

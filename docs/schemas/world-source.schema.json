@@ -28,6 +28,24 @@
       "minLength": 1,
       "maxLength": 160
     },
+    "experience": {
+      "type": "object",
+      "description": "Optional ThruHold-specific game identity and loading-page copy. All strings are rendered as text, never markup.",
+      "required": ["genre", "tagline", "loadingNote", "tips", "stages"],
+      "properties": {
+        "genre": { "type": "string", "minLength": 1, "maxLength": 240 },
+        "tagline": { "type": "string", "minLength": 1, "maxLength": 240 },
+        "loadingNote": { "type": "string", "minLength": 1, "maxLength": 240 },
+        "tips": { "type": "array", "minItems": 1, "maxItems": 12, "items": { "type": "string", "minLength": 1, "maxLength": 320 } },
+        "stages": {
+          "type": "object",
+          "maxProperties": 12,
+          "propertyNames": { "enum": ["gpu", "atmosphere", "terrain", "village", "vegetation", "ocean", "reef", "simulation", "shaders", "world", "compile", "warmup"] },
+          "additionalProperties": { "type": "string", "minLength": 1, "maxLength": 120 }
+        }
+      },
+      "additionalProperties": false
+    },
     "spawn": {
       "type": "object",
       "description": "Initial camera eye pose in world-space meters; yaw and pitch in radians. Omission uses the legacy entrance.",
@@ -357,6 +375,31 @@
           "properties": {
             "id": { "type": "string", "pattern": "^tw-component:[\\w.-]{1,128}$" },
             "type": { "const": "tidewater.island-ocean/1" },
+            "priority": { "enum": ["portal-preview", "visible", "nearby", "background"] },
+            "streamingBounds": { "$ref": "#/$defs/streamingBounds" }
+          },
+          "additionalProperties": false
+        },
+        {
+          "required": ["id", "type", "profile", "objectId"],
+          "properties": {
+            "id": { "type": "string", "pattern": "^tw-component:[\\w.-]{1,128}$" },
+            "type": { "const": "tidewater.procedural-island-terrain/1" },
+            "profile": { "const": "example-island-v1" },
+            "objectId": { "type": "string", "pattern": "^tw-object:[\\w.-]{1,128}$", "description": "References the package heightfield mesh used for collision and visual fallback." },
+            "priority": { "enum": ["portal-preview", "visible", "nearby", "background"] },
+            "streamingBounds": { "$ref": "#/$defs/streamingBounds" }
+          },
+          "additionalProperties": false
+        },
+        {
+          "required": ["id", "type", "profile", "objectId", "dataAssetId"],
+          "properties": {
+            "id": { "type": "string", "pattern": "^tw-component:[\\w.-]{1,128}$" },
+            "type": { "const": "tidewater.terrain-surface/1" },
+            "profile": { "const": "example-island-v1" },
+            "objectId": { "type": "string", "pattern": "^tw-object:[\\w.-]{1,128}$", "description": "References the heightfield mesh used for collision and visual fallback." },
+            "dataAssetId": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$", "description": "References portable height, normal, AO, terrain masks, detail texture, and terrain metadata." },
             "priority": { "enum": ["portal-preview", "visible", "nearby", "background"] },
             "streamingBounds": { "$ref": "#/$defs/streamingBounds" }
           },

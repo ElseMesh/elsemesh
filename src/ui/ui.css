@@ -73,16 +73,18 @@ body {
 }
 
 /* ── loader ────────────────────────────────────────────────────────────── */
-/* Title screen while the island builds and the shaders compile: full-bleed key art with a slow
-   drift, the wordmark bottom left, a progress panel and rotating tips. Everything that moves by
-   itself is a compositor animation (transform / opacity), so it keeps moving while the main thread
-   is blocked compiling pipelines. */
+/* ElseMesh loading page, with world identity supplied by each ThruHold package. */
+/* Keep the complete supplied artwork above the centred loading information.
+   Progress glint and tips use compositor animations during shader compilation. */
 
 #loader {
 	position: fixed;
 	inset: 0;
 	z-index: 1000;
-	overflow: hidden;
+	display: flex;
+	box-sizing: border-box;
+	padding: clamp(16px, 3vh, 32px) clamp(16px, 3vw, 48px) max(48px, env(safe-area-inset-bottom));
+	overflow: auto;
 	color: var(--tw-ink);
 	font-family: var(--tw-font);
 	-webkit-font-smoothing: antialiased;
@@ -97,84 +99,51 @@ body {
 }
 
 .loader-art {
-	position: absolute;
-	inset: 0;
+	display: block;
+	flex: none;
 	width: 100%;
-	height: 100%;
-	object-fit: cover;
-	object-position: 60% 50%;
-	opacity: 0;
-	transform: scale(1.06);
-	transform-origin: 62% 55%;
-	transition: opacity 1400ms var(--tw-ease);
-	animation: tw-kenburns 48s var(--tw-ease-io) infinite alternate;
-	will-change: transform;
-}
-
-.loader-art.is-in {
-	opacity: 1;
-}
-
-#loader.tw-hidden .loader-art {
-	transform: scale(1.14);
-	transition: opacity 900ms var(--tw-ease), transform 900ms var(--tw-ease);
-}
-
-/* legibility: dark at the bottom and the left where the text sits, the sky left open */
-.loader-scrim {
-	position: absolute;
-	inset: 0;
-	background:
-		linear-gradient(0deg, rgba(3, 7, 11, 0.92) 0%, rgba(3, 7, 11, 0.62) 26%, rgba(3, 7, 11, 0.12) 54%, transparent 70%),
-		linear-gradient(90deg, rgba(3, 7, 11, 0.55) 0%, rgba(3, 7, 11, 0.15) 45%, transparent 70%),
-		radial-gradient(140% 90% at 50% 45%, transparent 55%, rgba(0, 0, 0, 0.45) 100%);
-	pointer-events: none;
+	height: auto;
+	max-height: min(62svh, 680px);
+	object-fit: contain;
 }
 
 .loader-inner {
-	position: absolute;
-	left: clamp(20px, 6vw, 112px);
-	right: clamp(20px, 6vw, 112px);
-	bottom: clamp(24px, 7vh, 96px);
+	width: 100%;
+	max-width: 1280px;
+	margin: auto;
 	display: flex;
 	flex-direction: column;
-	gap: clamp(20px, 3.2vh, 40px);
-	max-width: 1320px;
-	container-type: inline-size;
+	align-items: center;
+	gap: clamp(18px, 2.8vh, 28px);
+}
+
+.loader-world {
+	width: 100%;
+	max-width: 680px;
+	text-align: center;
 }
 
 .loader-kicker {
-	margin: 0 0 calc(10 * var(--tw-u));
-	font-size: clamp(10px, 1vw, 13px);
+	margin: 0 0 6px;
+	font-size: clamp(10px, 0.8vw, 12px);
 	font-weight: 600;
-	letter-spacing: 0.34em;
+	letter-spacing: 0.16em;
 	text-transform: uppercase;
-	color: var(--tw-sun);
-	text-shadow: 0 1px 12px rgba(0, 0, 0, 0.6);
+	color: var(--tw-aqua);
 }
 
 .loader-title {
-	margin: 0 -0.3em 0 -0.04em; /* optical: the trailing tracking and the T's side bearing */
-	/* always fits its column: 9 letters at 0.3em tracking are ~9.2em wide, trailing tracking included */
-	font-size: min(136px, 10.4cqi);
-	white-space: nowrap;
+	margin: 0;
+	font-size: clamp(20px, 3vw, 34px);
 	font-weight: 600;
-	letter-spacing: 0.3em;
-	line-height: 0.95;
-	color: transparent;
-	background: linear-gradient(180deg, #ffffff 20%, #fff0dc 70%, #ffd7a8 100%);
-	-webkit-background-clip: text;
-	background-clip: text;
-	filter: drop-shadow(0 2px 18px rgba(0, 0, 0, 0.45));
+	color: var(--tw-ink);
 }
 
 .loader-tagline {
-	margin: calc(12 * var(--tw-u)) 0 0;
-	max-width: 30em;
-	font-size: clamp(13px, 1.25vw, 16px);
+	margin: 6px 0 0;
+	font-size: clamp(12px, 1vw, 14px);
 	line-height: 1.5;
 	color: var(--tw-ink-2);
-	text-shadow: 0 1px 10px rgba(0, 0, 0, 0.7);
 }
 
 .loader-panel {
@@ -182,13 +151,15 @@ body {
 	flex-direction: column;
 	gap: calc(10 * var(--tw-u));
 	width: 100%;
-	max-width: 520px;
+	max-width: 680px;
+	text-align: center;
 }
 
 .loader-row {
 	display: flex;
 	align-items: baseline;
-	justify-content: space-between;
+	justify-content: center;
+	flex-wrap: wrap;
 	gap: var(--tw-3);
 	font-size: clamp(12px, 1vw, 13.5px);
 }
@@ -282,7 +253,8 @@ body {
    turning while scripts are blocked. 8 tips x 6 s. */
 .loader-tips {
 	display: flex;
-	align-items: flex-start;
+	flex-direction: column;
+	align-items: center;
 	gap: calc(12 * var(--tw-u));
 	padding-top: calc(14 * var(--tw-u));
 	border-top: 1px solid rgba(200, 225, 235, 0.14);
@@ -302,7 +274,7 @@ body {
 
 .loader-tip-list {
 	display: grid;
-	flex: 1;
+	width: 100%;
 	min-width: 0;
 }
 
@@ -341,11 +313,6 @@ body {
 .loader-tip:nth-child(7) { animation-delay: 35.2s; }
 .loader-tip:nth-child(8) { animation-delay: 41.2s; }
 
-@keyframes tw-kenburns {
-	from { transform: scale(1.06) translate3d(0, 0, 0); }
-	to { transform: scale(1.14) translate3d(-1.6%, -0.8%, 0); }
-}
-
 @keyframes tw-glint {
 	from { transform: translateX(-100%); }
 	to { transform: translateX(560%); }
@@ -361,20 +328,13 @@ body {
 
 @media (max-width: 600px) {
 
-	.loader-art {
-		object-position: 72% 50%;
+	.loader-row {
+		gap: 8px 16px;
 	}
 
-	.loader-scrim {
-		background:
-			linear-gradient(0deg, rgba(3, 7, 11, 0.94) 0%, rgba(3, 7, 11, 0.7) 40%, rgba(3, 7, 11, 0.15) 66%, transparent 80%),
-			radial-gradient(140% 90% at 50% 45%, transparent 55%, rgba(0, 0, 0, 0.45) 100%);
-	}
-
-	.loader-title {
-		letter-spacing: 0.22em;
-		margin-right: -0.22em;
-		font-size: min(136px, 11.2cqi);
+	.loader-status {
+		white-space: normal;
+		overflow-wrap: anywhere;
 	}
 
 }

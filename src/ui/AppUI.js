@@ -300,6 +300,18 @@ export class AppUI {
 		live.addInfo( { label: 'CPU per frame', get: () => `${ ( app.cpuMs || 0 ).toFixed( 2 ) } ms` } );
 		live.addInfo( { label: 'Render size', get: () => `${ app.sceneRenderer.width } × ${ app.sceneRenderer.height }` } );
 		const quality = perf.addFolder( 'Quality', { icon: 'layers' } );
+		if ( app.isLinuxDesktop ) {
+			s.graphicsPriority = app.graphicsPriority;
+			quality.addSelect( { label: 'Graphics priority', object: s, key: 'graphicsPriority', tooltip: 'FPS keeps the desktop responsive with a 24 fps cap and adaptive detail. Visual Quality restores full-resolution rendering and disables automatic quality reductions.', options: [ { label: 'FPS', value: 'fps' }, { label: 'Visual Quality', value: 'quality' } ], onChange: ( v ) => {
+
+				app.setGraphicsPriority( v );
+				s.renderScale = app.settings.renderScale;
+				s.aa = app.post.aaMode === 'none' ? 0 : app.post.taau.jitterPhaseOverride;
+				s.shadows = app.shadows.enabled;
+				s.ssr = app.waterMaterial.params.ssr.value > 0;
+
+			} } );
+		}
 		quality.addSlider( { label: 'Render scale', object: s, key: 'renderScale', min: 0.35, max: 1, step: 0.05, format: ( v ) => `${ Math.round( v * 100 ) }%`, tooltip: 'Internal resolution; the temporal upscaler reconstructs the full output resolution.', onChange: ( v ) => {
 
 			app.autoScale = false;

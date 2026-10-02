@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { createHash } from 'node:crypto';
+import { deflateSync } from 'node:zlib';
 import { mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -22,6 +23,9 @@ import { Reef } from '../src/world/Reef.js';
 import { encodeReefPlacements } from '../src/network/ReefPlacements.js';
 import { BANK } from '../src/audio/soundBank.js';
 import { MIX } from '../src/audio/SoundScape.js';
+import { bakeTerrainMaps } from '../src/world/terrain/TerrainBake.js';
+import { getDetailImage } from '../src/world/terrain/DetailTextures.js';
+import { encodeTerrainSurfaceAsset } from '../src/network/TerrainSurfaceAsset.js';
 
 const REPO = path.resolve( path.dirname( fileURLToPath( import.meta.url ) ), '..' );
 const args = process.argv.slice( 2 );
@@ -52,6 +56,16 @@ const terrainPreviewGLB = exportTerrain( terrain, 128 );
 const terrainPreviewAssetId = `sha256:${createHash( 'sha256' ).update( terrainPreviewGLB ).digest( 'hex' )}`;
 const staticAssets = new Map( [ [ assetId, glb ], [ terrainPreviewAssetId, terrainPreviewGLB ] ] );
 const generated = buildIslandProceduralContent( terrain );
+const terrainMaps = bakeTerrainMaps( terrain );
+const terrainDetail = getDetailImage();
+const terrainPayload = encodeTerrainSurfaceAsset( terrain, terrainMaps, terrainDetail );
+const terrainSurfaceHeader = Buffer.alloc( 16 );
+Buffer.from( 'EMTERR1\0' ).copy( terrainSurfaceHeader, 0 );
+terrainSurfaceHeader.writeUInt32LE( 1, 8 );
+terrainSurfaceHeader.writeUInt32LE( terrainPayload.byteLength, 12 );
+const terrainSurface = Buffer.concat( [ terrainSurfaceHeader, deflateSync( terrainPayload, { level: 9 } ) ] );
+const terrainSurfaceAssetId = `sha256:${createHash( 'sha256' ).update( terrainSurface ).digest( 'hex' )}`;
+staticAssets.set( terrainSurfaceAssetId, terrainSurface );
 const villageGLB = exportBatchGLB( generated.villageBatches, 'Procedural village', true );
 const villageAssetId = `sha256:${createHash( 'sha256' ).update( villageGLB ).digest( 'hex' )}`;
 const villageBounds = boundsForGLB( villageGLB );
@@ -136,6 +150,7 @@ const source = {
 	protocol: 'tidewater.world-source/1',
 	worldId: 'tw-world:example-island',
 	title: 'Example Island',
+	experience: JSON.parse( await readFile( path.join( REPO, 'worlds/island/presentation.json' ), 'utf8' ) ),
 	spawn: generated.spawn,
 	coordinateSystem: 'right-handed-y-up-meters',
 	styleGuide: 'Procedural volcanic island terrain. Preserve the coast, central bay, volcanic ridge, beaches, seabed, and terrain color regions.',
@@ -144,8 +159,8 @@ const source = {
 		seaLevel: 0,
 		avatarComplexity: 20000,
 		physicsProfile: 'tidewater-default',
-		requiredFeatures: [ 'tidewater.static-glb/1', 'tidewater.static-glb-quaternion/1', 'tidewater.village-materials/1', 'tidewater.static-vegetation/1', 'tidewater.static-reef/1', 'tidewater.island-ocean/1', 'tidewater.downeast-boat/1', 'tidewater.ambient-audio/1', 'tidewater.portal-handoff/1', 'tidewater.portal-preview-static/1' ],
-		maxPackageBytes: 64 * 1024 * 1024,
+			requiredFeatures: [ 'tidewater.static-glb/1', 'tidewater.static-glb-quaternion/1', 'tidewater.village-materials/1', 'tidewater.terrain-surface/1', 'tidewater.static-vegetation/1', 'tidewater.static-reef/1', 'tidewater.island-ocean/1', 'tidewater.downeast-boat/1', 'tidewater.ambient-audio/1', 'tidewater.portal-handoff/1', 'tidewater.portal-preview-static/1' ],
+		maxPackageBytes: 96 * 1024 * 1024,
 	},
 	hosts: [],
 	objects: [ {
@@ -206,6 +221,7 @@ const source = {
 	} ) ],
 	components: [
 		{ id: 'tw-component:island-vegetation', type: 'tidewater.static-vegetation/1', priority: 'portal-preview', placementAssetId: vegetationAssetId },
+		{ id: 'tw-component:island-terrain', type: 'tidewater.terrain-surface/1', profile: 'example-island-v1', objectId: 'tw-object:island-terrain', dataAssetId: terrainSurfaceAssetId, priority: 'visible' },
 		...reefComponents,
 		{ id: 'tw-component:island-ocean', type: 'tidewater.island-ocean/1', priority: 'portal-preview' },
 		{ id: 'tw-component:island-lobster-boat', type: 'tidewater.downeast-boat/1', objectId: 'tw-object:moored-lobster-boat', priority: 'portal-preview' },

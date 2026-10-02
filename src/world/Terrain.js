@@ -95,7 +95,7 @@ export class Terrain {
 	finalizeMaterial() {
 
 		const mat = this.material;
-		const modules = [ this.gpu.module, terrainShadingModule(), this.lod.module ];
+		const modules = [ this.gpu.module, terrainShadingModule( this.gpu.detailTexture ), this.lod.module ];
 		if ( this.wetness ) {
 
 			modules.push( ...( this.wetness.modules || [] ) );
@@ -103,7 +103,7 @@ export class Terrain {
 
 		}
 
-		modules.push( new ShaderModule( { name: 'terrainMaterial', deps: [ this.gpu.module, terrainShadingModule() ], code: TERRAIN_MATERIAL_WGSL } ) );
+		modules.push( new ShaderModule( { name: 'terrainMaterial', deps: [ this.gpu.module, terrainShadingModule( this.gpu.detailTexture ) ], code: TERRAIN_MATERIAL_WGSL } ) );
 		mat.modules = modules;
 		mat.defines.HAS_WETNESS = this.wetness ? 1 : 0;
 		mat.defines.MATERIAL_SUN_MODULATION = this.sunShadow ? 1 : 0;
@@ -112,7 +112,7 @@ export class Terrain {
 
 	}
 
-	update( camera ) {
+	update( camera, updateSunShadow = true ) {
 
 		camera.getWorldPosition( this.uViewPos.value );
 		this.lod.update( camera );
@@ -122,7 +122,7 @@ export class Terrain {
 		const dt = G.dt.value;
 		this.gustOffset.x += wd.x * speed * dt;
 		this.gustOffset.y += wd.y * speed * dt;
-		this.gpu.updateSunShadow( this.renderer );
+		if ( updateSunShadow ) this.gpu.updateSunShadow( this.renderer );
 
 	}
 

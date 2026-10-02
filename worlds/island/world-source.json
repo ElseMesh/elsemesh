@@ -2,6 +2,34 @@
   "protocol": "tidewater.world-source/1",
   "worldId": "tw-world:example-island",
   "title": "Example Island",
+  "experience": {
+    "genre": "A coastal fishing adventure",
+    "tagline": "Take the boat out, work the reef and deep water, and sell your catch to Joe before dark.",
+    "loadingNote": "The first launch compiles shaders and can take a minute or two. Later visits load much faster.",
+    "tips": [
+      "Press R to equip the rod. Hold the left mouse button to wind up, then release to cast.",
+      "Watch the bobber. When it is pulled under, click to set the hook.",
+      "During a fight, keep line tension in the green. Ease off when the fish runs.",
+      "Fish vary by location and time of day: try the shallows, reef, and deep water beyond the drop-off.",
+      "Joe at the pier fish stand buys your catch. Marta at the boathouse sells fishing and boat upgrades.",
+      "Press E at the boat to board, at the wheel to take the helm, and again to step away.",
+      "Press I to open your cooler and fish log. Deck lights let you fish after dark."
+    ],
+    "stages": {
+      "gpu": "Starting WebGPU…",
+      "atmosphere": "Setting the coastal sky…",
+      "terrain": "Preparing the island terrain…",
+      "village": "Building the harbour village…",
+      "vegetation": "Growing the island vegetation…",
+      "ocean": "Preparing the sea…",
+      "reef": "Growing the reef…",
+      "simulation": "Starting ocean simulation…",
+      "shaders": "Preparing the island renderer…",
+      "world": "Connecting to this ThruHold…",
+      "compile": "Compiling shaders…",
+      "warmup": "Warming up the world…"
+    }
+  },
   "spawn": {
     "position": [
       53.6,
@@ -22,6 +50,7 @@
       "tidewater.static-glb/1",
       "tidewater.static-glb-quaternion/1",
       "tidewater.village-materials/1",
+      "tidewater.terrain-surface/1",
       "tidewater.static-vegetation/1",
       "tidewater.static-reef/1",
       "tidewater.island-ocean/1",
@@ -30,7 +59,7 @@
       "tidewater.portal-handoff/1",
       "tidewater.portal-preview-static/1"
     ],
-    "maxPackageBytes": 67108864
+    "maxPackageBytes": 100663296
   },
   "hosts": [],
   "objects": [
@@ -11444,6 +11473,14 @@
       "type": "tidewater.static-vegetation/1",
       "priority": "portal-preview",
       "placementAssetId": "sha256:e9ead2780768e0dabea07317da0c020497137472e6adc1cb3f166611fb0fbae6"
+    },
+    {
+      "id": "tw-component:island-terrain",
+      "type": "tidewater.terrain-surface/1",
+      "profile": "example-island-v1",
+      "objectId": "tw-object:island-terrain",
+      "dataAssetId": "sha256:6aa0547b983d023f64c329f767e7711a56c40be4b1240b62f7d5d410b915f438",
+      "priority": "visible"
     },
     {
       "id": "tw-component:reef-tile--3--1",

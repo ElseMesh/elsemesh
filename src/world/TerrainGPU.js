@@ -53,7 +53,7 @@ function dataTexture( data, width, height, format, label, mips = false ) {
 
 export class TerrainGPU {
 
-	constructor( terrain, shoreField ) {
+	constructor( terrain, shoreField, surfaceMaps = null ) {
 
 		this.terrain = terrain;
 		const res = terrain.res;
@@ -62,11 +62,17 @@ export class TerrainGPU {
 		// heights: R32F, loaded with manual bilinear filtering (no sampler / float filtering needed)
 		this.heightTexture = dataTexture( terrain.heights, res, res, 'r32float', 'terrainHeights' );
 
-		const maps = bakeTerrainMaps( terrain );
+		const maps = surfaceMaps || bakeTerrainMaps( terrain );
 		// trilinear, clamp to edge (smpLinearClamp), linear data (no colour space)
 		this.normalTexture = dataTexture( maps.normal, res, res, 'rgba8unorm', 'terrainNormalRockAO', true );
 		this.splatTexture = dataTexture( maps.splat, res, res, 'rgba8unorm', 'terrainSplat', true );
-		this.detailTexture = getDetailTexture();
+		if ( maps.detail ) {
+			this.detailTexture = new Texture( { label: 'terrainDetailPackaged', width: maps.detailWidth, height: maps.detailHeight, format: 'rgba8unorm', mips: true, usage: [ 'sample', 'copyDst' ], sampler: 'aniso4Repeat', data: maps.detail } );
+			this.detailTexture.getGPU();
+			generateMipmaps( this.detailTexture );
+			this.detailTexture.image = { width: maps.detailWidth, height: maps.detailHeight, data: maps.detail };
+			this.detailTexture.userData = { ms: 0 };
+		} else this.detailTexture = getDetailTexture();
 
 		// coarse heights for the sun shadow march (half float is filterable everywhere)
 		const sh = buildShadowHeights( terrain, 4 );
@@ -194,6 +200,12 @@ fn main( @builtin( global_invocation_id ) gid: vec3u ) {
 		this._sunBaked = true;
 		this.uSunBaked.value = 1;
 		return true;
+
+	}
+
+	dispose() {
+
+		for ( const texture of [ this.heightTexture, this.normalTexture, this.splatTexture, this.detailTexture, this.shadowHeightTexture, this.shoreTexture, this.sunShadowTexture ] ) texture?.destroy();
 
 	}
 

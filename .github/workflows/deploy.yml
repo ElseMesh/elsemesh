@@ -32,6 +32,8 @@ jobs:
         env:
           ELSEMESH_COMMIT_SHA: ${{ github.sha }}
       - run: npm ci --prefix loz-source
+      - run: node test/input-look-keys.mjs
+        working-directory: loz-source
       - run: npm run build --prefix loz-source
       - run: mkdir -p dist/loz && cp -a loz-source/dist/. dist/loz/
       - uses: actions/configure-pages@v5

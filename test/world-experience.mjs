@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import { DEFAULT_WORLD_EXPERIENCE, GENERIC_WORLD_EXPERIENCE, validateWorldExperience } from '../src/network/WorldExperience.js';
+
+assert.equal( DEFAULT_WORLD_EXPERIENCE.genre, 'A coastal fishing adventure', 'the playable island presentation belongs to the island package' );
+assert.match( GENERIC_WORLD_EXPERIENCE.tagline, /place shaped by its owner/i, 'remote worlds without copy use neutral loader text' );
+assert.equal( Object.values( GENERIC_WORLD_EXPERIENCE.stages ).every( ( text ) => text.includes( 'ThruHold' ) ), true, 'generic stage labels do not impose game-specific copy' );
+assert.throws( () => validateWorldExperience( { ...GENERIC_WORLD_EXPERIENCE, extra: 'not allowed' } ), /descriptor/ );
+const markupText = '<script>alert(1)</script>';
+assert.equal( validateWorldExperience( { ...GENERIC_WORLD_EXPERIENCE, tips: [ markupText ] } ).tips[ 0 ], markupText, 'authored text remains data for the UI text renderer, never HTML' );
+
+console.log( 'ok   loading experience copy is world-owned with a neutral remote fallback' );

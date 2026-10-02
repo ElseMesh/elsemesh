@@ -208,6 +208,7 @@ type worldComponent struct {
 	Seed             uint32           `json:"seed,omitempty"`
 	Priority         string           `json:"priority,omitempty"`
 	PlacementAssetID string           `json:"placementAssetId,omitempty"`
+	DataAssetID      string           `json:"dataAssetId,omitempty"`
 	StreamingBounds  *streamingBounds `json:"streamingBounds,omitempty"`
 	Center           []float64        `json:"center,omitempty"`
 	Extent           float64          `json:"extent,omitempty"`
@@ -270,6 +271,10 @@ func (component *worldComponent) UnmarshalJSON(data []byte) error {
 	case "tidewater.static-reef/1":
 		allowed["placementAssetId"] = true
 	case "tidewater.island-ocean/1":
+	case "tidewater.procedural-island-terrain/1":
+		allowed["objectId"], allowed["profile"] = true, true
+	case "tidewater.terrain-surface/1":
+		allowed["objectId"], allowed["profile"], allowed["dataAssetId"] = true, true, true
 	case "tidewater.water-body/1":
 		allowed["center"], allowed["extent"], allowed["profile"] = true, true, true
 	case "tidewater.ambient-audio/1":
@@ -354,6 +359,7 @@ type worldManifest struct {
 	Discoverable    bool             `json:"discoverable"`
 	Version         uint64           `json:"version"`
 	Title           string           `json:"title"`
+	Experience      *worldExperience `json:"experience,omitempty"`
 	Spawn           *worldSpawn      `json:"spawn,omitempty"`
 	Rules           worldRules       `json:"rules"`
 	Assets          []assetRef       `json:"assets"`
@@ -362,6 +368,43 @@ type worldManifest struct {
 	Portals         []portal         `json:"portals"`
 	Hosts           []hostingGrant   `json:"hosts,omitempty"`
 	UpdatedAt       int64            `json:"updatedAt"`
+}
+
+type worldExperience struct {
+	Genre       string            `json:"genre"`
+	Tagline     string            `json:"tagline"`
+	LoadingNote string            `json:"loadingNote"`
+	Tips        []string          `json:"tips"`
+	Stages      map[string]string `json:"stages"`
+}
+
+func validateWorldExperience(experience *worldExperience) error {
+	if experience == nil {
+		return nil
+	}
+	for name, text := range map[string]string{"genre": experience.Genre, "tagline": experience.Tagline, "loadingNote": experience.LoadingNote} {
+		if strings.TrimSpace(text) == "" || len(text) > 240 {
+			return fmt.Errorf("world experience %s is invalid", name)
+		}
+	}
+	if len(experience.Tips) == 0 || len(experience.Tips) > 12 {
+		return errors.New("world experience tips must contain between one and twelve entries")
+	}
+	for _, tip := range experience.Tips {
+		if strings.TrimSpace(tip) == "" || len(tip) > 320 {
+			return errors.New("world experience tip is invalid")
+		}
+	}
+	if len(experience.Stages) > 12 {
+		return errors.New("world experience has too many loading stages")
+	}
+	allowedStages := map[string]bool{"gpu": true, "atmosphere": true, "terrain": true, "village": true, "vegetation": true, "ocean": true, "reef": true, "simulation": true, "shaders": true, "world": true, "compile": true, "warmup": true}
+	for stage, text := range experience.Stages {
+		if !allowedStages[stage] || strings.TrimSpace(text) == "" || len(text) > 120 {
+			return fmt.Errorf("world experience loading stage %q is invalid", stage)
+		}
+	}
+	return nil
 }
 
 func validateManifest(manifest worldManifest, localPeerID string, now time.Time) error {
@@ -383,6 +426,9 @@ func validateManifest(manifest worldManifest, localPeerID string, now time.Time)
 	}
 	if len(manifest.Title) == 0 || len(manifest.Title) > 160 || strings.TrimSpace(manifest.Title) != manifest.Title {
 		return errors.New("invalid world title")
+	}
+	if err := validateWorldExperience(manifest.Experience); err != nil {
+		return err
 	}
 	if manifest.Rules.Gravity < 0.2 || manifest.Rules.Gravity > 2 || math.IsNaN(manifest.Rules.Gravity) || math.IsInf(manifest.Rules.Gravity, 0) {
 		return errors.New("gravity is outside the supported range")
@@ -668,6 +714,8 @@ func validateManifest(manifest worldManifest, localPeerID string, now time.Time)
 		ambientAudio := component.Type == "tidewater.ambient-audio/1" && component.Seed == 0 && component.PlacementAssetID == "" && len(component.Beds) > 0 && len(component.Beds) <= 16
 		boat := component.Type == "tidewater.downeast-boat/1" && component.Seed == 0 && component.PlacementAssetID == "" && component.ObjectID != ""
 		islandOcean := component.Type == "tidewater.island-ocean/1" && component.Seed == 0 && component.PlacementAssetID == ""
+		proceduralTerrain := component.Type == "tidewater.procedural-island-terrain/1" && component.Seed == 0 && component.PlacementAssetID == "" && component.Profile == "example-island-v1" && component.ObjectID != "" && objectByID[component.ObjectID].Kind == "asset-instance"
+		terrainSurface := component.Type == "tidewater.terrain-surface/1" && component.Seed == 0 && component.PlacementAssetID == "" && component.Profile == "example-island-v1" && component.ObjectID != "" && objectByID[component.ObjectID].Kind == "asset-instance" && component.DataAssetID != ""
 		waterBody := component.Type == "tidewater.water-body/1" && component.Seed == 0 && component.PlacementAssetID == "" && len(component.Center) == 2 && component.Extent >= 8 && component.Extent <= 100000 && (component.Profile == "" || component.Profile == "deep-ocean" || component.Profile == "calm-lagoon" || component.Profile == "storm")
 		if waterBody {
 			waterBodyCount++
@@ -695,7 +743,7 @@ func validateManifest(manifest worldManifest, localPeerID string, now time.Time)
 			}
 			boatObject = preview
 		}
-		if !componentIDPattern.MatchString(component.ID) || seenComponents[component.ID] || seenObjects[component.ID] || seenPortals[component.ID] || (!vegetation && !staticVegetation && !staticReef && !islandOcean && !waterBody && !ambientAudio && !boat) || islandOceanCount > 1 || waterBodyCount > 4 || ambientAudioCount > 16 || boatCount > 1 || component.Priority != "" && component.Priority != "portal-preview" && component.Priority != "visible" && component.Priority != "nearby" && component.Priority != "background" || !seenFeatures[component.Type] {
+		if !componentIDPattern.MatchString(component.ID) || seenComponents[component.ID] || seenObjects[component.ID] || seenPortals[component.ID] || (!vegetation && !staticVegetation && !staticReef && !islandOcean && !proceduralTerrain && !terrainSurface && !waterBody && !ambientAudio && !boat) || islandOceanCount > 1 || waterBodyCount > 4 || ambientAudioCount > 16 || boatCount > 1 || component.Priority != "" && component.Priority != "portal-preview" && component.Priority != "visible" && component.Priority != "nearby" && component.Priority != "background" || !seenFeatures[component.Type] {
 			return fmt.Errorf("invalid or unsupported world component %q", component.ID)
 		}
 		if waterBody && (manifest.Rules.SeaLevel == nil || islandOceanCount > 0) || islandOcean && waterBodyCount > 0 {
@@ -721,6 +769,16 @@ func validateManifest(manifest worldManifest, localPeerID string, now time.Time)
 			}
 			if !assetIDPattern.MatchString(component.PlacementAssetID) || !exists || asset.Kind != kind || asset.Priority != priority {
 				return fmt.Errorf("invalid placement asset reference on world component %q", component.ID)
+			}
+		}
+		if terrainSurface {
+			asset, exists := assetRefs[component.DataAssetID]
+			priority := component.Priority
+			if priority == "" {
+				priority = "portal-preview"
+			}
+			if !assetIDPattern.MatchString(component.DataAssetID) || !exists || asset.Kind != "terrain-surface/1" || asset.Priority != priority || asset.Bytes == 0 || asset.Bytes > 128<<20 {
+				return fmt.Errorf("invalid terrain surface asset reference on world component %q", component.ID)
 			}
 		}
 		if ambientAudio {

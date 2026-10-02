@@ -19,6 +19,7 @@ import { SkyProClouds } from './sky/SkyProClouds.js';
 import { Environment } from './sky/Environment.js';
 
 import { TerrainData } from './world/TerrainData.js';
+import { HeightfieldTerrainData } from './world/HeightfieldTerrainData.js';
 import { TerrainGPU } from './world/TerrainGPU.js';
 import { Terrain } from './world/Terrain.js';
 import { computeShoreField } from './world/ShoreField.js';
@@ -65,6 +66,7 @@ import { BoatSpray } from './player/BoatSpray.js';
 import { WakeSim } from './ocean/WakeSim.js';
 import { Vegetation } from './world/Vegetation.js';
 import { decodeVegetationPlacements } from './network/VegetationPlacements.js';
+import { decodeTerrainSurfaceAsset } from './network/TerrainSurfaceAsset.js';
 import { decodeReefPlacements, MAX_REEF_PLACEMENTS, REEF_PLACEMENT_HEADER_BYTES, REEF_PLACEMENT_RECORD_BYTES } from './network/ReefPlacements.js';
 import { SoundScape } from './audio/SoundScape.js';
 import { updateCameraVelocity, useStaticVelocity } from './post/CameraVelocity.js';
@@ -81,8 +83,26 @@ import { WorldPresenceSession } from './network/WorldPresenceSession.js';
 import { WorldPortalView } from './network/WorldPortalView.js';
 import { RenderLoadLOD } from './network/RenderLoadLOD.js';
 import { FrameWorkMeter } from './core/FrameWorkMeter.js';
+import { DEFAULT_WORLD_EXPERIENCE, GENERIC_WORLD_EXPERIENCE } from './network/WorldExperience.js';
 
 const _up = new Vector3( 0, 1, 0 );
+const GRAPHICS_PRIORITY_KEY = 'elsemesh.graphics-priority';
+
+function readGraphicsPriority() {
+	try {
+		return globalThis.localStorage?.getItem( GRAPHICS_PRIORITY_KEY );
+	} catch {
+		return null;
+	}
+}
+
+function saveGraphicsPriority( value ) {
+	try {
+		globalThis.localStorage?.setItem( GRAPHICS_PRIORITY_KEY, value );
+	} catch {
+		// Private browsing and storage policies may disable persistence; the choice still applies now.
+	}
+}
 
 export class App {
 
@@ -90,7 +110,10 @@ export class App {
 
 		this.qs = new URLSearchParams( location.search );
 		const platform = navigator.userAgentData?.platform || navigator.platform || '';
-		this.desktopAdaptiveScale = /linux/i.test( platform ) && ! /android/i.test( navigator.userAgent );
+		this.isLinuxDesktop = /linux/i.test( platform ) && ! /android/i.test( navigator.userAgent );
+		const savedGraphicsPriority = readGraphicsPriority();
+		this.graphicsPriority = this.isLinuxDesktop && savedGraphicsPriority === 'quality' ? 'quality' : 'fps';
+		this.desktopAdaptiveScale = this.isLinuxDesktop && this.graphicsPriority === 'fps';
 		// Keep the Linux canvas slightly below the display resolution so full-screen post passes
 		// (temporal upscale, haze, bloom and grading) do not remain full cost when the scene scale drops.
 		this.desktopCanvasScale = this.desktopAdaptiveScale ? 0.7 : 1;
@@ -117,19 +140,76 @@ export class App {
 			exposure: 0.55,
 			renderScale: this.desktopAdaptiveScale ? 0.75 : 1, // Linux starts lighter; adaptive scale targets 24 fps
 		};
+		this.configureGraphicsPriority();
+	}
+
+	configureGraphicsPriority( persist = false ) {
+
+		const fpsMode = this.isLinuxDesktop && this.graphicsPriority === 'fps';
+		this.desktopAdaptiveScale = fpsMode;
+		this.desktopCanvasScale = fpsMode ? 0.7 : 1;
+		this.desktopFrameRateLimit = fpsMode ? 24 : 0;
+		this.desktopAntiAliasingMode = fpsMode ? 'none' : null;
+		this.desktopRefractionScale = fpsMode ? 0.35 : 0.5;
+		this.autoScale = fpsMode && ! this.qs.has( 'scale' );
+		if ( this.settings ) this.settings.renderScale = fpsMode ? 0.75 : 1;
+		if ( persist && this.isLinuxDesktop ) saveGraphicsPriority( this.graphicsPriority );
+
+		if ( this.engine ) this.engine.setFrameRateLimit( this.desktopFrameRateLimit );
+		if ( this.settings && this.engine && this.post ) this.setRenderScale( this.settings.renderScale );
+		if ( this.post ) this.post.aaMode = fpsMode ? 'none' : 'taa';
+		if ( this.shadows ) this.shadows.enabled = ! fpsMode;
+		if ( this.refraction ) this.refraction.scale = this.desktopRefractionScale;
+		if ( this.scene ) this.scene.traverse( ( object ) => {
+
+			for ( const material of Array.isArray( object.material ) ? object.material : [ object.material ] ) {
+				if ( material?.isWaterMaterial && material.params?.ssr ) material.params.ssr.value = fpsMode ? 0 : 1;
+			}
+
+		} );
+		if ( this.renderLoadLOD ) {
+			this.renderLoadLOD.bias = 0;
+			this.renderLoadLOD.cpuOverload = this.renderLoadLOD.gpuOverload = 0;
+			this.renderLoadLOD.cpuHeadroom = this.renderLoadLOD.gpuHeadroom = 0;
+		}
+		this.renderLoadBias = 0;
+
+	}
+
+	setGraphicsPriority( priority ) {
+
+		if ( ! this.isLinuxDesktop || ! [ 'fps', 'quality' ].includes( priority ) || priority === this.graphicsPriority ) return;
+		this.graphicsPriority = priority;
+		this.configureGraphicsPriority( true );
+
 	}
 
 	async init( onProgress = () => {} ) {
 
 		const qs = this.qs;
+		const worldLink = worldLinkFromLocation();
+		this.loadingExperience = worldLink ? GENERIC_WORLD_EXPERIENCE : DEFAULT_WORLD_EXPERIENCE;
+		this.loadingTitle = worldLink ? 'ThruHold' : 'Example Island';
+		globalThis.__ui?.setLoadingPresentation( this.loadingTitle, this.loadingExperience );
+		if ( worldLink ) {
+			this.worldConnector = new WorldConnector( worldLink );
+			this.worldManifestPromise = this.worldConnector.getManifest().then( ( manifest ) => ( { manifest } ), ( error ) => ( { error } ) );
+			this.worldManifestPromise.then( ( result ) => {
+				if ( result.manifest ) {
+					if ( result.manifest.experience ) this.loadingExperience = result.manifest.experience;
+					this.loadingTitle = result.manifest.title;
+					globalThis.__ui?.setLoadingPresentation( this.loadingTitle, this.loadingExperience );
+				}
+			} );
+		}
 		// report a stage, then let the page paint it before the (synchronous) stage work starts
-		const progress = async ( p, text, until ) => {
+		const progress = async ( p, text, until, stage ) => {
 
-			onProgress( p, text, until );
+			onProgress( p, stage ? this.loadingExperience?.stages?.[ stage ] || text : text, until );
 			if ( typeof requestAnimationFrame === 'function' ) await new Promise( ( r ) => requestAnimationFrame( () => setTimeout( r, 0 ) ) );
 
 		};
-		await progress( 0.02, 'Starting WebGPU…' );
+		await progress( 0.02, 'Starting WebGPU…', undefined, 'gpu' );
 		const engine = this.engine = new Engine( document.getElementById( 'app' ) );
 		await engine.init();
 		// systems take `renderer` first as in the three.js version: it is the Engine now (GPU access is global)
@@ -147,7 +227,7 @@ export class App {
 		this.fly.setPose( new Vector3( 20, 6, - 20 ), Math.PI * 0.9, - 0.12 );
 
 		// ---------------------------------------------------------------- sky
-		await progress( 0.04, 'Building the atmosphere…' );
+		await progress( 0.04, 'Building the atmosphere…', undefined, 'atmosphere' );
 		this.atmosphere = new Atmosphere( renderer );
 		this.sky = new Sky( this.atmosphere );
 		if ( ! qs.has( 'noClouds' ) ) {
@@ -172,25 +252,25 @@ export class App {
 		this._sharedSceneRoots = new Set( scene.children );
 
 		// ---------------------------------------------------------------- island
-		await progress( 0.06, 'Shaping the island…' );
+		await progress( 0.06, 'Shaping the island…', undefined, 'terrain' );
 		this.terrainData = new TerrainData();
 		this.colliders = new Colliders();
 		this.hostedColliders = new Colliders();
 		// the village flattens building pads into the heightmap: build it before any terrain
 		// data is derived (shore field, GPU textures, meshes)
-		await progress( 0.12, 'Building the village…' );
+		await progress( 0.12, 'Building the village…', undefined, 'village' );
 		this.village = new Village( { scene, terrain: this.terrainData, colliders: this.colliders } );
 		this.worldVillageMaterialContext = { materials: this.village.materials, textures: this.village.textures };
 		this.vegetationEnabled = ! qs.has( 'noVeg' );
 		if ( this.vegetationEnabled ) {
 
-			await progress( 0.14, 'Planting the island…' );
+			await progress( 0.14, 'Planting the island…', undefined, 'vegetation' );
 			this.vegetation = new Vegetation( { scene, terrain: this.terrainData, village: this.village } );
 			useStaticVelocity( this.vegetation.group );
 
 		}
 
-		await progress( 0.19, 'Rolling in the swell…' );
+		await progress( 0.19, 'Rolling in the swell…', undefined, 'ocean' );
 		this.shoreField = computeShoreField( this.terrainData, { res: 512, swellDir: [ WORLD.swellDir.x, WORLD.swellDir.y ] } );
 		this.terrainGPU = new TerrainGPU( this.terrainData, this.shoreField );
 		// terrain and rocks apply the heightfield sun shadow (long hill shadows) in their own lighting
@@ -202,7 +282,7 @@ export class App {
 		this.terrain.mesh.material.appliesHillShadow = true;
 		this.rocks.material.appliesHillShadow = true;
 
-		await progress( 0.23, 'Growing the reef…' );
+		await progress( 0.23, 'Growing the reef…', undefined, 'reef' );
 		this.reef = new Reef( { scene, terrain: this.terrainData, shoreField: this.shoreField } );
 
 		this.boat = new BoatModel();
@@ -211,7 +291,7 @@ export class App {
 		this.boat.group.rotation.y = WORLD.boatDock.heading;
 
 		// ---------------------------------------------------------------- ocean
-		await progress( 0.3, 'Simulating the ocean…' );
+		await progress( 0.3, 'Simulating the ocean…', undefined, 'simulation' );
 		this.fft = new OceanFFT( renderer );
 		if ( this.reef.setOcean ) this.reef.setOcean( this.fft ); // coral / sea fan sway follows the simulated swell
 		this.foamTexture = createFoamTexture( renderer );
@@ -367,7 +447,7 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 		this.freeCam = qs.has( 'fly' );
 
 		// ---------------------------------------------------------------- post
-		await progress( 0.34, 'Preparing the shaders…' );
+		await progress( 0.34, 'Preparing the shaders…', undefined, 'shaders' );
 		this.underwater = new Underwater( {
 			depthTexture: this.sceneRenderer.sceneRT.depthTexture, maskTexture: this.sceneRenderer.waterMaskTexture,
 			query: this.query, caustics: this.caustics, fft: this.fft,
@@ -420,16 +500,16 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 		this.profiler.track( 'sky view', this.atmosphere.skyViewKernel );
 
 		this.updateSun();
-		const worldLink = worldLinkFromLocation();
 		if ( worldLink ) {
 
-			await progress( 0.33, 'Connecting to world…' );
+			await progress( 0.33, 'Connecting to world…', undefined, 'world' );
 			this.proceduralWorldRoot = new Group();
 			this.proceduralWorldRoot.name = 'procedural-example-world';
 			for ( const child of scene.children.slice() ) if ( ! this._sharedSceneRoots.has( child ) ) this.proceduralWorldRoot.add( child );
 			scene.add( this.proceduralWorldRoot );
-			const connector = this.worldConnector = new WorldConnector( worldLink );
-			await connector.getManifest();
+			const connector = this.worldConnector;
+			const manifestResult = await this.worldManifestPromise;
+			if ( manifestResult.error ) throw manifestResult.error;
 			this.player.setWorldRules( connector.manifest.rules );
 			G.seaLevel.value = worldSeaLevel( connector.manifest.rules );
 			const spawn = worldSpawnPose( connector.manifest );
@@ -475,9 +555,9 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 		// ---- compile pipelines asynchronously (keeps the page responsive), then prime a few
 		// frames behind the loading screen so any remaining first-use stalls happen there
 		// stage weights: in the browser the pipeline compile below takes far longer than everything before it
-		await progress( 0.36, 'Compiling shaders…', 0.95 );
+		await progress( 0.36, 'Compiling shaders…', 0.95, 'compile' );
 		await this.precompile();
-		await progress( 0.96, 'Warming up…' );
+		await progress( 0.96, 'Warming up…', undefined, 'warmup' );
 		for ( let i = 0; i < 2; i ++ ) {
 
 			this.frame( 1 / 60 );
@@ -730,7 +810,7 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 		this.cpuMs = this.cpuMs === undefined ? ms : this.cpuMs * 0.95 + ms * 0.05;
 		this.renderLoadWarmup += Math.min( dt, 0.1 );
 		const gpuSample = this.frameWorkMeter?.takeGPUSample();
-		const loadBias = this.renderLoadWarmup < 8 ? 0 : this.renderLoadLOD.sample( { cpuMs: ms, gpuMs: gpuSample?.gpuMs ?? null, gpuElapsedSeconds: gpuSample?.elapsedSeconds, budgetMs: 1000 / ( this.desktopFrameRateLimit || 60 ), elapsedSeconds: dt } );
+		const loadBias = ! this.isLinuxDesktop || this.graphicsPriority === 'fps' ? ( this.renderLoadWarmup < 8 ? 0 : this.renderLoadLOD.sample( { cpuMs: ms, gpuMs: gpuSample?.gpuMs ?? null, gpuElapsedSeconds: gpuSample?.elapsedSeconds, budgetMs: 1000 / ( this.desktopFrameRateLimit || 60 ), elapsedSeconds: dt } ) ) : 0;
 		this.renderLoadBias = loadBias;
 
 	}
@@ -744,11 +824,11 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 
 	}
 
-	installWorldComponents( root, connector, componentIDs = null ) {
+	async installWorldComponents( root, connector, componentIDs = null ) {
 		const installed = [];
 		const installedIDs = root.userData.installedWorldComponentIDs ||= new Set();
 		for ( const component of connector.manifest.components || [] ) {
-			if ( installedIDs.has( component.id ) || componentIDs && ! componentIDs.has( component.id ) || component.placementAssetId && ! connector.assets.has( component.placementAssetId ) || component.type === 'tidewater.ambient-audio/1' && component.beds.some( ( bed ) => ! connector.assets.has( bed.assetId ) ) ) continue;
+			if ( installedIDs.has( component.id ) || componentIDs && ! componentIDs.has( component.id ) || component.placementAssetId && ! connector.assets.has( component.placementAssetId ) || component.dataAssetId && ! connector.assets.has( component.dataAssetId ) || component.type === 'tidewater.ambient-audio/1' && component.beds.some( ( bed ) => ! connector.assets.has( bed.assetId ) ) ) continue;
 			const count = installed.length;
 			if ( component.type === 'tidewater.procedural-island-vegetation/1' || component.type === 'tidewater.static-vegetation/1' ) {
 				if ( ! this.vegetationEnabled ) continue;
@@ -760,6 +840,32 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 				} else {
 					installed.push( new Vegetation( { scene: root, terrain: staticVegetation ? null : this.terrainData, village: staticVegetation ? null : this.village, includeGrass: ! staticVegetation, placementRecords } ) );
 				}
+			} else if ( component.type === 'tidewater.terrain-surface/1' ) {
+				const fallback = root.children.find( ( child ) => child.userData.worldObjectId === component.objectId );
+				const replacedObjects = root.userData.worldPackage?.replacedByComponents || ( root.userData.worldPackage.replacedByComponents = new Set() );
+				replacedObjects.add( component.objectId );
+				const maps = await decodeTerrainSurfaceAsset( connector.assets.get( component.dataAssetId ) );
+				const terrainData = new HeightfieldTerrainData( maps );
+				const surfaceMaps = { normal: maps.normal, splat: maps.splat, detailWidth: maps.detailWidth, detailHeight: maps.detailHeight, detail: maps.detail };
+				const terrainGPU = new TerrainGPU( terrainData, null, surfaceMaps );
+				const terrain = new Terrain( { scene: root, terrainData, terrainGPU } );
+				if ( fallback ) fallback.visible = false;
+				installed.push( {
+					islandTerrain: true,
+					update: ( _dt, camera ) => terrain.update( camera, true ),
+					dispose: () => { replacedObjects.delete( component.objectId ); root.remove( terrain.mesh ); terrain.mesh.geometry.dispose(); terrain.mesh.material.dispose(); terrainGPU.dispose(); if ( fallback ) fallback.visible = true; },
+				} );
+			} else if ( component.type === 'tidewater.procedural-island-terrain/1' ) {
+				const fallback = root.children.find( ( child ) => child.userData.worldObjectId === component.objectId );
+				const replacedObjects = root.userData.worldPackage?.replacedByComponents || ( root.userData.worldPackage.replacedByComponents = new Set() );
+				replacedObjects.add( component.objectId );
+				const terrain = new Terrain( { scene: root, terrainData: this.terrainData, terrainGPU: this.terrainGPU } );
+				if ( fallback ) fallback.visible = false;
+				installed.push( {
+					islandTerrain: true,
+					update: ( _dt, camera ) => terrain.update( camera, false ),
+					dispose: () => { replacedObjects.delete( component.objectId ); root.remove( terrain.mesh ); terrain.mesh.geometry.dispose(); terrain.mesh.material.dispose(); if ( fallback ) fallback.visible = true; },
+				} );
 			} else if ( component.type === 'tidewater.static-reef/1' ) {
 				const { records } = readReefPlacements( connector, component );
 				let reef = root.userData.staticReef;
@@ -921,12 +1027,11 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 		state.loadingObjectIDs = objectIDs;
 		state.loadingComponentIDs = componentIDs;
 		state.loadingRank = loadRank;
-		connector.preload( { assetIDs, signal: loadController.signal, concurrency: 2 } ).then( ( assets ) => {
+		connector.preload( { assetIDs, signal: loadController.signal, concurrency: 2 } ).then( async ( assets ) => {
 			if ( loadController.signal.aborted || state.controller.signal.aborted || this.linkedWorldRoot !== root ) return;
-			return appendWorldPackageAssets( connector, root, assets, { signal: loadController.signal, objectIDs } ).then( () => {
-				this.installWorldComponents( root, connector, componentIDs );
-				return registerWorldPackageCollisions( root, this.hostedColliders );
-			} );
+			await appendWorldPackageAssets( connector, root, assets, { signal: loadController.signal, objectIDs } );
+			await this.installWorldComponents( root, connector, componentIDs );
+			return registerWorldPackageCollisions( root, this.hostedColliders );
 		} ).catch( ( error ) => {
 			if ( ! loadController.signal.aborted && ! state.controller.signal.aborted ) console.warn( `View-driven world asset load failed for ${connector.worldId}`, error );
 		} ).finally( () => {
@@ -995,7 +1100,7 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 				if ( ! portal.openView ) return null;
 				const root = await loadWorldPackage( destination, { assets, signal, materialContext: this.worldVillageMaterialContext } );
 				if ( signal.aborted ) { disposeWorldPackage( root ); return null; }
-				this.installWorldComponents( root, destination, componentsThroughPriority( destination, 'portal-preview', this.vegetationEnabled ) );
+				await this.installWorldComponents( root, destination, componentsThroughPriority( destination, 'portal-preview', this.vegetationEnabled ) );
 				root.name = `hosted-world:${portal.destinationWorldId}`;
 				Object.assign( preparation, { connector: destination, root } );
 				return { root };
@@ -1004,7 +1109,7 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 			const root = prepared.preview?.root || await loadWorldPackage( prepared.connector, { assets: prepared.assets, signal, materialContext: this.worldVillageMaterialContext } );
 			preparation.root = root;
 			if ( signal.aborted ) { this.disposeUncommittedWorldComponents( root ); prepared.connector.close(); return; }
-			this.installWorldComponents( root, prepared.connector, componentsThroughPriority( prepared.connector, 'visible', this.vegetationEnabled ) );
+			await this.installWorldComponents( root, prepared.connector, componentsThroughPriority( prepared.connector, 'visible', this.vegetationEnabled ) );
 			await appendWorldPackageAssets( prepared.connector, root, prepared.assets, { signal } );
 			if ( signal.aborted ) { this.disposeUncommittedWorldComponents( root ); prepared.connector.close(); return; }
 				root.name = `hosted-world:${portal.destinationWorldId}`;
@@ -1351,7 +1456,7 @@ function readVegetationPlacements( connector, component ) {
 }
 
 function componentAssetIDs( component ) {
-	return [ ...( component.placementAssetId ? [ component.placementAssetId ] : [] ), ...( component.beds || [] ).map( ( bed ) => bed.assetId ) ];
+	return [ ...( component.placementAssetId ? [ component.placementAssetId ] : [] ), ...( component.dataAssetId ? [ component.dataAssetId ] : [] ), ...( component.beds || [] ).map( ( bed ) => bed.assetId ) ];
 }
 
 function readReefPlacements( connector, component ) {
