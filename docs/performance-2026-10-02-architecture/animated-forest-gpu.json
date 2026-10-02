@@ -1,0 +1,68 @@
+{
+  "schema": "elsemesh.animated-forest-gpu/v1",
+  "width": 256,
+  "height": 256,
+  "results": [
+    {
+      "kind": "main",
+      "coveredPixels": 2533,
+      "coverageMismatch": 0,
+      "coverageUnion": 2533,
+      "depth": {
+        "samples": 2533,
+        "rms": 7.717405926879006e-10,
+        "p995": 4.656612873077393e-10,
+        "max": 3.119930624961853e-8,
+        "signal": 0.0034057377382415792
+      },
+      "color": {
+        "samples": 7599,
+        "rms": 0.000006860210706669711,
+        "p995": 0,
+        "max": 0.00048828125,
+        "signal": 0.5691422699532833
+      },
+      "velocity": {
+        "samples": 5066,
+        "rms": 1.1333777540307538e-7,
+        "p995": 4.76837158203125e-7,
+        "max": 0.000003814697265625,
+        "signal": 0.002771589709420097
+      }
+    },
+    {
+      "kind": "depth",
+      "coveredPixels": 2303,
+      "coverageMismatch": 0,
+      "coverageUnion": 2303,
+      "depth": {
+        "samples": 2303,
+        "rms": 4.810373126319749e-9,
+        "p995": 2.9802322387695312e-8,
+        "max": 2.9802322387695312e-8,
+        "signal": 0.28198101908240275
+      }
+    },
+    {
+      "kind": "color",
+      "coveredPixels": 1145,
+      "coverageMismatch": 0,
+      "coverageUnion": 1145,
+      "depth": {
+        "samples": 1145,
+        "rms": 1.146656017834288e-9,
+        "p995": 4.656612873077393e-10,
+        "max": 3.119930624961853e-8,
+        "signal": 0.003325450623725179
+      },
+      "color": {
+        "samples": 3435,
+        "rms": 0.000010203573718959298,
+        "p995": 0,
+        "max": 0.00048828125,
+        "signal": 0.5708524168145015
+      }
+    }
+  ],
+  "valid": true
+}

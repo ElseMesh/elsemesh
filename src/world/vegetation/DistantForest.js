@@ -4,6 +4,8 @@ import { Group, Matrix4, Mesh, Object3D, Vector3, mergeGeometries } from '../../
 // then continuously settle the wind pose before changing representation.
 export const FOREST_FULL_ANIMATION_DISTANCE = 140;
 export const FOREST_BATCH_DISTANCE = 200;
+export const FOREST_WIND_X_AMPLITUDE = .016;
+export const FOREST_WIND_Z_AMPLITUDE = .026;
 
 export function forestWindWeight(distance) {
   const t = Math.max(0, Math.min(1, (distance - FOREST_FULL_ANIMATION_DISTANCE) /
@@ -31,8 +33,8 @@ class ForestBatchRoot extends Group {
 function setWind(tree, index, time, weight) {
   for (let j = 0; j < tree.joints.length; j++) {
     const joint = tree.joints[j], flex = j / (tree.joints.length - 1);
-    joint.rotation.z = weight * flex * Math.sin(time * .9 + index * .37 - j * .15) * .026;
-    joint.rotation.x = weight * flex * Math.cos(time * .7 + index * .29) * .016;
+    joint.rotation.z = weight * flex * Math.sin(time * .9 + index * .37 - j * .15) * FOREST_WIND_Z_AMPLITUDE;
+    joint.rotation.x = weight * flex * Math.cos(time * .7 + index * .29) * FOREST_WIND_X_AMPLITUDE;
   }
 }
 

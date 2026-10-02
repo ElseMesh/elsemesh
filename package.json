@@ -17,7 +17,8 @@
     "test:security": "node --test test/online-security.mjs",
     "test:graphics": "node --test test/port-depot-lighting.mjs test/port-detail-culling.mjs test/port-drive-review.mjs test/port-graphics-isolation.mjs test/skin-bounds.mjs test/temporal-history-reset.mjs test/ivy-textured-asset.mjs",
     "test:renderer": "node --test test/scene-transform-cache.mjs test/render-pass-scheduling.mjs test/scene-submission.mjs test/distant-forest.mjs test/water-optical-lod.mjs && node test/water-optical-lod-gpu.mjs",
-    "test:publication": "node tools/check-publication.mjs"
+    "test:publication": "node tools/check-publication.mjs",
+    "test:architecture": "node --test test/frame-timing.mjs test/collider-spatial-queries.mjs test/collision-review.mjs test/animated-forest.mjs && node test/animated-forest-gpu.mjs"
   },
   "devDependencies": {
     "vite": "^8.3.0",

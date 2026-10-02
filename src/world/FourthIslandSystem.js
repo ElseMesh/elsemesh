@@ -8,6 +8,7 @@ import { FOURTH, fourthIslandContains } from './FourthIslandLayout.js';
 import { TreeWildlife } from './TreeWildlife.js';
 import { fruitTreeCrownGeometry, fruitTreeLeafMaterial } from './vegetation/FruitTreeCrown.js';
 import { DistantForest, ForestTreeRoot } from './vegetation/DistantForest.js';
+import { AnimatedForest } from './vegetation/AnimatedForest.js';
 
 const ASSET = (import.meta.env?.BASE_URL || '/') + 'models/buildings/forest-cabin.glb';
 const leaf = standard({name:'Island Four forest canopy',color:0x315f32,roughness:.92});
@@ -82,10 +83,12 @@ async function loadVilla() {
 
 export class FourthIslandSystem {
   constructor(app) {
-    this.app=app;this.time=0;this.optimizeDistantForest=true;this.group=new Group();this.group.name='Cartoon Island — forest villa';app.scene.add(this.group);
+    this.app=app;this.time=0;this.optimizeDistantForest=true;this.optimizeAnimatedForest=true;this.group=new Group();this.group.name='Cartoon Island — forest villa';app.scene.add(this.group);
     this.bark=createTreeBarkMaterial();this.buildForest();this.wildlife=new TreeWildlife(this.group,this.trees,this.bark);this.addCollision();
     this.distantForest=new DistantForest(this.trees,this.group);
     this.forestStats=this.distantForest.stats;
+    this.animatedForest=new AnimatedForest(this.trees,this.group);
+    this.animatedForestStats=this.animatedForest.stats;
     const y=app.terrainData.heightAt(FOURTH.villa.x,FOURTH.villa.z);
     this.ready=loadVilla().then(model=>{
       this.model=model;model.rotation.y=FOURTH.villa.yaw;model.scale.setScalar(1.16);model.updateMatrixWorld(true);
@@ -160,6 +163,7 @@ export class FourthIslandSystem {
   update(dt) {
     this.time+=dt;
     this.distantForest.update(this.time,this.app.camera.position,this.optimizeDistantForest);
+    this.animatedForest.update(this.optimizeAnimatedForest);
     this.wildlife?.update(dt,this.app.camera.position);
   }
 }

@@ -15,7 +15,7 @@ and long multiplayer sessions still need broader testing.
 
 ## Run locally
 
-Use Node.js 22.12 or newer (Node 24 recommended).
+Use Node.js 22.15 or newer (Node 24 recommended).
 
 ```sh
 npm ci
@@ -59,6 +59,7 @@ npm run test:vehicle-steering
 npm run test:vehicle-material
 npm run test:graphics
 npm run test:renderer
+npm run test:architecture
 npm run test:publication
 npm run build
 ```
@@ -79,6 +80,14 @@ switches off/on measured 28.5 to 29.3 FPS (+2.7%), with beach +9.5% and underwat
 +7.6%; other views stayed within 1%. CPU submission wall time fell 24%, while
 frame-time tails did not improve everywhere. Experimental depth ordering remains
 disabled. See the [follow-up evidence and limitations](docs/performance-2026-10-02-stage-two/review.txt).
+
+The architecture update batches nearby animated trees and indexes collision
+queries, while fixing FPS reporting to use actual frame intervals. Repeated
+forest-villa comparisons measured 15–18% higher FPS, including a camera-and-wind
+sweep. A separate loaded-world collision workload returned identical results
+with 75% less query CPU time. Other views were noisy and did not establish a
+general FPS gain; the tree batches add memory and have a documented motion-history
+limit after culling gaps. See the [architecture measurements and limits](docs/performance-2026-10-02-architecture/review.txt).
 
 ## Licensing and source
 
