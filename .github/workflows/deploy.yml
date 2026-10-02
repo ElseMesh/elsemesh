@@ -35,7 +35,7 @@ jobs:
           echo "XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR" >> "$GITHUB_ENV"
           vulkaninfo --summary
       - run: npm ci
-      - run: npm test && npm run test:network && npm run test:security && npm run test:cargo && npm run test:vehicle-steering && npm run test:vehicle-material && npm run test:graphics && npm run test:publication
+      - run: npm test && npm run test:network && npm run test:security && npm run test:cargo && npm run test:vehicle-steering && npm run test:vehicle-material && npm run test:graphics && npm run test:renderer && npm run test:publication
       - run: npm run build
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3

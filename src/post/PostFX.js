@@ -65,12 +65,14 @@ export class PostFX {
 		this.sceneRenderer = sceneRenderer;
 		this.underwater = underwater;
 		this.scale = 1;
+		this.optimizeDisabledEffects = true; // set false for diagnostic comparisons
 		// headless / tests: a Texture to draw into instead of the canvas, and its size
 		this.outputTexture = null;
 		this.outputSize = null;
 		this.outputFormat = GPU.context ? GPU.format : 'rgba8unorm';
 
 		this.uniforms = new UniformBlock( 'PostParams', {
+			optimizeDisabledEffects: [ 'f32', 0 ],
 			aoStrength: [ 'f32', 1.0 ],
 			bloom: [ 'f32', 0.05 ],
 			vignette: [ 'f32', 0.28 ],
@@ -257,6 +259,7 @@ fn postDepthLoad( uv: vec2f, which: i32 ) -> f32 {
 
 fn postColorAO( uv: vec2f ) -> vec3f {
 	let c = textureSampleLevel( postScene, smpLinearClamp, uv, 0.0 ).rgb;
+	if ( post.optimizeDisabledEffects > 0.5 && post.aoStrength == 0.0 ) { return c; }
 	let dO = postDepthLoad( uv, 0 );
 	let dF = postDepthLoad( uv, 1 );
 	// reversed depth: sky = 0; water in front of the opaque surface has a larger depth value
@@ -505,7 +508,10 @@ fn postHash( p: vec2u, f: u32 ) -> f32 {
 	return f32( x >> 8u ) / 16777216.0;
 }
 
-fn bloomAt( uv: vec2f ) -> vec3f { return textureSampleLevel( postBloom, smpLinearClamp, uv, 0.0 ).rgb * post.bloom; }
+fn bloomAt( uv: vec2f ) -> vec3f {
+	if ( post.optimizeDisabledEffects > 0.5 && post.bloom == 0.0 ) { return vec3f( 0.0 ); }
+	return textureSampleLevel( postBloom, smpLinearClamp, uv, 0.0 ).rgb * post.bloom;
+}
 
 fn lensSharp( uv: vec2f ) -> vec3f {
 	var c = mbApply( rcas( uv ), uv ) + bloomAt( uv );
@@ -647,11 +653,17 @@ fn fragment( in: FSIn ) -> vec4f {
 
 		if ( ! this._built ) this.beginFrame();
 		const T = this._timers || null;
+		const optimize = this.optimizeDisabledEffects;
+		this.params.optimizeDisabledEffects.value = optimize ? 1 : 0;
 		this.motionBlur.compute( this._outW, this._outH );
-		this._aoDepthPass.render( { colorViews: [ this.aoDepth.texture ], clear: CLR } );
-		this.aoPass.render();
-		this._aoBlurXPass.render( { colorViews: [ this.aoBlurX.texture ], clear: CLR } );
-		this._aoBlurYPass.render( { colorViews: [ this.aoBlurY.texture ], clear: CLR } );
+		if ( ! optimize || this.params.aoStrength.value !== 0 ) {
+			this._aoDepthPass.render( { colorViews: [ this.aoDepth.texture ], clear: CLR } );
+			this.aoPass.render();
+			this._aoBlurXPass.render( { colorViews: [ this.aoBlurX.texture ], clear: CLR } );
+			this._aoBlurYPass.render( { colorViews: [ this.aoBlurY.texture ], clear: CLR } );
+		} else {
+			this.aoPass.advanceFrame();
+		}
 		this._mediumPass.render( { colorViews: [ this.medium.texture ], clear: CLR } );
 		// caustic shafts / torch beam march (half res): only while the lens can be under water (the CPU
 		// water height lags the GPU's by a frame: 1 m of margin)
@@ -659,7 +671,7 @@ fn fragment( in: FSIn ) -> vec4f {
 		if ( this.haze ) {
 
 			this.haze.update();
-			this.haze.render();
+			this.haze.render( optimize );
 
 		}
 
@@ -678,7 +690,14 @@ fn fragment( in: FSIn ) -> vec4f {
 			t._needsRestart = true;
 
 		}
-		for ( const [ pass, rt ] of this._bloomPasses ) pass.render( { colorViews: [ rt.texture ], clear: CLR } );
+		// With zero bloom, retain downsamples 0..3: lens droplets read the first
+		// and auto exposure reads the fourth. The fifth and all upsamples have no
+		// consumer. All nine resume before the first nonzero-bloom final pass.
+		const bloomPassCount = optimize && this.params.bloom.value === 0 ? 4 : this._bloomPasses.length;
+		for ( let i = 0; i < bloomPassCount; i ++ ) {
+			const [ pass, rt ] = this._bloomPasses[ i ];
+			pass.render( { colorViews: [ rt.texture ], clear: CLR } );
+		}
 		const out = this.outputTexture ? this.outputTexture.view( { dimension: '2d', mipLevelCount: 1 } ) : GPU.context.getCurrentTexture().createView();
 		this._finalPass.render( { colorViews: [ out ], clear: CLR } );
 		// meter this frame's image; the result is used from the next frame on

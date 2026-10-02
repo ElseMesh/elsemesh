@@ -259,8 +259,9 @@ fn fragment( in: FSIn ) -> vec4f {
 
 	}
 
-	// record the AO pass (camera matrices of this frame: jittered projection)
-	render() {
+	// Advance the sampling sequence even when a caller does not need an AO image.
+	// Resuming AO then uses the same noise phase as an uninterrupted render chain.
+	advanceFrame() {
 
 		// update temporal uniforms
 		const U = this.uniforms.fields;
@@ -276,6 +277,14 @@ fn fragment( in: FSIn ) -> vec4f {
 			U.temporalOffset.value = 1;
 
 		}
+
+	}
+
+	// record the AO pass (camera matrices of this frame: jittered projection)
+	render() {
+
+		this.advanceFrame();
+		const U = this.uniforms.fields;
 
 		// rebuild the pipeline if the sample count has changed
 		if ( this.samples.value !== this._currentSamples ) this._build();

@@ -86,6 +86,9 @@ for (const node of Object.values(PORT_NODES)) VIEWS[`portJunction-${node.id}`] =
 };
 
 export function installDebugViews( app ) {
+    if (import.meta.env.DEV && new URLSearchParams(location.search).has('rendererReview')) {
+        import('./RendererReview.js').then(({installRendererReview}) => installRendererReview(app, VIEWS));
+    }
     if (import.meta.env.DEV && new URLSearchParams(location.search).has('graphicsReview')) installPortGraphicsReview(app);
     if (import.meta.env.DEV && new URLSearchParams(location.search).has('driveReview')) installPortDriveReview(app);
     if (new URLSearchParams(location.search).get('view')?.startsWith('portCargo')) {

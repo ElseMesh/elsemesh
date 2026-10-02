@@ -44,6 +44,11 @@ export class MeshRenderer {
 		this.drawCount = 0;
 		this.frame = - 1;
 		this.stats = { draws: 0, triangles: 0, pipelines: 0 };
+		// Share transforms only within a scope of passes whose scene is stable.
+		// Other scenes, standalone renders and precompilation retain per-pass
+		// updates. Set false for diagnostic comparisons.
+		this.optimizeSceneTransforms = true;
+		this._sceneTransformScopes = new WeakMap();
 		this.drawLayout = null;
 		this.drawBindGroup = null;
 		// true: a draw compiles its pipeline on the spot (one-off bakes, portraits, tests); the engine's
@@ -384,6 +389,34 @@ export class MeshRenderer {
 
 	// ------------------------------------------------------------------------------ draw lists
 
+	withSceneTransforms( scene, render ) {
+
+		if ( ! this.optimizeSceneTransforms || this.precompiling ) return render();
+		const previous = this._sceneTransformScopes.get( scene );
+		this._sceneTransformScopes.set( scene, { frame: GPU.frame, updated: false } );
+		try {
+
+			return render();
+
+		} finally {
+
+			if ( previous ) this._sceneTransformScopes.set( scene, previous );
+			else this._sceneTransformScopes.delete( scene );
+
+		}
+
+	}
+
+	// A pass callback that changes local transforms inside the explicit scope can
+	// request a fresh update for the following pass. Camera/LOD callbacks still
+	// run for every collection; neither cameras nor draw lists are cached.
+	invalidateSceneTransforms( scene ) {
+
+		const scope = this._sceneTransformScopes.get( scene );
+		if ( scope ) scope.updated = false;
+
+	}
+
 	collect( scene, { camera, layerMask = 0xffffffff, filter = null, kind = 'main', cull = true } ) {
 
 		const opaque = [];
@@ -418,7 +451,13 @@ export class MeshRenderer {
 
 		};
 
-		scene.updateMatrixWorld();
+		const scope = this.optimizeSceneTransforms && ! this.precompiling ? this._sceneTransformScopes.get( scene ) : null;
+		if ( ! scope || ! scope.updated || scope.frame !== GPU.frame ) {
+
+			scene.updateMatrixWorld();
+			if ( scope ) { scope.frame = GPU.frame; scope.updated = true; }
+
+		}
 		visit( scene );
 		opaque.sort( ( a, b ) => a.renderOrder - b.renderOrder || a.pipeKey - b.pipeKey || a.z - b.z );
 		transparent.sort( ( a, b ) => a.renderOrder - b.renderOrder || b.z - a.z );

@@ -58,9 +58,20 @@ npm run test:cargo
 npm run test:vehicle-steering
 npm run test:vehicle-material
 npm run test:graphics
+npm run test:renderer
 npm run test:publication
 npm run build
 ```
+
+## Rendering performance
+
+The 2 October renderer update shares scene transforms across passes and skips
+unused water-depth and inactive postprocessing work. In a controlled six-view
+Balanced test on Intel Arc, average FPS rose from 23.0 to 27.3 (+19.1%) at the
+same resolution and quality. Five views improved; village was essentially flat.
+This is a fixed-camera result, not a guarantee for gameplay or other hardware.
+Long-frame hitches remain, including a worse cargo p99 in this run.
+See the [method, limitations and raw evidence](docs/performance-2026-10-02/review.txt).
 
 ## Licensing and source
 

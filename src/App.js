@@ -267,6 +267,7 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 			surface: this.surface, sky: this.sky, sceneCopy: this.sceneRenderer.opaqueCopy, sceneDepthHalf: this.sceneRenderer.opaqueDepthHalf.texture, refraction: this.refraction,
 			hullMask: this.sceneRenderer.hullMaskRT.texture, hullMaskActive: this.sceneRenderer.hullMaskActive,
 		} );
+		this.sceneRenderer.waterMaterial = this.waterMaterial;
 		this.waterMaterial.clouds = this.clouds;
 		this.ocean = new Mesh( this.oceanLOD.geometry, this.waterMaterial );
 		this.ocean.frustumCulled = false;
@@ -803,8 +804,15 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 		// uniforms (setFrameCamera); shadows then render with this frame's sun and camera
 		this.post.beginFrame();
 		this.underwater.updateCamera( this.camera );
-		this.shadows.render( this.scene, this.engine.meshRenderer, this.shadows.update( this.camera, G.sunDir.value ) );
-		this.sceneRenderer.render();
+		// World simulation is complete. Main-scene transforms remain stable across
+		// shadow, opaque, refraction and transparent passes. Portraits and later
+		// auxiliary renders stay outside this optional optimization scope.
+		this.engine.meshRenderer.withSceneTransforms( this.scene, () => {
+
+			this.shadows.render( this.scene, this.engine.meshRenderer, this.shadows.update( this.camera, G.sunDir.value ) );
+			this.sceneRenderer.render();
+
+		} );
 		if ( this.post.flare ) this.post.flare.kernel.dispatch( 1 );
 		this.post.render();
 		this.post.endFrame();

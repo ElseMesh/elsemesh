@@ -50,6 +50,10 @@ export class SceneRenderer {
 		// scattered reads that tolerate centimetres, e.g. the water's screen-space reflection march
 		this.opaqueDepthHalf = new RenderTarget( 1, 1, { colors: [ 'r16float' ], label: 'opaqueDepthHalf' } );
 		this._depthHalfPass = null;
+		// The fp16 depth is consumed only by water SSR. Set false for diagnostic
+		// comparisons; unknown consumers always retain the depth conversion.
+		this.optimizeWaterDepthCopy = true;
+		this.waterMaterial = null;
 		this.hullMaskRT = new RenderTarget( 1, 1, { colors: [ 'r16float' ], depth: DEPTH_FORMAT, label: 'hullMask' } );
 		this.hullMaskScene = new Scene();
 		this.hullMaskMaterial = new Material( { name: 'hullMask', lit: false, side: 'double', surface: 's.albedo = vec3f( length( in.P - frame.cameraPos ), 0.0, 0.0 ); s.emissive = vec3f( 0.0 );' } );
@@ -138,7 +142,9 @@ export class SceneRenderer {
 			bindings: { srcDepth: { texture: () => this.opaqueCopy.depthTexture } },
 			code: 'fn fragment( in: FSIn ) -> vec4f { return vec4f( textureLoad( srcDepth, vec2i( in.pos.xy ), 0 ), 0.0, 0.0, 1.0 ); }',
 		} );
-		this._depthHalfPass.render( { colorViews: [ this.opaqueDepthHalf.texture ], clear: [ 0, 0, 0, 0 ] } );
+		if ( ! this.optimizeWaterDepthCopy || this.waterMaterial?.needsSSRDepth !== false ) {
+			this._depthHalfPass.render( { colorViews: [ this.opaqueDepthHalf.texture ], clear: [ 0, 0, 0, 0 ] } );
+		}
 
 		// 3. hull interiors
 		if ( this.hullMasks.length > 0 ) this._renderHullMasks( camera );

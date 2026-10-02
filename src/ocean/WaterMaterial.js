@@ -125,6 +125,10 @@ export class WaterMaterial extends Material {
 
 	}
 
+	// Mirror the exact shader guard; re-enabling SSR refreshes its depth in the
+	// same frame, before the water pass. Other water depth uses keep the full copy.
+	get needsSSRDepth() { return this.params.ssr.value > 0.5; }
+
 	// two pipelines: with the hull-mask discard (a hull on screen) and without it. A shader that can
 	// discard loses early depth / hidden surface removal on every pixel, so the sea only pays for it
 	// while a hull is actually masked (SceneRenderer sets hullMaskActive before the water pass).
