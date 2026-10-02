@@ -38,7 +38,13 @@ def main():
     source = json.loads(source_bytes)
     if any(record["id"] in {OBJECT_ID, MESH_ID} for record in source["objects"]):
         raise SystemExit("runtime-check object ID already exists in the example source")
-    asset_id = next(record["assetId"] for record in source["objects"] if record["id"].startswith("tw-object:scanned-debris-"))
+    asset_ids = list(dict.fromkeys(
+        record["assetId"] for record in source["objects"]
+        if record["id"].startswith("tw-object:scanned-debris-")
+    ))
+    if len(asset_ids) < 2:
+        raise SystemExit("runtime check needs two source assets to exercise asset replacement")
+    asset_id, replacement_asset_id = asset_ids[:2]
     asset_path = ROOT / "worlds/island/assets" / asset_id.removeprefix("sha256:")
     plan = {
         "protocol": "elsemesh.blender-actions/1",
@@ -55,6 +61,10 @@ def main():
                 "scale": [1, 1, 1],
                 "collision": {"shape": "none", "enabled": False},
             },
+        }, {
+            "op": "object.update",
+            "id": OBJECT_ID,
+            "fields": {"assetId": replacement_asset_id},
         }, {
             "op": "mesh.create",
             "object": {
@@ -82,6 +92,9 @@ def main():
         plan_path.write_text(json.dumps(plan), encoding="utf-8")
         environment = os.environ.copy()
         environment.update({
+            "BLENDER_SYSTEM_RESOURCES": str(pathlib.Path(blender).resolve().parents[1] / "share/blender"),
+            "BLENDER_SYSTEM_SCRIPTS": str(pathlib.Path(blender).resolve().parents[1] / "share/blender/scripts"),
+            "BLENDER_SYSTEM_DATAFILES": str(pathlib.Path(blender).resolve().parents[1] / "share/blender/datafiles"),
             "BLENDER_USER_CONFIG": str(work / "config"),
             "BLENDER_USER_SCRIPTS": str(work / "scripts"),
             "BLENDER_USER_DATAFILES": str(work / "datafiles"),
@@ -97,6 +110,9 @@ def main():
         candidate = json.loads(candidate_source.read_text(encoding="utf-8"))
         if not any(record["id"] == OBJECT_ID for record in candidate["objects"]):
             raise RuntimeError("candidate source is missing the new stable-ID object")
+        placed_record = next(record for record in candidate["objects"] if record["id"] == OBJECT_ID)
+        if placed_record["assetId"] != replacement_asset_id:
+            raise RuntimeError("candidate source did not retain the replacement asset ID")
         mesh_record = next((record for record in candidate["objects"] if record["id"] == MESH_ID), None)
         if not mesh_record or not mesh_record["assetId"].startswith("sha256:"):
             raise RuntimeError("candidate source is missing the generated content-addressed mesh")
@@ -133,7 +149,7 @@ def main():
         output = run([blender, "--background", "--factory-startup", str(candidate_blend), "--python-expr", expression], environment)
         if "reopened-world-action-ok" not in output:
             raise RuntimeError("reopened Blender file did not confirm the stable-ID object")
-        print("Blender runtime actions passed: imported a hash-verified GLB, created and hashed a bounded mesh GLB, wrote all candidate artifacts, and reopened both stable IDs")
+        print("Blender runtime actions passed: imported and replaced a hash-verified GLB, created and hashed a bounded mesh GLB, wrote all candidate artifacts, and reopened both stable IDs")
 
 
 if __name__ == "__main__":

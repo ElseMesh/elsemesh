@@ -34,10 +34,20 @@ node tools/run-ai-edit-worker.mjs \
   --out /var/tmp/elsemesh-fish-table-candidate
 ```
 
-The worker fails closed if its sandbox prerequisites are unavailable. It launches Blender with a private network and process namespace, a clean environment, the task mounted read-only, only the candidate output mounted writable, and fixed CPU-time, address-space, file-size, process-count, descriptor, output-size, and wall-clock limits. The only extra files visible to the process are the read-only operating-system runtime and the trusted Blender action runner. User home directories, world-node profiles, signing keys, account credentials, and network access are not mounted into the worker.
+The worker fails closed if its sandbox prerequisites are unavailable. It launches Blender with a private network and process namespace, a clean environment, the task mounted read-only, only the candidate output mounted writable, and fixed CPU-time, address-space, file-size, output-size, and wall-clock limits. Its process-count limit allows 128 worker processes above the current host-user thread count, with a 4,096 minimum required by Bubblewrap startup on busy desktop sessions. The only extra files visible to the process are the read-only operating-system runtime and the trusted Blender action runner. User home directories, world-node profiles, signing keys, account credentials, and network access are not mounted into the worker.
+
+An operator-managed portable Blender runtime can be mounted read-only from a dedicated directory by passing both `--blender /path/to/runtime/usr/bin/blender` and `--blender-prefix /path/to/runtime/usr`. Keep that prefix dedicated to trusted Blender binaries, libraries, scripts, and data files; the task bundle and output directory must be outside it. The prefix is mounted at `/opt/elsemesh-blender` inside the sandbox, and Blender's resource and library paths point only to that runtime and the read-only system runtime.
+
+The full isolated runtime path is opt-in because it needs Blender and permission to create Linux user and network namespaces:
+
+```sh
+ELSEMESH_RUN_BLENDER_WORKER=1 node test/ai-edit-worker-runtime.mjs
+```
+
+For a portable Blender package, also set `BLENDER_EXECUTABLE` and `BLENDER_PREFIX` to its executable and trusted `usr` directory.
 
 Successful output contains an unsigned candidate source, a candidate `.blend`, any newly generated content-addressed GLBs, and `review.json`. The report lists changed object, portal, and world fields. An owner must inspect the source diff, reopen/render the Blender scene, and verify generated asset hashes. To publish, merge required original and generated assets into a reviewed package and use the separate owner-only publication flow against the exact base-source snapshot. Running the worker never signs or publishes anything.
 
 ## Current boundary
 
-This worker supplies a provider-neutral task and execution format that Blender-capable assistants can use. Model selection, paid-service credentials, remote task hosting, an owner-facing visual review UI, and automated training-data collection are separate service work and are not implemented here. The worker currently requires Linux user namespaces and a Blender package under `/usr`; it is not a Termux execution path. The source and world-node formats remain usable without this worker.
+This worker supplies a provider-neutral task and execution format that Blender-capable assistants can use. Model selection, paid-service credentials, remote task hosting, an owner-facing visual review UI, and automated training-data collection are separate service work and are not implemented here. The worker currently requires Linux user namespaces and Bubblewrap; a portable Blender runtime is supported via an explicit trusted prefix. On 2026-10-02, the isolated worker test ran with Blender 4.3.2 and created an unsigned candidate source, `.blend`, content-hash-verified GLB, and review report. It is not a Termux execution path. The source and world-node formats remain usable without this worker.

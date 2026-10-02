@@ -1,13 +1,12 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { mkdir, mkdtemp, readFile, rm, writeFile, symlink } from 'node:fs/promises';
-import os from 'node:os';
 import path from 'node:path';
 import { createWorldSource } from '../src/network/WorldSource.js';
 import { createAITaskBundle } from '../tools/create-ai-edit-task.mjs';
 import { buildSandboxCommand, validateAITaskBundle, validateScopedActions } from '../tools/run-ai-edit-worker.mjs';
 
-const temporaryRoot = await mkdtemp( path.join( os.tmpdir(), 'elsemesh-ai-edit-' ) );
+const temporaryRoot = await mkdtemp( path.join( '/var/tmp', 'elsemesh-ai-edit-' ) );
 try {
 	const input = path.join( temporaryRoot, 'input' );
 	const assets = path.join( input, 'assets' );
@@ -66,6 +65,16 @@ try {
 	assert.ok( command.args.includes( '--out-assets' ) && command.args.includes( '/out/assets' ) );
 	assert.ok( command.args.some( ( arg ) => arg.startsWith( '--cpu=' ) ) );
 	assert.ok( command.args.some( ( arg ) => arg.startsWith( '--as=' ) ) );
+	assert.ok( Number( command.args.find( ( arg ) => arg.startsWith( '--nproc=' ) ).slice( 8 ) ) >= 128 );
+	const portableCommand = buildSandboxCommand( {
+		bwrap: '/usr/bin/bwrap', prlimit: '/usr/bin/prlimit', blender: '/var/tmp/blender/usr/bin/blender',
+		blenderPrefix: '/var/tmp/blender/usr', runner: '/repo/tools/blender/world_actions.py', taskRoot: taskDirectory, outputRoot: output,
+		outputAssetsRequired: false,
+	} );
+	assert.ok( portableCommand.args.includes( '/var/tmp/blender/usr' ) );
+	assert.ok( portableCommand.args.includes( '/opt/elsemesh-blender' ) );
+	assert.ok( portableCommand.args.includes( '/opt/elsemesh-blender/bin/blender' ) );
+	assert.ok( portableCommand.args.includes( 'BLENDER_SYSTEM_RESOURCES' ) );
 
 	await assert.rejects( createAITaskBundle( {
 		sourcePath, blendPath, assetsPath: assets, instruction: 'Do not overwrite existing task.', outTaskPath: taskDirectory,

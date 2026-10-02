@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { createHash } from 'node:crypto';
 import { spawn } from 'node:child_process';
-import { createReadStream, statSync } from 'node:fs';
+import { createReadStream, readdirSync, readFileSync, statSync } from 'node:fs';
 import { access, chmod, lstat, mkdir, readFile, readdir, realpath, rm, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -23,7 +23,7 @@ function parseArgs(argv) {
 	const result = {};
 	for ( let i = 0; i < argv.length; i ++ ) {
 		const key = argv[ i ];
-		if ( ! [ '--task', '--out', '--blender' ].includes( key ) || ! argv[ i + 1 ] ) throw new Error( `Invalid or incomplete option: ${key}` );
+		if ( ! [ '--task', '--out', '--blender', '--blender-prefix' ].includes( key ) || ! argv[ i + 1 ] ) throw new Error( `Invalid or incomplete option: ${key}` );
 		result[ key.slice( 2 ) ] = argv[ ++ i ];
 	}
 	for ( const key of [ 'task', 'out' ] ) if ( ! result[ key ] ) throw new Error( `Missing --${key}` );
@@ -141,7 +141,10 @@ function countActions(actions) {
 	return counts;
 }
 
-export function buildSandboxCommand({ bwrap, prlimit, blender, runner = ACTION_RUNNER, taskRoot, outputRoot, outputAssetsRequired, limits = WORKER_LIMITS }) {
+export function buildSandboxCommand({ bwrap, prlimit, blender, blenderPrefix = '/usr', runner = ACTION_RUNNER, taskRoot, outputRoot, outputAssetsRequired, limits = WORKER_LIMITS }) {
+	const portableBlender = blenderPrefix !== '/usr';
+	const blenderInSandbox = portableBlender ? path.join( '/opt/elsemesh-blender', path.relative( blenderPrefix, blender ) ) : blender;
+	const blenderResources = path.join( portableBlender ? '/opt/elsemesh-blender' : '/usr', 'share/blender' );
 	const blenderArgs = [ '--background', '--factory-startup', '/task/scene.blend', '--python', '/worker/world_actions.py', '--',
 		'--plan', '/task/plan.json', '--source', '/task/world-source.json', '--assets', '/task/assets',
 		'--out-source', '/out/candidate.world-source.json', '--out-blend', '/out/candidate.blend',
@@ -154,18 +157,46 @@ export function buildSandboxCommand({ bwrap, prlimit, blender, runner = ACTION_R
 		'--dir', '/etc', ...( existsSync('/etc/ld.so.cache') ? [ '--ro-bind', '/etc/ld.so.cache', '/etc/ld.so.cache' ] : [] ),
 		'--proc', '/proc', '--dev', '/dev', '--tmpfs', '/tmp', '--dir', '/tmp/home', '--dir', '/tmp/config',
 		'--setenv', 'HOME', '/tmp/home', '--setenv', 'TMPDIR', '/tmp', '--setenv', 'PATH', '/usr/bin:/bin',
+		'--setenv', 'LD_LIBRARY_PATH', portableBlender ? '/opt/elsemesh-blender/lib:/opt/elsemesh-blender/lib/x86_64-linux-gnu:/usr/lib:/usr/lib/x86_64-linux-gnu:/usr/lib/x86_64-linux-gnu/blas:/usr/lib/x86_64-linux-gnu/lapack' : '/usr/lib:/usr/lib/x86_64-linux-gnu:/usr/lib/x86_64-linux-gnu/blas:/usr/lib/x86_64-linux-gnu/lapack',
+		'--setenv', 'BLENDER_SYSTEM_RESOURCES', blenderResources,
+		'--setenv', 'BLENDER_SYSTEM_SCRIPTS', path.join( blenderResources, 'scripts' ),
+		'--setenv', 'BLENDER_SYSTEM_DATAFILES', path.join( blenderResources, 'datafiles' ),
 		'--setenv', 'BLENDER_USER_CONFIG', '/tmp/config', '--setenv', 'BLENDER_USER_SCRIPTS', '/tmp/config/scripts',
 		'--setenv', 'BLENDER_USER_DATAFILES', '/tmp/config/datafiles', '--setenv', 'PYTHONDONTWRITEBYTECODE', '1',
 		'--ro-bind', taskRoot, '/task', '--dir', '/worker', '--ro-bind', runner, '/worker/world_actions.py',
-		'--bind', outputRoot, '/out', '--chdir', '/task', '--', blender, ...blenderArgs,
+		...( portableBlender ? [ '--dir', '/opt', '--ro-bind', blenderPrefix, '/opt/elsemesh-blender' ] : [] ),
+		'--bind', outputRoot, '/out', '--chdir', '/task', '--', blenderInSandbox, ...blenderArgs,
 	];
 	return { command: prlimit, args: [
 		`--cpu=${limits.cpuSeconds}`, `--as=${limits.addressSpaceBytes}`, `--fsize=${limits.fileBytes}`,
-		`--nofile=${limits.openFiles}`, `--nproc=${limits.processes}`, '--', bwrap, ...bubbleArgs,
+		`--nofile=${limits.openFiles}`, `--nproc=${processLimit( limits.processes )}`, '--', bwrap, ...bubbleArgs,
 	] };
 }
 
-function existsSync(file) { try { return lstatSync( file ).isDirectory() || lstatSync( file ).isFile() || lstatSync( file ).isSymbolicLink(); } catch { return false; } }
+function processLimit(additionalProcesses) {
+	let existingUserThreads = 0;
+	try {
+		const uid = process.getuid();
+		for ( const entry of readdirSync( '/proc', { withFileTypes: true } ) ) {
+			if ( ! entry.isDirectory() || ! /^\d+$/.test( entry.name ) ) continue;
+			try {
+				const status = readFileSync( `/proc/${entry.name}/status`, 'utf8' );
+				const owner = status.match( /^Uid:\s+(\d+)/m );
+				if ( Number( owner?.[ 1 ] ) !== uid ) continue;
+				existingUserThreads += Number( status.match( /^Threads:\s+(\d+)/m )?.[ 1 ] || 1 );
+			} catch {}
+		}
+		const limits = readFileSync( '/proc/self/limits', 'utf8' );
+		const processLimits = limits.match( /^Max processes\s+(\d+|unlimited)\s+(\d+|unlimited)/m );
+		const hardLimit = processLimits?.[ 2 ] === 'unlimited' ? Infinity : Number( processLimits?.[ 2 ] || additionalProcesses );
+		const desiredLimit = Math.max( 4096, additionalProcesses, existingUserThreads + additionalProcesses );
+		return Math.max( additionalProcesses, Math.min( hardLimit, desiredLimit ) );
+	} catch {
+		return Math.max( 4096, additionalProcesses );
+	}
+}
+
+function existsSync(file) { try { const info = statSync( file ); return info.isDirectory() || info.isFile(); } catch { return false; } }
 
 function commandPath(name) {
 	if ( path.isAbsolute( name ) ) return name;
@@ -176,22 +207,26 @@ function commandPath(name) {
 	throw new Error( `${name} is not installed or not executable from PATH` );
 }
 
-async function validateWorkerExecutables(blenderArg) {
-	const resolveExecutable = async ( name ) => {
+async function validateWorkerExecutables(blenderArg, blenderPrefixArg) {
+	const resolveExecutable = async ( name, allowedRoot = '/usr' ) => {
 		const resolved = await realpath( commandPath( name ) );
 		const info = await stat( resolved );
 		await access( resolved, 1 );
 		if ( ! info.isFile() || ( info.mode & 0o111 ) === 0 ) throw new Error( `${name} is not a regular executable file` );
-		if ( ! isWithin( '/usr', resolved ) ) throw new Error( `${name} must be installed under /usr` );
+		if ( ! isWithin( allowedRoot, resolved ) ) throw new Error( `${name} must be installed under its trusted runtime prefix` );
 		return resolved;
 	};
 	const bwrap = await resolveExecutable( 'bwrap' );
 	const prlimit = await resolveExecutable( 'prlimit' );
-	const blender = await resolveExecutable( blenderArg || 'blender' );
-	if ( ! isWithin( '/usr', blender ) ) throw new Error( 'sandbox worker currently supports Blender installed under /usr only' );
+	const blenderPrefixInput = blenderPrefixArg || '/usr';
+	const prefixInfo = await lstat( blenderPrefixInput );
+	if ( ! prefixInfo.isDirectory() || prefixInfo.isSymbolicLink() ) throw new Error( 'Blender runtime prefix must be a real directory, not a symlink' );
+	const blenderPrefix = await realpath( blenderPrefixInput );
+	const blender = await resolveExecutable( blenderArg || path.join( blenderPrefix, 'bin/blender' ), blenderPrefix );
+	if ( ! isWithin( blenderPrefix, blender ) ) throw new Error( 'Blender executable must be inside the trusted Blender runtime prefix' );
 	const runnerInfo = await regularFile( ACTION_RUNNER, 1024 * 1024, 'trusted Blender action runner' );
 	if ( runnerInfo.size === 0 ) throw new Error( 'trusted Blender action runner is empty' );
-	return { bwrap, prlimit, blender };
+	return { bwrap, prlimit, blender, blenderPrefix };
 }
 
 function runLimited(command, args) {
@@ -233,13 +268,14 @@ async function scanOutput(outputRoot) {
 	return bytes;
 }
 
-export async function runAIEditWorker({ taskPath, outputPath, blender }) {
+export async function runAIEditWorker({ taskPath, outputPath, blender, blenderPrefix }) {
 	const bundle = await validateAITaskBundle( taskPath );
-	const binaries = await validateWorkerExecutables( blender );
-	const output = path.resolve( outputPath );
-	const parent = await realpath( path.dirname( output ) );
-	if ( parent !== path.dirname( output ) ) throw new Error( 'output parent must not be a symlink' );
+	const binaries = await validateWorkerExecutables( blender, blenderPrefix );
+	const requestedOutput = path.resolve( outputPath );
+	const parent = await realpath( path.dirname( requestedOutput ) );
+	const output = path.join( parent, path.basename( requestedOutput ) );
 	if ( isWithin( bundle.taskRoot, output ) || isWithin( output, bundle.taskRoot ) ) throw new Error( 'worker output must be separate from the input task bundle' );
+	if ( binaries.blenderPrefix !== '/usr' && ( isWithin( binaries.blenderPrefix, bundle.taskRoot ) || isWithin( bundle.taskRoot, binaries.blenderPrefix ) || isWithin( binaries.blenderPrefix, output ) || isWithin( output, binaries.blenderPrefix ) ) ) throw new Error( 'task and output paths must be separate from the trusted Blender runtime prefix' );
 	await mkdir( output, { mode: 0o700 } );
 	await chmod( output, 0o700 );
 	try {
@@ -287,7 +323,7 @@ export async function runAIEditWorker({ taskPath, outputPath, blender }) {
 
 async function main() {
 	const args = parseArgs( process.argv.slice( 2 ) );
-	const report = await runAIEditWorker( { taskPath: args.task, outputPath: args.out, blender: args.blender } );
+	const report = await runAIEditWorker( { taskPath: args.task, outputPath: args.out, blender: args.blender, blenderPrefix: args.blenderPrefix } );
 	console.log( `Produced an unsigned candidate for ${report.worldId}: ${report.addedObjectIds.length} objects added, ${report.changedObjectIds.length} changed, ${report.removedObjectIds.length} removed.` );
 	console.log( `Review report: ${path.join( path.resolve( args.out ), 'review.json' )}` );
 	console.log( 'Nothing was signed or published. The owner must inspect the source diff, Blender scene, and generated assets.' );

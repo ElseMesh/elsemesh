@@ -88,10 +88,9 @@ export async function createAITaskBundle({ sourcePath, blendPath, assetsPath, in
 	const available = sourceAssetIDs( source );
 	const selectedAssetIDs = new Set( [ ...objectIds.map( ( id ) => source.objects.find( ( object ) => object.id === id ).assetId ), ...assetIds ] );
 	if ( [ ...selectedAssetIDs ].some( ( id ) => ! available.has( id ) ) ) throw new Error( 'an included asset ID is not referenced by the world source' );
-	const outputPath = path.resolve( outTaskPath );
-	const parent = await realpath( path.dirname( outputPath ) );
-	if ( path.dirname( outputPath ) !== parent ) throw new Error( 'task output parent must not be a symlink' );
-	const taskDir = path.join( parent, path.basename( outputPath ) );
+	const requestedOutputPath = path.resolve( outTaskPath );
+	const parent = await realpath( path.dirname( requestedOutputPath ) );
+	const taskDir = path.join( parent, path.basename( requestedOutputPath ) );
 	if ( taskDir === sourceFile || taskDir === blendFile || taskDir === assetsRoot || [ sourceFile, blendFile, assetsRoot ].some( ( item ) => item.startsWith( `${taskDir}${path.sep}` ) || taskDir.startsWith( `${item}${path.sep}` ) ) ) throw new Error( 'task bundle must be separate from all source inputs' );
 	const stage = path.join( parent, `.${path.basename( taskDir )}.staging-${randomUUID()}` );
 	const assetsDir = path.join( stage, 'assets' );
