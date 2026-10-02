@@ -49,7 +49,7 @@ const _dq = new THREE.Quaternion();
 // mooring lines as before.
 export class BoatController {
 
-	constructor( { model, query, terrain, colliders } ) {
+	constructor( { model, query, terrain, colliders, initialPosition = WORLD.boatDock.position, initialHeading = WORLD.boatDock.heading } ) {
 
 		this.model = model;
 		this.query = query;
@@ -87,9 +87,13 @@ export class BoatController {
 		this.hullLift = 0.5; // lift coefficient of the hull + keel per radian of drift
 		this.rudderLift = 2.8; // rudder lift slope (x area 0.12 m^2), includes the hull's flap effect
 
+		// Each world supplies its own berth. Defaults preserve the built-in island placement.
+		this.homePosition = new THREE.Vector3().copy( initialPosition );
+		this.homeHeading = initialHeading;
+
 		// state (position = model origin at the design waterline)
-		this.position = new THREE.Vector3().copy( WORLD.boatDock.position );
-		this.quaternion = new THREE.Quaternion().setFromAxisAngle( new THREE.Vector3( 0, 1, 0 ), WORLD.boatDock.heading );
+		this.position = this.homePosition.clone();
+		this.quaternion = new THREE.Quaternion().setFromAxisAngle( new THREE.Vector3( 0, 1, 0 ), this.homeHeading );
 		this.velocity = new THREE.Vector3();
 		this.angular = new THREE.Vector3();
 
@@ -101,7 +105,7 @@ export class BoatController {
 		this.reverseFactor = 0.45; // astern thrust relative to ahead
 		this.driven = false;
 		this.moored = true;
-		this.mooring = { anchor: WORLD.boatDock.position.clone(), heading: WORLD.boatDock.heading };
+		this.mooring = { anchor: this.homePosition.clone(), heading: this.homeHeading };
 
 		const n = this.samples.length;
 		this.waterH = new Float32Array( n ); // latest read-back
@@ -438,16 +442,16 @@ export class BoatController {
 	// back to the berth, at rest (safety net if the integration ever blows up)
 	reset() {
 
-		this.position.copy( WORLD.boatDock.position );
-		this.quaternion.setFromAxisAngle( new THREE.Vector3( 0, 1, 0 ), WORLD.boatDock.heading );
+		this.position.copy( this.homePosition );
+		this.quaternion.setFromAxisAngle( new THREE.Vector3( 0, 1, 0 ), this.homeHeading );
 		this.velocity.set( 0, 0, 0 );
 		this.angular.set( 0, 0, 0 );
 		this.throttle = 0;
 		this.steer = 0;
 		this.rpm = 0;
 		this.moored = true;
-		this.mooring.anchor.copy( WORLD.boatDock.position );
-		this.mooring.heading = WORLD.boatDock.heading;
+		this.mooring.anchor.copy( this.homePosition );
+		this.mooring.heading = this.homeHeading;
 
 	}
 
@@ -485,7 +489,7 @@ export class BoatController {
 		for ( const lp of pts ) {
 
 			this.toWorld( lp, pw );
-			const ground = this.terrain.heightAt( pw.x, pw.z );
+			const ground = this.terrain?.heightAt( pw.x, pw.z ) ?? - Infinity;
 			const pen = ground - pw.y;
 			if ( pen > 0 ) {
 
