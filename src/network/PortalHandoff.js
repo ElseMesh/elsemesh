@@ -32,7 +32,24 @@ export function crossedPortalPlane( previous, current, portal, { halfWidth = 1.2
 export function rotatePortalVelocity( velocity, entryYaw, exitYaw ) {
 	const yaw = exitYaw - entryYaw;
 	const cos = Math.cos( yaw ), sin = Math.sin( yaw );
-	return { x: velocity.x * cos + velocity.z * sin, z: - velocity.x * sin + velocity.z * cos };
+	return { x: velocity.x * cos + velocity.z * sin, y: velocity.y ?? 0, z: - velocity.x * sin + velocity.z * cos };
+}
+
+// Preserve the visitor's offset and view through the same rigid transform used
+// for the open doorway camera. Destination rules apply to subsequent physics;
+// the crossing itself preserves world-space momentum, including a jump or fall.
+export function mapPortalPlayerState( state, entry, exit ) {
+	const yawDelta = exit.yaw - entry.yaw;
+	const position = new Vector3().copy( state.position )
+		.sub( new Vector3().fromArray( entry.position ) )
+		.applyAxisAngle( _up, yawDelta )
+		.add( new Vector3().fromArray( exit.position ) );
+	return {
+		position,
+		velocity: rotatePortalVelocity( state.velocity, entry.yaw, exit.yaw ),
+		yaw: state.yaw + yawDelta,
+		pitch: state.pitch,
+	};
 }
 
 // Place destination-world geometry so its signed exit transform meets the local entry.

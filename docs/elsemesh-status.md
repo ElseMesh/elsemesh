@@ -59,7 +59,7 @@ Graphics comparisons can use the named and captured camera URL parameters docume
 ### 3. Finish portal and session continuity
 
 - The portal preview now advances installed components on its 10 Hz cadence, with a 100 ms delta cap. Verify animated destination content and clipping visually in a live browser renderer.
-- Transfer supported player/session state explicitly and define behavior for incompatible world rules.
+- Player handoff preserves doorway-relative eye position, yaw/pitch and full velocity, including jump/fall momentum; the actual application-swap test runs a destination physics frame and checks finite coordinates and the destination signed gravity. Preview-camera and reverse-transform tests prove positional continuity and preservation of speed. Destination contact and boat attachment are re-established. Inventory and authoritative simulation session transfer, and policies for incompatible gameplay rules, remain open.
 - Exercise unreachable destinations, stale providers, and interrupted handoffs with a usable retry/failover path.
 
 ### 4. Define dynamic simulation authority

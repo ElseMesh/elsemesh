@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { alignPortalPreview, crossedPortalPlane, mapPortalCamera, portalExitClipPlane, rotatePortalVelocity, updatePortalPreviewComponents } from '../src/network/PortalHandoff.js';
+import { alignPortalPreview, crossedPortalPlane, mapPortalCamera, mapPortalPlayerState, portalExitClipPlane, rotatePortalVelocity, updatePortalPreviewComponents } from '../src/network/PortalHandoff.js';
 import { PerspectiveCamera } from '../src/engine/scene/Camera.js';
 import { Vector3 } from '../src/engine/math/Vector3.js';
 import { Vector4 } from '../src/engine/math/Vector4.js';
@@ -36,6 +36,28 @@ assert.equal( crossedPortalPlane( { x: 1, y: 1, z: 1 }, { x: - 1, y: 1, z: - 1 }
 
 const velocity = rotatePortalVelocity( { x: 0, z: - 1 }, 0, Math.PI / 2 );
 assert.ok( Math.abs( velocity.x + 1 ) < 1e-9 && Math.abs( velocity.z ) < 1e-9, 'velocity follows the destination orientation' );
+assert.equal( velocity.y, 0, 'legacy horizontal velocity inputs have a finite vertical component' );
+for ( const verticalSpeed of [ 4.6, - 9.81, 0 ] ) {
+	const entry = { position: [ 2, 3, - 7 ], yaw: - 0.4 };
+	const exit = { position: [ - 10, 5, 20 ], yaw: 1.2 };
+	const state = { position: new Vector3( 2.4, 4.1, - 7.2 ), velocity: new Vector3( 1, verticalSpeed, - 3 ), yaw: 0.7, pitch: - 0.2 };
+	const arrival = mapPortalPlayerState( state, entry, exit );
+	assert.equal( arrival.velocity.y, verticalSpeed, 'crossing preserves jumping, falling and resting vertical speeds' );
+	assert.ok( Math.abs( Math.hypot( arrival.velocity.x, arrival.velocity.z ) - Math.hypot( state.velocity.x, state.velocity.z ) ) < 1e-9, 'crossing preserves horizontal speed' );
+	assert.equal( arrival.yaw, state.yaw + exit.yaw - entry.yaw, 'crossing preserves view relative to the doorway' );
+	assert.equal( arrival.pitch, state.pitch, 'crossing preserves look pitch' );
+	assert.ok( Math.abs( arrival.position.y - 6.1 ) < 1e-9, 'crossing preserves vertical position relative to the threshold' );
+	const sourceView = new PerspectiveCamera();
+	sourceView.position.copy( state.position );
+	const destinationView = new PerspectiveCamera();
+	mapPortalCamera( sourceView, destinationView, entry, exit );
+	assert.ok( arrival.position.distanceTo( destinationView.position ) < 1e-9, 'arrival matches the view already shown through the portal' );
+	const returned = mapPortalPlayerState( arrival, exit, entry );
+	assert.ok( returned.position.distanceTo( state.position ) < 1e-9, 'reverse transform restores position without drift' );
+	assert.ok( Math.abs( returned.yaw - state.yaw ) < 1e-9 && returned.pitch === state.pitch, 'reverse transform restores view' );
+	assert.ok( Math.hypot( returned.velocity.x - state.velocity.x, returned.velocity.y - state.velocity.y, returned.velocity.z - state.velocity.z ) < 1e-9, 'reverse transform restores all momentum components' );
+}
+
 
 const preview = { position: { set( x, y, z ) { this.x = x; this.y = y; this.z = z; } }, rotation: { y: 0 } };
 alignPortalPreview( preview, { position: [ 10, 2, 20 ], yaw: Math.PI / 2 }, { position: [ 3, 4, 5 ], yaw: 0 } );

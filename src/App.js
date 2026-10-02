@@ -75,7 +75,7 @@ import { worldSeaLevel } from './network/WorldRules.js';
 import { appendWorldPackageAssets, disposeWorldPackage, loadWorldPackage, registerWorldPackageCollisions, unregisterWorldPackageCollisions } from './network/WorldPackage.js';
 import { HostedBoat } from './network/HostedBoat.js';
 import { selectWorldComponentsForView, selectWorldObjectsForView } from './network/WorldStreaming.js';
-import { crossedPortalPlane, rotatePortalVelocity } from './network/PortalHandoff.js';
+import { crossedPortalPlane, mapPortalPlayerState } from './network/PortalHandoff.js';
 import { WorldPortalView } from './network/WorldPortalView.js';
 
 const _up = new Vector3( 0, 1, 0 );
@@ -1055,7 +1055,10 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 		const destinationConnector = preparation.connector;
 		const destinationRoot = preparation.root;
 		this.clearPortalPreview();
-		const velocity = rotatePortalVelocity( this.player.velocity, portal.entry.yaw, portal.exit.yaw );
+		const arrival = mapPortalPlayerState( {
+			position: this.camera.position, velocity: this.player.velocity,
+			yaw: this.player.yaw, pitch: this.player.pitch,
+		}, portal.entry, portal.exit );
 		this.deactivateHostedWorld();
 		this.worldBackgroundLoads.get( sourceConnector.worldId )?.abort();
 		this.worldBackgroundLoads.delete( sourceConnector.worldId );
@@ -1067,14 +1070,12 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 		this.worldConnector = destinationConnector;
 		this.player.setWorldRules( destinationConnector.manifest.rules );
 		G.seaLevel.value = worldSeaLevel( destinationConnector.manifest.rules );
-		this.player.setHostedWorldPose( new Vector3( ...portal.exit.position ), portal.exit.yaw, this.player.pitch );
+		this.player.setHostedWorldPose( arrival.position, arrival.yaw, arrival.pitch );
 		this.activateHostedWorld( destinationRoot, destinationConnector );
 		this.remoteWorlds.set( destinationConnector.worldId, { connector: destinationConnector, root: destinationRoot } );
 		this.streamWorldRemainder( destinationConnector, destinationRoot );
 
-		this.player.velocity.x = velocity.x;
-		this.player.velocity.z = velocity.z;
-		this.player.velocity.y = velocity.y;
+		this.player.velocity.set( arrival.velocity.x, arrival.velocity.y, arrival.velocity.z );
 		this.portalPreviousPosition.copy( this.camera.position );
 		this.cancelUnneededPortalPreparations( null );
 		this.portalPreparations.clear();

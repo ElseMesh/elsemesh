@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import { Vector3 } from '../src/engine/math/Vector3.js';
 import { Quaternion } from '../src/engine/math/Quaternion.js';
 import { Player } from '../src/player/Player.js';
+import { App } from '../src/App.js';
+import { mapPortalPlayerState } from '../src/network/PortalHandoff.js';
 import { Colliders } from '../src/world/Colliders.js';
 
 const positions = new Float32Array( 11 * 11 * 3 );
@@ -76,4 +78,40 @@ assert.ok( Math.abs( player.position.y - 1.55 ) < 1e-9, 'deck-local player pose 
 Player.prototype.takeHelm.call( player );
 assert.equal( player.mode, 'boat', 'the player can take the helm from the deck' );
 assert.equal( hostedBoat.driven, true, 'taking the helm activates the hosted boat controller' );
+// Exercise the actual application handoff, then a destination physics frame.
+// This catches missing vertical velocity becoming NaN after the portal swap.
+globalThis.location = { href: 'http://127.0.0.1:5189/?worldId=tw-world:source' };
+globalThis.history = { replaceState( state, title, url ) { globalThis.location.href = url.href; } };
+globalThis.document = { title: '' };
+player.boat = null;
+player.mode = 'walk';
+player.yaw = 0.7;
+player.pitch = - 0.2;
+player.camera.position.set( 2.4, 4.1, - 7.2 );
+player.velocity.set( 1, 4.6, - 3 );
+const handoffPortal = { entry: { position: [ 2, 3, - 7 ], yaw: - 0.4 }, exit: { position: [ - 10, 5, 20 ], yaw: 1.2 } };
+const expected = mapPortalPlayerState( { position: camera.position, velocity: player.velocity, yaw: player.yaw, pitch: player.pitch }, handoffPortal.entry, handoffPortal.exit );
+let sourceClosed = false;
+const destination = { worldId: 'tw-world:destination', nodeId: '1234567890123456789012345', gateway: 'http://127.0.0.1:5193', manifest: { title: 'Destination', components: [], rules: { gravity: 0.5 } } };
+const app = Object.assign( Object.create( App.prototype ), {
+	player, camera, worldConnector: { worldId: 'tw-world:source', close() { sourceClosed = true; } },
+	linkedWorldRoot: { userData: {} }, hostedColliders: new Colliders(), hostedQuery: {}, hostedPlayerSlot: 0,
+	scene: { remove() {}, add() {} }, worldBackgroundLoads: new Map(), remoteWorlds: new Map(),
+	portalPreviousPosition: new Vector3(), portalPreparations: new Map(), streamWorldRemainder() {},
+} );
+app.enterWorldPortal( handoffPortal, { connector: destination, root: { userData: { worldComponents: [] } } } );
+assert.ok( camera.position.distanceTo( expected.position ) < 1e-9, 'application handoff preserves the mapped camera position' );
+assert.equal( player.yaw, expected.yaw );
+assert.equal( player.pitch, expected.pitch );
+assert.equal( player.velocity.y, 4.6, 'application retains jump momentum after resetting destination pose' );
+assert.ok( Math.hypot( player.velocity.x - expected.velocity.x, player.velocity.z - expected.velocity.z ) < 1e-9 );
+assert.equal( player.gravity, 9.81 * 0.5, 'destination signed gravity applies after arrival' );
+assert.equal( sourceClosed, true, 'handoff closes the old connection' );
+assert.equal( app.worldConnector, destination );
+assert.equal( new URL( location.href ).searchParams.get( 'worldId' ), destination.worldId );
+axes = { x: 0, y: 0, sprint: 0 };
+jumpPressed = false;
+player.updateHostedWorld( 1 / 60 );
+assert.ok( [ ...player.position.toArray(), ...player.velocity.toArray(), ...camera.position.toArray() ].every( Number.isFinite ), 'first destination frame keeps all motion and camera coordinates finite' );
+assert.ok( Math.abs( player.velocity.y - ( 4.6 - 9.81 * 0.5 / 60 ) ) < 1e-9, 'destination physics continues the jump with its own gravity' );
 console.log( 'ok   hosted first-person movement uses only active world colliders' );
