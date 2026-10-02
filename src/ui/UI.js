@@ -1,5 +1,5 @@
 import { icon, brandMark } from './icons.js';
-import { builtInWorldURL, listVisitedWorlds, parseWorldInviteURL } from '../network/WorldLauncher.js';
+import { builtInWorldURL, clearHomeWorld, getHomeWorld, listVisitedWorlds, parseWorldInviteURL, setHomeWorld } from '../network/WorldLauncher.js';
 
 // ElseMesh UI: settings panel (tabs → folders → controls), HUD, help,
 // photo mode, start overlay and loader. Plain DOM, no dependencies.
@@ -2233,7 +2233,11 @@ export class UI {
 			if ( open ) this._refreshWorldPicker();
 
 		} );
-		el.querySelector( '.tw-world-default' ).addEventListener( 'click', () => { window.location.assign( builtInWorldURL() ); } );
+		el.querySelector( '.tw-world-default' ).addEventListener( 'click', () => {
+			const url = new URL( builtInWorldURL() );
+			if ( getHomeWorld() ) url.searchParams.set( 'example', '1' );
+			window.location.assign( url.href );
+		} );
 		el.querySelector( '.tw-world-picker-close' ).addEventListener( 'click', () => {
 
 			this.startWorldPicker.hidden = true;
@@ -2269,15 +2273,28 @@ export class UI {
 
 	_refreshWorldPicker() {
 
+		for ( const row of [ ...this.startWorldOptions.querySelectorAll( '.tw-world-option-row' ) ] ) row.remove();
 		for ( const option of [ ...this.startWorldOptions.querySelectorAll( '.tw-world-option:not(.tw-world-default)' ) ] ) option.remove();
 		const visited = listVisitedWorlds();
+		const home = getHomeWorld();
 		this.startWorldEmpty.hidden = visited.length > 0;
 		for ( const world of visited ) {
 
-			const option = h( 'button', 'tw-world-option', { type: 'button' } );
-			option.append( h( 'span', '', { text: world.title } ), h( 'small', '', { text: world.worldId } ) );
-			option.addEventListener( 'click', () => { window.location.assign( world.url ); } );
-			this.startWorldOptions.append( option );
+			const row = h( 'div', 'tw-world-option-row' );
+			const open = h( 'button', 'tw-world-option', { type: 'button' } );
+			open.append( h( 'span', '', { text: world.title } ), h( 'small', '', { text: world.worldId } ) );
+			open.addEventListener( 'click', () => { window.location.assign( world.url ); } );
+			const isHome = home?.url === world.url;
+			const homeButton = h( 'button', 'tw-world-home', { type: 'button', text: isHome ? 'Clear home' : 'Set as home' } );
+			homeButton.setAttribute( 'aria-label', isHome ? `Clear ${world.title} as my home ThruHold` : `Set ${world.title} as my home ThruHold` );
+			homeButton.addEventListener( 'click', () => {
+				const saved = isHome ? clearHomeWorld() : setHomeWorld( world );
+				if ( ! saved ) { this.toast( 'Could not save the home ThruHold in this browser', 3200 ); return; }
+				this.toast( isHome ? 'Home ThruHold cleared' : `${world.title} is your home ThruHold` );
+				this._refreshWorldPicker();
+			} );
+			row.append( open, homeButton );
+			this.startWorldOptions.append( row );
 
 		}
 

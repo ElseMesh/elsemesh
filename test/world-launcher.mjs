@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict';
-import { builtInWorldURL, listVisitedWorlds, parseWorldInviteURL, rememberWorldVisit, worldLauncherStorageKey } from '../src/network/WorldLauncher.js';
+import { builtInWorldURL, clearHomeWorld, defaultHomeWorldURL, getHomeWorld, homeWorldStorageKey, listVisitedWorlds, parseWorldInviteURL, rememberWorldVisit, setHomeWorld, worldLauncherStorageKey } from '../src/network/WorldLauncher.js';
 
 class MemoryStorage {
 	items = new Map();
 	getItem( key ) { return this.items.get( key ) ?? null; }
 	setItem( key, value ) { this.items.set( key, value ); }
+	removeItem( key ) { this.items.delete( key ); }
 }
 
 const pageURL = 'https://rebroad.github.io/tidewater/?worldId=tw-world:old&nodeId=old';
@@ -25,6 +26,22 @@ assert.throws( () => parseWorldInviteURL( 'http://127.0.0.1:5189/?worldId=tw-wor
 const storage = new MemoryStorage();
 assert.equal( rememberWorldVisit( { pageURL, worldId: 'tw-world:cave', nodeId: peerId, gateway: 'https://world.example', directory: 'https://thruhold.org', title: 'LOZ Cave', storage, now: 10 } ), true );
 assert.deepEqual( listVisitedWorlds( { pageURL, storage } ), [ { worldId: 'tw-world:cave', title: 'LOZ Cave', url: invite, updatedAt: 10 } ] );
+assert.equal( setHomeWorld( { ...listVisitedWorlds( { pageURL, storage } )[ 0 ], pageURL, storage } ), true, 'home selection preserves the full saved provider invite' );
+assert.deepEqual( getHomeWorld( { pageURL, storage } ), { worldId: 'tw-world:cave', title: 'LOZ Cave', url: invite } );
+const barePageURL = 'https://rebroad.github.io/tidewater/';
+assert.equal( defaultHomeWorldURL( { pageURL: barePageURL, storage } ), invite, 'a bare app visit opens the explicitly selected home ThruHold' );
+assert.equal( defaultHomeWorldURL( { pageURL: `${barePageURL}?view=beach`, storage } ), `${invite}&view=beach`, 'non-routing camera/debug query parameters survive home routing' );
+assert.equal( defaultHomeWorldURL( { pageURL: `${barePageURL}?example=1`, storage } ), null, 'the explicit built-in example override bypasses the personal home' );
+assert.equal( defaultHomeWorldURL( { pageURL: invite, storage } ), null, 'an explicit invite is never replaced by the personal home' );
+storage.setItem( homeWorldStorageKey(), JSON.stringify( { worldId: 'tw-world:other', title: 'Wrong world', url: invite } ) );
+assert.equal( getHomeWorld( { pageURL, storage } ), null, 'a stored home ID must match its validated invite URL' );
+storage.setItem( homeWorldStorageKey(), JSON.stringify( { worldId: 'tw-world:cave', title: 'External', url: 'https://evil.example/?worldId=tw-world:cave' } ) );
+assert.equal( getHomeWorld( { pageURL, storage } ), null, 'a stored home must stay on this app origin and path' );
+storage.setItem( homeWorldStorageKey(), JSON.stringify( { worldId: 'tw-world:cave', title: 'Insecure', url: 'https://rebroad.github.io/tidewater/?worldId=tw-world:cave&gateway=http%3A%2F%2Fworld.example' } ) );
+assert.equal( getHomeWorld( { pageURL, storage } ), null, 'a secure app must reject an insecure home gateway' );
+assert.equal( setHomeWorld( { pageURL, worldId: 'tw-world:cave', nodeId: peerId, gateway: 'https://world.example', directory: 'https://thruhold.org', title: 'LOZ Cave', storage } ), true );
+assert.equal( clearHomeWorld( { storage } ), true );
+assert.equal( getHomeWorld( { pageURL, storage } ), null, 'home selection can be cleared' );
 rememberWorldVisit( { pageURL, worldId: 'tw-world:cave', nodeId: peerId, gateway: 'https://backup.example', title: 'LOZ Cave Updated', storage, now: 20 } );
 assert.equal( listVisitedWorlds( { pageURL, storage } )[ 0 ].title, 'LOZ Cave Updated' );
 assert.equal( listVisitedWorlds( { pageURL, storage } )[ 0 ].url.includes( 'backup.example' ), true );

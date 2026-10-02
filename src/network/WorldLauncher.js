@@ -1,4 +1,5 @@
 const STORAGE_KEY = 'elsemesh.visited-worlds.v1';
+const HOME_STORAGE_KEY = 'elsemesh.home-world.v1';
 const MAX_VISITED_WORLDS = 12;
 const MAX_INVITE_URL_CHARS = 4096;
 
@@ -99,6 +100,54 @@ export function listVisitedWorlds( { pageURL = globalThis.location?.href, storag
 	return readVisitedWorlds( pageURL, getStorage( storage ) );
 }
 
+export function getHomeWorld( { pageURL = globalThis.location?.href, storage } = {} ) {
+	const targetStorage = getStorage( storage );
+	if ( ! targetStorage ) return null;
+	try {
+		const saved = JSON.parse( targetStorage.getItem( HOME_STORAGE_KEY ) || 'null' );
+		if ( ! saved || typeof saved.url !== 'string' || typeof saved.worldId !== 'string' ) return null;
+		const page = appPageURL( pageURL ), stored = new URL( saved.url );
+		if ( stored.origin !== page.origin || stored.pathname !== page.pathname || stored.username || stored.password ) return null;
+		const url = parseWorldInviteURL( saved.url, pageURL );
+		if ( new URL( url ).searchParams.get( 'worldId' ) !== saved.worldId ) return null;
+		return { worldId: saved.worldId, title: String( saved.title || saved.worldId ).slice( 0, 80 ), url };
+	} catch {
+		return null;
+	}
+}
+
+export function setHomeWorld( { pageURL = globalThis.location?.href, worldId, nodeId = '', gateway = '', directory = '', title = '', url: worldURL = '', storage } = {} ) {
+	const targetStorage = getStorage( storage );
+	if ( ! targetStorage ) return false;
+	const url = worldURL ? parseWorldInviteURL( worldURL, pageURL ) : normalizedWorldURL( { pageURL, worldId, nodeId, gateway, directory } ).href;
+	const actualWorldId = new URL( url ).searchParams.get( 'worldId' );
+	if ( worldId && worldId !== actualWorldId ) throw new Error( 'Home world ID does not match its invite URL' );
+	try {
+		targetStorage.setItem( HOME_STORAGE_KEY, JSON.stringify( { worldId: actualWorldId, title: String( title || actualWorldId ).trim().slice( 0, 80 ), url } ) );
+		return true;
+	} catch {
+		return false;
+	}
+}
+
+export function clearHomeWorld( { storage } = {} ) {
+	const targetStorage = getStorage( storage );
+	if ( ! targetStorage ) return false;
+	try { targetStorage.removeItem( HOME_STORAGE_KEY ); return true; } catch { return false; }
+}
+
+export function defaultHomeWorldURL( { pageURL = globalThis.location?.href, storage } = {} ) {
+	const current = new URL( pageURL );
+	if ( current.searchParams.has( 'worldId' ) || current.searchParams.get( 'example' ) === '1' ) return null;
+	const home = getHomeWorld( { pageURL, storage } );
+	if ( ! home ) return null;
+	const url = new URL( home.url );
+	for ( const [ key, value ] of current.searchParams ) {
+		if ( ! [ 'worldId', 'nodeId', 'gateway', 'directory', 'example' ].includes( key ) ) url.searchParams.append( key, value );
+	}
+	return url.href;
+}
+
 export function rememberWorldVisit( { pageURL = globalThis.location?.href, worldId, nodeId = '', gateway = '', directory = '', title = '', storage, now = Date.now() } = {} ) {
 	const url = normalizedWorldURL( { pageURL, worldId, nodeId, gateway, directory } ).href;
 	const targetStorage = getStorage( storage );
@@ -115,4 +164,8 @@ export function rememberWorldVisit( { pageURL = globalThis.location?.href, world
 
 export function worldLauncherStorageKey() {
 	return STORAGE_KEY;
+}
+
+export function homeWorldStorageKey() {
+	return HOME_STORAGE_KEY;
 }

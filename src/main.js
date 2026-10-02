@@ -2,6 +2,7 @@ import './core/BenchSeed.js';
 import { App } from './App.js';
 import { UI } from './ui/UI.js';
 import { AppUI } from './ui/AppUI.js';
+import { defaultHomeWorldURL } from './network/WorldLauncher.js';
 
 // Public deployments can opt into account sign-in without exposing secrets or
 // requiring a build change. A missing file leaves the guest experience intact.
@@ -10,6 +11,10 @@ try {
 } catch ( error ) {
 	console.warn( 'Optional ElseMesh account configuration is unavailable:', error.message );
 }
+
+const homeWorldURL = defaultHomeWorldURL();
+if ( homeWorldURL ) location.replace( homeWorldURL );
+else {
 
 // ?bench runs in background tabs too (automation): rAF does not fire in a hidden page
 if ( /[?&]bench\b/.test( location.search ) ) {
@@ -53,3 +58,5 @@ app.init( ( p, text, until ) => ui.setLoading( p, text, until ) ).then( async ()
 	ui.setLoadingError( 'Something went wrong: ' + e.message );
 
 } );
+
+}

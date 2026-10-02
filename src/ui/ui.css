@@ -2699,6 +2699,13 @@ body {
 	overflow-y: auto;
 }
 
+.tw-world-option-row {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) auto;
+	gap: 6px;
+	align-items: stretch;
+}
+
 .tw-world-option {
 	display: grid;
 	gap: 3px;
@@ -2723,6 +2730,25 @@ body {
 .tw-world-option small,
 .tw-world-empty { color: var(--tw-ink-2); font-size: var(--tw-fs-xs); }
 .tw-world-empty { margin: 0; }
+
+.tw-world-home {
+	align-self: stretch;
+	padding: 8px 10px;
+	border: 1px solid rgba(255, 255, 255, 0.16);
+	border-radius: 9px;
+	background: rgba(255, 255, 255, 0.06);
+	color: var(--tw-ink-2);
+	font-size: var(--tw-fs-xs);
+	cursor: pointer;
+}
+
+.tw-world-home:hover,
+.tw-world-home:focus-visible {
+	border-color: rgba(85, 220, 205, 0.65);
+	background: rgba(85, 220, 205, 0.16);
+	color: var(--tw-ink);
+	outline: none;
+}
 
 .tw-world-invite-form {
 	display: grid;
