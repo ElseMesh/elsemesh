@@ -158,7 +158,8 @@ export class SkinnedModel {
 	static async create( gltf, { materials = null, textureSize = null } = {} ) {
 
 		const m = new SkinnedModel( gltf );
-		await m._buildMeshes( materials );
+		try { await m._buildMeshes( materials ); }
+		catch ( error ) { m.dispose(); throw error; }
 		return m;
 
 	}
@@ -217,6 +218,7 @@ export class SkinnedModel {
 		const g = this.gltf;
 		// textures (shared between materials that use the same image)
 		const texCache = new Map();
+		this.ownedTextures = texCache;
 		const tex = async ( info, srgb ) => {
 
 			if ( ! info ) return null;
@@ -497,8 +499,12 @@ export class SkinnedModel {
 
 	dispose() {
 
+		if ( this.disposed ) return;
+		this.disposed = true;
 		this.jointBuffer.destroy();
 		for ( const m of this.meshes ) m.geometry.dispose && m.geometry.dispose();
+		for ( const t of this.ownedTextures?.values() || [] ) t.destroy();
+		for ( const m of this.materials ) m.dispose();
 
 	}
 

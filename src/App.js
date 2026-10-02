@@ -76,6 +76,7 @@ import { appendWorldPackageAssets, disposeWorldPackage, loadWorldPackage, regist
 import { HostedBoat } from './network/HostedBoat.js';
 import { selectWorldComponentsForView, selectWorldObjectsForView } from './network/WorldStreaming.js';
 import { crossedPortalPlane, mapPortalPlayerState } from './network/PortalHandoff.js';
+import { WorldPresenceSession } from './network/WorldPresenceSession.js';
 import { WorldPortalView } from './network/WorldPortalView.js';
 
 const _up = new Vector3( 0, 1, 0 );
@@ -821,7 +822,12 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 		const runtime = ( root.userData.worldComponents || [] ).find( ( component ) => component.hostedBoat );
 		this.activeHostedBoat = runtime || null;
 		this.player.boat = runtime ? runtime.activate( { query: this.hostedQuery, colliders: this.hostedColliders } ) : null;
+		this.startWorldPresence( root, connector );
 
+	}
+
+	startWorldPresence( root, connector ) {
+		this.worldPresence = new WorldPresenceSession( { connector, parent: root } );
 	}
 
 	prepareHostedWorld( connector ) {
@@ -838,6 +844,9 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 	}
 
 	deactivateHostedWorld() {
+
+		this.worldPresence?.dispose();
+		this.worldPresence = null;
 
 		const runtime = this.activeHostedBoat;
 		if ( ! runtime ) return;
@@ -1139,6 +1148,7 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 			this.player.updateHostedWorld( dt );
 			this.updateWorldPortals();
 			this.updateWorldStreaming();
+			this.worldPresence?.update( dt, this.player );
 		}
 		else {
 

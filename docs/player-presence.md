@@ -1,6 +1,6 @@
 # Shared player presence
 
-Players in a ThruHold need a visible avatar and a live position/orientation. Presence is transient, self-reported presentation state, separate from immutable world content and from authoritative boat, fishing, inventory or physics simulation. Guest presence does not require a Google account. The current implementation establishes the owner-hosted protocol and transport path; the production `WorldConnector` exposes update/leave requests and validates outgoing poses. `PlayerPresence` validates snapshots, binds world/session/request IDs, removes departed peers and interpolates remote poses with shortest-path heading rotation. The frame publisher and remote avatar renderer still need integration.
+Players in a ThruHold need a visible avatar and a live position/orientation. Presence is transient, self-reported presentation state, separate from immutable world content and from authoritative boat, fishing, inventory or physics simulation. Guest presence does not require a Google account. The current implementation establishes the owner-hosted protocol and transport path; the production `WorldConnector` exposes update/leave requests and validates outgoing poses. `PlayerPresence` validates snapshots, binds world/session/request IDs, removes departed peers and interpolates remote poses with shortest-path heading rotation. The active-world frame publisher and animated remote avatar renderer are integrated. Only entered worlds publish presence; handoff disposes the previous session and its avatar resources.
 
 ## Existing LOZ work and reuse
 
@@ -47,4 +47,23 @@ The browser should publish at 10 Hz with at most one request in flight, interpol
 
 `presence_test.go` exercises two real WebSocket clients through a separate libp2p gateway to an owner, including attempted shared-session spoofing, separate IDs, shared snapshots, explicit leave and disconnect cleanup. It also checks capacity, expiry, rate limits, stale sequences, invalid coordinates and non-owner rejection. `webtransport_integration_test.go` joins over real HTTP/3 WebTransport and then WebSocket, checks that both transports see the same players with separate identities, and checks WebTransport leave.
 
-Frame publication, avatar selection/rendering and GPU cleanup, live two-browser visual proof, Flip7 rendering, read-only portal presence and owner-failure session recovery remain to be implemented and verified. The production-connector HTTPS/WSS integration test also joins two sessions, verifies peer poses and departure, then confirms that owner loss and cache recovery do not grant the cache live presence authority. The complete Go suite and focused race checks pass. Client tests cover snapshot isolation, invalid appearances, reordered updates, departures, stale visibility and interpolation. Passing these tests does not yet make other players visible in the game.
+Live two-browser visual proof, Flip7 rendering, read-only portal presence and owner-failure session recovery remain outstanding. Frame publication, stock avatar rendering and GPU cleanup have targeted automated coverage. The production-connector HTTPS/WSS integration test also joins two sessions, verifies peer poses and departure, then confirms that owner loss and cache recovery do not grant the cache live presence authority. The complete Go suite and focused race checks pass. Client tests cover snapshot isolation, invalid appearances, reordered updates, departures, stale visibility and interpolation. These tests establish publisher and renderer lifecycle behavior; actual connected visual presentation still requires live verification.
+
+## Distance-based avatar detail
+
+Remote avatars select full geometry within 18 metres, medium beyond 18 metres,
+and low beyond 45 metres. Returning thresholds are 14 and 38 metres, providing
+hysteresis. Distance is measured between local and remote player positions.
+Each replacement retains the old mesh until the new one is ready, rejects stale
+asynchronous loads and releases the replaced GPU resources. Appearance colors
+and the idle/walk/run/helm animation selection remain active at every level.
+The generated assets and reproducible Blender workflow are documented in
+`tools/blender/avatar-lods.md`; their skeletons, clips, weights and material
+structure are checked by `test/avatar-lod-assets.mjs`.
+
+This implements remote-avatar distance LOD only. General world-object LOD,
+projected-size selection, portal-view selection, sustained-load adaptation,
+and visual transition/animation quality remain requirements in GOAL.md.
+Textures retain their full resolution at these mesh levels. The signed avatar
+complexity cap still rejects over-budget selected geometry rather than choosing
+a lower level solely to satisfy the cap.

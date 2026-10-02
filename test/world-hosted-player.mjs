@@ -97,7 +97,7 @@ const app = Object.assign( Object.create( App.prototype ), {
 	player, camera, worldConnector: { worldId: 'tw-world:source', close() { sourceClosed = true; } },
 	linkedWorldRoot: { userData: {} }, hostedColliders: new Colliders(), hostedQuery: {}, hostedPlayerSlot: 0,
 	scene: { remove() {}, add() {} }, worldBackgroundLoads: new Map(), remoteWorlds: new Map(),
-	portalPreviousPosition: new Vector3(), portalPreparations: new Map(), streamWorldRemainder() {},
+	portalPreviousPosition: new Vector3(), portalPreparations: new Map(), streamWorldRemainder() {}, startWorldPresence() {},
 } );
 app.enterWorldPortal( handoffPortal, { connector: destination, root: { userData: { worldComponents: [] } } } );
 assert.ok( camera.position.distanceTo( expected.position ) < 1e-9, 'application handoff preserves the mapped camera position' );
