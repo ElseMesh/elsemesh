@@ -29,7 +29,7 @@ MAX_TOTAL_MESH_PARTS = 96
 OBJECT_ID = re.compile(r"^tw-object:[\w.-]{1,128}$")
 PORTAL_ID = re.compile(r"^tw-portal:[\w.-]{1,128}$")
 ASSET_ID = re.compile(r"^sha256:[0-9a-f]{64}$")
-OBJECT_FIELDS = {"label", "priority", "streamingBounds", "transform", "scale", "collision"}
+OBJECT_FIELDS = {"label", "assetId", "priority", "streamingBounds", "transform", "scale", "collision"}
 PORTAL_FIELDS = {"destinationWorldId", "destinationPeerId", "destinationGateway", "entry", "exit", "openView", "enabled", "visual"}
 PRIORITIES = {"portal-preview", "visible", "nearby", "background"}
 MESH_SHAPES = {"box", "cylinder", "uv-sphere"}
@@ -276,6 +276,48 @@ def remove_preview(bpy, root):
         bpy.data.objects.remove(obj, do_unlink=True)
 
 
+def remove_preview_contents(bpy, root):
+    """Remove an object's imported mesh hierarchy while preserving its stable-ID marker."""
+    if root is None:
+        return
+    descendants = {obj for obj in bpy.data.objects if obj.parent == root}
+    while True:
+        children = {obj for obj in bpy.data.objects if obj.parent in descendants}
+        new = children - descendants
+        if not new:
+            break
+        descendants.update(new)
+    for obj in descendants:
+        bpy.data.objects.remove(obj, do_unlink=True)
+
+
+def import_asset_objects(bpy, asset_id, assets_dir):
+    asset = pathlib.Path(assets_dir) / asset_id.split(":", 1)[1]
+    asset_bytes = read_bytes(asset, MAX_ASSET_BYTES)
+    if "sha256:" + hashlib.sha256(asset_bytes).hexdigest() != asset_id:
+        raise ValueError("object asset is missing, oversized, or has a bad content hash")
+    before = set(bpy.data.objects)
+    try:
+        bpy.ops.import_scene.gltf(filepath=str(asset))
+    except Exception:
+        for obj in set(bpy.data.objects) - before:
+            bpy.data.objects.remove(obj, do_unlink=True)
+        raise
+    imported = [obj for obj in bpy.data.objects if obj not in before]
+    if not imported:
+        raise ValueError("asset import produced no Blender objects")
+    return imported
+
+
+def attach_imported_objects(imported, root, collection):
+    for obj in imported:
+        for old_collection in list(obj.users_collection):
+            old_collection.objects.unlink(obj)
+        collection.objects.link(obj)
+        obj.parent = root
+        obj.matrix_parent_inverse.identity()
+
+
 def create_mesh_asset(bpy, action, collection, asset_dir):
     record = action["object"]
     root = bpy.data.objects.new(record.get("label") or record["id"], None)
@@ -365,23 +407,10 @@ def apply_to_blender(actions, assets_dir, output_assets_dir=None):
             record = action["object"]
             if find_preview(bpy, "object", record["id"]) is not None:
                 raise ValueError("object.add already exists in the Blender scene: " + record["id"])
-            digest = record["assetId"].split(":", 1)[1]
-            asset = pathlib.Path(assets_dir) / digest
-            asset_bytes = read_bytes(asset, MAX_ASSET_BYTES)
-            if "sha256:" + hashlib.sha256(asset_bytes).hexdigest() != record["assetId"]:
-                raise ValueError("object asset is missing, oversized, or has a bad content hash")
-            before = set(bpy.data.objects)
-            bpy.ops.import_scene.gltf(filepath=str(asset))
-            imported = [obj for obj in bpy.data.objects if obj not in before]
-            if not imported:
-                raise ValueError("asset import produced no Blender objects")
+            imported = import_asset_objects(bpy, record["assetId"], assets_dir)
             root = bpy.data.objects.new(record.get("label") or record["id"], None)
             collection.objects.link(root)
-            for obj in imported:
-                obj.parent = root
-                for old_collection in list(obj.users_collection):
-                    old_collection.objects.unlink(obj)
-                collection.objects.link(obj)
+            attach_imported_objects(imported, root, collection)
             root["elsemesh_action_kind"] = "object"
             root["elsemesh_action_id"] = record["id"]
             root["thruhold_kind"] = "object"
@@ -395,6 +424,10 @@ def apply_to_blender(actions, assets_dir, output_assets_dir=None):
             if root is None:
                 raise ValueError("object.update has no matching Blender source marker: " + action["id"])
             fields = action["fields"]
+            imported = import_asset_objects(bpy, fields["assetId"], assets_dir) if "assetId" in fields else None
+            if imported:
+                remove_preview_contents(bpy, root)
+                attach_imported_objects(imported, root, collection)
             if "transform" in fields:
                 root.location = blender_position(fields["transform"]["position"])
                 root.rotation_euler[2] = float(fields["transform"].get("yaw", 0))

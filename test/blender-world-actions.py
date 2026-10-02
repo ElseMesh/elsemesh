@@ -48,6 +48,25 @@ class BlenderWorldActionsTests(unittest.TestCase):
         result, _ = world_actions.validate_plan(self.plan(actions), self.source_bytes)
         self.assertEqual(result["objects"][-1]["label"], "Updated prop")
 
+    def test_update_asset_object_content_reference(self):
+        item = {
+            "id": "tw-object:test-prop",
+            "kind": "asset-instance",
+            "label": "Test prop",
+            "assetId": "sha256:" + "a" * 64,
+            "priority": "visible",
+            "transform": {"position": [1, 2, 3], "yaw": 0},
+            "scale": [1, 1, 1],
+            "collision": {"shape": "none", "enabled": False},
+        }
+        source = json.loads(self.source_bytes)
+        source["objects"].append(item)
+        source_bytes = json.dumps(source, separators=(",", ":")).encode()
+        new_asset_id = "sha256:" + "b" * 64
+        actions = [{"op": "object.update", "id": item["id"], "fields": {"assetId": new_asset_id}}]
+        result, _ = world_actions.validate_plan(self.plan(actions, source_bytes), source_bytes)
+        self.assertEqual(result["objects"][-1]["assetId"], new_asset_id)
+
     def test_create_bounded_mesh_asset(self):
         item = {
             "id": "tw-object:generated-prop",
