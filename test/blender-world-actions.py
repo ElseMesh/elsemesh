@@ -62,7 +62,8 @@ class BlenderWorldActionsTests(unittest.TestCase):
 
     def test_rejects_invalid_compound_collision(self):
         source = json.loads(self.source_bytes)
-        source["objects"][1]["collision"]["boxes"][0]["yaw"] = 361
+        compound = next(item for item in source["objects"] if item["collision"].get("shape") == "compound")
+        compound["collision"]["boxes"][0]["yaw"] = 361
         source_bytes = json.dumps(source, separators=(",", ":")).encode()
         with self.assertRaisesRegex(ValueError, "compound collision yaw"):
             world_actions.validate_plan(self.plan([], source_bytes), source_bytes)
