@@ -48,6 +48,67 @@ class BlenderWorldActionsTests(unittest.TestCase):
         result, _ = world_actions.validate_plan(self.plan(actions), self.source_bytes)
         self.assertEqual(result["objects"][-1]["label"], "Updated prop")
 
+    def test_create_bounded_mesh_asset(self):
+        item = {
+            "id": "tw-object:generated-prop",
+            "kind": "asset-instance",
+            "label": "Generated prop",
+            "priority": "visible",
+            "transform": {"position": [1, 2, 3], "yaw": 0},
+            "scale": [1, 1, 1],
+            "collision": {"shape": "box", "enabled": True, "center": [0, 0.5, 0], "halfExtents": [0.5, 0.5, 0.5], "walkable": False, "solid": True},
+        }
+        action = {"op": "mesh.create", "object": item, "parts": [
+            {"shape": "box", "dimensions": [1, 1, 1], "position": [0, 0, 0], "material": "wood"},
+            {"shape": "cylinder", "dimensions": [0.25, 0.2, 0.25], "position": [0.2, 0.55, 0], "material": "metal"},
+        ]}
+        result, actions = world_actions.validate_plan(self.plan([action]), self.source_bytes)
+        self.assertEqual(result["objects"][-1]["id"], item["id"])
+        self.assertEqual(result["objects"][-1]["assetId"], world_actions.PENDING_ASSET_ID)
+        self.assertEqual(actions[0]["parts"][1]["material"], "metal")
+
+    def test_rejects_unsafe_or_unbounded_mesh_creation(self):
+        item = {
+            "id": "tw-object:generated-prop",
+            "kind": "asset-instance",
+            "label": "Generated prop",
+            "transform": {"position": [0, 0, 0], "yaw": 0},
+            "scale": [1, 1, 1],
+            "collision": {"shape": "none", "enabled": False},
+        }
+        valid_part = {"shape": "box", "dimensions": [1, 1, 1], "position": [0, 0, 0], "material": "wood"}
+        with self.assertRaisesRegex(ValueError, "derives its assetId"):
+            world_actions.validate_plan(self.plan([{"op": "mesh.create", "object": {**item, "assetId": world_actions.PENDING_ASSET_ID}, "parts": [valid_part]}]), self.source_bytes)
+        with self.assertRaisesRegex(ValueError, "invalid source object fields"):
+            world_actions.validate_plan(self.plan([{"op": "mesh.create", "object": {**item, "python": "must never be evaluated"}, "parts": [valid_part]}]), self.source_bytes)
+        with self.assertRaisesRegex(ValueError, "unsupported primitive or material"):
+            bad_part = {**valid_part, "material": "script"}
+            world_actions.validate_plan(self.plan([{"op": "mesh.create", "object": item, "parts": [bad_part]}]), self.source_bytes)
+        with self.assertRaisesRegex(ValueError, "at least 0.05"):
+            tiny_part = {**valid_part, "dimensions": [0.01, 1, 1]}
+            world_actions.validate_plan(self.plan([{"op": "mesh.create", "object": item, "parts": [tiny_part]}]), self.source_bytes)
+        with self.assertRaisesRegex(ValueError, "1 to 12 bounded primitive parts"):
+            world_actions.validate_plan(self.plan([{"op": "mesh.create", "object": item, "parts": [valid_part] * 13}]), self.source_bytes)
+        with self.assertRaisesRegex(ValueError, "invalid mesh part fields"):
+            world_actions.validate_plan(self.plan([{"op": "mesh.create", "object": item, "parts": [{**valid_part, "exportPath": "/tmp/anything"}]}]), self.source_bytes)
+
+    def test_caps_total_created_meshes_per_plan(self):
+        actions = []
+        for index in range(world_actions.MAX_CREATED_MESHES + 1):
+            item = {
+                "id": "tw-object:generated-%d" % index,
+                "kind": "asset-instance",
+                "label": "Generated prop",
+                "transform": {"position": [0, 0, 0], "yaw": 0},
+                "scale": [1, 1, 1],
+                "collision": {"shape": "none", "enabled": False},
+            }
+            actions.append({"op": "mesh.create", "object": item, "parts": [
+                {"shape": "box", "dimensions": [1, 1, 1], "position": [0, 0, 0], "material": "wood"},
+            ]})
+        with self.assertRaisesRegex(ValueError, "per-plan geometry budget"):
+            world_actions.validate_plan(self.plan(actions), self.source_bytes)
+
     def test_rejects_stale_source_hash(self):
         plan = self.plan([])
         plan["sourceHash"] = "sha256:" + "0" * 64

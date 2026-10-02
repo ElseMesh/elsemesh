@@ -1,11 +1,13 @@
 """Apply a constrained, data-only editing plan in an isolated Blender copy.
 
-The plan format accepts stable-ID asset placement and portal operations. It never
-evaluates Python, expressions, file paths, shell commands, or Blender operator names.
+The plan format accepts bounded primitive-mesh creation, stable-ID asset placement,
+and portal operations. It never evaluates Python, expressions, file paths, shell
+commands, or Blender operator names.
 Run from Blender with:
   blender working-copy.blend --background --python tools/blender/world_actions.py -- \
     --plan plan.json --source world-source.json --assets assets/ \
-    --out-source candidate.world-source.json --out-blend candidate.blend
+    --out-source candidate.world-source.json --out-blend candidate.blend \
+    --out-assets candidate-assets/  # required when the plan contains mesh.create
 """
 import argparse
 import hashlib
@@ -21,12 +23,18 @@ PROTOCOL = "elsemesh.blender-actions/1"
 MAX_PLAN_BYTES = 16 * 1024 * 1024
 MAX_ASSET_BYTES = 128 * 1024 * 1024
 MAX_ACTIONS = 256
+MAX_CREATED_MESHES = 16
+MAX_MESH_PARTS = 12
+MAX_TOTAL_MESH_PARTS = 96
 OBJECT_ID = re.compile(r"^tw-object:[\w.-]{1,128}$")
 PORTAL_ID = re.compile(r"^tw-portal:[\w.-]{1,128}$")
 ASSET_ID = re.compile(r"^sha256:[0-9a-f]{64}$")
 OBJECT_FIELDS = {"label", "priority", "streamingBounds", "transform", "scale", "collision"}
 PORTAL_FIELDS = {"destinationWorldId", "destinationPeerId", "destinationGateway", "entry", "exit", "openView", "enabled", "visual"}
 PRIORITIES = {"portal-preview", "visible", "nearby", "background"}
+MESH_SHAPES = {"box", "cylinder", "uv-sphere"}
+MESH_MATERIALS = {"wood", "stone", "paint", "metal"}
+PENDING_ASSET_ID = "sha256:" + "0" * 64
 
 
 def read_bytes(path, maximum):
@@ -62,7 +70,11 @@ def validate_source(source):
     for record in source["objects"]:
         if not isinstance(record, dict) or not isinstance(record.get("id"), str) or not OBJECT_ID.fullmatch(record["id"]) or record["id"] in seen:
             raise ValueError("invalid or duplicate object ID")
+        require_keys(record, {"id", "kind", "label", "assetId", "transform", "scale", "collision"},
+                     {"id", "kind", "label", "assetId", "priority", "streamingBounds", "transform", "scale", "collision", "replacesObjectId"}, "source object")
         seen.add(record["id"])
+        if not isinstance(record["label"], str) or len(record["label"]) > 160:
+            raise ValueError("object label must be a string no longer than 160 characters")
         if not ASSET_ID.fullmatch(record.get("assetId") or ""):
             raise ValueError("object %s requires an imported content-addressed asset" % record["id"])
         if record.get("priority", "visible") not in PRIORITIES:
@@ -70,15 +82,29 @@ def validate_source(source):
         if record.get("kind") != "asset-instance":
             raise ValueError("unsupported object kind")
         transform = record.get("transform")
+        require_keys(transform, {"position", "yaw"}, {"position", "yaw", "rotation"}, "object transform")
         if not isinstance(transform, dict) or not finite_number(transform.get("yaw")):
             raise ValueError("object %s has an invalid transform" % record["id"])
         vector(transform.get("position"), "object position")
+        if "rotation" in transform:
+            rotation = transform["rotation"]
+            if not isinstance(rotation, list) or len(rotation) != 4 or any(not finite_number(value) for value in rotation) or abs(math.hypot(*rotation) - 1) > 1e-4:
+                raise ValueError("object rotation must be a normalized four-component quaternion")
         vector(record.get("scale"), "object scale")
         if any(scale <= 0 or scale > 1000 for scale in record["scale"]):
             raise ValueError("object scale is outside the supported range")
+        bounds = record.get("streamingBounds")
+        if bounds is not None:
+            require_keys(bounds, {"center", "radius"}, {"center", "radius"}, "streaming bounds")
+            vector(bounds["center"], "streaming bounds center", maximum=10000)
+            if not finite_number(bounds["radius"]) or not 0 < bounds["radius"] <= 10000:
+                raise ValueError("streaming bounds radius is outside the supported range")
         collision = record.get("collision")
+        require_keys(collision, {"shape", "enabled"}, {"shape", "enabled", "center", "halfExtents", "boxes", "rows", "columns", "walkable", "solid"}, "collision")
         if not isinstance(collision, dict) or not isinstance(collision.get("enabled"), bool):
             raise ValueError("object %s requires collision intent" % record["id"])
+        if "rotation" in transform and collision["enabled"]:
+            raise ValueError("object rotation cannot be used with collision")
         if collision["enabled"]:
             shape = collision.get("shape")
             if shape == "box":
@@ -86,6 +112,8 @@ def validate_source(source):
                 vector(collision.get("halfExtents"), "collision half extents")
                 if any(x <= 0 or x > 1000 for x in collision["halfExtents"]):
                     raise ValueError("collision half extents are outside the supported range")
+                if not isinstance(collision.get("walkable"), bool) or not isinstance(collision.get("solid"), bool):
+                    raise ValueError("box collision requires walkable and solid flags")
             elif shape == "compound":
                 boxes = collision.get("boxes")
                 if not isinstance(boxes, list) or not 1 <= len(boxes) <= 2048:
@@ -136,6 +164,8 @@ def validate_plan(plan, source_bytes):
     source = json.loads(json.dumps(source))
     records = {record["id"]: record for record in source["objects"] + source["portals"]}
     normalized = []
+    created_meshes = 0
+    total_mesh_parts = 0
     for action in actions:
         if not isinstance(action, dict) or not isinstance(action.get("op"), str):
             raise ValueError("each Blender action must be a typed object")
@@ -146,6 +176,31 @@ def validate_plan(plan, source_bytes):
             if not isinstance(record, dict) or not OBJECT_ID.fullmatch(record.get("id", "")) or record["id"] in records:
                 raise ValueError("object.add requires a new stable object ID")
             validate_source({**source, "objects": [*source["objects"], record]})
+            records[record["id"]] = record
+            source["objects"].append(record)
+            normalized.append(action)
+        elif op == "mesh.create":
+            require_keys(action, {"op", "object", "parts"}, {"op", "object", "parts"}, op)
+            record = action["object"]
+            if not isinstance(record, dict) or record.get("kind") != "asset-instance" or "assetId" in record or not OBJECT_ID.fullmatch(record.get("id", "")) or record["id"] in records:
+                raise ValueError("mesh.create requires a new stable asset-instance ID and derives its assetId")
+            record = {**record, "assetId": PENDING_ASSET_ID}
+            validate_source({**source, "objects": [*source["objects"], record]})
+            parts = action["parts"]
+            if not isinstance(parts, list) or not 1 <= len(parts) <= MAX_MESH_PARTS:
+                raise ValueError("mesh.create requires 1 to %d bounded primitive parts" % MAX_MESH_PARTS)
+            for part in parts:
+                require_keys(part, {"shape", "dimensions", "position", "material"}, {"shape", "dimensions", "position", "material"}, "mesh part")
+                if part["shape"] not in MESH_SHAPES or part["material"] not in MESH_MATERIALS:
+                    raise ValueError("mesh part uses an unsupported primitive or material preset")
+                vector(part["dimensions"], "mesh dimensions", maximum=5)
+                if any(size < 0.05 for size in part["dimensions"]):
+                    raise ValueError("mesh dimensions must be at least 0.05 meters")
+                vector(part["position"], "mesh part position", maximum=5)
+            created_meshes += 1
+            total_mesh_parts += len(parts)
+            if created_meshes > MAX_CREATED_MESHES or total_mesh_parts > MAX_TOTAL_MESH_PARTS:
+                raise ValueError("mesh creation exceeds the per-plan geometry budget")
             records[record["id"]] = record
             source["objects"].append(record)
             normalized.append(action)
@@ -221,16 +276,92 @@ def remove_preview(bpy, root):
         bpy.data.objects.remove(obj, do_unlink=True)
 
 
-def apply_to_blender(actions, assets_dir):
+def create_mesh_asset(bpy, action, collection, asset_dir):
+    record = action["object"]
+    root = bpy.data.objects.new(record.get("label") or record["id"], None)
+    collection.objects.link(root)
+    root["elsemesh_action_kind"] = "object"
+    root["elsemesh_action_id"] = record["id"]
+    root["thruhold_kind"] = "object"
+    root["thruhold_id"] = record["id"]
+    root["thruhold_record"] = json.dumps({**record, "assetId": PENDING_ASSET_ID}, separators=(",", ":"))
+    root.location = blender_position(record["transform"]["position"])
+    root.rotation_euler[2] = float(record["transform"].get("yaw", 0))
+    root.scale = record["scale"]
+
+    material_presets = {
+        "wood": ((0.28, 0.12, 0.035, 1), 0.82, 0.0),
+        "stone": ((0.32, 0.35, 0.36, 1), 0.9, 0.0),
+        "paint": ((0.04, 0.24, 0.72, 1), 0.38, 0.0),
+        "metal": ((0.38, 0.42, 0.45, 1), 0.28, 0.72),
+    }
+    generated_materials = {}
+    meshes = []
+    for index, part in enumerate(action["parts"]):
+        if part["shape"] == "box":
+            bpy.ops.mesh.primitive_cube_add(size=1.0)
+        elif part["shape"] == "cylinder":
+            bpy.ops.mesh.primitive_cylinder_add(vertices=24, radius=0.5, depth=1.0)
+        else:
+            bpy.ops.mesh.primitive_uv_sphere_add(segments=24, ring_count=12, radius=0.5)
+        mesh = bpy.context.object
+        mesh.name = "%s part %02d" % (record["id"], index + 1)
+        for old_collection in list(mesh.users_collection):
+            old_collection.objects.unlink(mesh)
+        collection.objects.link(mesh)
+        mesh.parent = root
+        mesh.matrix_parent_inverse.identity()
+        mesh.location = blender_position(part["position"])
+        mesh.dimensions = part["dimensions"]
+        if part["shape"] != "box":
+            for polygon in mesh.data.polygons:
+                polygon.use_smooth = True
+        material = generated_materials.get(part["material"])
+        if material is None:
+            material = bpy.data.materials.new("ElseMesh preset " + part["material"])
+            material.use_nodes = True
+            color, roughness, metallic = material_presets[part["material"]]
+            shader = material.node_tree.nodes.get("Principled BSDF")
+            shader.inputs["Base Color"].default_value = color
+            shader.inputs["Roughness"].default_value = roughness
+            shader.inputs["Metallic"].default_value = metallic
+            generated_materials[part["material"]] = material
+        mesh.data.materials.clear()
+        mesh.data.materials.append(material)
+        meshes.append(mesh)
+
+    if not meshes:
+        raise ValueError("mesh.create produced no geometry")
+    bpy.ops.object.select_all(action="DESELECT")
+    for mesh in meshes:
+        mesh.select_set(True)
+    bpy.context.view_layer.objects.active = meshes[0]
+    staged_asset = pathlib.Path(asset_dir) / ("candidate-%s.glb" % record["id"].split(":", 1)[1])
+    bpy.ops.export_scene.gltf(filepath=str(staged_asset), export_format="GLB", use_selection=True)
+    asset_bytes = read_bytes(staged_asset, MAX_ASSET_BYTES)
+    asset_id = "sha256:" + hashlib.sha256(asset_bytes).hexdigest()
+    os.replace(staged_asset, pathlib.Path(asset_dir) / asset_id.split(":", 1)[1])
+    finalized = {**record, "assetId": asset_id}
+    root["thruhold_record"] = json.dumps(finalized, separators=(",", ":"))
+    return asset_id
+
+
+def apply_to_blender(actions, assets_dir, output_assets_dir=None):
     import bpy
 
+    created_assets = {}
     collection = bpy.data.collections.get("ElseMesh AI Preview")
     if collection is None:
         collection = bpy.data.collections.new("ElseMesh AI Preview")
         bpy.context.scene.collection.children.link(collection)
     for action in actions:
         op = action["op"]
-        if op == "object.add":
+        if op == "mesh.create":
+            if output_assets_dir is None:
+                raise ValueError("mesh.create requires --out-assets for generated content-addressed assets")
+            asset_id = create_mesh_asset(bpy, action, collection, output_assets_dir)
+            created_assets[action["object"]["id"]] = asset_id
+        elif op == "object.add":
             record = action["object"]
             if find_preview(bpy, "object", record["id"]) is not None:
                 raise ValueError("object.add already exists in the Blender scene: " + record["id"])
@@ -313,6 +444,7 @@ def apply_to_blender(actions, assets_dir):
             if marker is None:
                 raise ValueError("portal.remove has no matching Blender source marker: " + action["id"])
             remove_preview(bpy, marker)
+    return created_assets
 
 
 def main():
@@ -320,6 +452,7 @@ def main():
     parser.add_argument("--plan", required=True)
     parser.add_argument("--source", required=True)
     parser.add_argument("--assets", required=True)
+    parser.add_argument("--out-assets")
     parser.add_argument("--out-source", required=True)
     parser.add_argument("--out-blend", required=True)
     args = parser.parse_args(sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else [])
@@ -329,14 +462,41 @@ def main():
     source, actions = validate_plan(plan, source_bytes)
     output_source = pathlib.Path(args.out_source).resolve()
     output_blend = pathlib.Path(args.out_blend).resolve()
+    mesh_actions = [action for action in actions if action["op"] == "mesh.create"]
+    output_assets = pathlib.Path(args.out_assets).resolve() if args.out_assets else None
+    if bool(mesh_actions) != bool(output_assets):
+        raise ValueError("--out-assets is required exactly when the plan contains mesh.create")
     if os.path.lexists(output_source) or os.path.lexists(output_blend):
         raise ValueError("candidate output paths must not already exist")
     if output_source == output_blend:
         raise ValueError("candidate source and Blender output paths must differ")
+    if output_assets is not None:
+        if os.path.lexists(output_assets):
+            raise ValueError("candidate asset directory must not already exist")
+        input_assets = pathlib.Path(args.assets).resolve()
+        outputs = [output_source, output_blend]
+        if output_assets == input_assets or output_assets in input_assets.parents or input_assets in output_assets.parents:
+            raise ValueError("candidate assets must be separate from the read-only input asset store")
+        if any(output_assets == output or output_assets in output.parents or output in output_assets.parents for output in outputs):
+            raise ValueError("candidate assets, source, and Blender outputs must use separate paths")
     bpy = sys.modules.get("bpy")
     if bpy is None:
         raise RuntimeError("This action runner must execute inside Blender")
-    apply_to_blender(actions, args.assets)
+    staged_assets = None
+    if output_assets is not None:
+        output_assets.parent.mkdir(parents=True, exist_ok=True)
+        staged_assets = pathlib.Path(tempfile.mkdtemp(prefix=".elsemesh-assets-", dir=output_assets.parent))
+    try:
+        created_assets = apply_to_blender(actions, args.assets, staged_assets)
+    except Exception:
+        if staged_assets is not None:
+            import shutil
+            shutil.rmtree(staged_assets, ignore_errors=True)
+        raise
+    for record in source["objects"]:
+        if record["id"] in created_assets:
+            record["assetId"] = created_assets[record["id"]]
+    validate_source(source)
     bpy.data.texts.get("ElseMeshThruHoldSource") or bpy.data.texts.new("ElseMeshThruHoldSource")
     text = bpy.data.texts["ElseMeshThruHoldSource"]
     text.clear()
@@ -350,18 +510,33 @@ def main():
     staged_blend = pathlib.Path(staged_blend_name)
     staged_blend.unlink()
     committed_blend = False
+    committed_source = False
+    committed_assets = False
     try:
         pathlib.Path(staged_source_name).write_text(json.dumps(source, indent=2) + "\n", encoding="utf-8", newline="\n")
         bpy.ops.wm.save_as_mainfile(filepath=str(staged_blend))
+        if staged_assets is not None:
+            os.replace(staged_assets, output_assets)
+            committed_assets = True
         os.replace(staged_blend, output_blend)
         committed_blend = True
         os.replace(staged_source_name, output_source)
+        committed_source = True
     except Exception:
         pathlib.Path(staged_source_name).unlink(missing_ok=True)
         staged_blend.unlink(missing_ok=True)
+        if committed_source:
+            output_source.unlink(missing_ok=True)
         if committed_blend:
             output_blend.unlink(missing_ok=True)
+        if committed_assets:
+            import shutil
+            shutil.rmtree(output_assets, ignore_errors=True)
         raise
+    finally:
+        if staged_assets is not None and staged_assets.exists():
+            import shutil
+            shutil.rmtree(staged_assets, ignore_errors=True)
     print("Wrote unsigned candidate source and Blender scene; review both before publication.")
 
 

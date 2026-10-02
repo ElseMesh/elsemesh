@@ -12,6 +12,7 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 ACTION_RUNNER = ROOT / "tools/blender/world_actions.py"
 SOURCE_PATH = ROOT / "worlds/island/world-source.json"
 OBJECT_ID = "tw-object:blender-runtime-check"
+MESH_ID = "tw-object:blender-generated-check"
 
 
 def temporary_root():
@@ -35,7 +36,7 @@ def main():
     blender = str(pathlib.Path(blender).resolve())
     source_bytes = SOURCE_PATH.read_bytes()
     source = json.loads(source_bytes)
-    if any(record["id"] == OBJECT_ID for record in source["objects"]):
+    if any(record["id"] in {OBJECT_ID, MESH_ID} for record in source["objects"]):
         raise SystemExit("runtime-check object ID already exists in the example source")
     asset_id = next(record["assetId"] for record in source["objects"] if record["id"].startswith("tw-object:scanned-debris-"))
     asset_path = ROOT / "worlds/island/assets" / asset_id.removeprefix("sha256:")
@@ -54,6 +55,21 @@ def main():
                 "scale": [1, 1, 1],
                 "collision": {"shape": "none", "enabled": False},
             },
+        }, {
+            "op": "mesh.create",
+            "object": {
+                "id": MESH_ID,
+                "kind": "asset-instance",
+                "label": "AI-created sample prop",
+                "priority": "visible",
+                "transform": {"position": [2, 0, -1], "yaw": 0.25},
+                "scale": [1, 1, 1],
+                    "collision": {"shape": "box", "enabled": True, "center": [0, 0.5, 0], "halfExtents": [0.5, 0.5, 0.5], "walkable": False, "solid": True},
+            },
+            "parts": [
+                {"shape": "box", "dimensions": [1, 1, 1], "position": [0, 0, 0], "material": "wood"},
+                {"shape": "cylinder", "dimensions": [0.25, 0.2, 0.25], "position": [0.2, 0.55, 0], "material": "metal"},
+            ],
         }],
     }
 
@@ -62,6 +78,7 @@ def main():
         plan_path = work / "plan.json"
         candidate_source = work / "candidate.world-source.json"
         candidate_blend = work / "candidate.blend"
+        candidate_assets = work / "candidate-assets"
         plan_path.write_text(json.dumps(plan), encoding="utf-8")
         environment = os.environ.copy()
         environment.update({
@@ -74,19 +91,49 @@ def main():
             blender, "--background", "--factory-startup", "--python", str(ACTION_RUNNER), "--",
             "--plan", str(plan_path), "--source", str(SOURCE_PATH),
             "--assets", str(asset_path.parent), "--out-source", str(candidate_source),
-            "--out-blend", str(candidate_blend),
+            "--out-blend", str(candidate_blend), "--out-assets", str(candidate_assets),
         ], environment)
 
         candidate = json.loads(candidate_source.read_text(encoding="utf-8"))
         if not any(record["id"] == OBJECT_ID for record in candidate["objects"]):
             raise RuntimeError("candidate source is missing the new stable-ID object")
+        mesh_record = next((record for record in candidate["objects"] if record["id"] == MESH_ID), None)
+        if not mesh_record or not mesh_record["assetId"].startswith("sha256:"):
+            raise RuntimeError("candidate source is missing the generated content-addressed mesh")
+        generated_asset = candidate_assets / mesh_record["assetId"].removeprefix("sha256:")
+        if not generated_asset.is_file() or "sha256:" + hashlib.sha256(generated_asset.read_bytes()).hexdigest() != mesh_record["assetId"]:
+            raise RuntimeError("generated GLB does not match the candidate source content hash")
+        package_assets = work / "package-assets"
+        package_assets.mkdir()
+        asset_ids = {record["assetId"] for record in candidate["objects"]}
+        for component in candidate.get("components", []):
+            if component.get("placementAssetId"):
+                asset_ids.add(component["placementAssetId"])
+            asset_ids.update(bed["assetId"] for bed in component.get("beds", []))
+        for content_id in asset_ids:
+            digest = content_id.removeprefix("sha256:")
+            candidate_asset = candidate_assets / digest
+            original_asset = ROOT / "worlds/island/assets" / digest
+            target = candidate_asset if candidate_asset.is_file() else original_asset
+            if not target.is_file():
+                raise RuntimeError("candidate package is missing an asset: " + content_id)
+            (package_assets / digest).symlink_to(target)
+        candidate_manifest = work / "candidate.manifest.json"
+        run([
+            "node", str(ROOT / "tools/world-source-to-manifest.mjs"),
+            "--source", str(candidate_source), "--owner", "runtime-test-owner",
+            "--assets", str(package_assets), "--out", str(candidate_manifest),
+        ], environment)
+        manifest = json.loads(candidate_manifest.read_text(encoding="utf-8"))
+        if not any(asset["id"] == mesh_record["assetId"] for asset in manifest["assets"]):
+            raise RuntimeError("runtime manifest omitted the generated GLB asset")
         if candidate_blend.stat().st_size < 100_000:
             raise RuntimeError("candidate Blender file is unexpectedly small")
-        expression = "import bpy; assert any(o.get('elsemesh_action_id') == '%s' for o in bpy.data.objects); print('reopened-world-action-ok')" % OBJECT_ID
+        expression = "import bpy; ids = {o.get('elsemesh_action_id') for o in bpy.data.objects}; assert '%s' in ids and '%s' in ids; print('reopened-world-action-ok')" % (OBJECT_ID, MESH_ID)
         output = run([blender, "--background", "--factory-startup", str(candidate_blend), "--python-expr", expression], environment)
         if "reopened-world-action-ok" not in output:
             raise RuntimeError("reopened Blender file did not confirm the stable-ID object")
-        print("Blender runtime action passed: imported hash-verified GLB, wrote source and .blend candidates, reopened stable-ID object")
+        print("Blender runtime actions passed: imported a hash-verified GLB, created and hashed a bounded mesh GLB, wrote all candidate artifacts, and reopened both stable IDs")
 
 
 if __name__ == "__main__":

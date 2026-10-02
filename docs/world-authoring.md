@@ -77,13 +77,33 @@ An account with an owner-issued `world.content.edit` grant can submit the unsign
 
 ### Apply typed Blender preview actions
 
-`tools/blender/world_actions.py` is the Blender-side companion for data-only scene edits. It accepts a JSON plan bound to the exact source-file bytes with `sourceHash`; supported operations are add, update, or remove for stable-ID asset instances and portals. The plan cannot contain Python or Blender operator names. New object instances must reference an existing `sha256:` asset, and the runner verifies its digest before importing it. Existing source markers created by `world_source.py` are the edit targets, so start from a Blender file imported from the same source snapshot.
+`tools/blender/world_actions.py` is the Blender-side companion for data-only scene edits. It accepts a JSON plan bound to the exact source-file bytes with `sourceHash`. Existing operations add, update, or remove stable-ID asset instances and portals. `mesh.create` adds a new stable-ID object and creates its asset from up to 12 fixed primitive parts (`box`, `cylinder`, or `uv-sphere`) with four fixed material presets. Each part has bounded dimensions and position; a plan may create at most 16 assets and 96 parts total. The runner exports each asset as GLB, names it by its SHA-256, writes the hash into the source object, and saves a separate candidate asset directory. No model-provided code, Blender operator names, or asset paths are evaluated. Existing asset instances still require a `sha256:` asset, whose digest the runner verifies before import. Existing source markers created by `world_source.py` are the edit targets, so start from a Blender file imported from the same source snapshot.
 
-Run it in a disposable copy of the scene. It writes an unsigned source candidate and a separate `.blend` candidate, refusing to overwrite either destination. Review both candidates and run the ordinary source and asset validators before publishing. The runner does not sign or publish. Pure plan validation does not require Blender. The optional runtime integration check imports a content-hash-verified island GLB, saves a candidate scene and source, reopens the `.blend`, and verifies the stable-ID object:
+Run it in a disposable copy of the scene. It writes an unsigned source candidate and a separate `.blend` candidate, refusing to overwrite either destination. When a plan includes `mesh.create`, also pass a new `--out-assets` directory; the runner refuses to overwrite it. Review all candidates and run the ordinary source and asset validators before publishing. The runner does not sign or publish. Pure plan validation does not require Blender. The runtime integration check imports a hash-verified island GLB, creates and hashes a primitive mesh GLB, writes all candidate artifacts, reopens the `.blend`, and verifies both stable IDs and the generated content hash:
 
 ```sh
 python3 test/blender-world-actions.py
 BLENDER_EXECUTABLE=/path/to/blender python3 test/blender-world-actions-runtime.py
+```
+
+An example data-only mesh action is:
+
+```json
+{
+  "op": "mesh.create",
+  "object": {
+    "id": "tw-object:wooden-crate",
+    "kind": "asset-instance",
+    "label": "Wooden crate",
+    "priority": "visible",
+    "transform": { "position": [2, 0, -1], "yaw": 0 },
+    "scale": [1, 1, 1],
+    "collision": { "shape": "box", "enabled": true, "center": [0, 0.5, 0], "halfExtents": [0.5, 0.5, 0.5], "walkable": false, "solid": true }
+  },
+  "parts": [
+    { "shape": "box", "dimensions": [1, 1, 1], "position": [0, 0, 0], "material": "wood" }
+  ]
+}
 ```
 
 On 2026-10-02 this completed with Blender 4.3.2 on Linux. It verifies that Blender can execute this typed scene action; it does not establish an isolated service worker, arbitrary AI task handling, or publication.
