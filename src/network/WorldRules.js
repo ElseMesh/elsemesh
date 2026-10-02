@@ -14,6 +14,7 @@ export const SUPPORTED_WORLD_FEATURES = new Set( [
 	'tidewater.water-body/1',
 	'tidewater.ambient-audio/1',
 	'tidewater.downeast-boat/1',
+	'tidewater.village-materials/1',
 ] );
 export const SUPPORTED_PHYSICS_PROFILES = new Set( [ 'default', 'tidewater-default' ] );
 export const DEFAULT_WORLD_MOVEMENT = Object.freeze( { walkSpeed: 3, sprintSpeed: 6.2, jumpSpeed: 4.6 } );

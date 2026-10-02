@@ -53,11 +53,11 @@ export class WorldPortalView {
 		this.aperture.visible = true;
 	}
 
-	render( now, sourceCamera ) {
+	render( now, sourceCamera, loadBias = 0 ) {
 		if ( ! this.active || now - this.lastRenderAt < UPDATE_INTERVAL_MS ) return;
 		const { root, portal } = this.active;
 		mapPortalCamera( sourceCamera, this.camera, portal.entry, portal.exit );
-		updateWorldPackageLOD( root, this.camera );
+		updateWorldPackageLOD( root, this.camera, loadBias );
 		setFrameCamera( this.camera, this.target.width, this.target.height, { block: this.frameBlock } );
 		updatePortalPreviewComponents( root.userData.worldComponents, now, this.lastRenderAt, this.camera );
 		this.frameBlock.fields.portalClipPlane.value.set( ...portalExitClipPlane( portal.exit ) );

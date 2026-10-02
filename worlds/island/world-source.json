@@ -21,6 +21,7 @@
     "requiredFeatures": [
       "tidewater.static-glb/1",
       "tidewater.static-glb-quaternion/1",
+      "tidewater.village-materials/1",
       "tidewater.static-vegetation/1",
       "tidewater.static-reef/1",
       "tidewater.island-ocean/1",
@@ -106,7 +107,7 @@
       "id": "tw-object:island-village",
       "kind": "asset-instance",
       "label": "Procedural village, pier and harbor",
-      "assetId": "sha256:2f522efd9007b693c2836308657088182cd67ab67e659f7a5781757895d4989a",
+      "assetId": "sha256:fc2eb6faca43a9877643df56893e204e171e6a9c6c84d41f8d951d762a57fe8e",
       "priority": "visible",
       "streamingBounds": {
         "center": [

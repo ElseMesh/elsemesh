@@ -41,7 +41,7 @@ export class WorldPresenceSession {
   this.disposed = false;
   this.reportedError = false;
  }
- update(dt, player, now = this.clock()) {
+ update(dt, player, now = this.clock(), loadBias = 0) {
   if (this.disposed) return;
   const visible = this.state.interpolated(now);
   const ids = new Set(visible.map(pose => pose.id));
@@ -54,7 +54,7 @@ export class WorldPresenceSession {
     avatar = this.createAvatar({appearance: pose.appearance, maxComplexity: this.maxComplexity});
     this.parent.add(avatar.group); this.avatars.set(pose.id,avatar);
    }
-   avatar.setViewDistance?.(Math.hypot(pose.position[0] - player.position.x, pose.position[1] - player.position.y, pose.position[2] - player.position.z));
+   avatar.setViewDistance?.(Math.hypot(pose.position[0] - player.position.x, pose.position[1] - player.position.y, pose.position[2] - player.position.z), loadBias);
    avatar.setAppearance(pose.appearance);
    avatar.update(dt,pose);
   }

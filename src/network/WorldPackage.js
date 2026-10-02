@@ -16,6 +16,7 @@ import { SRGBColorSpace } from '../engine/constants.js';
 import { standard } from '../materials/Materials.js';
 import { Vector3 } from '../engine/math/Vector3.js';
 import { Matrix4 } from '../engine/math/Matrix4.js';
+import { villageMaterialRole } from './WorldVillageMaterial.js';
 
 const COMPONENTS = Object.freeze( {
 	POSITION: [ 'position', 3 ],
@@ -31,13 +32,13 @@ const PORTAL_FRAME_STYLES = Object.freeze( {
 	metal: { color: 0x56636a, roughness: 0.42, metalness: 0.72 },
 } );
 
-export async function loadWorldPackage( connector, { signal, assets: preloadedAssets, objectIDs } = {} ) {
+export async function loadWorldPackage( connector, { signal, assets: preloadedAssets, objectIDs, materialContext } = {} ) {
 
 	if ( ! connector.manifest ) throw new Error( 'Load and verify a world manifest first' );
 	const assets = preloadedAssets || await connector.preload();
 	const root = new Group();
 	root.name = `world:${connector.worldId}`;
-	root.userData.worldPackage = { parsed: new Map(), loadedObjects: new Set(), connector };
+	root.userData.worldPackage = { parsed: new Map(), loadedObjects: new Set(), connector, materialContext };
 	try {
 		await appendWorldPackageAssets( connector, root, assets, { signal, objectIDs } );
 		return root;
@@ -68,7 +69,7 @@ export async function appendWorldPackageAssets( connector, root, assets, { signa
 		if ( ! bytes ) continue;
 		let gltf = state.parsed.get( object.assetId );
 		if ( ! gltf ) {
-			gltf = await buildGLTF( parseGLB( bytes ) );
+			gltf = await buildGLTF( parseGLB( bytes ), state );
 			state.parsed.set( object.assetId, gltf );
 		}
 		const instance = cloneScene( gltf );
@@ -93,8 +94,8 @@ export async function appendWorldPackageAssets( connector, root, assets, { signa
 
 }
 
-export function updateWorldPackageLOD( root, camera ) {
-	for ( const controller of root?.userData?.worldPackage?.lodControllers?.values() || [] ) controller.update( camera );
+export function updateWorldPackageLOD( root, camera, loadBias = 0 ) {
+	for ( const controller of root?.userData?.worldPackage?.lodControllers?.values() || [] ) controller.update( camera, performance.now(), loadBias );
 }
 
 function installObjectLOD( connector, root, instance, object ) {
@@ -260,6 +261,7 @@ export function disposeWorldPackage( root ) {
 		if ( object.geometry?.dispose ) geometries.add( object.geometry );
 		for ( const material of Array.isArray( object.material ) ? object.material : [ object.material ] ) {
 			if ( ! material ) continue;
+			if ( material.userData?.borrowedWorldMaterial ) continue;
 			materials.add( material );
 			for ( const binding of Object.values( material.bindings || {} ) ) {
 				const texture = binding?.texture || binding;
@@ -278,7 +280,7 @@ export function disposeWorldPackage( root ) {
 	state?.loadedObjects?.clear();
 }
 
-async function buildGLTF( gltf ) {
+async function buildGLTF( gltf, packageState = null ) {
 
 	const root = new Group();
 	const textures = new Map();
@@ -288,6 +290,19 @@ async function buildGLTF( gltf ) {
 		const source = gltf.materials[ index ];
 
 		const pbr = source.pbrMetallicRoughness || {};
+		const role = villageMaterialRole( source );
+		if ( role ) {
+			if ( ! packageState?.connector?.manifest?.rules?.requiredFeatures?.includes( 'tidewater.village-materials/1' ) ) throw new Error( 'Village material profile is missing tidewater.village-materials/1' );
+			const vdata = gltf.meshes.flat().filter( primitive => primitive.material === index ).map( primitive => primitive.attributes._TW_VDATA );
+			if ( vdata.some( attribute => ! attribute || attribute.itemSize !== 4 ) ) throw new Error( `Village material ${role} requires a VEC4 _TW_VDATA attribute` );
+			const context = packageState.materialContext;
+			if ( ! context?.materials?.[ role ] || typeof context.textures?.bake !== 'function' ) throw new Error( `Village material renderer is unavailable for ${role}` );
+			const material = context.materials[ role ];
+			material.userData ||= {};
+			material.userData.borrowedWorldMaterial = true;
+			resolvedMaterials.push( material );
+			continue;
+		}
 		const textureInfo = pbr.baseColorTexture;
 		let albedo = null;
 		if ( textureInfo ) {
@@ -326,7 +341,7 @@ async function buildGLTF( gltf ) {
 
 		if ( primitive.mode !== 4 ) throw new Error( `GLB primitive mode ${primitive.mode} is not supported (triangle list required)` );
 		const geometry = new BufferGeometry();
-		for ( const [ gltfName, [ name, size ] ] of Object.entries( COMPONENTS ) ) {
+		for ( const [ gltfName, [ name, size ] ] of Object.entries( { ...COMPONENTS, _TW_VDATA: [ 'vdata', 4 ] } ) ) {
 			const attribute = primitive.attributes[ gltfName ];
 			if ( ! attribute ) continue;
 			const values = floatAttribute( attribute );
@@ -337,7 +352,9 @@ async function buildGLTF( gltf ) {
 		if ( ! geometry.getAttribute( 'normal' ) ) geometry.computeVertexNormals();
 		geometry.computeBoundingSphere();
 		const material = resolvedMaterials[ primitive.material ] || standard( { name: 'world-default', color: 0xffffff, roughness: 1, metalness: 0 } );
-		return new Mesh( geometry, material );
+		const mesh = new Mesh( geometry, material );
+		if ( material.userData?.borrowedWorldMaterial ) mesh.onBeforeRender = () => packageState.materialContext.textures.bake();
+		return mesh;
 
 	} ) );
 	const nodes = gltf.nodes.map( ( node ) => {

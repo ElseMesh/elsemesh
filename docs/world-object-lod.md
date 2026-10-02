@@ -69,8 +69,17 @@ currently displayed. Other collision descriptors remain unchanged.
 
 Current limits: the base mesh is still initially acquired; loaded levels are
 retained until package disposal, so LOD reduces draw geometry but does not yet
-reduce texture/mesh residency. Selection uses screen fraction, without a target
-pixel-size or sustained-load bias. Transitions currently use hysteresis and a
+reduce texture/mesh residency. Selection uses screen fraction rather than a fixed target
+pixel size. RenderLoadLOD supplies a bounded sustained-load bias: two seconds
+above 110% of the frame-work budget increases it one level, and six seconds
+below 75% restores one level. Half-second smoothing and a neutral band avoid
+flapping; elapsed sampling is capped to ignore suspended-tab gaps. Intentional
+frame pacing is excluded from render work. The object selector divides screen
+fraction by up to four under maximum bias, but preserves the ordinary authored
+selection for objects occupying at least 25% of viewport height. Avatar distance thresholds
+shift gradually outside eight meters; nearby avatars always retain full detail.
+Each main or mapped portal camera selects against its own distance/projection;
+async downloads never switch visuals outside that explicit camera update. Transitions currently use hysteresis and a
 ready-level swap, without a dither cross-fade. Existing checked-in world objects
 have no new LOD declarations yet. These are remaining work, not completed gates.
 

@@ -60,6 +60,12 @@ lod.setViewDistance(40); await lod.ready;
 assert.equal(lodAssets.length, 3);
 lod.setViewDistance(10); await lod.ready;
 assert.equal(lodAssets.at(-1), 'stock-player');
+lod.setViewDistance(12, 2); await lod.ready;
+assert.equal(lodAssets.at(-1), 'stock-player-medium', 'Load bias chooses lower geometry for mid-distance avatar');
+lod.setViewDistance(7, 2); await lod.ready;
+assert.equal(lodAssets.at(-1), 'stock-player', 'Nearby avatar retains full detail even at maximum bias');
+lod.setViewDistance(12, 0); await lod.ready;
+assert.equal(lodAssets.at(-1), 'stock-player', 'Headroom restores original distance policy');
 lod.dispose();
 console.log('Avatar distance LOD switching, recovery and hysteresis passed');
 

@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';
+import { RenderLoadLOD } from '../src/network/RenderLoadLOD.js';
+const policy = new RenderLoadLOD();
+const samples = (count, cpuMs, gpuMs = 0) => { for(let i=0;i<count;i++) policy.sample({cpuMs,gpuMs,budgetMs:40,elapsedSeconds:.05}); };
+samples(120, 20);assert.equal(policy.bias,0,'Adequate headroom preserves default quality');
+policy.sample({cpuMs:1000,budgetMs:40,elapsedSeconds:10});assert.equal(policy.bias,0,'One stall does not degrade quality');
+samples(150,55);assert.equal(policy.bias,2,'Sustained render load raises bounded bias');
+samples(100,35);assert.equal(policy.bias,2,'Neutral band does not flap');
+samples(140,20);assert.equal(policy.bias,1,'Recovery is gradual');
+samples(140,20);assert.equal(policy.bias,0,'Sustained headroom restores full policy');
+samples(100,10,55);assert.ok(policy.bias>0,'Measured GPU work can drive policy independently of CPU submission');
+const before=policy.bias;policy.sample({cpuMs:NaN,budgetMs:40,elapsedSeconds:.05});assert.equal(policy.bias,before);
+console.log('Render load LOD: sustained CPU/GPU overload, stall rejection, neutral-band stability, slow recovery passed');

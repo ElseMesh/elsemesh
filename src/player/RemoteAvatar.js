@@ -51,9 +51,12 @@ export class RemoteAvatar {
 		return this.ready;
 	}
 	// Hysteresis keeps small camera movements from repeatedly rebuilding meshes.
-	setViewDistance(distance) {
+	setViewDistance(distance, loadBias = 0) {
 		if (!Number.isFinite(distance) || distance < 0 || this.disposed) return;
-		let next = this.lod;
+		// Keep nearby faces/body at full detail even during sustained overload.
+		const bias = Number.isFinite(loadBias) ? Math.max(0, Math.min(2, loadBias)) : 0;
+		distance *= 2 ** (bias * Math.min(1, Math.max(0, (distance - 8) / 10)));
+		let next = distance <= 8 ? 0 : this.lod;
 		if (next === 0 && distance > 18) next = 1;
 		if (next === 1 && distance > 45) next = 2;
 		if (next === 2 && distance < 38) next = 1;

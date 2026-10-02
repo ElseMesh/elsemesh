@@ -79,6 +79,8 @@ import { selectWorldComponentsForView, selectWorldObjectsForView } from './netwo
 import { portalRouteFromPosition, crossedPortalPlane, mapPortalPlayerState } from './network/PortalHandoff.js';
 import { WorldPresenceSession } from './network/WorldPresenceSession.js';
 import { WorldPortalView } from './network/WorldPortalView.js';
+import { RenderLoadLOD } from './network/RenderLoadLOD.js';
+import { FrameWorkMeter } from './core/FrameWorkMeter.js';
 
 const _up = new Vector3( 0, 1, 0 );
 
@@ -178,6 +180,7 @@ export class App {
 		// data is derived (shore field, GPU textures, meshes)
 		await progress( 0.12, 'Building the village…' );
 		this.village = new Village( { scene, terrain: this.terrainData, colliders: this.colliders } );
+		this.worldVillageMaterialContext = { materials: this.village.materials, textures: this.village.textures };
 		this.vegetationEnabled = ! qs.has( 'noVeg' );
 		if ( this.vegetationEnabled ) {
 
@@ -409,6 +412,9 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 		} );
 
 		this.profiler = new Profiler( renderer );
+		this.frameWorkMeter = new FrameWorkMeter();
+		this.renderLoadLOD = new RenderLoadLOD();
+		this.renderLoadWarmup = 0;
 		this.profiler.track( 'fft rows', this.fft.rowKernel );
 		this.profiler.track( 'fft columns', this.fft.columnKernel );
 		this.profiler.track( 'sky view', this.atmosphere.skyViewKernel );
@@ -438,7 +444,7 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 			const initialAssetIDs = new Set( initialObjects.map( ( object ) => object.assetId ) );
 			for ( const component of initialComponents ) for ( const id of componentAssetIDs( component ) ) initialAssetIDs.add( id );
 			const visibleAssets = await connector.preload( { through: 'background', assetIDs: initialAssetIDs } );
-			this.linkedWorldRoot = await loadWorldPackage( connector, { assets: visibleAssets, objectIDs: initialObjectIDs } );
+			this.linkedWorldRoot = await loadWorldPackage( connector, { assets: visibleAssets, objectIDs: initialObjectIDs, materialContext: this.worldVillageMaterialContext } );
 			this.installWorldComponents( this.linkedWorldRoot, connector, initialComponentIDs );
 			registerWorldPackageCollisions( this.linkedWorldRoot, this.hostedColliders );
 			this.prepareHostedWorld( connector );
@@ -718,9 +724,14 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 	frame( dt ) {
 
 		const t0 = performance.now();
+		this.frameWorkMeter?.begin();
 		this._frame( dt );
 		const ms = performance.now() - t0;
 		this.cpuMs = this.cpuMs === undefined ? ms : this.cpuMs * 0.95 + ms * 0.05;
+		this.renderLoadWarmup += Math.min( dt, 0.1 );
+		const gpuSample = this.frameWorkMeter?.takeGPUSample();
+		const loadBias = this.renderLoadWarmup < 8 ? 0 : this.renderLoadLOD.sample( { cpuMs: ms, gpuMs: gpuSample?.gpuMs ?? null, gpuElapsedSeconds: gpuSample?.elapsedSeconds, budgetMs: 1000 / ( this.desktopFrameRateLimit || 60 ), elapsedSeconds: dt } );
+		this.renderLoadBias = loadBias;
 
 	}
 
@@ -982,7 +993,7 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 			connector.preparePortal( portal, { signal, onPreview: async ( { connector: destination, assets } ) => {
 				if ( signal.aborted ) return null;
 				if ( ! portal.openView ) return null;
-				const root = await loadWorldPackage( destination, { assets, signal } );
+				const root = await loadWorldPackage( destination, { assets, signal, materialContext: this.worldVillageMaterialContext } );
 				if ( signal.aborted ) { disposeWorldPackage( root ); return null; }
 				this.installWorldComponents( root, destination, componentsThroughPriority( destination, 'portal-preview', this.vegetationEnabled ) );
 				root.name = `hosted-world:${portal.destinationWorldId}`;
@@ -990,7 +1001,7 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 				return { root };
 			} } ).then( async ( prepared ) => {
 			if ( signal.aborted ) { prepared.connector.close(); return; }
-			const root = prepared.preview?.root || await loadWorldPackage( prepared.connector, { assets: prepared.assets, signal } );
+			const root = prepared.preview?.root || await loadWorldPackage( prepared.connector, { assets: prepared.assets, signal, materialContext: this.worldVillageMaterialContext } );
 			preparation.root = root;
 			if ( signal.aborted ) { this.disposeUncommittedWorldComponents( root ); prepared.connector.close(); return; }
 			this.installWorldComponents( root, prepared.connector, componentsThroughPriority( prepared.connector, 'visible', this.vegetationEnabled ) );
@@ -1154,8 +1165,8 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 			this.player.updateHostedWorld( dt );
 			this.updateWorldPortals();
 			this.updateWorldStreaming();
-			this.worldPresence?.update( dt, this.player );
-			updateWorldPackageLOD( this.linkedWorldRoot, this.camera );
+			this.worldPresence?.update( dt, this.player, undefined, this.renderLoadBias );
+			updateWorldPackageLOD( this.linkedWorldRoot, this.camera, this.renderLoadBias );
 		}
 		else {
 
@@ -1242,12 +1253,13 @@ fn terrainWetness( xz: vec2f, h: f32 ) -> vec2f {
 		this.post.beginFrame();
 		this.underwater.updateCamera( this.camera );
 		this.shadows.render( this.scene, this.engine.meshRenderer, this.shadows.update( this.camera, G.sunDir.value ) );
-		this.portalView.render( performance.now(), this.camera );
+		this.portalView.render( performance.now(), this.camera, this.renderLoadBias );
 		if ( this.remoteWorldActive ) this.updateWorldComponents( this.linkedWorldRoot, 0, this.camera );
 		this.sceneRenderer.render();
 		if ( this.post.flare ) this.post.flare.kernel.dispatch( 1 );
 		this.post.render();
 		this.post.endFrame();
+		this.frameWorkMeter?.end();
 		GPU.submit();
 		this.profiler.update( dt );
 

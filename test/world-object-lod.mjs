@@ -62,6 +62,16 @@ const portalCamera=new PerspectiveCamera(60,1,.1,1000);portalCamera.position.z=2
 updateWorldPackageLOD(root,portalCamera);await root.userData.worldPackage.lodControllers.get(object.id).pending.get(1);
 updateWorldPackageLOD(root,portalCamera);assert.equal(visibleTriangles(),4,'Independent camera selects its own detail');
 updateWorldPackageLOD(root,camera);assert.equal(visibleTriangles(),8,'Main view restores its detail after preview');
+// Sustained-load bias changes actual visible geometry using each render camera.
+camera.position.z=0;
+const adaptive=root.userData.worldPackage.lodControllers.get(object.id);
+adaptive.update(camera,performance.now(),1);await adaptive.pending.get(1);
+adaptive.update(camera,performance.now(),1);assert.equal(visibleTriangles(),4,'Load bias selects real reduced geometry');
+adaptive.update(camera,performance.now(),0);assert.equal(visibleTriangles(),8,'Headroom restores original geometry');
+portalCamera.position.z=60;adaptive.update(portalCamera,performance.now(),2);
+assert.equal(visibleTriangles(),2,'Mapped distant preview uses its own biased level');
+camera.position.z=-7;adaptive.update(camera,performance.now(),2);
+assert.equal(visibleTriangles(),8,'Large near view retains full detail under maximum load');
 disposeWorldPackage(root);disposeWorldPackage(root);
 assert.ok(root.userData.worldPackage.lodControllers.get(object.id).controller.signal.aborted);
 console.log('Object LOD: projected selection, hysteresis, async races, real GLB triangle reductions, collision and per-camera restoration passed');

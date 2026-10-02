@@ -5,12 +5,15 @@ const center = new Vector3();
 
 // Screen fraction is projected sphere diameter divided by viewport height.
 // Selection stays outside renderer traversal so hidden meshes can become active.
-export function selectObjectLOD(object, camera, previous = 0) {
+export function selectObjectLOD(object, camera, previous = 0, loadBias = 0) {
  if (!object.lods?.length || !object.streamingBounds) return 0;
  transformBoundsCenter(object, object.streamingBounds.center, center);
  const radius = object.streamingBounds.radius * Math.max(...(object.scale || [1,1,1]));
  const distance = camera.position.distanceTo(center);
- const fraction = distance <= radius ? Infinity : radius * Math.abs(camera.projectionMatrix.elements[5]) / Math.sqrt(distance * distance - radius * radius);
+ const projected = distance <= radius ? Infinity : radius * Math.abs(camera.projectionMatrix.elements[5]) / Math.sqrt(distance * distance - radius * radius);
+ // Preserve close inspection; bias only objects occupying less than 25% of height.
+ const bias = Number.isFinite(loadBias) ? Math.max(0, Math.min(2, loadBias)) : 0;
+ const fraction = projected >= .25 ? projected : projected / (2 ** bias);
  let level = Math.min(previous, object.lods.length);
  while (level < object.lods.length && fraction < object.lods[level].maxScreenFraction * .88) level++;
  while (level > 0 && fraction > object.lods[level-1].maxScreenFraction * 1.12) level--;
@@ -23,9 +26,9 @@ export class WorldObjectLOD {
   this.level = 0; this.desired = 0; this.loaded = new Set([0]); this.pending = new Map();
   this.controller = new AbortController(); this.retryAfter = new Map(); this.disposed = false;
  }
- update(camera, now = performance.now()) {
+ update(camera, now = performance.now(), loadBias = 0) {
   if (this.disposed) return;
-  const level = selectObjectLOD(this.object, camera, this.desired);
+  const level = selectObjectLOD(this.object, camera, this.desired, loadBias);
   this.desired = level;
   if (this.loaded.has(level)) {
    this.showLevel(level); this.level = level; return;

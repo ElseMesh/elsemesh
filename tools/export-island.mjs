@@ -11,7 +11,8 @@ import { BoatModel } from '../src/world/BoatModel.js';
 import { WORLD } from '../src/world/WorldLayout.js';
 import { Rocks } from '../src/world/Rocks.js';
 import { Colliders } from '../src/world/Colliders.js';
-import { Builder } from '../src/world/village/GeoBuilder.js';
+import { Builder, Batch } from '../src/world/village/GeoBuilder.js';
+import { VILLAGE_MATERIAL_PROFILE, VILLAGE_MATERIAL_ROLES } from '../src/network/WorldVillageMaterial.js';
 import { InstancedProps } from '../src/world/Props.js';
 import { DebrisPlacer } from '../src/world/debris/DebrisPlacement.js';
 import { SCAN_ASSETS } from '../src/world/debris/ScannedDebris.js';
@@ -51,7 +52,7 @@ const terrainPreviewGLB = exportTerrain( terrain, 128 );
 const terrainPreviewAssetId = `sha256:${createHash( 'sha256' ).update( terrainPreviewGLB ).digest( 'hex' )}`;
 const staticAssets = new Map( [ [ assetId, glb ], [ terrainPreviewAssetId, terrainPreviewGLB ] ] );
 const generated = buildIslandProceduralContent( terrain );
-const villageGLB = exportBatchGLB( generated.villageBatches, 'Procedural village' );
+const villageGLB = exportBatchGLB( generated.villageBatches, 'Procedural village', true );
 const villageAssetId = `sha256:${createHash( 'sha256' ).update( villageGLB ).digest( 'hex' )}`;
 const villageBounds = boundsForGLB( villageGLB );
 staticAssets.set( villageAssetId, villageGLB );
@@ -143,7 +144,7 @@ const source = {
 		seaLevel: 0,
 		avatarComplexity: 20000,
 		physicsProfile: 'tidewater-default',
-		requiredFeatures: [ 'tidewater.static-glb/1', 'tidewater.static-glb-quaternion/1', 'tidewater.static-vegetation/1', 'tidewater.static-reef/1', 'tidewater.island-ocean/1', 'tidewater.downeast-boat/1', 'tidewater.ambient-audio/1', 'tidewater.portal-handoff/1', 'tidewater.portal-preview-static/1' ],
+		requiredFeatures: [ 'tidewater.static-glb/1', 'tidewater.static-glb-quaternion/1', 'tidewater.village-materials/1', 'tidewater.static-vegetation/1', 'tidewater.static-reef/1', 'tidewater.island-ocean/1', 'tidewater.downeast-boat/1', 'tidewater.ambient-audio/1', 'tidewater.portal-handoff/1', 'tidewater.portal-preview-static/1' ],
 		maxPackageBytes: 64 * 1024 * 1024,
 	},
 	hosts: [],
@@ -276,6 +277,7 @@ function buildIslandProceduralContent( terrainData ) {
 	} ) );
 	const B = new Builder();
 	const placer = new DebrisPlacer( { B, inst: new InstancedProps( B ), terrain: terrainData, village, vegetation, rocks, colliders } ).run();
+	foldVillageMaterialBatches( village.B );
 	const batches = Object.entries( village.B.batches )
 		.filter( ( [ , batch ] ) => batch.vcount > 0 )
 		.map( ( [ name, batch ] ) => ( { name, batch } ) );
@@ -289,6 +291,20 @@ function buildIslandProceduralContent( terrainData ) {
 		debris: placer.scanned,
 		vegetation: vegetation.records,
 	};
+}
+
+// Preserve the exact material packing used by Village._assemble().
+function foldVillageMaterialBatches( builder ) {
+	const take = ( key ) => { const batch = builder.batches[ key ]; delete builder.batches[ key ]; return batch; };
+	const wood = builder.batch( 'wood' ), hard = builder.batch( 'hard' ), fabric = builder.batch( 'fabric' );
+	const glass = take( 'glass' ), rope = take( 'rope' ), cloth = take( 'cloth' ), net = take( 'net' ), flag = take( 'flag' );
+	if ( glass ) wood.append( glass, ( d ) => [ d[ 0 ], d[ 1 ], 9, d[ 2 ] ] );
+	if ( rope ) hard.append( rope, ( d ) => [ d[ 0 ], 0, 0, 2 + d[ 1 ] ] );
+	if ( cloth ) fabric.append( cloth, ( d ) => [ d[ 0 ], d[ 1 ], 0, 0 ] );
+	const nets = new Batch();
+	if ( net ) nets.append( net, ( d ) => [ d[ 0 ], d[ 1 ], Math.max( 0.02, d[ 2 ] ), 0 ] );
+	if ( flag ) fabric.append( flag, ( d ) => [ d[ 0 ], d[ 1 ], d[ 2 ] + 10000, d[ 3 ] ] );
+	if ( nets.vcount > 0 ) builder.batches.net = nets;
 }
 
 function buildBoatBatches() {
@@ -316,7 +332,7 @@ function buildBoatBatches() {
 
 }
 
-function exportBatchGLB( batches, sceneName ) {
+function exportBatchGLB( batches, sceneName, villageMaterials = false ) {
 	const chunks = [], bufferViews = [], accessors = [];
 	let byteLength = 0;
 	const append = ( typed, target ) => {
@@ -331,7 +347,7 @@ function exportBatchGLB( batches, sceneName ) {
 	};
 	const accessor = ( typed, target, type, componentType = 5126 ) => {
 		const bufferView = append( typed, target );
-		const size = type === 'VEC3' ? 3 : type === 'VEC2' ? 2 : 1;
+		const size = type === 'VEC4' ? 4 : type === 'VEC3' ? 3 : type === 'VEC2' ? 2 : 1;
 		const index = accessors.length;
 		accessors.push( { bufferView, componentType, count: typed.length / size, type } );
 		return index;
@@ -339,7 +355,10 @@ function exportBatchGLB( batches, sceneName ) {
 	const primitives = [], materials = [];
 	for ( const { name, batch } of batches ) {
 		const material = materials.length;
+		const role = name.startsWith( 'sign-' ) ? name.slice( 5 ) : name;
+		if ( villageMaterials && ! VILLAGE_MATERIAL_ROLES.includes( role ) ) throw new Error( `Unknown village material role: ${role}` );
 		materials.push( {
+			...( villageMaterials ? { extras: { tidewaterMaterial: { profile: VILLAGE_MATERIAL_PROFILE, role } } } : {} ),
 			name: `${sceneName} ${name}`,
 			pbrMetallicRoughness: { baseColorFactor: [ 1, 1, 1, 1 ], metallicFactor: 0, roughnessFactor: name.includes( 'roofMetal' ) ? 0.72 : name.includes( 'boat-glass' ) ? 0.35 : 0.82 },
 			doubleSided: true,
@@ -350,6 +369,7 @@ function exportBatchGLB( batches, sceneName ) {
 				NORMAL: accessor( Float32Array.from( batch.nrm ), 34962, 'VEC3' ),
 				TEXCOORD_0: accessor( Float32Array.from( batch.uv ), 34962, 'VEC2' ),
 				COLOR_0: accessor( Float32Array.from( batch.tint ), 34962, 'VEC3' ),
+				...( villageMaterials ? { _TW_VDATA: accessor( Float32Array.from( batch.data ), 34962, 'VEC4' ) } : {} ),
 			},
 			indices: accessor( Uint32Array.from( batch.idx ), 34963, 'SCALAR', 5125 ),
 			material,
