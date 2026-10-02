@@ -8,6 +8,8 @@ The daemon is a transport and content service. The world owner controls the mani
 
 Run `npm run test:world-gateway` for a local owner/cache integration check. It builds temporary `worldd` nodes, signs a world manifest, syncs an owner-authorized cache over libp2p, connects the production `WorldConnector` through a trusted temporary HTTPS/WSS proxy, and verifies content-hash recovery after the owner is stopped. The test exercises Node's native WebSocket implementation with a test-scoped trusted certificate; it does not replace browser-engine or WebTransport testing.
 
+For the two current development-world links, build commands and restart instructions, see [testing two worlds](testing-two-worlds.md).
+
 ## Hosting a checked-in world profile
 
 `tools/serve-world-profile.mjs` provisions an immutable world package into one named owner profile, signs its runtime manifest with that profile's persistent node key, verifies and installs all package assets, then starts `worldd`. Give every simultaneously running profile its own P2P and HTTP ports. The helper refuses to overwrite an existing profile manifest; once provisioned, the same command can restart it without `--source` or `--assets`.
