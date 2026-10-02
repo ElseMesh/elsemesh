@@ -60,14 +60,17 @@ async function validateFlatDirectory(directory, expectedFiles, label) {
 	if ( entries.some( ( entry ) => ! entry.isFile() || entry.isSymbolicLink() ) || entries.length !== expectedFiles.size || entries.some( ( entry ) => ! expectedFiles.has( entry.name ) ) ) throw new Error( `${label} may contain only the declared regular files` );
 }
 
-export async function validateAITaskBundle(taskPath) {
+export async function validateAITaskBundle(taskPath, { requirePlan = true } = {}) {
 	const taskRoot = await realpath( taskPath );
 	const rootInfo = await lstat( taskPath );
 	if ( ! rootInfo.isDirectory() || rootInfo.isSymbolicLink() ) throw new Error( 'task path must be a real directory' );
 	const taskManifestPath = path.join( taskRoot, 'task.json' );
 	await regularFile( taskManifestPath, MAX_SOURCE_BYTES, 'task.json' );
 	const rootEntries = await readdir( taskRoot, { withFileTypes: true } );
-	if ( rootEntries.length !== 5 || rootEntries.some( ( entry ) => ! [ 'task.json', 'world-source.json', 'scene.blend', 'plan.json', 'assets' ].includes( entry.name ) || entry.isSymbolicLink() ) || rootEntries.find( ( entry ) => entry.name === 'assets' )?.isDirectory() !== true ) throw new Error( 'task bundle may contain only its declared files and assets directory' );
+	const requiredEntries = new Set( [ 'task.json', 'world-source.json', 'scene.blend', 'assets' ] );
+	const allowedEntries = new Set( [ ...requiredEntries, 'plan.json' ] );
+	const hasPlan = rootEntries.some( ( entry ) => entry.name === 'plan.json' );
+	if ( rootEntries.length !== requiredEntries.size + Number( requirePlan || hasPlan ) || rootEntries.some( ( entry ) => ! allowedEntries.has( entry.name ) || entry.isSymbolicLink() ) || [ ...requiredEntries ].some( ( name ) => ! rootEntries.some( ( entry ) => entry.name === name ) ) || rootEntries.find( ( entry ) => entry.name === 'assets' )?.isDirectory() !== true ) throw new Error( 'task bundle may contain only its declared files and assets directory' );
 	const task = JSON.parse( await readFile( taskManifestPath, 'utf8' ) );
 	if ( ! task || task.protocol !== AI_TASK_PROTOCOL || ! TASK_ID.test( task.taskId || '' ) || ! HASH.test( task.sourceHash || '' ) || ! HASH.test( task.blendHash || '' ) || typeof task.worldId !== 'string' || ! /^tw-world:[\w.-]{1,128}$/.test( task.worldId ) || typeof task.instruction !== 'string' || ! task.instruction.trim() || task.instruction.length > 8000 || task.actionProtocol !== 'elsemesh.blender-actions/1' ) throw new Error( 'invalid AI edit task header' );
 	if ( ! Array.isArray( task.includedObjectIds ) || task.includedObjectIds.length > 128 || new Set( task.includedObjectIds ).size !== task.includedObjectIds.length || task.includedObjectIds.some( ( id ) => ! OBJECT_ID.test( id ) ) || ! Array.isArray( task.includedPortalIds ) || task.includedPortalIds.length > 128 || new Set( task.includedPortalIds ).size !== task.includedPortalIds.length || task.includedPortalIds.some( ( id ) => ! PORTAL_ID.test( id ) ) || ! Array.isArray( task.availableAssetIds ) || task.availableAssetIds.length > 256 || task.availableAssetIds.some( ( id ) => ! HASH.test( id ) ) || new Set( task.availableAssetIds ).size !== task.availableAssetIds.length ) throw new Error( 'invalid task object, portal, or asset allow-list' );
@@ -78,8 +81,8 @@ export async function validateAITaskBundle(taskPath) {
 	const assetsPath = path.join( taskRoot, task.files.assets );
 	const sourceInfo = await regularFile( sourcePath, MAX_SOURCE_BYTES, 'world source' );
 	const blendInfo = await regularFile( blendPath, MAX_BLEND_BYTES, 'Blender scene' );
-	const planInfo = await regularFile( planPath, MAX_PLAN_BYTES, 'action plan' );
-	if ( sourceInfo.size + blendInfo.size + planInfo.size > MAX_TASK_BYTES ) throw new Error( 'task bundle exceeds the 2 GiB total size limit' );
+	const planInfo = requirePlan ? await regularFile( planPath, MAX_PLAN_BYTES, 'action plan' ) : null;
+	if ( sourceInfo.size + blendInfo.size + ( planInfo?.size || 0 ) > MAX_TASK_BYTES ) throw new Error( 'task bundle exceeds the 2 GiB total size limit' );
 	const sourceBytes = await readFile( sourcePath );
 	if ( `sha256:${createHash( 'sha256' ).update( sourceBytes ).digest( 'hex' )}` !== task.sourceHash ) throw new Error( 'task source snapshot hash mismatch' );
 	const source = validateWorldSource( JSON.parse( sourceBytes.toString( 'utf8' ) ) );
@@ -95,7 +98,7 @@ export async function validateAITaskBundle(taskPath) {
 	}
 	if ( task.availableAssetIds.some( ( id ) => ! sourceAssets.has( id ) ) ) throw new Error( 'task asset allow-list contains an asset absent from the source' );
 	await validateFlatDirectory( assetsPath, new Set( task.availableAssetIds.map( ( id ) => id.slice( 7 ) ) ), 'task assets' );
-	let totalBytes = sourceInfo.size + blendInfo.size + planInfo.size;
+	let totalBytes = sourceInfo.size + blendInfo.size + ( planInfo?.size || 0 );
 	for ( const assetId of task.availableAssetIds ) {
 		const assetPath = path.join( assetsPath, assetId.slice( 7 ) );
 		const info = await regularFile( assetPath, MAX_ASSET_BYTES, `asset ${assetId}` );
@@ -103,10 +106,13 @@ export async function validateAITaskBundle(taskPath) {
 		if ( totalBytes > MAX_TASK_BYTES ) throw new Error( 'task bundle exceeds the 2 GiB total size limit' );
 		if ( await digest( assetPath ) !== assetId ) throw new Error( `task asset failed content hash verification: ${assetId}` );
 	}
-	const plan = JSON.parse( await readFile( planPath, 'utf8' ) );
-	if ( ! plan || plan.protocol !== task.actionProtocol || plan.sourceHash !== task.sourceHash || ! Array.isArray( plan.actions ) || plan.actions.length > 256 ) throw new Error( 'action plan protocol, source hash, or action count is invalid' );
-	validateScopedActions( plan.actions, task );
-	return { taskRoot, task, source, sourceBytes, plan, planPath, sourcePath, blendPath, assetsPath, outputAssetsRequired: plan.actions.some( ( action ) => action?.op === 'mesh.create' ), actionCounts: countActions( plan.actions ) };
+	let plan = null;
+	if ( requirePlan ) {
+		plan = JSON.parse( await readFile( planPath, 'utf8' ) );
+		if ( ! plan || plan.protocol !== task.actionProtocol || plan.sourceHash !== task.sourceHash || ! Array.isArray( plan.actions ) || plan.actions.length > 256 ) throw new Error( 'action plan protocol, source hash, or action count is invalid' );
+		validateScopedActions( plan.actions, task );
+	}
+	return { taskRoot, task, source, sourceBytes, plan, planPath, sourcePath, blendPath, assetsPath, outputAssetsRequired: plan?.actions.some( ( action ) => action?.op === 'mesh.create' ) || false, actionCounts: countActions( plan?.actions || [] ) };
 }
 
 export function validateScopedActions(actions, task) {

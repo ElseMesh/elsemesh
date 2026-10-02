@@ -48,9 +48,25 @@ For a portable Blender package, also set `BLENDER_EXECUTABLE` and `BLENDER_PREFI
 
 Successful output contains an unsigned candidate source, a candidate `.blend`, a rendered `review-preview.png` when the scene has renderable meshes, any newly generated content-addressed GLBs, `review.json`, and an offline `review.html`. Blender uses its headless Workbench renderer with a temporary camera framed on edited meshes (or on the scene meshes when an edit has no mesh target); the temporary render setup is removed before the candidate `.blend` is saved. The PNG is bounded to 640 × 420 and 16 MiB, and the worker checks its signature, dimensions, and SHA-256 before adding it to the report. Workbench previews help inspect shape, placement, and material base colors; they do not reproduce the game renderer, shader effects, lighting, or texture fidelity. If the scene contains no mesh geometry, the report states that no rendered preview is available. The report also contains before/after records for changed objects and portals, before/after values for changed world fields, generated asset IDs and byte sizes, source hashes, validation outcomes, and explicit unsigned/unpublished status. The HTML page safely displays those changes and preview without making network requests. An owner must inspect the source diff, preview, and Blender scene, and verify generated asset hashes. To publish, merge required original and generated assets into a reviewed package and use the separate owner-only publication flow against the exact base-source snapshot. Running the worker never signs or publishes anything.
 
+## Connect a Blender-capable assistant with MCP
+
+The local MCP adapter exposes the existing task and isolated-worker boundary to any MCP-compatible AI host. First create the task bundle as above, then configure the host to launch the adapter with fixed task and output paths:
+
+```sh
+node /path/to/elsemesh/tools/ai-editor-mcp.mjs \
+  --task /var/tmp/elsemesh-fish-table-task \
+  --out /var/tmp/elsemesh-fish-table-candidate
+```
+
+The adapter provides three tools: `get_task_context` returns the task instruction, world summary, selected object/portal records, and explicit asset allow-list; `submit_action_plan` accepts at most 256 typed actions, checks stable IDs and asset scope, and creates one immutable `plan.json`; `run_candidate` executes the existing Bubblewrap worker and returns its unsigned report and review paths. Replacing a submitted plan or candidate requires preparing a new task and starting a new adapter process with a new output directory. The adapter has no arbitrary path arguments on tool calls, no model-provider credentials, and no owner signing/publication command. The assistant can propose and render a candidate, but the owner still prepares and explicitly publishes an approved package.
+
+The adapter uses the official MCP TypeScript server SDK over local stdio. Configure the command and arguments in the AI host's local server settings; stdout is reserved for protocol messages. `node test/ai-edit-mcp.mjs` checks tool discovery, task-context access, one-time scoped plan submission, rejection of out-of-scope IDs, and worker-bundle validation without requiring Blender.
+
 ## Current boundary
 
 This worker supplies a provider-neutral task and execution format that Blender-capable assistants can use, plus a local artifact review page with a rendered candidate image and a CLI that prepares a hash-verified owner publication package. The opt-in Blender runtime test runs the real worker output through this preparer and verifies the complete unsigned package. An interactive accept/reject UI, model selection, paid-service credentials, remote task hosting, and automated training-data collection are separate service work and are not implemented here. Publication still requires the owner's separate explicit command. The worker currently requires Linux user namespaces and Bubblewrap; a portable Blender runtime is supported via an explicit trusted prefix. On 2026-10-02, the isolated worker test ran with Blender 4.3.2 and created an unsigned candidate source, `.blend`, content-hash-verified GLB, rendered review image, and review report. It is not a Termux execution path. The source and world-node formats remain usable without this worker.
+
+The MCP adapter now connects compatible local assistants to this workflow, but the editing service is not yet hosted and does not have an owner-facing accept/reject screen or accepted-task training corpus.
 
 ## Prepare an owner publication package
 
