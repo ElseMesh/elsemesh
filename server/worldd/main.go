@@ -91,6 +91,8 @@ func run() error {
 	listProposals := flag.Bool("list-proposals", false, "list this owner's locally queued edit proposals, then exit (requires --manifest)")
 	inspectManifest := flag.Bool("inspect-manifest", false, "verify and print the current owner-signed manifest payload, then exit")
 	publishManifestPath := flag.String("publish-manifest", "", "publish an unsigned next-version manifest after importing its package assets")
+	baseSourcePath := flag.String("base-source", "", "exact world-source file used as the publication base")
+	candidateSourcePath := flag.String("source", "", "world-source file represented by --publish-manifest")
 	exportProposalID := flag.String("export-proposal", "", "export one verified queued proposal patch by sha256 ID (requires --manifest and --proposal-out)")
 	proposalOut := flag.String("proposal-out", "", "new private output file for --export-proposal")
 	dataDir := flag.String("data", defaultData, "private daemon data directory")
@@ -141,11 +143,11 @@ func run() error {
 			operationCount++
 		}
 	}
-	publishOperation := *publishManifestPath != "" && *importPackagePath != "" && *manifestPath != ""
+	publishOperation := *publishManifestPath != "" && *importPackagePath != "" && *manifestPath != "" && *baseSourcePath != "" && *candidateSourcePath != ""
 	if publishOperation {
 		operationCount-- // publishing is one combined import-and-activate operation
 	}
-	if operationCount > 1 || (*publishManifestPath != "" && !publishOperation) || (*inspectManifest && *manifestPath == "") || (*manifestOut != "" && *signManifestPath == "") || (*roleDocumentOut != "" && *signRoleGrantPath == "" && *signRoleRevocationsPath == "") || ((*signRoleGrantPath != "" || *signRoleRevocationsPath != "") && *roleDocumentOut == "") || (*signRoleGrantPath != "" && *signRoleRevocationsPath != "") || (*proposalOut != "" && *exportProposalID == "") || (*exportProposalID != "" && (*proposalOut == "" || *manifestPath == "")) || (*listProposals && *manifestPath == "") {
+	if operationCount > 1 || (*publishManifestPath != "" && !publishOperation) || ((*baseSourcePath != "" || *candidateSourcePath != "") && *publishManifestPath == "") || (*inspectManifest && *manifestPath == "") || (*manifestOut != "" && *signManifestPath == "") || (*roleDocumentOut != "" && *signRoleGrantPath == "" && *signRoleRevocationsPath == "") || ((*signRoleGrantPath != "" || *signRoleRevocationsPath != "") && *roleDocumentOut == "") || (*signRoleGrantPath != "" && *signRoleRevocationsPath != "") || (*proposalOut != "" && *exportProposalID == "") || (*exportProposalID != "" && (*proposalOut == "" || *manifestPath == "")) || (*listProposals && *manifestPath == "") {
 		return errors.New("choose one one-shot operation; publish, signing, and proposal export flags require their matching inputs")
 	}
 	if *listWorldProfiles {
@@ -300,7 +302,15 @@ func run() error {
 			fmt.Println(string(encoded))
 			return nil
 		}
-		count, totalBytes, publishErr := publishOwnerWorldManifest(activePath, *publishManifestPath, *importPackagePath, *dataDir, localID.String(), key, time.Now())
+		baseHash, hashErr := hashWorldSourceFile(*baseSourcePath)
+		if hashErr != nil {
+			return fmt.Errorf("base source: %w", hashErr)
+		}
+		candidateHash, hashErr := hashWorldSourceFile(*candidateSourcePath)
+		if hashErr != nil {
+			return fmt.Errorf("candidate source: %w", hashErr)
+		}
+		count, totalBytes, publishErr := publishOwnerWorldManifest(activePath, *publishManifestPath, *importPackagePath, baseHash, candidateHash, *dataDir, localID.String(), key, time.Now())
 		if publishErr != nil {
 			return publishErr
 		}

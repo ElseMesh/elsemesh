@@ -18,7 +18,8 @@ function options(argv) {
 
 async function main() {
 	const args = options( process.argv.slice( 2 ) );
-	const source = validateWorldSource( JSON.parse( await readFile( args.source, 'utf8' ) ) );
+	const sourceBytes = await readFile( args.source );
+	const source = validateWorldSource( JSON.parse( sourceBytes.toString( 'utf8' ) ) );
 	const version = args.version === undefined ? 1 : Number( args.version );
 	if ( ! Number.isSafeInteger( version ) || version < 1 ) throw new Error( '--version must be a positive integer' );
 	const authorityEpoch = args[ 'authority-epoch' ] === undefined ? 1 : Number( args[ 'authority-epoch' ] );
@@ -78,6 +79,7 @@ async function main() {
 	const manifest = {
 		protocol: 'tidewater.world/1',
 		worldId: source.worldId,
+		sourceHash: `sha256:${createHash( 'sha256' ).update( sourceBytes ).digest( 'hex' )}`,
 		ownerPeerId: args.owner,
 		authorityPeerId: args.owner,
 		authorityEpoch,

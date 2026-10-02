@@ -1,16 +1,18 @@
 #!/usr/bin/env node
+import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { lstat, mkdtemp, readFile, rm } from 'node:fs/promises';
 import path from 'node:path';
+import { validateWorldSource } from '../src/network/WorldSource.js';
 
 function parseArgs(argv) {
 	const args = {};
 	for ( let i = 0; i < argv.length; i ++ ) {
 		const key = argv[ i ];
-		if ( ! [ '--worldd', '--data', '--source', '--assets' ].includes( key ) || ! argv[ i + 1 ] ) throw new Error( `Invalid or incomplete option: ${key}` );
+		if ( ! [ '--worldd', '--data', '--source', '--base-source', '--assets' ].includes( key ) || ! argv[ i + 1 ] ) throw new Error( `Invalid or incomplete option: ${key}` );
 		args[ key.slice( 2 ) ] = argv[ ++ i ];
 	}
-	for ( const key of [ 'worldd', 'data', 'source', 'assets' ] ) if ( ! args[ key ] ) throw new Error( `Missing --${key}` );
+	for ( const key of [ 'worldd', 'data', 'source', 'base-source', 'assets' ] ) if ( ! args[ key ] ) throw new Error( `Missing --${key}` );
 	return Object.fromEntries( Object.entries( args ).map( ( [ key, value ] ) => [ key, path.resolve( value ) ] ) );
 }
 
@@ -33,7 +35,13 @@ async function main() {
 	await requirePrivateRegularFile( activeManifest );
 	const inspectJSON = run( args.worldd, [ '--data', args.data, '--manifest', activeManifest, '--inspect-manifest' ] );
 	const current = JSON.parse( inspectJSON );
-	const source = JSON.parse( await readFile( args.source, 'utf8' ) );
+	const baseSourceBytes = await readFile( args[ 'base-source' ] );
+	const baseSourceHash = `sha256:${createHash( 'sha256' ).update( baseSourceBytes ).digest( 'hex' )}`;
+	const baseSource = validateWorldSource( JSON.parse( baseSourceBytes.toString( 'utf8' ) ) );
+	if ( baseSource.worldId !== current.worldId ) throw new Error( 'Base source worldId does not match the selected owner profile' );
+	if ( current.sourceHash && current.sourceHash !== baseSourceHash ) throw new Error( 'Base source is stale; it does not match the active signed manifest sourceHash' );
+	if ( ! current.sourceHash ) console.error( 'The active manifest has no sourceHash; this explicit owner publication will adopt --base-source as its reviewed baseline.' );
+	const source = validateWorldSource( JSON.parse( await readFile( args.source, 'utf8' ) ) );
 	if ( source.worldId !== current.worldId ) throw new Error( 'Source worldId does not match the selected owner profile' );
 	if ( current.version >= Number.MAX_SAFE_INTEGER ) throw new Error( 'World version cannot be incremented safely' );
 	if ( ! Number.isSafeInteger( current.authorityEpoch ) || current.authorityEpoch < 1 ) throw new Error( 'Active manifest has an invalid authority epoch' );
@@ -56,6 +64,8 @@ async function main() {
 			'--manifest', activeManifest,
 			'--publish-manifest', unsignedManifest,
 			'--import-package', args.assets,
+			'--base-source', args[ 'base-source' ],
+			'--source', args.source,
 		] );
 		console.log( `Published ${source.worldId} as version ${current.version + 1}. Restart the running worldd process to load it.` );
 	} finally {

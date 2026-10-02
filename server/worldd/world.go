@@ -24,12 +24,13 @@ const (
 )
 
 var (
-	worldIDPattern      = regexp.MustCompile(`^tw-world:[a-zA-Z0-9._-]{1,128}$`)
-	objectIDPattern     = regexp.MustCompile(`^tw-object:[\w.-]{1,128}$`)
-	portalIDPattern     = regexp.MustCompile(`^tw-portal:[\w.-]{1,128}$`)
-	componentIDPattern  = regexp.MustCompile(`^tw-component:[\w.-]{1,128}$`)
-	assetIDPattern      = regexp.MustCompile(`^sha256:[0-9a-f]{64}$`)
-	worldFeaturePattern = regexp.MustCompile(`^tidewater\.[a-z0-9.-]+/\d+$`)
+	worldIDPattern           = regexp.MustCompile(`^tw-world:[a-zA-Z0-9._-]{1,128}$`)
+	objectIDPattern          = regexp.MustCompile(`^tw-object:[\w.-]{1,128}$`)
+	portalIDPattern          = regexp.MustCompile(`^tw-portal:[\w.-]{1,128}$`)
+	componentIDPattern       = regexp.MustCompile(`^tw-component:[\w.-]{1,128}$`)
+	assetIDPattern           = regexp.MustCompile(`^sha256:[0-9a-f]{64}$`)
+	sourceContentHashPattern = regexp.MustCompile(`^sha256:[0-9a-f]{64}$`)
+	worldFeaturePattern      = regexp.MustCompile(`^tidewater\.[a-z0-9.-]+/\d+$`)
 )
 
 type vector3 [3]float64
@@ -233,6 +234,7 @@ type movementRules struct {
 type worldManifest struct {
 	Protocol        string           `json:"protocol"`
 	WorldID         string           `json:"worldId"`
+	SourceHash      string           `json:"sourceHash,omitempty"`
 	OwnerPeerID     string           `json:"ownerPeerId"`
 	AuthorityPeerID string           `json:"authorityPeerId"`
 	AuthorityEpoch  uint64           `json:"authorityEpoch"`
@@ -251,6 +253,9 @@ type worldManifest struct {
 func validateManifest(manifest worldManifest, localPeerID string, now time.Time) error {
 	if manifest.Protocol != manifestProtocol || !worldIDPattern.MatchString(manifest.WorldID) || manifest.Version == 0 || manifest.Version > maxSafeJSInteger {
 		return errors.New("invalid world identity or protocol")
+	}
+	if manifest.SourceHash != "" && !sourceContentHashPattern.MatchString(manifest.SourceHash) {
+		return errors.New("invalid world source hash")
 	}
 	if len(manifest.Title) == 0 || len(manifest.Title) > 160 || strings.TrimSpace(manifest.Title) != manifest.Title {
 		return errors.New("invalid world title")

@@ -5,12 +5,46 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"time"
 
 	"github.com/libp2p/go-libp2p/core/crypto"
 )
+
+const maxWorldSourceBytes int64 = 16 << 20
+
+func hashWorldSourceFile(path string) (string, error) {
+	info, err := os.Lstat(path)
+	if err != nil {
+		return "", err
+	}
+	if !info.Mode().IsRegular() || info.Size() < 1 || info.Size() > maxWorldSourceBytes {
+		return "", errors.New("source must be a regular file no larger than 16 MiB")
+	}
+	file, err := os.Open(path)
+	if err != nil {
+		return "", err
+	}
+	defer file.Close()
+	opened, err := file.Stat()
+	if err != nil || !os.SameFile(info, opened) {
+		return "", errors.New("source file changed while opening")
+	}
+	content, err := io.ReadAll(io.LimitReader(file, maxWorldSourceBytes+1))
+	if err != nil {
+		return "", err
+	}
+	if int64(len(content)) != info.Size() || int64(len(content)) > maxWorldSourceBytes {
+		return "", errors.New("source file changed or exceeds 16 MiB")
+	}
+	latest, err := file.Stat()
+	if err != nil || latest.Size() != info.Size() || !latest.ModTime().Equal(info.ModTime()) {
+		return "", errors.New("source file changed while hashing")
+	}
+	return assetHash(content), nil
+}
 
 func readOwnedWorldManifest(path, localPeerID string, key crypto.PrivKey, now time.Time) (worldManifest, []byte, error) {
 	info, err := os.Lstat(path)
@@ -44,7 +78,7 @@ func readOwnedWorldManifest(path, localPeerID string, key crypto.PrivKey, now ti
 	return world, raw, nil
 }
 
-func publishOwnerWorldManifest(activePath, candidatePath, packageAssetsDir, dataDir, localPeerID string, key crypto.PrivKey, now time.Time) (int, int64, error) {
+func publishOwnerWorldManifest(activePath, candidatePath, packageAssetsDir, baseSourceHash, candidateSourceHash, dataDir, localPeerID string, key crypto.PrivKey, now time.Time) (int, int64, error) {
 	if filepath.Clean(activePath) != filepath.Join(dataDir, "world.json") {
 		return 0, 0, errors.New("publication target must be this profile's data/world.json")
 	}
@@ -69,6 +103,15 @@ func publishOwnerWorldManifest(activePath, candidatePath, packageAssetsDir, data
 	if err != nil {
 		return 0, 0, err
 	}
+	if !sourceContentHashPattern.MatchString(baseSourceHash) {
+		return 0, 0, errors.New("base source hash must be a lowercase sha256 content ID")
+	}
+	if !sourceContentHashPattern.MatchString(candidateSourceHash) {
+		return 0, 0, errors.New("candidate source hash must be a lowercase sha256 content ID")
+	}
+	if current.SourceHash != "" && current.SourceHash != baseSourceHash {
+		return 0, 0, errors.New("base source is stale; it does not match the source hash in the active signed manifest")
+	}
 	candidateInfo, err := os.Lstat(candidatePath)
 	if err != nil {
 		return 0, 0, err
@@ -92,6 +135,12 @@ func publishOwnerWorldManifest(activePath, candidatePath, packageAssetsDir, data
 	}
 	if next.WorldID != current.WorldID || next.OwnerPeerID != localPeerID || next.AuthorityPeerID != current.AuthorityPeerID || next.AuthorityEpoch != current.AuthorityEpoch {
 		return 0, 0, errors.New("candidate must preserve the active world, owner, and authority epoch")
+	}
+	if !sourceContentHashPattern.MatchString(next.SourceHash) {
+		return 0, 0, errors.New("candidate manifest must include a valid sourceHash")
+	}
+	if next.SourceHash != candidateSourceHash {
+		return 0, 0, errors.New("candidate manifest sourceHash does not match the candidate source file")
 	}
 	if err := validateManifest(next, localPeerID, now); err != nil {
 		return 0, 0, fmt.Errorf("candidate manifest validation: %w", err)
