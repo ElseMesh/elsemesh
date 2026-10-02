@@ -3,6 +3,7 @@ import { Mesh } from '../scene/Mesh.js';
 import { BufferGeometry } from '../geometry/BufferGeometry.js';
 import { BufferAttribute } from '../geometry/BufferAttribute.js';
 import { Texture, StorageBuffer } from '../gpu/Texture.js';
+import { GPU } from '../gpu/GPU.js';
 import { generateMipmaps } from '../gpu/Mipmaps.js';
 import { Material } from './Material.js';
 import { decodeImage } from '../loaders/GLTF.js';
@@ -229,9 +230,9 @@ export class SkinnedModel {
 				const im = g.images[ src ];
 				const px = await decodeImage( im.bytes, im.mimeType );
 				const t = new Texture( { label: 'char' + src, width: px.width, height: px.height, format: srgb ? 'rgba8unorm-srgb' : 'rgba8unorm', data: px.data, mips: true, usage: [ 'sample', 'copyDst' ], sampler: 'anisoRepeat' } );
+				texCache.set( key, t );
 				t.getGPU();
 				generateMipmaps( t );
-				texCache.set( key, t );
 
 			}
 
@@ -501,10 +502,16 @@ export class SkinnedModel {
 
 		if ( this.disposed ) return;
 		this.disposed = true;
-		this.jointBuffer.destroy();
-		for ( const m of this.meshes ) m.geometry.dispose && m.geometry.dispose();
-		for ( const t of this.ownedTextures?.values() || [] ) t.destroy();
-		for ( const m of this.materials ) m.dispose();
+		// Async loading can record mipmaps before a stale model is discarded.
+		// Keep those textures alive until the pending encoder has been submitted.
+		const release = () => {
+			this.jointBuffer.destroy();
+			for ( const m of this.meshes ) m.geometry.dispose && m.geometry.dispose();
+			for ( const t of this.ownedTextures?.values() || [] ) t.destroy();
+			for ( const m of this.materials ) m.dispose();
+		};
+		if ( GPU.encoder ) GPU.onSubmit( null, release );
+		else release();
 
 	}
 

@@ -67,3 +67,16 @@ and visual transition/animation quality remain requirements in GOAL.md.
 Textures retain their full resolution at these mesh levels. The signed avatar
 complexity cap still rejects over-budget selected geometry rather than choosing
 a lower level solely to satisfy the cap.
+
+A live two-browser check exposed premature disposal of a stale character's
+textures while mipmap commands remained in the frame encoder. Model cleanup now
+waits for submission when an encoder is pending. A regression test verifies
+resources remain alive until the submit hook and are released only once.
+
+Local Chrome verification on 2026-10-02 used two independent visitors to an
+isolated loz-underneath world at loopback port 5206. The second visitor's
+textured avatar appeared, then disappeared on disconnect. Reloading the cleanup
+fix produced no additional WebGPU errors in the captured log; earlier errors
+remained in the log history. The overlapping default spawn put the camera inside
+the other avatar, so this check does not establish full-body animation quality,
+near/far visual fidelity or Flip7 performance. Those gates remain open.
