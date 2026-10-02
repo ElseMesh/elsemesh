@@ -423,8 +423,7 @@
         "entry",
         "exit",
         "openView",
-        "enabled",
-        "visual"
+        "enabled"
       ],
       "properties": {
         "id": {
@@ -461,7 +460,9 @@
           "type": "boolean"
         },
         "visual": {
-          "type": "string"
+          "type": "string",
+          "enum": ["timber", "stone", "metal"],
+          "description": "Optional client-rendered doorway frame material. Omit to render no frame."
         }
       },
       "additionalProperties": true

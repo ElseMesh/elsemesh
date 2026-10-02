@@ -119,6 +119,9 @@ def validate_source(source):
             raise ValueError("portal %s requires a destination world" % record["id"])
         if not isinstance(record.get("openView"), bool) or not isinstance(record.get("enabled"), bool):
             raise ValueError("portal %s requires boolean openView and enabled" % record["id"])
+        visual = record.get("visual")
+        if visual is not None and (not isinstance(visual, str) or visual not in {"timber", "stone", "metal"}):
+            raise ValueError("portal %s visual must be timber, stone, or metal" % record["id"])
     return source
 
 

@@ -10,6 +10,7 @@ import { validateWorldComponents, validateWorldHosts, validateWorldPortals } fro
 import { createWorldInviteURL, worldLinkFromLocation, WorldConnector } from '../src/network/WorldConnector.js';
 import { validateWorldRequirements } from '../src/network/WorldRules.js';
 import { VEGETATION_PLACEMENT_KINDS, decodeVegetationPlacements, encodeVegetationPlacements } from '../src/network/VegetationPlacements.js';
+import { disposeWorldPackage, loadWorldPackage } from '../src/network/WorldPackage.js';
 
 const portal = { entry: { position: [ 0, 1, 0 ], yaw: 0 } };
 const sequentialFailoverGrants = [
@@ -67,6 +68,8 @@ const source = {
 	} ],
 };
 assert.doesNotThrow( () => validateWorldSource( source ), 'portal may pin a separate secure destination gateway' );
+assert.doesNotThrow( () => validateWorldSource( { ...source, portals: [ { ...source.portals[ 0 ], visual: 'timber' } ] } ), 'source accepts a supported optional portal frame style' );
+assert.throws( () => validateWorldSource( { ...source, portals: [ { ...source.portals[ 0 ], visual: 'glass' } ] } ), /Invalid or duplicate portal record/, 'source rejects unsupported portal frame styles' );
 const discoveredSourcePortal = { ...source.portals[ 0 ] };
 delete discoveredSourcePortal.destinationPeerId;
 assert.doesNotThrow( () => validateWorldSource( { ...source, portals: [ discoveredSourcePortal ] } ), 'portal can resolve providers by stable destination world ID' );
@@ -75,11 +78,25 @@ assert.throws( () => validateWorldSource( { ...source, portals: [ { ...source.po
 const runtimePortal = { id: 'tw-portal:runtime-door', destinationWorldId: 'tw-world:destination', destinationPeerId: '12D3KooW12345678901234567890', entry: { position: [ 0, 0, 0 ], yaw: 0 }, exit: { position: [ 0, 0, 0 ], yaw: 0 }, openView: true, enabled: true };
 const runtimeIDs = new Set( [ 'tw-object:asset' ] );
 assert.doesNotThrow( () => validateWorldPortals( [ runtimePortal ], runtimeIDs ), 'browser accepts a valid signed portal' );
+assert.doesNotThrow( () => validateWorldPortals( [ { ...runtimePortal, visual: 'stone' } ] ), 'browser accepts signed portal frame styles' );
+assert.throws( () => validateWorldPortals( [ { ...runtimePortal, visual: 'glass' } ] ), /unsupported visual style/, 'browser rejects unknown signed portal frame styles' );
 const discoverableRuntimePortal = { ...runtimePortal };
 delete discoverableRuntimePortal.destinationPeerId;
 assert.doesNotThrow( () => validateWorldPortals( [ discoverableRuntimePortal ] ), 'browser permits world-ID discovery when the portal does not pin a provider' );
 assert.throws( () => validateWorldPortals( [ { ...runtimePortal, id: 'tw-object:asset' } ], new Set( [ 'tw-object:asset' ] ) ), /duplicate portal ID/, 'browser rejects cross-kind entity ID collisions' );
 assert.throws( () => validateWorldPortals( [ { ...runtimePortal, destinationGateway: 'http://world.example' } ] ), /destination gateway/, 'browser rejects insecure portal gateways' );
+const framedWorld = await loadWorldPackage( {
+	worldId: 'tw-world:framed', manifest: { objects: [], components: [], portals: [ { ...runtimePortal, visual: 'timber' } ] },
+}, { assets: new Map() } );
+const portalFrame = framedWorld.children.find( ( child ) => child.userData.worldPortalFrame === runtimePortal.id );
+assert.ok( portalFrame, 'authored portal frame is included in the portable world scene' );
+assert.equal( portalFrame.children.length, 3, 'portal frame contains two jambs and a lintel' );
+assert.deepEqual( portalFrame.children.map( ( child ) => child.geometry.parameters ), [
+	{ width: 0.18, height: 5.08, depth: 0.28, widthSegments: 1, heightSegments: 1, depthSegments: 1 },
+	{ width: 0.18, height: 5.08, depth: 0.28, widthSegments: 1, heightSegments: 1, depthSegments: 1 },
+	{ width: 2.78, height: 0.18, depth: 0.28, widthSegments: 1, heightSegments: 1, depthSegments: 1 },
+], 'portal frame geometry leaves the opening clear and surrounds the preview aperture' );
+disposeWorldPackage( framedWorld );
 assert.throws( () => validateWorldComponents( [ { id: 'tw-component:duplicate', type: 'tidewater.procedural-island-vegetation/1', seed: 7 } ], { requiredFeatures: [ 'tidewater.procedural-island-vegetation/1' ] }, new Set( [ 'tw-component:duplicate' ] ) ), /duplicate component ID/, 'browser rejects duplicate IDs across entity kinds' );
 const islandOcean = { id: 'tw-component:island-ocean', type: 'tidewater.island-ocean/1', priority: 'portal-preview' };
 assert.doesNotThrow( () => validateWorldComponents( [ islandOcean ], { requiredFeatures: [ islandOcean.type ] } ), 'browser accepts the versioned example-island ocean component' );

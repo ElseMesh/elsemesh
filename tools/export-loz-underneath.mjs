@@ -197,6 +197,7 @@ async function exportPackage( outDir ) {
 			destinationWorldId: 'tw-world:example-island',
 			entry: { position: [ 0, 4.2, 8 ], yaw: Math.PI / 2 },
 			exit: { position: [ - 340, 4.2, 80 ], yaw: Math.PI / 2 },
+			visual: 'stone',
 			openView: true,
 			enabled: true,
 		} ], updatedAt,

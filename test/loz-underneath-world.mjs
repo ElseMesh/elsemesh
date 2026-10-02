@@ -33,12 +33,12 @@ try {
 	assert.equal( source.objects[ 0 ].collision.shape, 'compound' );
 	assert.deepEqual( source.portals, [ {
 		id: 'tw-portal:example-island', destinationWorldId: 'tw-world:example-island',
-		entry: { position: [ 0, 4.2, 8 ], yaw: Math.PI / 2 }, exit: { position: [ - 340, 4.2, 80 ], yaw: Math.PI / 2 }, openView: true, enabled: true,
+		entry: { position: [ 0, 4.2, 8 ], yaw: Math.PI / 2 }, exit: { position: [ - 340, 4.2, 80 ], yaw: Math.PI / 2 }, visual: 'stone', openView: true, enabled: true,
 	} ], 'the cave ships a reciprocal, provider-discoverable portal at its mapped entrance' );
 	const islandSource = validateWorldSource( JSON.parse( await readFile( path.join( root, 'worlds/island/world-source.json' ), 'utf8' ) ) );
 	assert.deepEqual( islandSource.portals, [ {
 		id: 'tw-portal:loz-underneath', destinationWorldId: source.worldId,
-		entry: { position: [ - 340, 4.2, 80 ], yaw: Math.PI / 2 }, exit: { position: [ 0, 4.2, 8 ], yaw: Math.PI / 2 }, openView: true, enabled: true,
+		entry: { position: [ - 340, 4.2, 80 ], yaw: Math.PI / 2 }, exit: { position: [ 0, 4.2, 8 ], yaw: Math.PI / 2 }, visual: 'timber', openView: true, enabled: true,
 	} ], 'the island ships the reciprocal portal to the cave world' );
 	assert.ok( source.objects[ 0 ].collision.boxes.length > 300 && source.objects[ 0 ].collision.boxes.length <= 2048, 'the converted cave layout has bounded floor and wall proxies' );
 	assert.ok( source.objects[ 0 ].collision.boxes.some( box => box.walkable ) && source.objects[ 0 ].collision.boxes.some( box => ! box.walkable && box.solid ), 'collision includes both walkable floors and solid walls' );
@@ -68,15 +68,17 @@ try {
 
 	const connector = { worldId: source.worldId, manifest: { ...source, assets: [ { id: caveID, bytes: caveBytes.length, kind: 'glb', priority: 'visible' } ], objects: source.objects } };
 	const scene = await loadWorldPackage( connector, { assets: new Map( [ [ caveID, caveBytes ] ] ) } );
-	let meshCount = 0, emittedMaterials = 0;
+	let meshCount = 0, portalFrameMeshes = 0, emittedMaterials = 0;
 	scene.traverse( object => {
 		if ( ! object.isMesh ) return;
 		meshCount ++;
+		if ( object.parent?.userData.worldPortalFrame ) portalFrameMeshes ++;
 		for ( const material of Array.isArray( object.material ) ? object.material : [ object.material ] ) {
 			if ( material.emissiveIntensity > 0 && material.emissive?.getHex() !== 0 ) emittedMaterials ++;
 		}
 	} );
-	assert.equal( meshCount, 145, 'hosted package loader instantiates all cave GLB meshes' );
+	assert.equal( meshCount, 148, 'hosted package loader instantiates all cave GLB meshes and the three doorway-frame meshes' );
+	assert.equal( portalFrameMeshes, 3, 'hosted cave portal includes two stone jambs and a lintel' );
 	assert.ok( emittedMaterials > 0, 'hosted GLB renderer applies material emissive colors and strengths' );
 	const colliders = new Colliders();
 	registerWorldPackageCollisions( scene, colliders );

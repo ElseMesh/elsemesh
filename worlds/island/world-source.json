@@ -11926,6 +11926,7 @@
         ],
         "yaw": 1.5707963267948966
       },
+      "visual": "timber",
       "openView": true,
       "enabled": true
     }

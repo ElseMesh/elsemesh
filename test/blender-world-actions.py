@@ -72,6 +72,17 @@ class BlenderWorldActionsTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "unsupported Blender action"):
             world_actions.validate_plan(self.plan([{"op": "python.exec", "code": "pass"}]), self.source_bytes)
 
+    def test_accepts_and_rejects_portal_frame_styles(self):
+        source = json.loads(self.source_bytes)
+        source["portals"][0]["visual"] = "timber"
+        source_bytes = json.dumps(source, separators=(",", ":")).encode()
+        result, _ = world_actions.validate_plan(self.plan([], source_bytes), source_bytes)
+        self.assertEqual(result["portals"][0]["visual"], "timber")
+        source["portals"][0]["visual"] = "glass"
+        bad_bytes = json.dumps(source, separators=(",", ":")).encode()
+        with self.assertRaisesRegex(ValueError, "visual must be"):
+            world_actions.validate_plan(self.plan([], bad_bytes), bad_bytes)
+
 
 if __name__ == "__main__":
     unittest.main()

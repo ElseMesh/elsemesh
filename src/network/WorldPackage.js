@@ -4,6 +4,7 @@
 
 import { Group } from '../engine/scene/Group.js';
 import { Mesh } from '../engine/scene/Mesh.js';
+import { BoxGeometry } from '../engine/geometry/PrimitiveGeometries.js';
 import { BufferAttribute } from '../engine/geometry/BufferAttribute.js';
 import { BufferGeometry } from '../engine/geometry/BufferGeometry.js';
 import { parseGLB, decodeImage } from '../engine/loaders/GLTF.js';
@@ -19,6 +20,13 @@ const COMPONENTS = Object.freeze( {
 	NORMAL: [ 'normal', 3 ],
 	TEXCOORD_0: [ 'uv', 2 ],
 	COLOR_0: [ 'color', 3 ],
+} );
+
+const PORTAL_FRAME = Object.freeze( { width: 2.42, height: 4.9, bar: 0.18, depth: 0.28 } );
+const PORTAL_FRAME_STYLES = Object.freeze( {
+	timber: { color: 0x68452d, roughness: 0.88, metalness: 0 },
+	stone: { color: 0x77766f, roughness: 0.96, metalness: 0 },
+	metal: { color: 0x56636a, roughness: 0.42, metalness: 0.72 },
 } );
 
 export async function loadWorldPackage( connector, { signal, assets: preloadedAssets, objectIDs } = {} ) {
@@ -41,6 +49,10 @@ export async function loadWorldPackage( connector, { signal, assets: preloadedAs
 export async function appendWorldPackageAssets( connector, root, assets, { signal, objectIDs } = {} ) {
 
 	const state = root.userData.worldPackage || ( root.userData.worldPackage = { parsed: new Map(), loadedObjects: new Set() } );
+	if ( ! state.portalFramesBuilt ) {
+		addPortalFrames( root, connector.manifest.portals || [] );
+		state.portalFramesBuilt = true;
+	}
 	const objectRecords = connector.manifest.objects || [];
 	const selectedObjects = objectIDs ? new Set( objectIDs ) : null;
 
@@ -76,6 +88,37 @@ export async function appendWorldPackageAssets( connector, root, assets, { signa
 	}
 	return root;
 
+}
+
+function addPortalFrames( root, portals ) {
+	for ( const portal of portals ) {
+		const style = PORTAL_FRAME_STYLES[ portal.visual ];
+		if ( ! portal.enabled || ! style ) continue;
+		const frame = new Group();
+		frame.name = `portal frame:${portal.id}`;
+		frame.userData.worldPortalFrame = portal.id;
+		frame.position.fromArray( portal.entry.position );
+		frame.rotation.y = portal.entry.yaw;
+		const material = standard( { name: `portal frame ${portal.visual}`, ...style } );
+		const { width, height, bar, depth } = PORTAL_FRAME;
+		const outerWidth = width + bar * 2;
+		const outerHeight = height + bar;
+		const postGeometry = new BoxGeometry( bar, outerHeight, depth );
+		const lintelGeometry = new BoxGeometry( outerWidth, bar, depth );
+		for ( const x of [ - ( width + bar ) / 2, ( width + bar ) / 2 ] ) {
+			const post = new Mesh( postGeometry, material );
+			post.name = 'portal frame post';
+			post.position.set( x, 0, 0 );
+			post.castShadow = true;
+			frame.add( post );
+		}
+		const lintel = new Mesh( lintelGeometry, material );
+		lintel.name = 'portal frame lintel';
+		lintel.position.y = ( height + bar ) / 2;
+		lintel.castShadow = true;
+		frame.add( lintel );
+		root.add( frame );
+	}
 }
 
 export function cloneWorldPackageAssets( root, connector, assetIDs ) {

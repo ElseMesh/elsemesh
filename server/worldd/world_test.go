@@ -115,6 +115,7 @@ func TestWorldManifestAllowsPortalProviderDiscoveryByWorldID(t *testing.T) {
 	manifest.WorldID = "tw-world:portal-discovery"
 	manifest.Portals = []portal{{
 		ID: "tw-portal:destination", Destination: "tw-world:other",
+		Visual: "timber",
 		Entry: transform{Position: vector3{1, 2, 3}}, Exit: transform{Position: vector3{4, 5, 6}},
 		OpenView: true, Enabled: true,
 	}}
@@ -128,6 +129,11 @@ func TestWorldManifestAllowsPortalProviderDiscoveryByWorldID(t *testing.T) {
 	if strings.Contains(string(encoded), "destinationPeerId") {
 		t.Fatalf("un-pinned portal should omit the destinationPeerId field: %s", encoded)
 	}
+	manifest.Portals[0].Visual = "glass"
+	if err := validateManifest(manifest, ownerID.String(), time.Now()); err == nil {
+		t.Fatal("unsupported portal visual style accepted")
+	}
+	manifest.Portals[0].Visual = ""
 	manifest.Portals[0].PeerID = "not-a-peer-id"
 	if err := validateManifest(manifest, ownerID.String(), time.Now()); err == nil {
 		t.Fatal("malformed optional destination peer should be rejected")

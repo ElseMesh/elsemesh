@@ -91,6 +91,7 @@ type portal struct {
 	Destination string    `json:"destinationWorldId"`
 	PeerID      string    `json:"destinationPeerId,omitempty"`
 	Gateway     string    `json:"destinationGateway,omitempty"`
+	Visual      string    `json:"visual,omitempty"`
 	Entry       transform `json:"entry"`
 	Exit        transform `json:"exit"`
 	OpenView    bool      `json:"openView"`
@@ -459,7 +460,7 @@ func validateManifest(manifest worldManifest, localPeerID string, now time.Time)
 	}
 	seenPortals := make(map[string]bool, len(manifest.Portals))
 	for _, p := range manifest.Portals {
-		if !portalIDPattern.MatchString(p.ID) || seenPortals[p.ID] || seenObjects[p.ID] || !worldIDPattern.MatchString(p.Destination) || len(p.PeerID) > 256 {
+		if !portalIDPattern.MatchString(p.ID) || seenPortals[p.ID] || seenObjects[p.ID] || !worldIDPattern.MatchString(p.Destination) || len(p.PeerID) > 256 || p.Visual != "" && p.Visual != "timber" && p.Visual != "stone" && p.Visual != "metal" {
 			return fmt.Errorf("invalid portal %q", p.ID)
 		}
 		if p.PeerID != "" {

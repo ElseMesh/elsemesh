@@ -53,6 +53,10 @@ def validate(source):
         if not failover and (after is not None or duration is not None):
             raise ValueError("failover window without failover permission")
         seen_hosts.add(peer_id)
+    for portal in source["portals"]:
+        visual = portal.get("visual") if isinstance(portal, dict) else None
+        if not isinstance(portal, dict) or visual is not None and (not isinstance(visual, str) or visual not in {"timber", "stone", "metal"}):
+            raise ValueError("portal visual must be timber, stone, or metal when specified")
     return source
 
 

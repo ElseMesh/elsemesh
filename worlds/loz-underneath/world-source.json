@@ -12835,6 +12835,7 @@
         ],
         "yaw": 1.5707963267948966
       },
+      "visual": "stone",
       "openView": true,
       "enabled": true
     }
