@@ -75,14 +75,21 @@ func startZeroTier(networkID, storagePath string) (zeroTierRuntime, error) {
 			C.zts_node_stop()
 		}
 	}()
+	deadline := time.Now().Add(60 * time.Second)
+	for int(C.zts_node_is_online()) != 1 && time.Now().Before(deadline) {
+		time.Sleep(250 * time.Millisecond)
+	}
+	if int(C.zts_node_is_online()) != 1 {
+		return nil, errors.New("timed out waiting for ZeroTier node to come online")
+	}
 	nodeID := uint64(C.zts_node_get_id())
-	if nodeID == 0 {
-		return nil, errors.New("libzt returned an empty node ID")
+	if nodeID == 0 || nodeID > (1<<40)-1 {
+		return nil, errors.New("libzt returned an invalid node ID")
 	}
 	if code := int(C.zts_net_join(C.uint64_t(netID))); code != 0 {
 		return nil, fmt.Errorf("libzt could not join network (%d)", code)
 	}
-	deadline := time.Now().Add(60 * time.Second)
+	deadline = time.Now().Add(60 * time.Second)
 	for time.Now().Before(deadline) {
 		switch int(C.zts_net_get_status(C.uint64_t(netID))) {
 		case 1:

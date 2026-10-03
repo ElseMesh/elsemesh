@@ -132,8 +132,14 @@ browser peer path.
 
 ## Remaining validation
 
-The opt-in libzt path is implemented, but still needs runtime validation
-between nodes on separate NATed networks, browser gateway verification while
-Central is unavailable, and a target-specific Android/Termux libzt build and
-Flip7 renderer check. Do not treat a successful Linux compile as proof of
-those deployment paths.
+On 2026-10-03, `worldd` was built for Linux amd64 against the existing libzt
+build. A disposable daemon profile joined the public test LAN, reported a
+stable libzt node ID and its 6PLANE IPv6 address, and included that address in
+its advertised TCP peer addresses. This exercise also found and fixed a
+startup-order bug: `zts_node_start()` is asynchronous, so `worldd` now waits
+for the libzt node to come online before calling `zts_net_join()`. The daemon
+was stopped after the smoke check. This verifies one local node's membership
+and address announcement only; peer traffic across the overlay, separate NATs,
+browser relay access while Central is unavailable, and an Android/Termux libzt
+build plus Flip7 renderer check remain unverified. Do not treat a successful
+Linux build or one-node join as proof of those deployment paths.
