@@ -64,25 +64,51 @@ address is a transport locator, not proof of ownership or permission. Central
 may be unavailable after setup: world identity, portal resolution, and access
 authorization must continue to work without a Central API request.
 
-## Current limitations and next work
+## Embedded libzt transport
 
-The repository currently has a Go/libp2p daemon with TCP/QUIC, WebSocket and
-WebTransport gateways, node records, portal routing, and relay support. Native
-`libzt` integration and automatic discovery/announcement of the local 6PLANE
-address are not yet implemented. The Linux command above uses a separately
-installed ZeroTier One interface; Android/Termux must use the planned `libzt`
-integration where Android does not expose a usable ZeroTier interface to the
-daemon. The LAN settings and open port are prepared, but cross-NAT portal
-traversal is not validated until independently connected nodes exchange traffic.
+`worldd` has an opt-in libzt integration for systems where installing a
+ZeroTier One service is inconvenient, including Android/Termux. Build libzt
+for the target platform first, then build `worldd` with cgo enabled and the
+libzt headers and library available. For a Linux shared-library build:
 
-The follow-up implementation must cover:
+```sh
+CGO_ENABLED=1 \
+CGO_CFLAGS="-I/path/to/libzt/include" \
+CGO_LDFLAGS="-L/path/to/libzt/lib -lzt -lstdc++" \
+go build -tags zerotier -o worldd ./worldd
+```
 
-- `libzt` integration and persistent node identity for Linux and Android/Termux.
-- Automatic detection and advertisement of the correct network-scoped 6PLANE
-  address, with observed `findip` results used only as a fallback.
-- Direct peer connections, NAT traversal, relay fallback, and multi-node tests
-  from separate internet connections.
-- Browser gateway and WebRTC access without a ZeroTier client, plus user-facing
-  daemon setup, invite, troubleshooting, and browser-hosting limitations.
-- A runtime test proving worlds and portals continue to work while Central API
-  access is unavailable.
+At runtime, make `libzt.so` available to the dynamic linker (for example with
+`LD_LIBRARY_PATH`) and start `worldd` with the network ID:
+
+```sh
+worldd --zerotier-network 632ea2908569fc9e --data /path/to/private/worldd-data
+```
+
+The embedded node identity is persisted in the `zerotier` subdirectory of the
+daemon data directory. Back up that directory with the rest of the daemon
+identity data; deleting it creates a different ZeroTier node. `worldd` waits
+up to 60 seconds for network membership/configuration, computes its
+network-scoped 6PLANE address from its stable ZeroTier node ID, and announces
+that address on TCP port 42901. TCP dials to that network's 6PLANE `/40` prefix
+go through libzt; inbound connections are bridged to the ordinary libp2p TCP
+listener. Other TCP addresses and QUIC/WebSocket/WebTransport/WebRTC keep their
+normal paths. The address is a transport locator only; signed identity and
+world authorization remain authoritative.
+
+This path requires a libzt build for each target architecture and its native
+dependencies. Android/Termux builds additionally need an Android libzt/cgo
+toolchain; this repository does not yet distribute prebuilt libzt libraries.
+The build also depends on the licensing terms and notices shipped with the
+exact libzt version; keep those notices with distributed builds. Users who
+already have ZeroTier One can use the native setup above without cgo. A browser
+does not join ZeroTier: it connects through the HTTPS/WSS gateway or supported
+browser peer path.
+
+## Remaining validation
+
+The opt-in libzt path is implemented, but still needs runtime validation
+between nodes on separate NATed networks, browser gateway verification while
+Central is unavailable, and a target-specific Android/Termux libzt build and
+Flip7 renderer check. Do not treat a successful Linux compile as proof of
+those deployment paths.

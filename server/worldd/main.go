@@ -112,6 +112,7 @@ func run() error {
 	importNodeKey := flag.String("import-node-key", "", "install a 0600 private identity key if node.key does not exist, then exit")
 	worldName := flag.String("world-name", "My ThruHold", "create a local starter world when none is supplied")
 	listenPort := flag.Int("p2p-port", 42901, "libp2p TCP and QUIC listen port")
+	zeroTierNetwork := flag.String("zerotier-network", "", "optional ZeroTier network ID to join through libzt (requires a zerotier build)")
 	httpAddress := flag.String("http", "127.0.0.1:5200", "HTTP/WebSocket gateway listen address; place behind TLS for public browser access")
 	webTransportAddress := flag.String("webtransport", "", "optional WebTransport HTTP/3 UDP listen address, for example :5201")
 	webTransportCert := flag.String("webtransport-tls-cert", "", "TLS certificate for the optional WebTransport listener")
@@ -198,6 +199,7 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("announce address: %w", err)
 	}
+	var zeroTier zeroTierRuntime
 	if (*webTransportAddress == "" && (*webTransportCert != "" || *webTransportKey != "")) || (*webTransportAddress != "" && (*webTransportCert == "" || *webTransportKey == "")) {
 		return errors.New("--webtransport requires both --webtransport-tls-cert and --webtransport-tls-key")
 	}
@@ -380,10 +382,31 @@ func run() error {
 		return signWorldRoleRevocationsFile(*signRoleRevocationsPath, *roleDocumentOut, world, state.roleStateSerial, key, time.Now())
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
+	if *zeroTierNetwork != "" {
+		zeroTier, err = startZeroTier(*zeroTierNetwork, filepath.Join(*dataDir, "zerotier"))
+		if err != nil {
+			return fmt.Errorf("start ZeroTier: %w", err)
+		}
+		defer func() {
+			stop()
+			_ = zeroTier.Close()
+		}()
+		address := zeroTier.Address()
+		ztTCP, parseErr := ma.NewMultiaddr(fmt.Sprintf("/ip6/%s/tcp/%d", address, *listenPort))
+		if parseErr != nil {
+			return fmt.Errorf("ZeroTier 6PLANE address: %w", parseErr)
+		}
+		parsedAnnounceAddresses = append(parsedAnnounceAddresses, ztTCP)
+		log.Printf("ZeroTier node %s joined %s at %s", zeroTier.NodeID(), *zeroTierNetwork, address)
+	} else {
+		defer stop()
+	}
 
 	listen := libp2pListenAddresses(*listenPort, parsedAnnounceAddresses)
 	opts := []libp2p.Option{libp2p.Identity(key), libp2p.ListenAddrStrings(listen...), libp2p.EnableAutoNATv2(), libp2p.EnableHolePunching()}
+	if zeroTier != nil {
+		opts = append(opts, zeroTier.Libp2pOptions()...)
+	}
 	if len(parsedAnnounceAddresses) > 0 {
 		opts = append(opts, libp2p.AddrsFactory(appendAnnouncedAddresses(parsedAnnounceAddresses)))
 	}
@@ -402,6 +425,11 @@ func run() error {
 		return fmt.Errorf("start libp2p: %w", err)
 	}
 	defer p2pHost.Close()
+	if zeroTier != nil {
+		if err := zeroTier.StartBridge(ctx, *listenPort); err != nil {
+			return fmt.Errorf("start ZeroTier TCP bridge: %w", err)
+		}
+	}
 
 	mode := dht.ModeAuto
 	if *dhtMode == "client" {
