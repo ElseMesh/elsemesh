@@ -171,3 +171,10 @@ mesh must work without the Central API; Central is only an administrative
 interface for the optional ZeroTier LAN. Bootstrap peers must use the
 ElseMesh-compatible DHT protocol prefix currently set to
 `/tidewater/kad/1.0.0`; generic IPFS bootstrap nodes are not interchangeable.
+
+An attempted process-level WSS test with a relay bound only to loopback/LAN
+addresses did not obtain an AutoRelay circuit reservation. Those addresses are
+not valid public relay candidates, so this topology cannot prove browser
+traffic over a circuit. Keep the passing WSS gateway test and the separate
+loopback libp2p circuit test as distinct evidence; verify the combined path
+against a relay with a genuinely reachable public address.

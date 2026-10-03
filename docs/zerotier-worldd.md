@@ -22,10 +22,23 @@ The last recorded flow-rule inspection found TCP destination port `42901` in
 the allow list for `worldd`'s libp2p listener, while the existing final UDP
 rule allowed QUIC traffic on UDP `42901`. Preserve the other existing service
 rules. Because the current Central API credential is rejected, treat this as
-the last known configuration, not a verified current snapshot. If the UDP
-catch-all has since been removed, allow only the `worldd` peer port on UDP
-`42901` (and its reply traffic); do not open all UDP for ElseMesh. Public
-membership means anyone who knows this network ID may join; application
+the last known configuration, not a verified current snapshot.
+
+If Central is using templated flow rules, add custom allowances for both TCP
+and UDP destination port `42901` (or the configured `--p2p-port`). If the UDP
+catch-all has been removed, do not open all UDP for ElseMesh. For the advanced
+custom rules engine, do not assume connection tracking: ZeroTier documents
+that custom rules are stateless. TCP replies need the documented SYN/ACK
+whitelisting pattern, and UDP request/reply policy needs deliberate handling
+for both directions, preferably scoped to the intended members/tags. A lone
+UDP destination-port rule can allow requests while dropping replies. See the
+[ZeroTier Rules Engine guide](https://docs.zerotier.com/rules/) before editing
+custom rules, and verify the final policy in Central. These flow rules apply
+only to traffic carried over ZeroTier; they do not open the machine's public
+firewall. The browser HTTPS/WSS gateway does not need an overlay rule unless
+clients are intentionally connecting to it over ZeroTier.
+
+Public membership means anyone who knows this network ID may join; application
 identity signatures and world permissions must still be enforced by ElseMesh.
 
 ## Joining a Linux host
