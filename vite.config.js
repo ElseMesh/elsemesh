@@ -11,7 +11,7 @@ if ( ! /^[\da-f]{40}$/i.test( commitSha ) ) throw new Error( 'Git HEAD must be a
 const commitShort = commitSha.slice( 0, 8 ).toLowerCase();
 
 export default defineConfig( {
-	// relative asset paths: the build runs from any sub-path (GitHub Pages serves it under /tidewater/)
+	// Relative asset paths let the client run at the GitHub Pages root and under /loz.
 	base: './',
 	plugins: [ {
 		name: 'elsemesh-build-commit',

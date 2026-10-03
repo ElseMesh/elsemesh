@@ -8,8 +8,8 @@ were retained by the transfer.
 
 ## GitHub Pages
 
-Client: https://elsemesh.github.io/elsemesh/
-Archived LOZ client: https://elsemesh.github.io/elsemesh/loz/
+Client: https://elsemesh.github.io/
+Archived LOZ client: https://elsemesh.github.io/loz/
 
 `.github/workflows/deploy.yml` deploys every push to `main`, including the LOZ
 archive. Check Actions for success and compare the client bottom-right eight-digit
@@ -22,7 +22,7 @@ The static client accepts `worldId`, `nodeId`, `gateway` and `directory` query
 arguments. For example (replace the placeholder with an actual world gateway):
 
 ```text
-https://elsemesh.github.io/elsemesh/?worldId=tw-world%3Aexample-island&gateway=https%3A%2F%2Fworld-host.example
+https://elsemesh.github.io/?worldId=tw-world%3Aexample-island&gateway=https%3A%2F%2Fworld-host.example
 ```
 
 Pages hosts the renderer, not `worldd` or discovery. A hosted-world invite needs a
