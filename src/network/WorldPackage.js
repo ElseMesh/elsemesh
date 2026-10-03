@@ -116,7 +116,7 @@ function installObjectLOD( connector, root, instance, object ) {
 			if ( signal.aborted || state.disposed ) throw signal.reason || new DOMException( 'World unloaded', 'AbortError' );
 			let source = state.parsed.get( assetId );
 			if ( ! source ) {
-				source = await buildGLTF( parseGLB( bytes ) );
+				source = await buildGLTF( parseGLB( bytes ), state );
 				if ( signal.aborted || state.disposed ) { disposeWorldPackage( source ); throw signal.reason || new DOMException( 'World unloaded', 'AbortError' ); }
 				const shared = state.parsed.get( assetId );
 				if ( shared ) { disposeWorldPackage( source ); source = shared; }

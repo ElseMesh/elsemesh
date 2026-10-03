@@ -1,7 +1,8 @@
 # Reusable world-object levels of detail
 
-Status: signed contract and runtime switching implemented; authored world variants
-and live visual validation remain outstanding.
+Status: signed contract and runtime switching implemented; the portable island
+village now has one authored lower-detail variant. Matched-view visual validation
+and authored variants for other large world objects remain outstanding.
 Avatar distance LOD is implemented separately in `RemoteAvatar.js`.
 
 ## Existing renderer paths
@@ -80,8 +81,31 @@ selection for objects occupying at least 25% of viewport height. Avatar distance
 shift gradually outside eight meters; nearby avatars always retain full detail.
 Each main or mapped portal camera selects against its own distance/projection;
 async downloads never switch visuals outside that explicit camera update. Transitions currently use hysteresis and a
-ready-level swap, without a dither cross-fade. Existing checked-in world objects
-have no new LOD declarations yet. These are remaining work, not completed gates.
+ready-level swap, without a dither cross-fade. The hosted island village declares
+one lower-detail level at a 0.45 viewport-height threshold. Its checked-in GLB is
+generated from the full-detail village GLB with
+`tools/blender/export-world-object-lod.py` under Blender 4.3.2; the export tool
+checks that all trusted village material roles, vertex tint and `_TW_VDATA`
+survive. It reduces this object from 137,888 to 48,260 triangles (65%) and from
+14.3 MB to 7.5 MB. The base GLB remains the collision source and full-detail
+visual. Other checked-in world objects still lack authored variants. The village
+near/far image comparison and Flip7 check remain open; the mesh structure and
+runtime selector alone do not prove distant visual quality.
+
+To regenerate the checked-in village level, export the full package to a
+temporary directory and use its full-detail village GLB as the Blender input:
+
+```sh
+npm run export:island -- --out /var/tmp/elsemesh-island-full
+blender --background --python tools/blender/export-world-object-lod.py -- \
+  --source /var/tmp/elsemesh-island-full/assets/<village-asset-sha256> \
+  --out worlds/island/lod-source/village-low.glb --ratio 0.35
+npm run export:island
+```
+
+The checked-in low-detail GLB is a stable export input. Package export hashes it
+into the signed content-addressed asset directory, so repeated exports do not
+need Blender and retain deterministic world-source and asset IDs.
 
 `test/world-object-lod.mjs` uses texture-free real GLBs to establish eight/four/two
 visible-triangle switching, near-view restoration, independent camera selection,

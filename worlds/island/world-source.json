@@ -137,6 +137,12 @@
       "kind": "asset-instance",
       "label": "Procedural village, pier and harbor",
       "assetId": "sha256:fc2eb6faca43a9877643df56893e204e171e6a9c6c84d41f8d951d762a57fe8e",
+      "lods": [
+        {
+          "assetId": "sha256:816da761737b18e4a3f397c36cb91979f47ab409df7113f25c9e83e462da7b5f",
+          "maxScreenFraction": 0.45
+        }
+      ],
       "priority": "visible",
       "streamingBounds": {
         "center": [

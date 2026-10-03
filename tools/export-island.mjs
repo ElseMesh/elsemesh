@@ -70,6 +70,16 @@ const villageGLB = exportBatchGLB( generated.villageBatches, 'Procedural village
 const villageAssetId = `sha256:${createHash( 'sha256' ).update( villageGLB ).digest( 'hex' )}`;
 const villageBounds = boundsForGLB( villageGLB );
 staticAssets.set( villageAssetId, villageGLB );
+const villageLODGLB = await readFile( path.join( REPO, 'worlds', 'island', 'lod-source', 'village-low.glb' ) );
+const villageLODAssetId = `sha256:${createHash( 'sha256' ).update( villageLODGLB ).digest( 'hex' )}`;
+const villageBaseData = parseGLB( villageGLB );
+const villageLODData = parseGLB( villageLODGLB );
+const triangleCount = ( model ) => model.meshes.flat().reduce( ( total, primitive ) => total + ( primitive.indices?.length || primitive.attributes.POSITION.array.length / 3 ) / 3, 0 );
+const materialRoles = ( model ) => [ ...new Set( model.materials.map( ( material ) => material.extras?.tidewaterMaterial?.role ).filter( Boolean ) ) ].sort();
+if ( triangleCount( villageLODData ) >= triangleCount( villageBaseData ) * 0.5 ) throw new Error( 'Village distance LOD must use less than half the full-detail triangles' );
+if ( JSON.stringify( materialRoles( villageLODData ) ) !== JSON.stringify( VILLAGE_MATERIAL_ROLES.slice().sort() ) ) throw new Error( 'Village distance LOD must preserve every trusted material role' );
+if ( villageLODData.meshes.flat().some( primitive => ! primitive.attributes.COLOR_0 || primitive.attributes._TW_VDATA?.itemSize !== 4 ) ) throw new Error( 'Village distance LOD must preserve vertex tints and VEC4 material data' );
+staticAssets.set( villageLODAssetId, villageLODGLB );
 const boatGLB = exportBatchGLB( generated.boatBatches, 'Moored lobster boat' );
 const boatAssetId = `sha256:${createHash( 'sha256' ).update( boatGLB ).digest( 'hex' )}`;
 staticAssets.set( boatAssetId, boatGLB );
@@ -189,6 +199,7 @@ const source = {
 		kind: 'asset-instance',
 		label: 'Procedural village, pier and harbor',
 		assetId: villageAssetId,
+		lods: [ { assetId: villageLODAssetId, maxScreenFraction: 0.45 } ],
 		priority: 'visible',
 		streamingBounds: villageBounds,
 		transform: { position: [ 0, 0, 0 ], yaw: 0 },
