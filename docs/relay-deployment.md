@@ -143,6 +143,18 @@ the world's owner is reachable only through a circuit relay.
 
 ## Checks and limits
 
+Run the automated local check from `server`:
+
+```sh
+go test ./worldd -run TestWorlddStaticRelayForwardsToPrivatePeer -count=1
+```
+
+It starts a relay-enabled `worldd` option set, a private AutoRelay peer and a
+caller, then proves a ping travels on a connection whose multiaddress contains
+`/p2p-circuit`. This uses loopback addresses; it validates relay option wiring
+and circuit forwarding, not traversal across actual NATs or the public
+Internet.
+
 For each operator node, verify the PeerID is stable across a clean restart,
 confirm its advertised addresses are reachable from another network, and check
 that it remains connected to multiple DHT peers. A gateway or world daemon can
@@ -151,8 +163,8 @@ log relay reservation and connection failures; do not treat a successful
 and a forced relay path between separate NATs, then stop one bootstrap or relay
 node and confirm another path still works.
 
-This repository supplies the daemon flags; no automated relay traversal test
-or deployed bootstrap, relay, gateway, DNS, TLS, or monitoring infrastructure
+This repository supplies the daemon flags and loopback circuit test; no
+deployed bootstrap, relay, gateway, DNS, TLS, or monitoring infrastructure
 exists yet. Public two-NAT relay traversal and browser-to-world traversal
 through a remotely deployed relay remain verification gates. The
 mesh must work without the Central API; Central is only an administrative

@@ -410,16 +410,11 @@ func run() error {
 	if len(parsedAnnounceAddresses) > 0 {
 		opts = append(opts, libp2p.AddrsFactory(appendAnnouncedAddresses(parsedAnnounceAddresses)))
 	}
-	if *serveRelay {
-		opts = append(opts, libp2p.EnableRelayService())
+	relayOpts, relayErr := worlddRelayOptions(*serveRelay, relays)
+	if relayErr != nil {
+		return fmt.Errorf("relay address: %w", relayErr)
 	}
-	if len(relays) != 0 {
-		infos, parseErr := parsePeerAddrs(relays)
-		if parseErr != nil {
-			return fmt.Errorf("relay address: %w", parseErr)
-		}
-		opts = append(opts, libp2p.EnableAutoRelayWithStaticRelays(infos))
-	}
+	opts = append(opts, relayOpts...)
 	p2pHost, err := libp2p.New(opts...)
 	if err != nil {
 		return fmt.Errorf("start libp2p: %w", err)
@@ -579,6 +574,8 @@ func run() error {
 
 func parsePeerAddrs(values []string) ([]peer.AddrInfo, error) {
 	infos := make([]peer.AddrInfo, 0, len(values))
+	indices := make(map[peer.ID]int, len(values))
+	seenAddrs := make(map[peer.ID]map[string]struct{}, len(values))
 	for _, value := range values {
 		addr, err := ma.NewMultiaddr(value)
 		if err != nil {
@@ -588,9 +585,37 @@ func parsePeerAddrs(values []string) ([]peer.AddrInfo, error) {
 		if err != nil {
 			return nil, err
 		}
-		infos = append(infos, *info)
+		index, exists := indices[info.ID]
+		if !exists {
+			index = len(infos)
+			indices[info.ID] = index
+			seenAddrs[info.ID] = make(map[string]struct{}, len(info.Addrs))
+			infos = append(infos, peer.AddrInfo{ID: info.ID})
+		}
+		for _, candidate := range info.Addrs {
+			if _, exists := seenAddrs[info.ID][candidate.String()]; exists {
+				continue
+			}
+			infos[index].Addrs = append(infos[index].Addrs, candidate)
+			seenAddrs[info.ID][candidate.String()] = struct{}{}
+		}
 	}
 	return infos, nil
+}
+
+func worlddRelayOptions(serveRelay bool, relayAddresses []string) ([]libp2p.Option, error) {
+	options := make([]libp2p.Option, 0, 2)
+	if serveRelay {
+		options = append(options, libp2p.EnableRelayService())
+	}
+	if len(relayAddresses) != 0 {
+		infos, err := parsePeerAddrs(relayAddresses)
+		if err != nil {
+			return nil, err
+		}
+		options = append(options, libp2p.EnableRelay(), libp2p.EnableAutoRelayWithStaticRelays(infos))
+	}
+	return options, nil
 }
 
 func parseAnnounceAddresses(values []string) ([]ma.Multiaddr, error) {
