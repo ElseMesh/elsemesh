@@ -11,16 +11,22 @@ local ZeroTier client; do not derive peer addresses from the node ID yourself.
 The Legacy Central API token at `~/.config/zerotier/central-api-token` is an
 administration credential, not a runtime setting. Keep it owner-readable only
 (mode `0600`), do not copy it into a repository or world/client configuration,
-and do not include it in command output or logs. A successful read-only API
-request to this network returned HTTP 200 on 2026-10-03.
+and do not include it in command output or logs. On 2026-10-03, the locally
+available token returned HTTP 403 for read-only requests to both the network
+endpoint and the network-list endpoint. Central configuration could therefore
+not be revalidated through that token; a 403 does not establish that the
+network settings changed. Generate a working Legacy API token in Central and
+replace the local file without sharing the token in chat or source control.
 
-The network's existing flow rules were preserved. TCP port `42901` was added to
-the existing TCP destination-port allow list for `worldd`'s libp2p listener.
-QUIC uses UDP port `42901`; the existing final UDP policy already permits that
-traffic. The policy still contains the pre-existing rules for other services
-and ports. Public membership means anyone who knows this network ID may join;
-application identity signatures and world permissions must still be enforced
-by ElseMesh.
+The last recorded flow-rule inspection found TCP destination port `42901` in
+the allow list for `worldd`'s libp2p listener, while the existing final UDP
+rule allowed QUIC traffic on UDP `42901`. Preserve the other existing service
+rules. Because the current Central API credential is rejected, treat this as
+the last known configuration, not a verified current snapshot. If the UDP
+catch-all has since been removed, allow only the `worldd` peer port on UDP
+`42901` (and its reply traffic); do not open all UDP for ElseMesh. Public
+membership means anyone who knows this network ID may join; application
+identity signatures and world permissions must still be enforced by ElseMesh.
 
 ## Joining a Linux host
 
@@ -37,7 +43,10 @@ Confirm the network is `OK` and note the 6PLANE IPv6 address assigned to this
 host. Do not use a physical/public IP in place of the 6PLANE address for this
 path.
 
-`worldd` uses TCP and QUIC on port `42901`. Announce the assigned 6PLANE address
+`worldd` listens for libp2p TCP and QUIC on port `42901` by default (the port
+can be changed with `--p2p-port`). Permit TCP and UDP on the chosen peer port
+in the network flow rules and the host firewall. TCP carries the TCP transport;
+QUIC carries UDP. If using the default, announce the assigned 6PLANE address
 when starting it so peers can dial the overlay address:
 
 ```sh
@@ -46,10 +55,13 @@ worldd --announce-address /ip6/<this-host-6plane-address>/tcp/42901 \
 ```
 
 The daemon's TCP and QUIC listeners bind on IPv6 when an IPv6 announce address
-is supplied. Use a currently assigned address for that host only. The public
-network Flow Rules allow TCP 42901; UDP is covered by the existing rules. If
-either transport cannot connect, first verify the local OS firewall permits
-the port on the ZeroTier interface.
+is supplied. Use a currently assigned address for that host only. The last
+recorded network policy allowed TCP 42901 explicitly and UDP through a broader
+existing rule; verify that policy in Central before relying on it. ZeroTier
+flow rules are enforced in the distributed network path, so verify the
+required peer traffic in both directions. If either transport cannot connect,
+check Central's rules and the local OS firewall for the selected port on the
+ZeroTier interface.
 
 ## Browser access and decentralized world access
 
